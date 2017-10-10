@@ -1,0 +1,26 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: nvidia-device-plugin-daemonset
+spec:
+  template:
+    metadata:
+      labels:
+        name: nvidia-device-plugin-ds
+    spec:
+      containers:
+      - image: nvidia-device-plugin:1.0.0
+        name: nvidia-device-plugin-ctr
+        imagePullPolicy: Never
+        env:
+          - name: NVIDIA_VISIBLE_DEVICES
+            value: ALL
+          - name: NVIDIA_DRIVER_CAPABILITIES
+            value: utility,compute
+        volumeMounts:
+          - name: device-plugin
+            mountPath: /var/lib/kubelet/device-plugins
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
