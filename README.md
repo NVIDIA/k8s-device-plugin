@@ -20,3 +20,8 @@ docker run -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugin
 ```
 kubectl create -f nvidia-device-plugin.yml
 ```
+
+# Issues and Contributing
+
+* You can report a bug by [filing a new issue](https://github.com/NVIDIA/k8s-device-plugin/issues/new)
+* You can contribute by opening a [pull request](https://help.github.com/articles/using-pull-requests/)
