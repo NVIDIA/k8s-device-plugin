@@ -10,6 +10,7 @@ import (
 	"path"
 	"strings"
 	"time"
+	"sync"
 
 	"github.com/NVIDIA/nvidia-docker/src/nvml"
 	"golang.org/x/net/context"
@@ -30,6 +31,8 @@ type NvidiaDevicePlugin struct {
 	update chan []*pluginapi.Device
 
 	server *grpc.Server
+	// lock for preventing race condition
+	mutex     sync.Mutex
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin.
@@ -175,12 +178,13 @@ func (m *NvidiaDevicePlugin) HealthCheck() {
 		case <-m.stop:
 			return
 		default:
-			// FIXME: there is a race condition if another goroutine calls m.Update concurrently.
+			m.mutex.Lock()
 			devs := m.devs
 			healthy := checkXIDs(eventSet, devs)
 			if !healthy {
 				m.Update(devs)
 			}
+			m.mutex.Unlock()
 		}
 	}
 }
