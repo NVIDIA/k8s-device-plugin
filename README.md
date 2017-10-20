@@ -6,6 +6,8 @@ It requires nvidia-docker 2.0 with our runtime configured as the [default runtim
 
 ## Usage
 
+### Docker Env
+
 #### Build
 ```
 docker build -t nvidia-device-plugin:1.0.0 .
@@ -19,6 +21,20 @@ docker run -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugin
 #### Deploy as Daemon Set:
 ```
 kubectl create -f nvidia-device-plugin.yml
+```
+
+### Local Env
+
+#### Build Binary
+
+Note: replace `lib64` with `lib` for 32-bit operating systems.
+```shell
+C_INCLUDE_PATH=/usr/local/cuda/include LIBRARY_PATH=/usr/local/cuda/lib64 go build
+```
+
+#### Run locally
+```shell
+./k8s-device-plugin
 ```
 
 # Issues and Contributing
