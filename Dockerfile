@@ -15,7 +15,7 @@ RUN wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linu
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
 
-ENV CGO_CFLAGS "-I /usr/local/cuda-9.0/include -I /usr/include/nvidia/gdk"
+ENV CGO_CFLAGS "-I /usr/local/cuda-9.0/include"
 ENV CGO_LDFLAGS "-L /usr/local/cuda-9.0/lib64"
 ENV PATH=$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/nvidia/lib:/usr/local/nvidia/lib64
