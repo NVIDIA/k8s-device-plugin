@@ -77,7 +77,7 @@ L:
 				log.Println("Received SIGHUP, restarting")
 				restart = true
 			default:
-				log.Printf("Received signal %d, shutting down", s)
+				log.Printf("Received signal \"%v\", shutting down", s)
 				devicePlugin.Stop()
 				break L
 			}

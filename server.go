@@ -22,6 +22,7 @@ const (
 	serverSock   = pluginapi.DevicePluginPath + "nvidia.sock"
 )
 
+// NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
 	devs   []*pluginapi.Device
 	socket string
@@ -32,7 +33,7 @@ type NvidiaDevicePlugin struct {
 	server *grpc.Server
 }
 
-// NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin.
+// NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
 func NewNvidiaDevicePlugin() *NvidiaDevicePlugin {
 	return &NvidiaDevicePlugin{
 		devs:   getDevices(),
@@ -137,7 +138,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, r *pluginapi.Allocate
 
 	for i, id := range r.DevicesIDs {
 		if !deviceExists(devs, id) {
-			return nil, fmt.Errorf("Invalid allocation request: unknown device: %s", id)
+			return nil, fmt.Errorf("invalid allocation request: unknown device: %s", id)
 		}
 
 		devRuntime := new(pluginapi.DeviceRuntimeSpec)
@@ -163,7 +164,7 @@ func (m *NvidiaDevicePlugin) cleanup() error {
 	return nil
 }
 
-func (m *NvidiaDevicePlugin) HealthCheck() {
+func (m *NvidiaDevicePlugin) healthCheck() {
 	eventSet := nvml.NewEventSet()
 	defer nvml.DeleteEventSet(eventSet)
 
@@ -185,6 +186,7 @@ func (m *NvidiaDevicePlugin) HealthCheck() {
 	}
 }
 
+// Serve starts the gRPC server and register the device plugin to Kubelet
 func (m *NvidiaDevicePlugin) Serve() error {
 	err := m.Start()
 	if err != nil {
