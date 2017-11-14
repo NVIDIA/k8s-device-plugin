@@ -11,13 +11,13 @@ It requires nvidia-docker 2.0 with our runtime configured as the [default runtim
 #### Build
 Option 1, to avoid cloning the repository:
 ```
-docker build -t nvidia-device-plugin:1.0.0 https://github.com/NVIDIA/k8s-device-plugin.git
+docker build -t nvidia-device-plugin:1.8.1 https://github.com/NVIDIA/k8s-device-plugin.git
 ```
 
 Option 2, if you want to modify the code:
 ```
 git clone https://github.com/NVIDIA/k8s-device-plugin.git && cd k8s-device-plugin
-docker build -t nvidia-device-plugin:1.0.0 .
+docker build -t nvidia-device-plugin:1.8.1 .
 ```
 
 #### Run locally
