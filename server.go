@@ -43,6 +43,22 @@ func NewNvidiaDevicePlugin() *NvidiaDevicePlugin {
 	}
 }
 
+// dial establishes the gRPC communication with the registered device plugin.
+func dial(unixSocketPath string, timeout time.Duration) (*grpc.ClientConn, error) {
+	c, err := grpc.Dial(unixSocketPath, grpc.WithInsecure(), grpc.WithBlock(),
+		grpc.WithTimeout(timeout),
+		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
+			return net.DialTimeout("unix", addr, timeout)
+		}),
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
 // Start starts the gRPC server of the device plugin
 func (m *NvidiaDevicePlugin) Start() error {
 	err := m.cleanup()
@@ -59,14 +75,14 @@ func (m *NvidiaDevicePlugin) Start() error {
 	pluginapi.RegisterDevicePluginServer(m.server, m)
 
 	go m.server.Serve(sock)
-	// Wait till grpc server is ready.
-	for i := 0; i < 10; i++ {
-		services := m.server.GetServiceInfo()
-		if len(services) > 1 {
-			break
-		}
-		time.Sleep(1 * time.Second)
+
+	// Wait for server to start by launching a blocking connexion
+	conn, err := dial(m.socket, 5*time.Second)
+	if err != nil {
+		return err
 	}
+	conn.Close()
+
 	go m.healthcheck()
 
 	return nil
@@ -87,14 +103,12 @@ func (m *NvidiaDevicePlugin) Stop() error {
 
 // Register registers the device plugin for the given resourceName with Kubelet.
 func (m *NvidiaDevicePlugin) Register(kubeletEndpoint, resourceName string) error {
-	conn, err := grpc.Dial(kubeletEndpoint, grpc.WithInsecure(),
-		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("unix", addr, timeout)
-		}))
-	defer conn.Close()
+	conn, err := dial(kubeletEndpoint, 5*time.Second)
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
+
 	client := pluginapi.NewRegistrationClient(conn)
 	reqt := &pluginapi.RegisterRequest{
 		Version:      pluginapi.Version,
