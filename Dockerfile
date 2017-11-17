@@ -23,7 +23,7 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/nvidia/lib:/usr/local/nvidia/lib
 WORKDIR /go/src/nvidia-device-plugin
 COPY . .
 
-RUN go install -v nvidia-device-plugin
+RUN go install -ldflags="-s -w" -v nvidia-device-plugin
 
 
 FROM nvidia/cuda:9.0-base-ubuntu16.04
