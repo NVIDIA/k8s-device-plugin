@@ -22,7 +22,7 @@ docker build -t nvidia-device-plugin:1.8.1 .
 
 #### Run locally
 ```
-docker run -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia-device-plugin:1.0.0
+docker run -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia-device-plugin:1.8.1
 ```
 
 #### Deploy as Daemon Set:
