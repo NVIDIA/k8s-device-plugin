@@ -10,7 +10,7 @@ import (
 	"runtime/debug"
 	"syscall"
 
-	"github.com/NVIDIA/nvidia-docker/src/nvidia"
+	"github.com/NVIDIA/nvidia-docker/src/nvml"
 	"github.com/fsnotify/fsnotify"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1"
 )
@@ -38,9 +38,9 @@ func exit() {
 func main() {
 	defer exit()
 
-	log.Println("Loading NVIDIA management library")
-	check(nvidia.Init())
-	defer func() { check(nvidia.Shutdown()) }()
+	log.Println("Loading NVML")
+	check(nvml.Init())
+	defer func() { check(nvml.Shutdown()) }()
 
 	// Should it be in the device plugin Serve?
 	if len(getDevices()) == 0 {

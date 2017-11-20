@@ -3,7 +3,6 @@
 package main
 
 import (
-	"github.com/NVIDIA/nvidia-docker/src/nvidia"
 	"github.com/NVIDIA/nvidia-docker/src/nvml"
 
 	"golang.org/x/net/context"
@@ -11,11 +10,13 @@ import (
 )
 
 func getDevices() []*pluginapi.Device {
-	nvdevs, err := nvidia.LookupDevices()
+	n, err := nvml.GetDeviceCount()
 	check(err)
 
 	var devs []*pluginapi.Device
-	for _, d := range nvdevs {
+	for i := uint(0); i < n; i++ {
+		d, err := nvml.NewDeviceLite(i)
+		check(err)
 		devs = append(devs, &pluginapi.Device{
 			ID:     d.UUID,
 			Health: pluginapi.Healthy,
