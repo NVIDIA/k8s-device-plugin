@@ -39,13 +39,16 @@ func main() {
 	defer exit()
 
 	log.Println("Loading NVML")
-	check(nvml.Init())
+	if err := nvml.Init(); err != nil {
+		log.Println("Failed to start nvml with error:", err)
+		select{}
+	}
+
 	defer func() { check(nvml.Shutdown()) }()
 
-	// Should it be in the device plugin Serve?
 	if len(getDevices()) == 0 {
-		log.Println("No devices found. Looping")
-		select {}
+		log.Println("No devices found")
+		select{}
 	}
 
 	devicePlugin := NewNvidiaDevicePlugin()
