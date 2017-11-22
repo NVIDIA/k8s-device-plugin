@@ -1,6 +1,6 @@
 # NVIDIA device plugin for Kubernetes
 
-This repository contains NVIDIA's implementation of the [Kubernetes device plugin](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/resource-management/device-plugin.md) alpha feature from version 1.8.  
+This repository contains NVIDIA's implementation of the [Kubernetes device plugin](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/resource-management/device-plugin.md) alpha feature from version 1.8.
 
 It requires nvidia-docker 2.0 with our runtime configured as the [default runtime](https://github.com/NVIDIA/nvidia-docker/wiki/Advanced-topics#default-runtime).
 
@@ -11,18 +11,18 @@ It requires nvidia-docker 2.0 with our runtime configured as the [default runtim
 #### Build
 Option 1, to avoid cloning the repository:
 ```
-docker build -t nvidia-device-plugin:1.8.1 https://github.com/NVIDIA/k8s-device-plugin.git
+docker build -t nvidia-device-plugin:1.8 https://github.com/NVIDIA/k8s-device-plugin.git
 ```
 
 Option 2, if you want to modify the code:
 ```
 git clone https://github.com/NVIDIA/k8s-device-plugin.git && cd k8s-device-plugin
-docker build -t nvidia-device-plugin:1.8.1 .
+docker build -t nvidia-device-plugin:1.8 .
 ```
 
 #### Run locally
 ```
-docker run -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia-device-plugin:1.8.1
+docker run -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia-device-plugin:1.8
 ```
 
 #### Deploy as Daemon Set:

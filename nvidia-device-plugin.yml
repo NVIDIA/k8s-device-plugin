@@ -9,9 +9,8 @@ spec:
         name: nvidia-device-plugin-ds
     spec:
       containers:
-      - image: nvidia-device-plugin:1.0.0
+      - image: nvidia-device-plugin:1.8
         name: nvidia-device-plugin-ctr
-        imagePullPolicy: Never
         env:
           - name: NVIDIA_VISIBLE_DEVICES
             value: ALL
