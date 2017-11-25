@@ -5,6 +5,8 @@ This repository contains NVIDIA's implementation of the [Kubernetes device plugi
 It requires nvidia-docker 2.0 with our runtime configured as the [default runtime](https://github.com/NVIDIA/nvidia-docker/wiki/Advanced-topics#default-runtime).
 
 ## Usage
+Please make sure that the Kubelet has been started with the `--feature-gates=DevicePlugins=true`
+before running the device plugin.
 
 ### With Docker
 
