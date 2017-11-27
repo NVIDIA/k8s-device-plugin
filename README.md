@@ -9,20 +9,25 @@ It requires nvidia-docker 2.0 with our runtime configured as the [default runtim
 ### With Docker
 
 #### Build
-Option 1, to avoid cloning the repository:
+Option 1, pull the prebuilt image from [Docker Hub](https://hub.docker.com/r/nvidia/k8s-device-plugin):
 ```
-docker build -t nvidia-device-plugin:1.8 https://github.com/NVIDIA/k8s-device-plugin.git
+docker pull nvidia/k8s-device-plugin:1.8
 ```
 
-Option 2, if you want to modify the code:
+Option 2, build without cloning the repository:
+```
+docker build -t nvidia/k8s-device-plugin:1.8 https://github.com/NVIDIA/k8s-device-plugin.git
+```
+
+Option 3, if you want to modify the code:
 ```
 git clone https://github.com/NVIDIA/k8s-device-plugin.git && cd k8s-device-plugin
-docker build -t nvidia-device-plugin:1.8 .
+docker build -t nvidia/k8s-device-plugin:1.8 .
 ```
 
 #### Run locally
 ```
-docker run -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia-device-plugin:1.8
+docker run -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia/k8s-device-plugin:1.8
 ```
 
 #### Deploy as Daemon Set:
