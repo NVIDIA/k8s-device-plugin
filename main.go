@@ -27,8 +27,9 @@ func main() {
 	}
 	defer func() { log.Println("Shutdown of NVML returned:", nvml.Shutdown()) }()
 
+	log.Println("Fetching devices")
 	if len(getDevices()) == 0 {
-		log.Println("No devices found")
+		log.Println("No devices found.")
 		select{}
 	}
 
