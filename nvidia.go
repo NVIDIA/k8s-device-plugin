@@ -3,11 +3,19 @@
 package main
 
 import (
+	"log"
+
 	"github.com/NVIDIA/nvidia-docker/src/nvml"
 
 	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1"
 )
+
+func check(err error) {
+	if err != nil {
+		log.Panicln("Fatal:", err)
+	}
+}
 
 func getDevices() []*pluginapi.Device {
 	n, err := nvml.GetDeviceCount()

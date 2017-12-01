@@ -4,6 +4,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"syscall"
 
 	"github.com/NVIDIA/nvidia-docker/src/nvml"
@@ -11,32 +12,29 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1"
 )
 
-func check(err error) {
-	if err != nil {
-		log.Panicln("Fatal:", err)
-	}
-}
-
 func main() {
 	log.Println("Loading NVML")
 	if err := nvml.Init(); err != nil {
-		log.Println("Failed to start nvml with error:", err)
-		select{}
+		log.Printf("Failed to start nvml with error: %s.", err)
+		os.Exit(1)
 	}
 	defer func() { log.Println("Shutdown of NVML returned:", nvml.Shutdown()) }()
 
-	log.Println("Fetching devices")
+	log.Println("Fetching devices.")
 	if len(getDevices()) == 0 {
-		log.Println("No devices found.")
-		select{}
+		log.Println("No devices found. Waiting indefinitely.")
+		select {}
 	}
 
-	log.Println("Starting FS watcher")
+	log.Println("Starting FS watcher.")
 	watcher, err := newFSWatcher(pluginapi.DevicePluginPath)
-	check(err)
+	if err != nil {
+		log.Println("Failed to created FS watcher.")
+		os.Exit(1)
+	}
 	defer watcher.Close()
 
-	log.Println("Starting OS watcher")
+	log.Println("Starting OS watcher.")
 	sigs := newOSWatcher(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	restart := true
@@ -60,7 +58,7 @@ L:
 		select {
 		case event := <-watcher.Events:
 			if event.Name == pluginapi.KubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
-				log.Printf("inotify: %s created, restarting", pluginapi.KubeletSocket)
+				log.Printf("inotify: %s created, restarting.", pluginapi.KubeletSocket)
 				restart = true
 			}
 
@@ -70,10 +68,10 @@ L:
 		case s := <-sigs:
 			switch s {
 			case syscall.SIGHUP:
-				log.Println("Received SIGHUP, restarting")
+				log.Println("Received SIGHUP, restarting.")
 				restart = true
 			default:
-				log.Printf("Received signal \"%v\", shutting down", s)
+				log.Printf("Received signal \"%v\", shutting down.", s)
 				devicePlugin.Stop()
 				break L
 			}
