@@ -4,8 +4,6 @@ package main
 
 import (
 	"log"
-	"os"
-	"os/signal"
 	"syscall"
 
 	"github.com/NVIDIA/nvidia-docker/src/nvml"
@@ -36,14 +34,13 @@ func main() {
 	devicePlugin := NewNvidiaDevicePlugin()
 	devicePlugin.Serve()
 
-	watcher, err := fsnotify.NewWatcher()
+	log.Println("Starting FS watcher")
+	watcher, err := newFSWatcher(pluginapi.DevicePluginPath)
 	check(err)
 	defer watcher.Close()
-	err = watcher.Add(pluginapi.DevicePluginPath)
-	check(err)
 
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	log.Println("Starting OS watcher")
+	sigs := newOSWatcher(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 L:
 	for {
