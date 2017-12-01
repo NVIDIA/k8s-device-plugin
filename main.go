@@ -6,8 +6,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"runtime"
-	"runtime/debug"
 	"syscall"
 
 	"github.com/NVIDIA/nvidia-docker/src/nvml"
@@ -21,30 +19,13 @@ func check(err error) {
 	}
 }
 
-func exit() {
-	if err := recover(); err != nil {
-		if _, ok := err.(runtime.Error); ok {
-			log.Println(err)
-		}
-		if os.Getenv("NV_DEBUG") != "" {
-			log.Printf("%s", debug.Stack())
-		}
-		os.Exit(1)
-	}
-
-	os.Exit(0)
-}
-
 func main() {
-	defer exit()
-
 	log.Println("Loading NVML")
 	if err := nvml.Init(); err != nil {
 		log.Println("Failed to start nvml with error:", err)
 		select{}
 	}
-
-	defer func() { check(nvml.Shutdown()) }()
+	defer func() { log.Println("Shutdown of NVML returned:", nvml.Shutdown()) }()
 
 	if len(getDevices()) == 0 {
 		log.Println("No devices found")
