@@ -31,9 +31,6 @@ func main() {
 		select{}
 	}
 
-	devicePlugin := NewNvidiaDevicePlugin()
-	devicePlugin.Serve()
-
 	log.Println("Starting FS watcher")
 	watcher, err := newFSWatcher(pluginapi.DevicePluginPath)
 	check(err)
@@ -42,17 +39,34 @@ func main() {
 	log.Println("Starting OS watcher")
 	sigs := newOSWatcher(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
+	restart := true
+	var devicePlugin *NvidiaDevicePlugin
+
 L:
 	for {
-		restart := false
+		if restart {
+			if devicePlugin != nil {
+				devicePlugin.Stop()
+			}
+
+			devicePlugin = NewNvidiaDevicePlugin()
+			if err := devicePlugin.Serve(); err != nil {
+				log.Println("Could not contact Kubelet, retrying. Did you enable the device plugin feature gate?")
+			} else {
+				restart = false
+			}
+		}
+
 		select {
 		case event := <-watcher.Events:
 			if event.Name == pluginapi.KubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
 				log.Printf("inotify: %s created, restarting", pluginapi.KubeletSocket)
 				restart = true
 			}
+
 		case err := <-watcher.Errors:
 			log.Printf("inotify: %s", err)
+
 		case s := <-sigs:
 			switch s {
 			case syscall.SIGHUP:
@@ -63,11 +77,6 @@ L:
 				devicePlugin.Stop()
 				break L
 			}
-		}
-		if restart {
-			devicePlugin.Stop()
-			devicePlugin = NewNvidiaDevicePlugin()
-			devicePlugin.Serve()
 		}
 	}
 }
