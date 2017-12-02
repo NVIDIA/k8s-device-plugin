@@ -179,9 +179,9 @@
 			"Rev": "172ccacff3cfbddedcf1ba5ea06cda943bc976c1"
 		},
 		{
-			"ImportPath": "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1",
-			"Comment": "v1.8.1-beta.0",
-			"Rev": "49f4ebfd7400c556575c4c8708c6c3cd5c71d8b1"
+			"ImportPath": "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha",
+			"Comment": "v1.9.0-beta.1",
+			"Rev": "5898890a735c4e418a33f41b960f816824d0587c"
 		}
 	]
 }
