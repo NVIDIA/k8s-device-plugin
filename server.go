@@ -13,7 +13,7 @@ import (
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1"
+	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
 
 const (
@@ -146,23 +146,16 @@ func (m *NvidiaDevicePlugin) unhealthy(dev *pluginapi.Device) {
 // Allocate which return list of devices.
 func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, r *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	devs := m.devs
-	var response pluginapi.AllocateResponse
+	response := pluginapi.AllocateResponse{
+		Envs: map[string]string{
+			"NVIDIA_VISIBLE_DEVICES": strings.Join(r.DevicesIDs, ","),
+		},
+	}
 
-	for i, id := range r.DevicesIDs {
+	for _, id := range r.DevicesIDs {
 		if !deviceExists(devs, id) {
 			return nil, fmt.Errorf("invalid allocation request: unknown device: %s", id)
 		}
-
-		devRuntime := new(pluginapi.DeviceRuntimeSpec)
-		devRuntime.ID = id
-		// Only add env vars to the first device.
-		// Will be fixed by: https://github.com/kubernetes/kubernetes/pull/53031
-		if i == 0 {
-			devRuntime.Envs = make(map[string]string)
-			devRuntime.Envs["NVIDIA_VISIBLE_DEVICES"] = strings.Join(r.DevicesIDs, ",")
-		}
-
-		response.Spec = append(response.Spec, devRuntime)
 	}
 
 	return &response, nil

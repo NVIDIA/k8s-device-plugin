@@ -8,7 +8,7 @@ import (
 	"github.com/NVIDIA/nvidia-docker/src/nvml"
 
 	"golang.org/x/net/context"
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha1"
+	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
 
 func check(err error) {
