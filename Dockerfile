@@ -18,7 +18,6 @@ ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
 ENV CGO_CFLAGS "-I /usr/local/cuda-9.0/include"
 ENV CGO_LDFLAGS "-L /usr/local/cuda-9.0/lib64"
 ENV PATH=$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/nvidia/lib:/usr/local/nvidia/lib64
 
 WORKDIR /go/src/nvidia-device-plugin
 COPY . .
