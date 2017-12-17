@@ -29,7 +29,7 @@ docker build -t nvidia/k8s-device-plugin:1.8 .
 
 #### Run locally
 ```
-docker run -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia/k8s-device-plugin:1.8
+docker run --security-opt=no-new-privileges --cap-drop=ALL --network=none -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia/k8s-device-plugin:1.8
 ```
 
 #### Deploy as Daemon Set:
