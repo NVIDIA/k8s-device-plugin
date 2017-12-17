@@ -25,18 +25,10 @@ COPY . .
 RUN go install -ldflags="-s -w" -v nvidia-device-plugin
 
 
-FROM alpine:3.6
-
-RUN apk --no-cache add ca-certificates wget && \
-    wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://raw.githubusercontent.com/sgerrand/alpine-pkg-glibc/master/sgerrand.rsa.pub && \
-    wget https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.26-r0/glibc-2.26-r0.apk && \
-    apk add glibc-2.26-r0.apk && \
-    rm glibc-2.26-r0.apk && \
-    apk del ca-certificates wget
+FROM debian:stretch-slim
 
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=utility
-ENV LD_LIBRARY_PATH=/usr/lib64
 
 COPY --from=build /go/bin/nvidia-device-plugin /usr/bin/nvidia-device-plugin
 
