@@ -11,11 +11,6 @@ spec:
       containers:
       - image: nvidia/k8s-device-plugin:1.8
         name: nvidia-device-plugin-ctr
-        env:
-          - name: NVIDIA_VISIBLE_DEVICES
-            value: ALL
-          - name: NVIDIA_DRIVER_CAPABILITIES
-            value: utility,compute
         volumeMounts:
           - name: device-plugin
             mountPath: /var/lib/kubelet/device-plugins
