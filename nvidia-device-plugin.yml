@@ -9,7 +9,7 @@ spec:
         name: nvidia-device-plugin-ds
     spec:
       containers:
-      - image: nvidia/k8s-device-plugin:1.8
+      - image: nvidia/k8s-device-plugin:1.9
         name: nvidia-device-plugin-ctr
         securityContext:
           allowPrivilegeEscalation: false
