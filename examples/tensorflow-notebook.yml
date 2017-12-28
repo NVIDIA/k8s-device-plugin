@@ -1,0 +1,43 @@
+# Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
+
+# Define the tensorflow deployment
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: tf-notebook
+  labels:
+    app: tf-notebook
+
+spec:
+  replicas: 1
+
+  selector: # define how the deployment finds the pods it mangages
+    matchLabels:
+      app: tf-notebook
+
+  template: # define the pods specifications
+    metadata:
+      labels:
+        app: tf-notebook
+
+    spec:
+      containers:
+      - name: tf-notebook
+        image: tensorflow/tensorflow:1.4.1-gpu-py3
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+
+        ports:
+        - containerPort: 8888
+          hostPort: 8888
+
+        volumeMounts:
+        - name: work
+          mountPath: /work
+
+      # create a volume that lasts for the life of the Pod (even if the container restarts)
+      volumes:
+      - name: work
+        emptyDir: {}
