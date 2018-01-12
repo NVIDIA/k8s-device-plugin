@@ -4,6 +4,7 @@ package main
 
 import (
 	"log"
+	"strings"
 
 	"github.com/NVIDIA/nvidia-docker/src/nvml"
 
@@ -47,8 +48,19 @@ func watchXIDs(ctx context.Context, devs []*pluginapi.Device, xids chan<- *plugi
 	eventSet := nvml.NewEventSet()
 	defer nvml.DeleteEventSet(eventSet)
 
-	err := nvml.RegisterEvent(eventSet, nvml.XidCriticalError)
-	check(err)
+	for _, d := range devs {
+		err := nvml.RegisterEventForDevice(eventSet, nvml.XidCriticalError, d.ID)
+		if err != nil && strings.HasSuffix(err.Error(), "Not Supported") {
+			log.Printf("Warning: GPU with UUID %s is too old to support healtchecking with error: %s. Marking it unhealthy.", d.ID)
+
+			xids <- d
+			continue
+		}
+
+		if err != nil {
+			log.Panicln("Fatal:", err)
+		}
+	}
 
 	for {
 		select {
