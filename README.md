@@ -83,6 +83,15 @@ you can then enable GPU support in your cluster by deploying the following Daemo
 $ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v1.9/nvidia-device-plugin.yml
 ```
 
+> Note: the device plugin only works with newer GPUs. If you have a mixture of old/new GPUs on your node, you can
+> add the following to the container spec in `nvidia-device-plugin.yml`:
+```yaml
+env:
+  - name: NVIDIA_VISIBLE_DEVICES
+    value: "1"
+```
+> where `value` points to the GPU you want to enable.
+
 ### Running GPU Jobs
 
 NVIDIA GPUs can now be consumed via container level resource requirements using the resource name nvidia.com/gpu:
