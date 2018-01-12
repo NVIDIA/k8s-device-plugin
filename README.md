@@ -94,7 +94,7 @@ metadata:
 spec:
   containers:
     - name: cuda-container
-      image: nvidia/cuda:9.0
+      image: nvidia/cuda:9.0-devel
       resources:
         limits:
           nvidia.com/gpu: 2 # requesting 2 GPUs
