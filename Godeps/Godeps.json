@@ -86,7 +86,7 @@
 		},
 		{
 			"ImportPath": "golang.org/x/sys/unix",
-			"Rev": "314a259e304ff91bd6985da2a7149bbf91237993"
+			"Rev": "810d7000345868fc619eb81f46307107118f4ae1"
 		},
 		{
 			"ImportPath": "golang.org/x/text/secure/bidirule",
@@ -180,8 +180,8 @@
 		},
 		{
 			"ImportPath": "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha",
-			"Comment": "v1.9.0-beta.1",
-			"Rev": "5898890a735c4e418a33f41b960f816824d0587c"
+			"Comment": "v1.10.0-alpha.0-2045-gea9021a",
+			"Rev": "ea9021a04c73b74d1937ea9db22aebc1e7caebff"
 		}
 	]
 }
