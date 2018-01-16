@@ -1,12 +1,12 @@
-FROM nvidia/cuda:9.0-base-ubuntu16.04 as build
+FROM nvidia/cuda:8.0-devel-ubuntu16.04 as build
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ \
         ca-certificates \
         wget \
-        cuda-cudart-dev-9-0 \
-        cuda-misc-headers-9-0 \
-        cuda-nvml-dev-9-0 && \
+        cuda-cudart-dev-8-0 \
+        cuda-misc-headers-8-0 \
+        cuda-nvml-dev-8-0 && \
     rm -rf /var/lib/apt/lists/*
 
 ENV GOLANG_VERSION 1.9.4
@@ -15,8 +15,8 @@ RUN wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linu
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
 
-ENV CGO_CFLAGS "-I /usr/local/cuda-9.0/include"
-ENV CGO_LDFLAGS "-L /usr/local/cuda-9.0/lib64"
+ENV CGO_CFLAGS "-I /usr/local/cuda-8.0/include"
+ENV CGO_LDFLAGS "-L /usr/local/cuda-8.0/lib64"
 ENV PATH=$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin
 
 WORKDIR /go/src/nvidia-device-plugin
