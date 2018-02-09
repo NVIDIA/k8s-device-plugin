@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         cuda-nvml-dev-8-0 && \
     rm -rf /var/lib/apt/lists/*
 
-ENV GOLANG_VERSION 1.9.3
+ENV GOLANG_VERSION 1.9.4
 RUN wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz \
     | tar -C /usr/local -xz
 ENV GOPATH /go
@@ -22,7 +22,8 @@ ENV PATH=$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin
 WORKDIR /go/src/nvidia-device-plugin
 COPY . .
 
-RUN go install -ldflags="-s -w" -v nvidia-device-plugin
+RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' && \
+    go install -ldflags="-s -w" -v nvidia-device-plugin
 
 
 FROM debian:stretch-slim
