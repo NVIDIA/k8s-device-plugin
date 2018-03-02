@@ -51,7 +51,7 @@ func watchXIDs(ctx context.Context, devs []*pluginapi.Device, xids chan<- *plugi
 	for _, d := range devs {
 		err := nvml.RegisterEventForDevice(eventSet, nvml.XidCriticalError, d.ID)
 		if err != nil && strings.HasSuffix(err.Error(), "Not Supported") {
-			log.Printf("Warning: GPU with UUID %s is too old to support healtchecking with error: %s. Marking it unhealthy.", d.ID)
+			log.Printf("Warning: %s is too old to support healthchecking: %s. Marking it unhealthy.", d.ID, err)
 
 			xids <- d
 			continue
