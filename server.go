@@ -17,8 +17,10 @@ import (
 )
 
 const (
-	resourceName = "nvidia.com/gpu"
-	serverSock   = pluginapi.DevicePluginPath + "nvidia.sock"
+	resourceName           = "nvidia.com/gpu"
+	serverSock             = pluginapi.DevicePluginPath + "nvidia.sock"
+	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
+	allHealthChecks        = "xids"
 )
 
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
@@ -170,10 +172,18 @@ func (m *NvidiaDevicePlugin) cleanup() error {
 }
 
 func (m *NvidiaDevicePlugin) healthcheck() {
+	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
+	if disableHealthChecks == "all" {
+		disableHealthChecks = allHealthChecks
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 
-	xids := make(chan *pluginapi.Device)
-	go watchXIDs(ctx, m.devs, xids)
+	var xids chan *pluginapi.Device
+	if !strings.Contains(disableHealthChecks, "xids") {
+		xids := make(chan *pluginapi.Device)
+		go watchXIDs(ctx, m.devs, xids)
+	}
 
 	for {
 		select {
