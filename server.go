@@ -13,7 +13,7 @@ import (
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
+	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
 const (
@@ -43,6 +43,10 @@ func NewNvidiaDevicePlugin() *NvidiaDevicePlugin {
 		stop:   make(chan interface{}),
 		health: make(chan *pluginapi.Device),
 	}
+}
+
+func (m *NvidiaDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
+	return &pluginapi.DevicePluginOptions{}, nil
 }
 
 // dial establishes the gRPC communication with the registered device plugin.
@@ -146,21 +150,30 @@ func (m *NvidiaDevicePlugin) unhealthy(dev *pluginapi.Device) {
 }
 
 // Allocate which return list of devices.
-func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, r *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
+func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	devs := m.devs
-	response := pluginapi.AllocateResponse{
-		Envs: map[string]string{
-			"NVIDIA_VISIBLE_DEVICES": strings.Join(r.DevicesIDs, ","),
-		},
-	}
-
-	for _, id := range r.DevicesIDs {
-		if !deviceExists(devs, id) {
-			return nil, fmt.Errorf("invalid allocation request: unknown device: %s", id)
+	responses := pluginapi.AllocateResponse{}
+	for _, req := range reqs.ContainerRequests {
+		response := pluginapi.ContainerAllocateResponse{
+			Envs: map[string]string{
+				"NVIDIA_VISIBLE_DEVICES": strings.Join(req.DevicesIDs, ","),
+			},
 		}
+
+		for _, id := range req.DevicesIDs {
+			if !deviceExists(devs, id) {
+				return nil, fmt.Errorf("invalid allocation request: unknown device: %s", id)
+			}
+		}
+
+		responses.ContainerResponses = append(responses.ContainerResponses, &response)
 	}
 
-	return &response, nil
+	return &responses, nil
+}
+
+func (m *NvidiaDevicePlugin) PreStartContainer(context.Context, *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {
+	return &pluginapi.PreStartContainerResponse{}, nil
 }
 
 func (m *NvidiaDevicePlugin) cleanup() error {

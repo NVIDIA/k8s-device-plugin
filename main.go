@@ -9,7 +9,7 @@ import (
 
 	"github.com/NVIDIA/nvidia-docker/src/nvml"
 	"github.com/fsnotify/fsnotify"
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
+	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
 func main() {
