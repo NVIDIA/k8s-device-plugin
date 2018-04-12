@@ -181,7 +181,7 @@ func (m *NvidiaDevicePlugin) healthcheck() {
 
 	var xids chan *pluginapi.Device
 	if !strings.Contains(disableHealthChecks, "xids") {
-		xids := make(chan *pluginapi.Device)
+		xids = make(chan *pluginapi.Device)
 		go watchXIDs(ctx, m.devs, xids)
 	}
 
