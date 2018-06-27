@@ -20,7 +20,7 @@ spec:
       - key: CriticalAddonsOnly
         operator: Exists
       containers:
-      - image: nvidia/k8s-device-plugin:1.10
+      - image: nvidia/k8s-device-plugin:1.11
         name: nvidia-device-plugin-ctr
         securityContext:
           allowPrivilegeEscalation: false

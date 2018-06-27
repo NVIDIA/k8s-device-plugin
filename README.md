@@ -28,7 +28,7 @@ The list of prerequisites for running the NVIDIA device plugin is described belo
 * NVIDIA drivers ~= 361.93
 * nvidia-docker version > 2.0 (see how to [install](https://github.com/NVIDIA/nvidia-docker) and it's [prerequisites](https://github.com/nvidia/nvidia-docker/wiki/Installation-\(version-2.0\)#prerequisites))
 * docker configured with nvidia as the [default runtime](https://github.com/NVIDIA/nvidia-docker/wiki/Advanced-topics#default-runtime).
-* Kubernetes version = 1.10
+* Kubernetes version = 1.11
 * The `DevicePlugins` feature gate enabled
 
 ## Quick Start
@@ -80,7 +80,7 @@ Once you have enabled this option on *all* the GPU nodes you wish to use,
 you can then enable GPU support in your cluster by deploying the following Daemonset:
 
 ```shell
-$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v1.10/nvidia-device-plugin.yml
+$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v1.11/nvidia-device-plugin.yml
 ```
 
 ### Running GPU Jobs
@@ -126,23 +126,23 @@ The next sections are focused on building the device plugin and running it.
 #### Build
 Option 1, pull the prebuilt image from [Docker Hub](https://hub.docker.com/r/nvidia/k8s-device-plugin):
 ```shell
-$ docker pull nvidia/k8s-device-plugin:1.10
+$ docker pull nvidia/k8s-device-plugin:1.11
 ```
 
 Option 2, build without cloning the repository:
 ```shell
-$ docker build -t nvidia/k8s-device-plugin:1.10 https://github.com/NVIDIA/k8s-device-plugin.git#v1.10
+$ docker build -t nvidia/k8s-device-plugin:1.11 https://github.com/NVIDIA/k8s-device-plugin.git#v1.11
 ```
 
 Option 3, if you want to modify the code:
 ```shell
 $ git clone https://github.com/NVIDIA/k8s-device-plugin.git && cd k8s-device-plugin
-$ docker build -t nvidia/k8s-device-plugin:1.10 .
+$ docker build -t nvidia/k8s-device-plugin:1.11 .
 ```
 
 #### Run locally
 ```shell
-$ docker run --security-opt=no-new-privileges --cap-drop=ALL --network=none -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia/k8s-device-plugin:1.10
+$ docker run --security-opt=no-new-privileges --cap-drop=ALL --network=none -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia/k8s-device-plugin:1.11
 ```
 
 #### Deploy as Daemon Set:
@@ -163,6 +163,10 @@ $ ./k8s-device-plugin
 ```
 
 ## Changelog
+
+### Version 1.11
+
+- No change.
 
 ### Version 1.10
 
