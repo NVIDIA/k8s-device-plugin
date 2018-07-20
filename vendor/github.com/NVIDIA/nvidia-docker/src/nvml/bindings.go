@@ -155,6 +155,10 @@ func systemGetProcessName(pid uint) (string, error) {
 	var proc [szProcName]C.char
 
 	r := C.nvmlSystemGetProcessName(C.uint(pid), &proc[0], szProcName)
+
+	if r == C.NVML_ERROR_NOT_FOUND {
+		return "", nil
+	}
 	return C.GoString(&proc[0]), errorString(r)
 }
 
