@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2016, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2015-2018, NVIDIA CORPORATION. All rights reserved.
 
 package nvml
 
@@ -19,6 +19,81 @@ var (
 	ErrUnsupportedP2PLink = errors.New("unsupported P2P link type")
 	ErrUnsupportedGPU     = errors.New("unsupported GPU device")
 )
+
+type ThrottleReason uint
+
+const (
+	ThrottleReasonGpuIdle ThrottleReason = iota
+	ThrottleReasonApplicationsClocksSetting
+	ThrottleReasonSwPowerCap
+	ThrottleReasonHwSlowdown
+	ThrottleReasonSyncBoost
+	ThrottleReasonSwThermalSlowdown
+	ThrottleReasonHwThermalSlowdown
+	ThrottleReasonHwPowerBrakeSlowdown
+	ThrottleReasonDisplayClockSetting
+	ThrottleReasonNone
+	ThrottleReasonUnknown
+)
+
+func (r ThrottleReason) String() string {
+	switch r {
+	case ThrottleReasonGpuIdle:
+		return "Gpu Idle"
+	case ThrottleReasonApplicationsClocksSetting:
+		return "Applications Clocks Setting"
+	case ThrottleReasonSwPowerCap:
+		return "SW Power Cap"
+	case ThrottleReasonHwSlowdown:
+		return "HW Slowdown"
+	case ThrottleReasonSyncBoost:
+		return "Sync Boost"
+	case ThrottleReasonSwThermalSlowdown:
+		return "SW Thermal Slowdown"
+	case ThrottleReasonHwThermalSlowdown:
+		return "HW Thermal Slowdown"
+	case ThrottleReasonHwPowerBrakeSlowdown:
+		return "HW Power Brake Slowdown"
+	case ThrottleReasonDisplayClockSetting:
+		return "Display Clock Setting"
+	case ThrottleReasonNone:
+		return "No clocks throttling"
+	}
+	return "N/A"
+}
+
+type PerfState uint
+
+const (
+	PerfStateMax     = 0
+	PerfStateMin     = 15
+	PerfStateUnknown = 32
+)
+
+func (p PerfState) String() string {
+	if p >= PerfStateMax && p <= PerfStateMin {
+		return fmt.Sprintf("P%d", p)
+	}
+	return "Unknown"
+}
+
+type ProcessType uint
+
+const (
+	Compute ProcessType = iota
+	Graphics
+	ComputeAndGraphics
+)
+
+func (t ProcessType) String() string {
+	typ := "C+G"
+	if t == Compute {
+		typ = "C"
+	} else if t == Graphics {
+		typ = "G"
+	}
+	return typ
+}
 
 type P2PLinkType uint
 
@@ -112,6 +187,7 @@ type ProcessInfo struct {
 	PID        uint
 	Name       string
 	MemoryUsed uint64
+	Type       ProcessType
 }
 
 type DeviceStatus struct {
@@ -122,6 +198,8 @@ type DeviceStatus struct {
 	Clocks      ClockInfo
 	PCI         PCIStatusInfo
 	Processes   []ProcessInfo
+	Throttle    ThrottleReason
+	Performance PerfState
 }
 
 func assert(err error) {
@@ -147,7 +225,8 @@ func GetDriverVersion() (string, error) {
 }
 
 func numaNode(busid string) (uint, error) {
-	b, err := ioutil.ReadFile(fmt.Sprintf("/sys/bus/pci/devices/%s/numa_node", strings.ToLower(busid)))
+	// discard leading zeros of busid
+	b, err := ioutil.ReadFile(fmt.Sprintf("/sys/bus/pci/devices/%s/numa_node", strings.ToLower(busid[4:])))
 	if err != nil {
 		// XXX report node 0 if NUMA support isn't enabled
 		return 0, nil
@@ -292,11 +371,15 @@ func (d *Device) Status() (status *DeviceStatus, err error) {
 	assert(err)
 	_, bar1, err := d.deviceGetBAR1MemoryInfo()
 	assert(err)
-	pids, pmems, err := d.deviceGetComputeRunningProcesses()
-	assert(err)
 	el1, el2, emem, err := d.deviceGetMemoryErrorCounter()
 	assert(err)
 	pcirx, pcitx, err := d.deviceGetPcieThroughput()
+	assert(err)
+	throttle, err := d.getClocksThrottleReasons()
+	assert(err)
+	perfState, err := d.getPerformanceState()
+	assert(err)
+	processInfo, err := d.deviceGetAllRunningProcesses()
 	assert(err)
 
 	status = &DeviceStatus{
@@ -327,6 +410,9 @@ func (d *Device) Status() (status *DeviceStatus, err error) {
 				TX: pcitx,
 			},
 		},
+		Throttle:    throttle,
+		Performance: perfState,
+		Processes:   processInfo,
 	}
 	if power != nil {
 		*status.Power /= 1000 // W
@@ -342,15 +428,6 @@ func (d *Device) Status() (status *DeviceStatus, err error) {
 	}
 	if pcitx != nil {
 		*status.PCI.Throughput.TX /= 1000 // MB/s
-	}
-	for i := range pids {
-		name, err := systemGetProcessName(pids[i])
-		assert(err)
-		status.Processes = append(status.Processes, ProcessInfo{
-			PID:        pids[i],
-			Name:       name,
-			MemoryUsed: pmems[i] / (1024 * 1024), // MiB
-		})
 	}
 	return
 }
@@ -378,4 +455,16 @@ func GetP2PLink(dev1, dev2 *Device) (link P2PLinkType, err error) {
 		err = ErrUnsupportedP2PLink
 	}
 	return
+}
+
+func (d *Device) GetComputeRunningProcesses() ([]uint, []uint64, error) {
+	return d.handle.deviceGetComputeRunningProcesses()
+}
+
+func (d *Device) GetGraphicsRunningProcesses() ([]uint, []uint64, error) {
+	return d.handle.deviceGetGraphicsRunningProcesses()
+}
+
+func (d *Device) GetAllRunningProcesses() ([]ProcessInfo, error) {
+	return d.handle.deviceGetAllRunningProcesses()
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2016, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2015-2018, NVIDIA CORPORATION. All rights reserved.
 
 package nvml
 
@@ -9,6 +9,11 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -22,7 +27,7 @@ const (
 )
 
 type handle struct{ dev C.nvmlDevice_t }
-type EventSet struct { set C.nvmlEventSet_t }
+type EventSet struct{ set C.nvmlEventSet_t }
 type Event struct {
 	UUID  *string
 	Etype uint64
@@ -396,4 +401,146 @@ func (h handle) deviceGetComputeRunningProcesses() ([]uint, []uint64, error) {
 		mems[i] = uint64(procs[i].usedGpuMemory)
 	}
 	return pids, mems, errorString(r)
+}
+
+func (h handle) deviceGetGraphicsRunningProcesses() ([]uint, []uint64, error) {
+	var procs [szProcs]C.nvmlProcessInfo_t
+	var count = C.uint(szProcs)
+
+	r := C.nvmlDeviceGetGraphicsRunningProcesses(h.dev, &count, &procs[0])
+	if r == C.NVML_ERROR_NOT_SUPPORTED {
+		return nil, nil, nil
+	}
+	n := int(count)
+	pids := make([]uint, n)
+	mems := make([]uint64, n)
+	for i := 0; i < n; i++ {
+		pids[i] = uint(procs[i].pid)
+		mems[i] = uint64(procs[i].usedGpuMemory)
+	}
+	return pids, mems, errorString(r)
+}
+
+func (h handle) deviceGetAllRunningProcesses() ([]ProcessInfo, error) {
+	cPids, cpMems, err := h.deviceGetComputeRunningProcesses()
+	if err != nil {
+		return nil, err
+	}
+
+	gPids, gpMems, err := h.deviceGetGraphicsRunningProcesses()
+	if err != nil {
+		return nil, err
+	}
+
+	allPids := make(map[uint]ProcessInfo)
+
+	for i, pid := range cPids {
+		name, err := processName(pid)
+		if err != nil {
+			return nil, err
+		}
+		allPids[pid] = ProcessInfo{
+			PID:        pid,
+			Name:       name,
+			MemoryUsed: cpMems[i] / (1024 * 1024), // MiB
+			Type:       Compute,
+		}
+
+	}
+
+	for i, pid := range gPids {
+		pInfo, exists := allPids[pid]
+		if exists {
+			pInfo.Type = ComputeAndGraphics
+			allPids[pid] = pInfo
+		} else {
+			name, err := processName(pid)
+			if err != nil {
+				return nil, err
+			}
+			allPids[pid] = ProcessInfo{
+				PID:        pid,
+				Name:       name,
+				MemoryUsed: gpMems[i] / (1024 * 1024), // MiB
+				Type:       Graphics,
+			}
+		}
+	}
+
+	var processInfo []ProcessInfo
+	for _, v := range allPids {
+		processInfo = append(processInfo, v)
+	}
+	sort.Slice(processInfo, func(i, j int) bool {
+		return processInfo[i].PID < processInfo[j].PID
+	})
+
+	return processInfo, nil
+}
+
+func (h handle) getClocksThrottleReasons() (reason ThrottleReason, err error) {
+	var clocksThrottleReasons C.ulonglong
+
+	r := C.nvmlDeviceGetCurrentClocksThrottleReasons(h.dev, &clocksThrottleReasons)
+
+	if r == C.NVML_ERROR_NOT_SUPPORTED {
+		return ThrottleReasonUnknown, nil
+	}
+
+	if r != C.NVML_SUCCESS {
+		return ThrottleReasonUnknown, errorString(r)
+	}
+
+	switch clocksThrottleReasons {
+	case C.nvmlClocksThrottleReasonGpuIdle:
+		reason = ThrottleReasonGpuIdle
+	case C.nvmlClocksThrottleReasonApplicationsClocksSetting:
+		reason = ThrottleReasonApplicationsClocksSetting
+	case C.nvmlClocksThrottleReasonSwPowerCap:
+		reason = ThrottleReasonSwPowerCap
+	case C.nvmlClocksThrottleReasonHwSlowdown:
+		reason = ThrottleReasonHwSlowdown
+	case C.nvmlClocksThrottleReasonSyncBoost:
+		reason = ThrottleReasonSyncBoost
+	case C.nvmlClocksThrottleReasonSwThermalSlowdown:
+		reason = ThrottleReasonSwThermalSlowdown
+	case C.nvmlClocksThrottleReasonHwThermalSlowdown:
+		reason = ThrottleReasonHwThermalSlowdown
+	case C.nvmlClocksThrottleReasonHwPowerBrakeSlowdown:
+		reason = ThrottleReasonHwPowerBrakeSlowdown
+	case C.nvmlClocksThrottleReasonDisplayClockSetting:
+		reason = ThrottleReasonDisplayClockSetting
+	case C.nvmlClocksThrottleReasonNone:
+		reason = ThrottleReasonNone
+	}
+	return
+}
+
+func (h handle) getPerformanceState() (PerfState, error) {
+	var pstate C.nvmlPstates_t
+
+	r := C.nvmlDeviceGetPerformanceState(h.dev, &pstate)
+
+	if r == C.NVML_ERROR_NOT_SUPPORTED {
+		return PerfStateUnknown, nil
+	}
+
+	if r != C.NVML_SUCCESS {
+		return PerfStateUnknown, errorString(r)
+	}
+	return PerfState(pstate), nil
+}
+
+func processName(pid uint) (string, error) {
+	f := `/proc/` + strconv.FormatUint(uint64(pid), 10) + `/comm`
+	d, err := ioutil.ReadFile(f)
+
+	if err != nil {
+		// TOCTOU: process terminated
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return strings.TrimSuffix(string(d), "\n"), err
 }

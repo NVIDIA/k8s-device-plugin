@@ -26,8 +26,8 @@
 
 
 [[constraint]]
-  branch = "xid-events"
-  name = "github.com/NVIDIA/nvidia-docker"
+  branch = "master"
+  name = "github.com/NVIDIA/gpu-monitoring-tools"
 
 [[constraint]]
   name = "google.golang.org/grpc"
