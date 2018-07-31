@@ -3,7 +3,7 @@
 #ifndef _NVML_DL_H_
 #define _NVML_DL_H_
 
-#include <nvml.h>
+#include "nvml.h"
 
 #define NVML_DL(x) x##_dl
 
