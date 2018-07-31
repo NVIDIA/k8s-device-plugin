@@ -1,10 +1,4 @@
-FROM debian:buster-slim as qemu
-
-RUN apt-get update && apt-get install --no-install-recommends -y qemu-user-static
-
 FROM nvidia/cuda-ppc64le:8.0-devel-ubuntu16.04 as build
-
-COPY --from=qemu /usr/bin/qemu-ppc64le-static /usr/bin/qemu-ppc64le-static
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ \
