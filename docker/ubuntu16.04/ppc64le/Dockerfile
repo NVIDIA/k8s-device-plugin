@@ -26,7 +26,7 @@ RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' &
     go install -ldflags="-s -w" -v nvidia-device-plugin
 
 
-FROM ppc64le/debian:stretch-slim
+FROM --platform=ppc64le debian:stretch-slim
 
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=utility
