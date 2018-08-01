@@ -1,4 +1,4 @@
-FROM centos:7 as build
+FROM --platform=ppc64le centos:7 as build
 
 RUN yum install -y \
         gcc-c++ \

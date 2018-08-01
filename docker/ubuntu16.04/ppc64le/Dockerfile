@@ -1,4 +1,4 @@
-FROM --platform=ppc64le ubuntu:16.04
+FROM --platform=ppc64le ubuntu:16.04 as build
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ \
