@@ -29,16 +29,15 @@ The list of prerequisites for running the NVIDIA device plugin is described belo
 * nvidia-docker version > 2.0 (see how to [install](https://github.com/NVIDIA/nvidia-docker) and it's [prerequisites](https://github.com/nvidia/nvidia-docker/wiki/Installation-\(version-2.0\)#prerequisites))
 * docker configured with nvidia as the [default runtime](https://github.com/NVIDIA/nvidia-docker/wiki/Advanced-topics#default-runtime).
 * Kubernetes version = 1.11
-* The `DevicePlugins` feature gate enabled
 
 ## Quick Start
 
 ### Preparing your GPU Nodes
 
 The following steps need to be executed on all your GPU nodes.
-Additionally, this README assumes that the NVIDIA drivers and nvidia-docker has been installed.
+This README assumes that the NVIDIA drivers and nvidia-docker have been installed.
 
-First you will need to check and/or enable the nvidia runtime as your default runtime on your node.
+You will need to enable the nvidia runtime as your default runtime on your node.
 We will be editing the docker daemon config file which is usually present at `/etc/docker/daemon.json`:
 ```json
 {
@@ -52,27 +51,6 @@ We will be editing the docker daemon config file which is usually present at `/e
 }
 ```
 > *if `runtimes` is not already present, head to the install page of [nvidia-docker](https://github.com/NVIDIA/nvidia-docker)*
-
-The second step is to enable the `DevicePlugins` feature gate on all your GPU nodes.
-
-If your Kubernetes cluster is deployed using kubeadm and your nodes are running systemd you will have to open the kubeadm
-systemd unit file at `/etc/systemd/system/kubelet.service.d/10-kubeadm.conf` and add the following environment argument:
-```
-Environment="KUBELET_EXTRA_ARGS=--feature-gates=DevicePlugins=true"
-```
-
-> *If you spot the Accelerators feature gate you should remove it as it might interfere with the DevicePlugins feature gate*
-
-Reload and restart the kubelet to pick up the config change:
-```shell
-$ sudo systemctl daemon-reload
-$ sudo systemctl restart kubelet
-```
-
-> In this guide we used kubeadm and kubectl as the method for setting up and administering the Kubernetes cluster,
-> but there are many ways to deploy a Kubernetes cluster.
-> To enable the `DevicePlugins` feature gate if you are not using the kubeadm + systemd configuration, you will need
-> to make sure that the arguments that are passed to Kubelet include the following `--feature-gates=DevicePlugins=true`.
 
 ### Enabling GPU Support in Kubernetes
 
@@ -111,9 +89,8 @@ spec:
 ## Docs
 
 Please note that:
-- the device plugin feature is still alpha which is why it requires the feature gate to be enabled.
-- the NVIDIA device plugin is still considered alpha and is missing
-    - Security features
+- the device plugin feature is beta as of Kubernetes v1.11.
+- the NVIDIA device plugin is still considered beta and is missing
     - More comprehensive GPU health checking features
     - GPU cleanup features
     - ...
