@@ -19,6 +19,9 @@ spec:
       # This, along with the annotation above marks this pod as a critical add-on.
       - key: CriticalAddonsOnly
         operator: Exists
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
       containers:
       - image: nvidia/k8s-device-plugin:1.11
         name: nvidia-device-plugin-ctr
