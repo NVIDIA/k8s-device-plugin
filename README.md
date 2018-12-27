@@ -28,7 +28,7 @@ The list of prerequisites for running the NVIDIA device plugin is described belo
 * NVIDIA drivers ~= 361.93
 * nvidia-docker version > 2.0 (see how to [install](https://github.com/NVIDIA/nvidia-docker) and it's [prerequisites](https://github.com/nvidia/nvidia-docker/wiki/Installation-\(version-2.0\)#prerequisites))
 * docker configured with nvidia as the [default runtime](https://github.com/NVIDIA/nvidia-docker/wiki/Advanced-topics#default-runtime).
-* Kubernetes version = 1.11
+* Kubernetes version = 1.12
 
 ## Quick Start
 
