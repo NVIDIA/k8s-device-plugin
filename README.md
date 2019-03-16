@@ -28,7 +28,7 @@ The list of prerequisites for running the NVIDIA device plugin is described belo
 * NVIDIA drivers ~= 361.93
 * nvidia-docker version > 2.0 (see how to [install](https://github.com/NVIDIA/nvidia-docker) and it's [prerequisites](https://github.com/nvidia/nvidia-docker/wiki/Installation-\(version-2.0\)#prerequisites))
 * docker configured with nvidia as the [default runtime](https://github.com/NVIDIA/nvidia-docker/wiki/Advanced-topics#default-runtime).
-* Kubernetes version = 1.11
+* Kubernetes version >= 1.10
 
 ## Quick Start
 
@@ -58,7 +58,7 @@ Once you have enabled this option on *all* the GPU nodes you wish to use,
 you can then enable GPU support in your cluster by deploying the following Daemonset:
 
 ```shell
-$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v1.11/nvidia-device-plugin.yml
+$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/1.0.0-beta/nvidia-device-plugin.yml
 ```
 
 ### Running GPU Jobs
@@ -103,23 +103,24 @@ The next sections are focused on building the device plugin and running it.
 #### Build
 Option 1, pull the prebuilt image from [Docker Hub](https://hub.docker.com/r/nvidia/k8s-device-plugin):
 ```shell
-$ docker pull nvidia/k8s-device-plugin:1.11
+$ docker pull nvidia/k8s-device-plugin:1.0.0-beta
 ```
 
 Option 2, build without cloning the repository:
 ```shell
-$ docker build -t nvidia/k8s-device-plugin:1.11 https://github.com/NVIDIA/k8s-device-plugin.git#v1.11
+$ docker build -t nvidia/k8s-device-plugin:1.0.0-beta https://github.com/NVIDIA/k8s-device-plugin.git#1.0.0-beta
 ```
 
 Option 3, if you want to modify the code:
 ```shell
 $ git clone https://github.com/NVIDIA/k8s-device-plugin.git && cd k8s-device-plugin
-$ docker build -t nvidia/k8s-device-plugin:1.11 .
+$ git checkout 1.0.0-beta
+$ docker build -t nvidia/k8s-device-plugin:1.0.0-beta .
 ```
 
 #### Run locally
 ```shell
-$ docker run --security-opt=no-new-privileges --cap-drop=ALL --network=none -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia/k8s-device-plugin:1.11
+$ docker run --security-opt=no-new-privileges --cap-drop=ALL --network=none -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia/k8s-device-plugin:1.0.0-beta
 ```
 
 #### Deploy as Daemon Set:
@@ -141,6 +142,10 @@ $ ./k8s-device-plugin
 
 ## Changelog
 
+### Version 1.0.0-beta
+
+- Reversioned to SEMVER as device plugins aren't tied to a specific version of kubernetes anymore.
+
 ### Version 1.11
 
 - No change.
@@ -158,3 +163,28 @@ $ ./k8s-device-plugin
 
 * You can report a bug by [filing a new issue](https://github.com/NVIDIA/k8s-device-plugin/issues/new)
 * You can contribute by opening a [pull request](https://help.github.com/articles/using-pull-requests/)
+
+## Versioning
+
+Before 1.10 the versioning scheme of the device plugin had to match exactly the version of Kubernetes.
+After the promotion of device plugins to beta this condition was was no longer required.
+We quickly noticed that this versioning scheme was very confusing for users as they still expected to see
+a version of the device plugin for each version of Kubernetes.
+
+We recently decided to reversion to follow a SEMVER scheme. This means that we are currently a
+beta project (as we depend on the device plugin API which is beta).
+If you have a version of Kubernetes > 1.10 you can deploy this device plugin.
+
+## Upgrading Kubernetes with the device plugin
+
+Upgrading Kubernetes when you have a device plugin deployed doesn't require you to do any,
+particular changes to your workflow.
+The API is versioned and is pretty stable (though it is not guaranteed to be non breaking),
+you can therefore use the 1.0.0-beta version starting from kubernetes version 1.10, upgrading
+kubernetes won't require you to deploy a different version of the device plugin and you will
+see GPUs re-registering themselves after your node comes back online.
+
+
+Upgrading the device plugin is a more complex task. It is recommended to drain GPU tasks as
+we cannot guarantee that GPU tasks will survive a rolling upgrade.
+However we make best efforts to preserve GPU tasks during an upgrade.
