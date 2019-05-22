@@ -1,4 +1,4 @@
-FROM --platform=ppc64le ubuntu:16.04 as build
+FROM ppc64le/ubuntu:16.04 as build
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ \
@@ -19,7 +19,7 @@ RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' &
     go install -ldflags="-s -w" -v nvidia-device-plugin
 
 
-FROM --platform=ppc64le debian:stretch-slim
+FROM ppc64le/ubuntu:16.04
 
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=utility
