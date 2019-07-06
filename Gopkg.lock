@@ -3,11 +3,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:442a2adddbd6d274a0be75cc491057b9ec52a5fe5cd6f04ee9b88332935277b6"
+  digest = "1:e21256dec8b811866e7270375a68dea1da90313d0fa30a52bb0f89bf765b38c8"
   name = "github.com/NVIDIA/gpu-monitoring-tools"
   packages = ["bindings/go/nvml"]
   pruneopts = "UT"
-  revision = "e019f3b160a4df4a2f22fac2a918ad1c128e69b1"
+  revision = "11d92962c50aa06e8a7dc1135ecb6ab26d0f1457"
 
 [[projects]]
   digest = "1:28c2511ad34394d299bca82becccc5dff425819faca8b9fbef0bcd5a88c87d29"

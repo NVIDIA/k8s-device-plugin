@@ -20,6 +20,39 @@ var (
 	ErrUnsupportedGPU     = errors.New("unsupported GPU device")
 )
 
+type ModeState uint
+
+const (
+	Disabled ModeState = iota
+	Enabled
+)
+
+func (m ModeState) String() string {
+	switch m {
+	case Enabled:
+		return "Enabled"
+	case Disabled:
+		return "Disabled"
+	}
+	return "N/A"
+}
+
+type Display struct {
+	Mode   ModeState
+	Active ModeState
+}
+
+type Accounting struct {
+	Mode       ModeState
+	BufferSize *uint
+}
+
+type DeviceMode struct {
+	DisplayInfo    Display
+	Persistence    ModeState
+	AccountingInfo Accounting
+}
+
 type ThrottleReason uint
 
 const (
@@ -105,6 +138,12 @@ const (
 	P2PLinkMultiSwitch
 	P2PLinkSingleSwitch
 	P2PLinkSameBoard
+	SingleNVLINKLink
+	TwoNVLINKLinks
+	ThreeNVLINKLinks
+	FourNVLINKLinks
+	FiveNVLINKLinks
+	SixNVLINKLinks
 )
 
 type P2PLink struct {
@@ -126,6 +165,18 @@ func (t P2PLinkType) String() string {
 		return "Single PCI switch"
 	case P2PLinkSameBoard:
 		return "Same board"
+	case SingleNVLINKLink:
+		return "Single NVLink"
+	case TwoNVLINKLinks:
+		return "Two NVLinks"
+	case ThreeNVLINKLinks:
+		return "Three NVLinks"
+	case FourNVLINKLinks:
+		return "Four NVLinks"
+	case FiveNVLINKLinks:
+		return "Five NVLinks"
+	case SixNVLINKLinks:
+		return "Six NVLinks"
 	case P2PLinkUnknown:
 	}
 	return "N/A"
@@ -149,6 +200,7 @@ type Device struct {
 	Path        string
 	Model       *string
 	Power       *uint
+	Memory      *uint64
 	CPUAffinity *uint
 	PCI         PCIInfo
 	Clocks      ClockInfo
@@ -175,12 +227,17 @@ type PCIStatusInfo struct {
 type ECCErrorsInfo struct {
 	L1Cache *uint64
 	L2Cache *uint64
-	Global  *uint64
+	Device  *uint64
+}
+
+type DeviceMemory struct {
+	Used *uint64
+	Free *uint64
 }
 
 type MemoryInfo struct {
-	GlobalUsed *uint64
-	ECCErrors  ECCErrorsInfo
+	Global    DeviceMemory
+	ECCErrors ECCErrorsInfo
 }
 
 type ProcessInfo struct {
@@ -222,6 +279,10 @@ func GetDeviceCount() (uint, error) {
 
 func GetDriverVersion() (string, error) {
 	return systemGetDriverVersion()
+}
+
+func GetCudaDriverVersion() (*uint, *uint, error) {
+	return systemGetCudaDriverVersion()
 }
 
 func numaNode(busid string) (uint, error) {
@@ -272,6 +333,8 @@ func NewDevice(idx uint) (device *Device, err error) {
 	assert(err)
 	power, err := h.deviceGetPowerManagementLimit()
 	assert(err)
+	totalMem, _, err := h.deviceGetMemoryInfo()
+	assert(err)
 	busid, err := h.deviceGetPciInfo()
 	assert(err)
 	bar1, _, err := h.deviceGetBAR1MemoryInfo()
@@ -296,6 +359,7 @@ func NewDevice(idx uint) (device *Device, err error) {
 		Path:        path,
 		Model:       model,
 		Power:       power,
+		Memory:      totalMem,
 		CPUAffinity: &node,
 		PCI: PCIInfo{
 			BusID:     *busid,
@@ -365,7 +429,7 @@ func (d *Device) Status() (status *DeviceStatus, err error) {
 	assert(err)
 	udec, err := d.deviceGetDecoderUtilization()
 	assert(err)
-	mem, err := d.deviceGetMemoryInfo()
+	_, devMem, err := d.deviceGetMemoryInfo()
 	assert(err)
 	ccore, cmem, err := d.deviceGetClockInfo()
 	assert(err)
@@ -392,11 +456,11 @@ func (d *Device) Status() (status *DeviceStatus, err error) {
 			Decoder: udec, // %
 		},
 		Memory: MemoryInfo{
-			GlobalUsed: mem,
+			Global: devMem,
 			ECCErrors: ECCErrorsInfo{
 				L1Cache: el1,
 				L2Cache: el2,
-				Global:  emem,
+				Device:  emem,
 			},
 		},
 		Clocks: ClockInfo{
@@ -416,9 +480,6 @@ func (d *Device) Status() (status *DeviceStatus, err error) {
 	}
 	if power != nil {
 		*status.Power /= 1000 // W
-	}
-	if mem != nil {
-		*status.Memory.GlobalUsed /= 1024 * 1024 // MiB
 	}
 	if bar1 != nil {
 		*status.PCI.BAR1Used /= 1024 * 1024 // MiB
@@ -457,6 +518,37 @@ func GetP2PLink(dev1, dev2 *Device) (link P2PLinkType, err error) {
 	return
 }
 
+func GetNVLink(dev1, dev2 *Device) (link P2PLinkType, err error) {
+	nvbusIds1, err := dev1.handle.deviceGetAllNvLinkRemotePciInfo()
+	if err != nil || nvbusIds1 == nil {
+		return P2PLinkUnknown, err
+	}
+
+	nvlink := P2PLinkUnknown
+	for _, nvbusId1 := range nvbusIds1 {
+		if *nvbusId1 == dev2.PCI.BusID {
+			switch nvlink {
+			case P2PLinkUnknown:
+				nvlink = SingleNVLINKLink
+			case SingleNVLINKLink:
+				nvlink = TwoNVLINKLinks
+			case TwoNVLINKLinks:
+				nvlink = ThreeNVLINKLinks
+			case ThreeNVLINKLinks:
+				nvlink = FourNVLINKLinks
+			case FourNVLINKLinks:
+				nvlink = FiveNVLINKLinks
+			case FiveNVLINKLinks:
+				nvlink = SixNVLINKLinks
+			}
+		}
+	}
+
+	// TODO(klueska): Handle NVSwitch semantics
+
+	return nvlink, nil
+}
+
 func (d *Device) GetComputeRunningProcesses() ([]uint, []uint64, error) {
 	return d.handle.deviceGetComputeRunningProcesses()
 }
@@ -467,4 +559,28 @@ func (d *Device) GetGraphicsRunningProcesses() ([]uint, []uint64, error) {
 
 func (d *Device) GetAllRunningProcesses() ([]ProcessInfo, error) {
 	return d.handle.deviceGetAllRunningProcesses()
+}
+
+func (d *Device) GetDeviceMode() (mode *DeviceMode, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = r.(error)
+		}
+	}()
+
+	display, err := d.getDisplayInfo()
+	assert(err)
+
+	p, err := d.getPeristenceMode()
+	assert(err)
+
+	accounting, err := d.getAccountingInfo()
+	assert(err)
+
+	mode = &DeviceMode{
+		DisplayInfo:    display,
+		Persistence:    p,
+		AccountingInfo: accounting,
+	}
+	return
 }
