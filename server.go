@@ -179,6 +179,7 @@ func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.Device
 		case d := <-m.health:
 			// FIXME: there is no way to recover from the Unhealthy state.
 			d.Health = pluginapi.Unhealthy
+			log.Printf("device marked unhealthy: %s", d.ID)
 			s.Send(&pluginapi.ListAndWatchResponse{Devices: m.devs})
 		}
 	}
