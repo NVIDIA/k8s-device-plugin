@@ -3,21 +3,22 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"path"
 	"strings"
 	"time"
 
-	"golang.org/x/net/context"
+	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	"google.golang.org/grpc"
+	"k8s.io/klog"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
 const (
-	resourceName           = "nvidia.com/gpu"
+	resourceName           = "nvidia.com/gpu-topo"
 	serverSock             = pluginapi.DevicePluginPath + "nvidia.sock"
 	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
 	allHealthChecks        = "xids"
@@ -25,20 +26,27 @@ const (
 
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
-	devs   []*pluginapi.Device
-	socket string
+	nodeName string
+	devs     []*nvml.Device
+	socket   string
 
 	stop   chan interface{}
 	health chan *pluginapi.Device
 
 	server *grpc.Server
+
+	root *pciDevice
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin() *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(name string) *NvidiaDevicePlugin {
+	if name == "" {
+		klog.Fatalf("Failed due to undefined node name")
+	}
 	return &NvidiaDevicePlugin{
-		devs:   getDevices(),
-		socket: serverSock,
+		nodeName: name,
+		devs:     getDevices(),
+		socket:   serverSock,
 
 		stop:   make(chan interface{}),
 		health: make(chan *pluginapi.Device),
@@ -131,7 +139,7 @@ func (m *NvidiaDevicePlugin) Register(kubeletEndpoint, resourceName string) erro
 
 // ListAndWatch lists devices and update that list according to the health status
 func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
-	s.Send(&pluginapi.ListAndWatchResponse{Devices: m.devs})
+	s.Send(&pluginapi.ListAndWatchResponse{Devices: m.getPluginDevices()})
 
 	for {
 		select {
@@ -140,7 +148,7 @@ func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.Device
 		case d := <-m.health:
 			// FIXME: there is no way to recover from the Unhealthy state.
 			d.Health = pluginapi.Unhealthy
-			s.Send(&pluginapi.ListAndWatchResponse{Devices: m.devs})
+			s.Send(&pluginapi.ListAndWatchResponse{Devices: m.getPluginDevices()})
 		}
 	}
 }
@@ -154,9 +162,16 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 	devs := m.devs
 	responses := pluginapi.AllocateResponse{}
 	for _, req := range reqs.ContainerRequests {
+		topoDevs := m.findBestDevice(resourceName, len(req.DevicesIDs))
+		if len(devs) == 0 {
+			topoDevs = req.DevicesIDs
+		}
 		response := pluginapi.ContainerAllocateResponse{
 			Envs: map[string]string{
-				"NVIDIA_VISIBLE_DEVICES": strings.Join(req.DevicesIDs, ","),
+				"NVIDIA_VISIBLE_DEVICES": strings.Join(topoDevs, ","),
+			},
+			Annotations: map[string]string{
+				resourceName: strings.Join(topoDevs, ","),
 			},
 		}
 
@@ -195,7 +210,7 @@ func (m *NvidiaDevicePlugin) healthcheck() {
 	var xids chan *pluginapi.Device
 	if !strings.Contains(disableHealthChecks, "xids") {
 		xids = make(chan *pluginapi.Device)
-		go watchXIDs(ctx, m.devs, xids)
+		go watchXIDs(ctx, m.getPluginDevices(), xids)
 	}
 
 	for {
@@ -213,18 +228,29 @@ func (m *NvidiaDevicePlugin) healthcheck() {
 func (m *NvidiaDevicePlugin) Serve() error {
 	err := m.Start()
 	if err != nil {
-		log.Printf("Could not start device plugin: %s", err)
+		klog.Infof("Could not start device plugin: %s", err)
 		return err
 	}
-	log.Println("Starting to serve on", m.socket)
+	klog.Infoln("Starting to serve on", m.socket)
 
 	err = m.Register(pluginapi.KubeletSocket, resourceName)
 	if err != nil {
-		log.Printf("Could not register device plugin: %s", err)
+		klog.Infof("Could not register device plugin: %s", err)
 		m.Stop()
 		return err
 	}
-	log.Println("Registered device plugin with Kubelet")
+	klog.Infoln("Registered device plugin with Kubelet")
 
 	return nil
+}
+
+func (m *NvidiaDevicePlugin) getPluginDevices() []*pluginapi.Device {
+	var devs = []*pluginapi.Device{}
+	for _, d := range m.devs {
+		devs = append(devs, &pluginapi.Device{
+			ID:     d.UUID,
+			Health: pluginapi.Healthy,
+		})
+	}
+	return devs
 }

@@ -3,12 +3,11 @@
 package main
 
 import (
+	"context"
 	"log"
 	"strings"
 
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
-
-	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
@@ -18,26 +17,31 @@ func check(err error) {
 	}
 }
 
-func getDevices() []*pluginapi.Device {
+func getDevices() []*nvml.Device {
 	n, err := nvml.GetDeviceCount()
 	check(err)
 
-	var devs []*pluginapi.Device
+	var devs []*nvml.Device
 	for i := uint(0); i < n; i++ {
-		d, err := nvml.NewDeviceLite(i)
+		d, err := nvml.NewDevice(i)
 		check(err)
-		devs = append(devs, &pluginapi.Device{
-			ID:     d.UUID,
-			Health: pluginapi.Healthy,
-		})
+		devs = append(devs, d)
+	}
+	for i := 0; i < len(devs); i++ {
+		devs[i].Topology = []nvml.P2PLink{}
+		for j := 0; i < len(devs); j++ {
+			p2pType, err := nvml.GetP2PLink(devs[i], devs[j])
+			check(err)
+			devs[i].Topology = append(devs[i].Topology, nvml.P2PLink{Link: p2pType})
+		}
 	}
 
 	return devs
 }
 
-func deviceExists(devs []*pluginapi.Device, id string) bool {
+func deviceExists(devs []*nvml.Device, id string) bool {
 	for _, d := range devs {
-		if d.ID == id {
+		if d.UUID == id {
 			return true
 		}
 	}
