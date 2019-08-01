@@ -2,6 +2,8 @@
 
 package nvml
 
+// #cgo CFLAGS: -g -Wall
+// #cgo LDFLAGS: -lnvidia-ml
 // #include "nvml_dl.h"
 import "C"
 
