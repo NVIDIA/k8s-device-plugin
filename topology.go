@@ -10,6 +10,7 @@ type pciDevice struct {
 	maxDevices   int
 	avialDevices int
 	score        float64
+	nvidiaUUID   string
 	children     []*pciDevice
 	dev          *topology.HwlocObject
 }
@@ -78,6 +79,7 @@ func updateTree(node *pciDevice) (maxDevices, availDevices int, sum float64) {
 		if availDevices == 1 {
 			sum += 100
 		}
+		node.nvidiaUUID, _ = node.dev.GetInfo("NVIDIAUUID")
 	}
 	for i := 0; i < len(node.children); i++ {
 		tmpMax, tmpAvail, tmpSum := updateTree(node.children[i])
@@ -137,9 +139,54 @@ func (dp *NvidiaDevicePlugin) findBestDevice(t string, n int) []string {
 func (dp *NvidiaDevicePlugin) find1GPUDevice() string {
 	// if the current node has maximum GPU devices, select the first one
 	// else find the one to make sure left GPU devices have highest score
-	return ""
+	// FIXME: consider GPU connect type
+	var max float64
+	var maxUUID string
+	for _, gpu := range dp.devs {
+		// find the GPU uuid in the PCI device tree
+		var pdev *pciDevice
+		pdev = dp.findDeviceFromGPU(gpu)
+		if pdev == nil {
+			continue
+		}
+		// mark it as used
+		pdev.availDevices = 0
+		// count the score of machine with left GPU cards
+		_, _, tmp := updateTree(dp.root)
+		if tmp > max {
+			max = tmp
+			maxUUID = gpu
+		}
+	}
+	return maxUUID
 }
 
 func (dp *NvidiaDevicePlugin) findNGPUDevice(n int) []string {
 	return []string{}
+}
+
+func (dp *NvidiaDevicePlugin) findDeviceFromGPU(id string) *pciDevice {
+	if dp.root == nil {
+		return nil
+	}
+	var queue = []*pciDevice{dp.root}
+	for len(queue) > 0 {
+		l = len(queue)
+		for i := 0; i < l; i++ {
+			if queue[i].availDevices == 0 {
+				continue
+			}
+			if queue[i].nvidiaUUID == id {
+				return queue[i]
+			}
+			for _, c := range queue[i].children {
+				if c.availDevices == 0 {
+					continue
+				}
+				queue = append(queue, c)
+			}
+		}
+		queue = queue[l:]
+	}
+	return nil
 }
