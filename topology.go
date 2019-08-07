@@ -7,10 +7,18 @@ import (
 
 type pciDevice struct {
 	pciType      string
+	maxDevices   int
 	avialDevices int
 	score        float64
 	children     []*pciDevice
 	dev          *topology.HwlocObject
+}
+
+// Destroy destroy the device plugin's topology object
+func (dp *NvidiaDevicePlugin) Destroy() {
+	if dp.topo != nil {
+		dp.topo.Destroy()
+	}
 }
 
 func (dp *NvidiaDevicePlugin) buildPciDeviceTree() error {
@@ -22,7 +30,6 @@ func (dp *NvidiaDevicePlugin) buildPciDeviceTree() error {
 		return err
 	}
 	t.Load()
-	defer t.Destroy()
 	n, err := t.GetNbobjsByType(topology.HwlocObjPackage)
 	if err != nil {
 		return err
@@ -34,6 +41,7 @@ func (dp *NvidiaDevicePlugin) buildPciDeviceTree() error {
 			klog.Warningf("topology get object by type error: %v", err)
 			continue
 		}
+		dp.root.children[i] = &pciDevice{pciType: nno.Type.String(), dev: nno}
 		buildTree(dp.root.children[i], nno)
 	}
 
@@ -46,12 +54,60 @@ func buildTree(node *pciDevice, dev *topology.HwlocObject) {
 	}
 	if node == nil {
 		node = &pciDevice{
-			dev: dev,
+			pciType: dev.Type.String(),
+			dev:     dev,
 		}
 	}
 	node.children = make([]*pciDevice, len(dev.Children))
 	for i := 0; i < len(dev.Children); i++ {
+		node.children[i] = &pciDevice{
+			pciType: dev.Children[i].Type.String(),
+			dev:     dev.Children[i],
+		}
 		buildTree(node.children[i], dev.Children[i])
+	}
+}
+
+func updateTree(node *pciDevice) (maxDevices, availDevices int, sum float64) {
+	if node == nil {
+		return 0, 0, 0.0
+	}
+	if node.dev != nil && node.dev.Attributes.OSDevType == topology.HwlocObjOSDevGPU {
+		maxDevices = 1
+		availDevices = node.availDevices
+		if availDevices == 1 {
+			sum += 100
+		}
+	}
+	for i := 0; i < len(node.children); i++ {
+		tmpMax, tmpAvail, tmpSum := updateTree(node.children[i])
+		maxDevices += tmpMax
+		availDevices += tmpAvail
+		sum += tmpSum
+	}
+	var factor = 1.0
+	if len(node.children) > 1 {
+		switch node.pciType {
+		case "Bridge":
+			factor = 0.9
+		case "Package":
+			factor = 0.7
+		}
+	}
+	return maxDevices, availDevices, sum * factor
+}
+
+func printDeviceTree(node *pciDevice) {
+	if node == nil {
+		return
+	}
+	if node.dev != nil {
+		backend, _ := node.dev.GetInfo("Backend")
+		gpuid, _ := node.dev.GetInfo("NVIDIAUUID")
+		klog.Infof("%v, %v, %v, %v, %#v\n", node.pciType, node.dev.Name, backend, gpuid, node.dev.Attributes.OSDevType)
+	}
+	for i := 0; i < len(node.children); i++ {
+		printDeviceTree(node.children[i])
 	}
 }
 
@@ -59,8 +115,31 @@ func (dp *NvidiaDevicePlugin) findBestDevice(t string, n int) []string {
 	devs := []string{}
 	switch t {
 	case resourceName:
+		// XXX: we divide the user's request into two parts:
+		// a. request 1 GPU card, select the best 1 GPU card, make sure the left GPU cards will be most valuable
+		// b. request more than 1 GPU card, based on the score of the least enough leaves branch
+		if n == 1 {
+			// request 1 GPU card, select the best 1 GPU card,
+			// make sure the left GPU cards will be most valuable
+			devs = append(devs, dp.find1GPUDevice())
+		} else {
+			// find the least enough leaves node
+			// find the higher score when the two nodes have same number leaves
+			// add the leaves into the result
+			devs = append(devs, dp.findNGPUDevice()...)
+		}
 		return devs
 	}
 
 	return devs
+}
+
+func (dp *NvidiaDevicePlugin) find1GPUDevice() string {
+	// if the current node has maximum GPU devices, select the first one
+	// else find the one to make sure left GPU devices have highest score
+	return ""
+}
+
+func (dp *NvidiaDevicePlugin) findNGPUDevice(n int) []string {
+	return []string{}
 }

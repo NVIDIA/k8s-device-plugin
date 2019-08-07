@@ -29,7 +29,7 @@ func getDevices() []*nvml.Device {
 	}
 	for i := 0; i < len(devs); i++ {
 		devs[i].Topology = []nvml.P2PLink{}
-		for j := 0; i < len(devs); j++ {
+		for j := 0; j < len(devs); j++ {
 			p2pType, err := nvml.GetP2PLink(devs[i], devs[j])
 			check(err)
 			devs[i].Topology = append(devs[i].Topology, nvml.P2PLink{Link: p2pType})

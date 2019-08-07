@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
+	"github.com/gpucloud/gohwloc/topology"
 	"google.golang.org/grpc"
 	"k8s.io/klog"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
@@ -36,6 +37,8 @@ type NvidiaDevicePlugin struct {
 	server *grpc.Server
 
 	root *pciDevice
+
+	topo *topology.Topology
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
