@@ -1,11 +1,12 @@
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: nvidia-device-plugin-daemonset
   namespace: kube-system
 spec:
-  updateStrategy:
-    type: RollingUpdate
+  selector:
+    matchLabels:
+      name: nvidia-device-plugin-ds
   template:
     metadata:
       # This annotation is deprecated. Kept here for backward compatibility
