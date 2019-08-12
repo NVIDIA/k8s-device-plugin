@@ -148,7 +148,6 @@ func (dp *NvidiaDevicePlugin) find1GPUDevice() string {
 	// else find the one to make sure left GPU devices have highest score
 	// FIXME: consider GPU connect type
 	var min int
-	//var minDevice *pciDevice
 	var queue = []*pciDevice{dp.root}
 	for len(queue) > 0 {
 		l := len(queue)
@@ -181,5 +180,68 @@ func (dp *NvidiaDevicePlugin) find1GPUDevice() string {
 }
 
 func (dp *NvidiaDevicePlugin) findNGPUDevice(n int) []string {
-	return []string{}
+	var min int
+	var queue = []*pciDevice{dp.root}
+	var tmp = []*pciDevice{}
+	for len(queue) > 0 {
+		l := len(queue)
+		min = 1 << 10
+		for i := 0; i < l; i++ {
+			if queue[i].availDevices < n {
+				continue
+			}
+			if queue[i].availDevices < min {
+				min = queue[i].availDevices
+			}
+		}
+		if min == 1<<10 {
+			break
+		} else {
+			tmp = []*pciDevice{}
+		}
+		for i := 0; i < l; i++ {
+			if queue[i].availDevices > min {
+				continue
+			}
+			if queue[i].availDevices == min {
+				tmp = append(tmp, queue[i])
+			}
+			for _, c := range queue[i].children {
+				if c.availDevices == 0 {
+					continue
+				}
+				queue = append(queue, c)
+			}
+		}
+		queue = queue[l:]
+	}
+	var res = []string{}
+	for _, pci := range tmp {
+		res = append(res, pci.getAvailableGPUs()...)
+	}
+	return res
+}
+
+func (p *pciDevice) getAvailableGPUs() []string {
+	var res = []string{}
+	var queue = []*pciDevice{p}
+	for len(queue) > 0 {
+		l := len(queue)
+		for i := 0; i < l; i++ {
+			if queue[i].dev != nil && queue[i].dev.Attributes.OSDevType == topology.HwlocObjOSDevGPU {
+				if queue[i].availDevices == 1 {
+					res = append(res, queue[i].nvidiaUUID)
+				}
+			} else if queue[i].availDevices > 0 {
+				for _, c := range queue[i].children {
+					if c.availDevices == 0 {
+						continue
+					}
+					queue = append(queue, c)
+				}
+			}
+		}
+		queue = queue[l:]
+	}
+	return res
 }
