@@ -20,7 +20,7 @@ import (
 
 const (
 	resourceName           = "nvidia.com/gpu-topo"
-	serverSock             = pluginapi.DevicePluginPath + "nvidia.sock"
+	serverSock             = pluginapi.DevicePluginPath + "nvidia-topo.sock"
 	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
 	allHealthChecks        = "xids"
 )
@@ -70,6 +70,7 @@ func dial(unixSocketPath string, timeout time.Duration) (*grpc.ClientConn, error
 	)
 
 	if err != nil {
+		klog.Errorf("dail error: %v", err)
 		return nil, err
 	}
 
@@ -85,6 +86,7 @@ func (m *NvidiaDevicePlugin) Start() error {
 
 	sock, err := net.Listen("unix", m.socket)
 	if err != nil {
+		klog.Errorf("net.Listen error: %v", err)
 		return err
 	}
 
@@ -142,16 +144,23 @@ func (m *NvidiaDevicePlugin) Register(kubeletEndpoint, resourceName string) erro
 
 // ListAndWatch lists devices and update that list according to the health status
 func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
-	s.Send(&pluginapi.ListAndWatchResponse{Devices: m.getPluginDevices()})
+	klog.Infof("Started ListAndWatch for GPU: %v", len(m.getPluginDevices()))
+	if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: m.getPluginDevices()}); err != nil {
+		klog.Errorf("Send failed: %v", err)
+	}
 
 	for {
 		select {
 		case <-m.stop:
+			klog.Info("m.stop")
 			return nil
 		case d := <-m.health:
 			// FIXME: there is no way to recover from the Unhealthy state.
+			klog.Warningf("Device %v is unhealthy", d)
 			d.Health = pluginapi.Unhealthy
-			s.Send(&pluginapi.ListAndWatchResponse{Devices: m.getPluginDevices()})
+			if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: m.getPluginDevices()}); err != nil {
+				klog.Errorf("Send failed: %v", err)
+			}
 		}
 	}
 }
@@ -186,7 +195,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
 	}
-
+	klog.Infof("Allocate response: %#v", responses)
 	return &responses, nil
 }
 

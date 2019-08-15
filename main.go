@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	nodeName = flag.String("node-name", "", "Set node name for this node")
+	nodeName = flag.String("node-name", os.Getenv("NODE_NAME"), "Set node name for this node")
 )
 
 func main() {
+	klog.InitFlags(nil)
 	klog.Infoln("Loading NVML")
 	flag.Parse()
 	if err := nvml.Init(); err != nil {
@@ -61,6 +62,10 @@ L:
 			}
 
 			devicePlugin = NewNvidiaDevicePlugin(*nodeName)
+			if err := devicePlugin.buildPciDeviceTree(); err != nil {
+				klog.Fatalf("Failed to build PCI device tree: %v", err)
+			}
+			updateTree(devicePlugin.root)
 			if err := devicePlugin.Serve(); err != nil {
 				klog.Infoln("Could not contact Kubelet, retrying. Did you enable the device plugin feature gate?")
 				klog.Infof("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
