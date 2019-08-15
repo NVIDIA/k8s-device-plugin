@@ -102,8 +102,10 @@ func NewHwlocObject(obj C.hwloc_obj_t) (*HwlocObject, error) {
 		osdev := C.get_obj_osdev_attr(obj)
 		hobj.Attributes.OSDevType = HwlocObjOSDevType(osdev._type)
 	}
-	if po := obj.parent; po != nil {
-		hobj.Parent, _ = NewHwlocObject(po)
+	for tmp := obj.io_first_child; tmp != nil; tmp = tmp.next_sibling {
+		c, _ := NewHwlocObject(tmp)
+		c.Parent = hobj
+		hobj.Children = append(hobj.Children, c)
 	}
 	return hobj, nil
 }

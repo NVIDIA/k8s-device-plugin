@@ -16,10 +16,7 @@ limitations under the License.
 
 package v1alpha1
 
-import (
-	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
+import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 // +genclient
 // +genclient:nonNamespaced
@@ -84,14 +81,7 @@ type VolumeAttachmentSource struct {
 	// +optional
 	PersistentVolumeName *string `json:"persistentVolumeName,omitempty" protobuf:"bytes,1,opt,name=persistentVolumeName"`
 
-	// inlineVolumeSpec contains all the information necessary to attach
-	// a persistent volume defined by a pod's inline VolumeSource. This field
-	// is populated only for the CSIMigration feature. It contains
-	// translated fields from a pod's inline VolumeSource to a
-	// PersistentVolumeSpec. This field is alpha-level and is only
-	// honored by servers that enabled the CSIMigration feature.
-	// +optional
-	InlineVolumeSpec *v1.PersistentVolumeSpec `json:"inlineVolumeSpec,omitempty" protobuf:"bytes,2,opt,name=inlineVolumeSpec"`
+	// Placeholder for *VolumeSource to accommodate inline volumes in pods.
 }
 
 // VolumeAttachmentStatus is the status of a VolumeAttachment request.

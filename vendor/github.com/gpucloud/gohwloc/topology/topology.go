@@ -1,7 +1,7 @@
 package topology
 
 // #cgo CFLAGS: -g -Wall
-// #cgo LDFLAGS: -lhwloc -L/usr/local/lib/
+// #cgo LDFLAGS: -lhwloc
 // #include <hwloc.h>
 import "C"
 import (

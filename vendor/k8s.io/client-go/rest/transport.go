@@ -74,10 +74,9 @@ func (c *Config) TransportConfig() (*transport.Config, error) {
 			KeyFile:    c.KeyFile,
 			KeyData:    c.KeyData,
 		},
-		Username:        c.Username,
-		Password:        c.Password,
-		BearerToken:     c.BearerToken,
-		BearerTokenFile: c.BearerTokenFile,
+		Username:    c.Username,
+		Password:    c.Password,
+		BearerToken: c.BearerToken,
 		Impersonate: transport.ImpersonationConfig{
 			UserName: c.Impersonate.UserName,
 			Groups:   c.Impersonate.Groups,

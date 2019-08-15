@@ -1,6 +1,6 @@
 # Gopkg.toml example
 #
-# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# Refer to https://golang.github.io/dep/docs/Gopkg.toml.html
 # for detailed Gopkg.toml documentation.
 #
 # required = ["github.com/user/thing/cmd/thing"]
@@ -30,12 +30,36 @@
   name = "github.com/NVIDIA/gpu-monitoring-tools"
 
 [[constraint]]
+  name = "github.com/fsnotify/fsnotify"
+  version = "1.4.7"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/gpucloud/gohwloc"
+
+[[constraint]]
   name = "google.golang.org/grpc"
-  version = "1.7.5"
+  version = "1.23.0"
+
+[[constraint]]
+  name = "k8s.io/api"
+  version = "kubernetes-1.14.0"
+
+[[constraint]]
+  name = "k8s.io/apimachinery"
+  version = "kubernetes-1.14.0"
+
+[[constraint]]
+  name = "k8s.io/client-go"
+  version = "11.0.0"
+
+[[constraint]]
+  name = "k8s.io/klog"
+  version = "0.4.0"
 
 [[constraint]]
   name = "k8s.io/kubernetes"
-  version = "1.11.0"
+  version = "1.15.2"
 
 [prune]
   go-tests = true

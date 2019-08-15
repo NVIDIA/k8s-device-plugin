@@ -17,13 +17,9 @@ limitations under the License.
 package serializer
 
 import (
-	"mime"
-	"strings"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
-	"k8s.io/apimachinery/pkg/runtime/serializer/protobuf"
 	"k8s.io/apimachinery/pkg/runtime/serializer/recognizer"
 	"k8s.io/apimachinery/pkg/runtime/serializer/versioning"
 )
@@ -52,8 +48,6 @@ func newSerializersForScheme(scheme *runtime.Scheme, mf json.MetaFactory) []seri
 	jsonSerializer := json.NewSerializer(mf, scheme, scheme, false)
 	jsonPrettySerializer := json.NewSerializer(mf, scheme, scheme, true)
 	yamlSerializer := json.NewYAMLSerializer(mf, scheme, scheme)
-	serializer := protobuf.NewSerializer(scheme, scheme)
-	raw := protobuf.NewRawSerializer(scheme, scheme)
 
 	serializers := []serializerType{
 		{
@@ -73,15 +67,6 @@ func newSerializersForScheme(scheme *runtime.Scheme, mf json.MetaFactory) []seri
 			FileExtensions:     []string{"yaml"},
 			EncodesAsText:      true,
 			Serializer:         yamlSerializer,
-		},
-		{
-			AcceptContentTypes: []string{runtime.ContentTypeProtobuf},
-			ContentType:        runtime.ContentTypeProtobuf,
-			FileExtensions:     []string{"pb"},
-			Serializer:         serializer,
-
-			Framer:           protobuf.LengthDelimitedFramer,
-			StreamSerializer: raw,
 		},
 	}
 
@@ -135,15 +120,6 @@ func newCodecFactory(scheme *runtime.Scheme, serializers []serializerType) Codec
 				Serializer:       d.Serializer,
 				PrettySerializer: d.PrettySerializer,
 			}
-
-			mediaType, _, err := mime.ParseMediaType(info.MediaType)
-			if err != nil {
-				panic(err)
-			}
-			parts := strings.SplitN(mediaType, "/", 2)
-			info.MediaTypeType = parts[0]
-			info.MediaTypeSubType = parts[1]
-
 			if d.StreamSerializer != nil {
 				info.StreamSerializer = &runtime.StreamSerializerInfo{
 					Serializer:    d.StreamSerializer,
@@ -170,12 +146,6 @@ func newCodecFactory(scheme *runtime.Scheme, serializers []serializerType) Codec
 
 		legacySerializer: legacySerializer,
 	}
-}
-
-// WithoutConversion returns a NegotiatedSerializer that performs no conversion, even if the
-// caller requests it.
-func (f CodecFactory) WithoutConversion() runtime.NegotiatedSerializer {
-	return WithoutConversionCodecFactory{f}
 }
 
 // SupportedMediaTypes returns the RFC2046 media types that this factory has serializers for.
@@ -245,30 +215,23 @@ func (f CodecFactory) EncoderForVersion(encoder runtime.Encoder, gv runtime.Grou
 	return f.CodecForVersions(encoder, nil, gv, nil)
 }
 
-// WithoutConversionCodecFactory is a CodecFactory that will explicitly ignore requests to perform conversion.
-// This wrapper is used while code migrates away from using conversion (such as external clients) and in the future
-// will be unnecessary when we change the signature of NegotiatedSerializer.
-type WithoutConversionCodecFactory struct {
+// DirectCodecFactory provides methods for retrieving "DirectCodec"s, which do not do conversion.
+type DirectCodecFactory struct {
 	CodecFactory
 }
 
-// EncoderForVersion returns an encoder that does not do conversion, but does set the group version kind of the object
-// when serialized.
-func (f WithoutConversionCodecFactory) EncoderForVersion(serializer runtime.Encoder, version runtime.GroupVersioner) runtime.Encoder {
-	return runtime.WithVersionEncoder{
+// EncoderForVersion returns an encoder that does not do conversion.
+func (f DirectCodecFactory) EncoderForVersion(serializer runtime.Encoder, version runtime.GroupVersioner) runtime.Encoder {
+	return versioning.DirectEncoder{
 		Version:     version,
 		Encoder:     serializer,
 		ObjectTyper: f.CodecFactory.scheme,
 	}
 }
 
-// DecoderToVersion returns an decoder that does not do conversion.
-func (f WithoutConversionCodecFactory) DecoderToVersion(serializer runtime.Decoder, _ runtime.GroupVersioner) runtime.Decoder {
-	return runtime.WithoutVersionDecoder{
+// DecoderToVersion returns an decoder that does not do conversion. gv is ignored.
+func (f DirectCodecFactory) DecoderToVersion(serializer runtime.Decoder, _ runtime.GroupVersioner) runtime.Decoder {
+	return versioning.DirectDecoder{
 		Decoder: serializer,
 	}
 }
-
-// DirectCodecFactory was renamed to WithoutConversionCodecFactory in 1.15.
-// TODO: remove in 1.16.
-type DirectCodecFactory = WithoutConversionCodecFactory

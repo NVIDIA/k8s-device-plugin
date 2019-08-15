@@ -18,7 +18,6 @@ package workqueue
 
 import (
 	"container/heap"
-	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/clock"
@@ -67,8 +66,6 @@ type delayingType struct {
 
 	// stopCh lets us signal a shutdown to the waiting loop
 	stopCh chan struct{}
-	// stopOnce guarantees we only signal shutdown a single time
-	stopOnce sync.Once
 
 	// heartbeat ensures we wait no more than maxWait before firing
 	heartbeat clock.Ticker
@@ -136,14 +133,11 @@ func (pq waitForPriorityQueue) Peek() interface{} {
 	return pq[0]
 }
 
-// ShutDown stops the queue. After the queue drains, the returned shutdown bool
-// on Get() will be true. This method may be invoked more than once.
+// ShutDown gives a way to shut off this queue
 func (q *delayingType) ShutDown() {
-	q.stopOnce.Do(func() {
-		q.Interface.ShutDown()
-		close(q.stopCh)
-		q.heartbeat.Stop()
-	})
+	q.Interface.ShutDown()
+	close(q.stopCh)
+	q.heartbeat.Stop()
 }
 
 // AddAfter adds the given item to the work queue after the given delay

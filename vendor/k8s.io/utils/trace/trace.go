@@ -43,8 +43,7 @@ func New(name string) *Trace {
 	return &Trace{name, time.Now(), nil}
 }
 
-// Step adds a new step with a specific message. Call this at the end of an
-// execution step to record how long it took.
+// Step adds a new step with a specific message
 func (t *Trace) Step(msg string) {
 	if t.steps == nil {
 		// traces almost always have less than 6 steps, do this to avoid more than a single allocation

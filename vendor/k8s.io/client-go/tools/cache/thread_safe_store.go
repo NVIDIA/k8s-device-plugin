@@ -185,7 +185,7 @@ func (c *threadSafeMap) ByIndex(indexName, indexKey string) ([]interface{}, erro
 
 	set := index[indexKey]
 	list := make([]interface{}, 0, set.Len())
-	for key := range set {
+	for _, key := range set.List() {
 		list = append(list, c.items[key])
 	}
 

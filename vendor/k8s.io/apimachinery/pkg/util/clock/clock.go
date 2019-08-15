@@ -80,6 +80,7 @@ type fakeClockWaiter struct {
 	stepInterval  time.Duration
 	skipIfBlocked bool
 	destChan      chan time.Time
+	fired         bool
 }
 
 func NewFakeClock(t time.Time) *FakeClock {
@@ -174,10 +175,12 @@ func (f *FakeClock) setTimeLocked(t time.Time) {
 			if w.skipIfBlocked {
 				select {
 				case w.destChan <- t:
+					w.fired = true
 				default:
 				}
 			} else {
 				w.destChan <- t
+				w.fired = true
 			}
 
 			if w.stepInterval > 0 {
@@ -284,50 +287,36 @@ func (f *fakeTimer) C() <-chan time.Time {
 	return f.waiter.destChan
 }
 
-// Stop conditionally stops the timer.  If the timer has neither fired
-// nor been stopped then this call stops the timer and returns true,
-// otherwise this call returns false.  This is like time.Timer::Stop.
+// Stop stops the timer and returns true if the timer has not yet fired, or false otherwise.
 func (f *fakeTimer) Stop() bool {
 	f.fakeClock.lock.Lock()
 	defer f.fakeClock.lock.Unlock()
-	// The timer has already fired or been stopped, unless it is found
-	// among the clock's waiters.
-	stopped := false
-	oldWaiters := f.fakeClock.waiters
-	newWaiters := make([]fakeClockWaiter, 0, len(oldWaiters))
-	seekChan := f.waiter.destChan
-	for i := range oldWaiters {
-		// Identify the timer's fakeClockWaiter by the identity of the
-		// destination channel, nothing else is necessarily unique and
-		// constant since the timer's creation.
-		if oldWaiters[i].destChan == seekChan {
-			stopped = true
-		} else {
-			newWaiters = append(newWaiters, oldWaiters[i])
+
+	newWaiters := make([]fakeClockWaiter, 0, len(f.fakeClock.waiters))
+	for i := range f.fakeClock.waiters {
+		w := &f.fakeClock.waiters[i]
+		if w != &f.waiter {
+			newWaiters = append(newWaiters, *w)
 		}
 	}
 
 	f.fakeClock.waiters = newWaiters
 
-	return stopped
+	return !f.waiter.fired
 }
 
-// Reset conditionally updates the firing time of the timer.  If the
-// timer has neither fired nor been stopped then this call resets the
-// timer to the fake clock's "now" + d and returns true, otherwise
-// this call returns false.  This is like time.Timer::Reset.
+// Reset resets the timer to the fake clock's "now" + d. It returns true if the timer has not yet
+// fired, or false otherwise.
 func (f *fakeTimer) Reset(d time.Duration) bool {
 	f.fakeClock.lock.Lock()
 	defer f.fakeClock.lock.Unlock()
-	waiters := f.fakeClock.waiters
-	seekChan := f.waiter.destChan
-	for i := range waiters {
-		if waiters[i].destChan == seekChan {
-			waiters[i].targetTime = f.fakeClock.time.Add(d)
-			return true
-		}
-	}
-	return false
+
+	active := !f.waiter.fired
+
+	f.waiter.fired = false
+	f.waiter.targetTime = f.fakeClock.time.Add(d)
+
+	return active
 }
 
 type Ticker interface {
