@@ -17,16 +17,14 @@ ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
 
 COPY nvml.h /usr/local/include/
-RUN ln -s /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1 /usr/lib/x86_64-linux-gnu/libnvidia-ml.so && \
-    git clone https://github.com/open-mpi/hwloc && cd hwloc && ./autogen.sh && \
+RUN cd /usr/lib/x86_64-linux-gnu/ && ln -s libnvidia-ml.so.1 libnvidia-ml.so
+RUN cd /usr/local/ && git clone https://github.com/open-mpi/hwloc && cd hwloc && ./autogen.sh && \
     ./configure CPPFLAGS=" -L/usr/lib/x86_64-linux-gnu" CFLAGS="-L/usr/lib/x86_64-linux-gnu" && \
     make && make install
 
 WORKDIR /go/src/github.com/NVIDIA/k8s-device-plugin
 COPY . .
 
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu:/usr/local/lib
-ENV LIBRARY_PATH=$LIBRARY_PATH:/usr/lib/x86_64-linux-gnu:/usr/local/lib
-RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' && go build -ldflags="-s -w" .
+RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' && CGO_LDFLAGS='-L/usr/lib/x86_64-linux-gnu -lnvidia-ml' go build .
 
 CMD ["./k8s-device-plugin"]
