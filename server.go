@@ -175,7 +175,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 	responses := pluginapi.AllocateResponse{}
 	for _, req := range reqs.ContainerRequests {
 		topoDevs := m.findBestDevice(resourceName, len(req.DevicesIDs))
-		if len(devs) == 0 {
+		if len(topoDevs) == 0 {
 			topoDevs = req.DevicesIDs
 		}
 		response := pluginapi.ContainerAllocateResponse{

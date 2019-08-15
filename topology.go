@@ -218,6 +218,9 @@ func (dp *NvidiaDevicePlugin) findNGPUDevice(n int) []string {
 	var res = []string{}
 	for _, pci := range tmp {
 		res = append(res, pci.getAvailableGPUs()...)
+		if len(res) == n {
+			break
+		}
 	}
 	return res
 }
