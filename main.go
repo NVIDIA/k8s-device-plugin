@@ -65,7 +65,10 @@ L:
 			if err := devicePlugin.buildPciDeviceTree(); err != nil {
 				klog.Fatalf("Failed to build PCI device tree: %v", err)
 			}
-			updateTree(devicePlugin.root)
+			updateTree(devicePlugin.root, true)
+			if klog.V(2) {
+				printDeviceTree(devicePlugin.root)
+			}
 			if err := devicePlugin.Serve(); err != nil {
 				klog.Infoln("Could not contact Kubelet, retrying. Did you enable the device plugin feature gate?")
 				klog.Infof("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")

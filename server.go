@@ -174,10 +174,12 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 	devs := m.devs
 	responses := pluginapi.AllocateResponse{}
 	for _, req := range reqs.ContainerRequests {
+		klog.V(2).Infof("request device IDs: %v", req.DevicesIDs)
 		topoDevs := m.findBestDevice(resourceName, len(req.DevicesIDs))
 		if len(topoDevs) == 0 {
 			topoDevs = req.DevicesIDs
 		}
+		klog.V(2).Infof("find best device IDs: %v", topoDevs)
 		response := pluginapi.ContainerAllocateResponse{
 			Envs: map[string]string{
 				"NVIDIA_VISIBLE_DEVICES": strings.Join(topoDevs, ","),
@@ -194,6 +196,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 		}
 
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
+		m.updatePodDevice(topoDevs, nil)
 	}
 	klog.Infof("Allocate response: %#v", responses)
 	return &responses, nil

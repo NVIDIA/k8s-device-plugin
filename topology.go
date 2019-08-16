@@ -69,14 +69,17 @@ func buildTree(node *pciDevice, dev *topology.HwlocObject) {
 	}
 }
 
-func updateTree(node *pciDevice) (maxDevices, availDevices int, sum float64) {
+func updateTree(node *pciDevice, init bool) (maxDevices, availDevices int, sum float64) {
 	if node == nil {
 		return 0, 0, 0.0
 	}
 	if node.dev != nil && node.dev.Attributes.OSDevType == topology.HwlocObjOSDevGPU {
 		maxDevices = 1
-		//availDevices = node.availDevices
-		availDevices = 1
+		if init == false {
+			availDevices = node.availDevices
+		} else {
+			availDevices = 1
+		}
 		if availDevices == 1 {
 			sum += 100
 		}
@@ -86,7 +89,7 @@ func updateTree(node *pciDevice) (maxDevices, availDevices int, sum float64) {
 		node.nvidiaUUID, _ = node.dev.GetInfo("NVIDIAUUID")
 	}
 	for i := 0; i < len(node.children); i++ {
-		tmpMax, tmpAvail, tmpSum := updateTree(node.children[i])
+		tmpMax, tmpAvail, tmpSum := updateTree(node.children[i], init)
 		maxDevices += tmpMax
 		availDevices += tmpAvail
 		sum += tmpSum
@@ -247,4 +250,35 @@ func (p *pciDevice) getAvailableGPUs() []string {
 		queue = queue[l:]
 	}
 	return res
+}
+
+func (m *NvidiaDevicePlugin) updatePodDevice(adds, dels []string) error {
+	var allocatedMap = map[string]int{}
+	for _, s := range adds {
+		allocatedMap[s] = 0
+	}
+	for _, s := range dels {
+		allocatedMap[s] = 1
+	}
+	updateDeviceState(m.root, allocatedMap)
+	updateTree(m.root, false)
+	klog.Infof("Update Pod Device: left available devices number: %v", m.root.availDevices)
+	return nil
+}
+
+func updateDeviceState(root *pciDevice, m map[string]int) {
+	if root == nil {
+		return
+	}
+	if root.nvidiaUUID != "" {
+		//klog.Infof("find %v availDevices", root.nvidiaUUID)
+		if val, ok := m[root.nvidiaUUID]; ok {
+			root.availDevices = val
+			//klog.Infof("Set %v availDevices to %v", root.nvidiaUUID, val)
+		}
+		return
+	}
+	for i := 0; i < len(root.children); i++ {
+		updateDeviceState(root.children[i], m)
+	}
 }
