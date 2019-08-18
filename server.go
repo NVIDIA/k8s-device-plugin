@@ -269,3 +269,8 @@ func (m *NvidiaDevicePlugin) getPluginDevices() []*pluginapi.Device {
 	}
 	return devs
 }
+
+// RegisterToSched register the nvml link info to extender sched
+func (m *NvidiaDevicePlugin) RegisterToSched(endpoint string) {
+
+}

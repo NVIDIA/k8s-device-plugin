@@ -16,7 +16,8 @@ import (
 )
 
 var (
-	nodeName = flag.String("node-name", os.Getenv("NODE_NAME"), "Set node name for this node")
+	nodeName      = flag.String("node-name", os.Getenv("NODE_NAME"), "Set node name for this node")
+	topoScheduler = flag.String("topo-sched-endpoint", os.Getenv("TOPO_SCHED_ENDPOINT"), "The topology scheduler endpoint to register")
 )
 
 func main() {
@@ -83,6 +84,8 @@ L:
 				klog.Fatalf("Failed to start due to %v", err)
 			}
 			controller.Start(informerFactory, stopCh)
+
+			devicePlugin.RegisterToSched(*topoScheduler)
 		}
 
 		select {
