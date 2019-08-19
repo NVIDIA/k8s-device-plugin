@@ -78,14 +78,15 @@ L:
 				restart = false
 			}
 			kubeClient := kubeInit()
+			if err := devicePlugin.RegisterToSched(kubeClient, *topoScheduler); err != nil {
+				klog.Fatalf("Failed to register GPU topology on node: %v", err)
+			}
 			informerFactory := informers.NewSharedInformerFactory(kubeClient, 30*time.Second)
 			controller, err := newController(kubeClient, informerFactory, stopCh)
 			if err != nil {
 				klog.Fatalf("Failed to start due to %v", err)
 			}
 			controller.Start(informerFactory, stopCh)
-
-			devicePlugin.RegisterToSched(*topoScheduler)
 		}
 
 		select {

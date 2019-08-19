@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -14,6 +15,13 @@ import (
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	"github.com/gpucloud/gohwloc/topology"
 	"google.golang.org/grpc"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
@@ -271,6 +279,64 @@ func (m *NvidiaDevicePlugin) getPluginDevices() []*pluginapi.Device {
 }
 
 // RegisterToSched register the nvml link info to extender sched
-func (m *NvidiaDevicePlugin) RegisterToSched(endpoint string) {
+func (m *NvidiaDevicePlugin) RegisterToSched(kubeClient *kubernetes.Clientset, endpoint string) error {
+	var t = &Topology{
+		GPUDevice: make([]*nvml.Device, len(m.devs)),
+	}
+	copy(t.GPUDevice, m.devs)
+	topo, err := json.Marshal(t)
+	if err != nil {
+		return err
+	}
+	klog.V(2).Infof("System topology: %s", string(topo))
 
+	if endpoint != "" {
+		// TODO register the node topology to sched server by endpoint
+	}
+
+	if err := patchNode(kubeClient, m.nodeName, func(n *corev1.Node) {
+		n.Annotations[resourceName] = string(topo)
+	}); err != nil {
+		klog.Warningf("Failed to patch GPU topology to the node %s, %v", m.nodeName, err)
+		return err
+	}
+	return nil
+}
+
+// patchNode tries to patch a node using the following client, executing patchFn for the actual mutating logic
+func patchNode(client kubernetes.Interface, nodeName string, patchFn func(*corev1.Node)) error {
+	// Loop on every false return. Return with an error if raised. Exit successfully if true is returned.
+	return wait.Poll(3, 5*time.Second, func() (bool, error) {
+		n, err := client.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		oldData, err := json.Marshal(n)
+		if err != nil {
+			return false, err
+		}
+
+		patchFn(n)
+
+		newData, err := json.Marshal(n)
+		if err != nil {
+			return false, err
+		}
+
+		patchBytes, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, corev1.Node{})
+		if err != nil {
+			return false, err
+		}
+
+		if _, err := client.CoreV1().Nodes().Patch(n.Name, types.StrategicMergePatchType, patchBytes); err != nil {
+			if apierrors.IsConflict(err) {
+				klog.Warning("[patchnode] Temporarily unable to update node metadata due to conflict (will retry)")
+				return false, nil
+			}
+			return false, err
+		}
+
+		return true, nil
+	})
 }

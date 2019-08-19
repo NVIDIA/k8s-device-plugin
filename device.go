@@ -1,5 +1,9 @@
 package main
 
+import (
+	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
+)
+
 // Topology defined the whole topology for the node
 type Topology struct {
 	SystemInfo HostSystemInfo   `json:"systemInfo"`
@@ -8,7 +12,7 @@ type Topology struct {
 	MemorySize int64            `json:"memorySize"`
 	NumaInfo   *HostNumaInfo    `json:"numaInfo,omitempty"`
 	SmcPresent *bool            `json:"smcPresent"`
-	GPUDevice  []*Device        `json:"gpuDevice,omitempty"`
+	GPUDevice  []*nvml.Device   `json:"gpuDevice,omitempty"`
 }
 
 // HostSystemInfo define system info
