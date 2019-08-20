@@ -204,7 +204,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 		}
 
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
-		m.updatePodDevice(topoDevs, nil)
+		m.UpdatePodDevice(topoDevs, nil)
 	}
 	klog.Infof("Allocate response: %#v", responses)
 	return &responses, nil

@@ -82,11 +82,11 @@ L:
 				klog.Fatalf("Failed to register GPU topology on node: %v", err)
 			}
 			informerFactory := informers.NewSharedInformerFactory(kubeClient, 30*time.Second)
-			controller, err := newController(kubeClient, informerFactory, stopCh)
+			controller, err := newController(devicePlugin, kubeClient, informerFactory, stopCh)
 			if err != nil {
 				klog.Fatalf("Failed to start due to %v", err)
 			}
-			controller.Start(informerFactory, stopCh)
+			controller.Run(1, stopCh)
 		}
 
 		select {

@@ -252,7 +252,8 @@ func (p *pciDevice) getAvailableGPUs() []string {
 	return res
 }
 
-func (m *NvidiaDevicePlugin) updatePodDevice(adds, dels []string) error {
+// UpdatePodDevice update the pod device with added or deleted GPU UUID
+func (dp *NvidiaDevicePlugin) UpdatePodDevice(adds, dels []string) error {
 	var allocatedMap = map[string]int{}
 	for _, s := range adds {
 		allocatedMap[s] = 0
@@ -260,9 +261,9 @@ func (m *NvidiaDevicePlugin) updatePodDevice(adds, dels []string) error {
 	for _, s := range dels {
 		allocatedMap[s] = 1
 	}
-	updateDeviceState(m.root, allocatedMap)
-	updateTree(m.root, false)
-	klog.Infof("Update Pod Device: left available devices number: %v", m.root.availDevices)
+	updateDeviceState(dp.root, allocatedMap)
+	updateTree(dp.root, false)
+	klog.Infof("Update Pod Device: left available devices number: %v", dp.root.availDevices)
 	return nil
 }
 
