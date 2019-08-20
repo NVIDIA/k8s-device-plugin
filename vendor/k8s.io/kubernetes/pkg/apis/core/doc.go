@@ -14,13 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package workqueue provides a simple queue that supports the following
-// features:
-//  * Fair: items processed in the order in which they are added.
-//  * Stingy: a single item will not be processed multiple times concurrently,
-//      and if an item is added multiple times before it can be processed, it
-//      will only be processed once.
-//  * Multiple consumers and producers. In particular, it is allowed for an
-//      item to be reenqueued while it is being processed.
-//  * Shutdown notifications.
-package workqueue
+// +k8s:deepcopy-gen=package
+
+// Package api contains the latest (or "internal") version of the
+// Kubernetes API objects. This is the API objects as represented in memory.
+// The contract presented to clients is located in the versioned packages,
+// which are sub-directories. The first one is "v1". Those packages
+// describe how a particular version is serialized to storage/network.
+package core // import "k8s.io/kubernetes/pkg/apis/core"

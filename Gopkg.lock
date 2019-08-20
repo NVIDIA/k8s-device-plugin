@@ -131,6 +131,17 @@
   version = "v1.0.1"
 
 [[projects]]
+  digest = "1:bb495ec276ab82d3dd08504bbc0594a65de8c3b22c6f2aaa92d05b73fbf3a82e"
+  name = "github.com/spf13/afero"
+  packages = [
+    ".",
+    "mem",
+  ]
+  pruneopts = "UT"
+  revision = "588a75ec4f32903aa5e39a2619ba6a4631e28424"
+  version = "v1.2.2"
+
+[[projects]]
   digest = "1:9424f440bba8f7508b69414634aef3b2b3a877e522d8a4624692412805407bb7"
   name = "github.com/spf13/pflag"
   packages = ["."]
@@ -392,7 +403,7 @@
   version = "kubernetes-1.14.0"
 
 [[projects]]
-  digest = "1:17f000e0125147ce94b9ecae210f47e065d54eba0be87d6da4d027d3500435dc"
+  digest = "1:a39d67f7e0f3501c585bdb48084556e29e374d0bd6d67cd19d0baa6587103fb5"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -542,7 +553,6 @@
     "util/homedir",
     "util/keyutil",
     "util/retry",
-    "util/workqueue",
   ]
   pruneopts = "UT"
   revision = "6ee68ca5fd8355d024d02f9db0b3b667e8357a0f"
@@ -564,9 +574,23 @@
   revision = "b3a7cee44a305be0a69e1b9ac03018307287e1b0"
 
 [[projects]]
-  digest = "1:f97f7ada535146b623eff8672903a3cecc81b9c64d85bd7aaf5458ffc2f6bae0"
+  digest = "1:d182af5e3592731f74fa49d6c487ff95c41662b6af5d65335a58379e6449555b"
   name = "k8s.io/kubernetes"
-  packages = ["pkg/kubelet/apis/deviceplugin/v1beta1"]
+  packages = [
+    "pkg/apis/core",
+    "pkg/apis/core/helper",
+    "pkg/apis/core/v1/helper",
+    "pkg/kubelet/apis/deviceplugin/v1beta1",
+    "pkg/kubelet/checkpointmanager",
+    "pkg/kubelet/checkpointmanager/checksum",
+    "pkg/kubelet/checkpointmanager/errors",
+    "pkg/kubelet/cm/devicemanager/checkpoint",
+    "pkg/kubelet/util/store",
+    "pkg/scheduler/algorithm/priorities/util",
+    "pkg/scheduler/nodeinfo",
+    "pkg/util/filesystem",
+    "pkg/util/hash",
+  ]
   pruneopts = "UT"
   revision = "f6278300bebbb750328ac16ee6dd3aa7d3549568"
   version = "v1.15.2"
@@ -599,7 +623,12 @@
     "github.com/gpucloud/gohwloc/topology",
     "google.golang.org/grpc",
     "k8s.io/api/core/v1",
+    "k8s.io/apimachinery/pkg/api/errors",
+    "k8s.io/apimachinery/pkg/apis/meta/v1",
+    "k8s.io/apimachinery/pkg/types",
     "k8s.io/apimachinery/pkg/util/runtime",
+    "k8s.io/apimachinery/pkg/util/strategicpatch",
+    "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/client-go/informers",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/scheme",
@@ -609,9 +638,10 @@
     "k8s.io/client-go/tools/cache",
     "k8s.io/client-go/tools/clientcmd",
     "k8s.io/client-go/tools/record",
-    "k8s.io/client-go/util/workqueue",
     "k8s.io/klog",
     "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1",
+    "k8s.io/kubernetes/pkg/kubelet/cm/devicemanager/checkpoint",
+    "k8s.io/kubernetes/pkg/scheduler/nodeinfo",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
