@@ -47,6 +47,8 @@ type NvidiaDevicePlugin struct {
 	root *pciDevice
 
 	topo *topology.Topology
+
+	shadowMap map[string]string
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
@@ -61,6 +63,8 @@ func NewNvidiaDevicePlugin(name string) *NvidiaDevicePlugin {
 
 		stop:   make(chan interface{}),
 		health: make(chan *pluginapi.Device),
+
+		shadowMap: map[string]string{},
 	}
 }
 
@@ -197,10 +201,11 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 			},
 		}
 
-		for _, id := range req.DevicesIDs {
+		for i, id := range req.DevicesIDs {
 			if !deviceExists(devs, id) {
 				return nil, fmt.Errorf("invalid allocation request: unknown device: %s", id)
 			}
+			m.shadowMap[id] = topoDevs[i]
 		}
 
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
