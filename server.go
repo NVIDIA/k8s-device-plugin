@@ -80,7 +80,32 @@ func (m *NvidiaDevicePlugin) Start() error {
 	m.server = grpc.NewServer([]grpc.ServerOption{}...)
 	pluginapi.RegisterDevicePluginServer(m.server, m)
 
-	go m.server.Serve(sock)
+	go func() {
+		lastCrashTime := time.Now()
+		restartCount := 0
+		for {
+			log.Println("Starting GRPC server")
+			err := m.server.Serve(sock)
+			if err != nil {
+				log.Printf("GRPC server crashed with error: %v", err)
+			}
+			// restart if it has not been too often
+			// i.e. if server has crashed more than 5 times and it didn't last more than one hour each time
+			if restartCount > 5 {
+				// quit
+				log.Fatal("GRPC server has repeatedly crashed recently. Quitting")
+			}
+			timeSinceLastCrash := time.Since(lastCrashTime).Seconds()
+			lastCrashTime = time.Now()
+			if timeSinceLastCrash > 3600 {
+				// it has been one hour since the last crash.. reset the count
+				// to reflect on the frequency
+				restartCount = 1
+			} else {
+				restartCount += 1
+			}
+		}
+	}()
 
 	// Wait for server to start by launching a blocking connexion
 	conn, err := dial(m.socket, 5*time.Second)
