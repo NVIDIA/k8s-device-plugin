@@ -1,0 +1,61 @@
+image: docker:stable
+
+services:
+    - docker:stable-dind
+
+variables:
+    ARCH: "${CI_COMMIT_REF_NAME}"
+    IMAGE: "docker.io/nvidia/k8s-device-plugin"
+
+stages:
+    - build
+    - release
+
+# Build pushes to the local gitlab registry
+build:device-plugin:
+    stage: build
+    script:
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    - docker build -t "${CI_REGISTRY_IMAGE}/k8s-device-plugin:${CI_COMMIT_REF_NAME}"
+                   -f "docker/ubuntu16.04/amd64/Dockerfile" .
+    - docker push "${CI_REGISTRY_IMAGE}/k8s-device-plugin:${CI_COMMIT_REF_NAME}"
+
+.release_template: &release_definition
+    stage: release
+    only:
+    - tags
+
+    script:
+    - OS="${CI_JOB_NAME#*:}"
+    - ARCH="${CI_JOB_NAME%:*}"
+    - VERSION="${CI_COMMIT_TAG}"
+
+    - REPOSITORY="${IMAGE}-${ARCH}"
+    - IMAGE_NAME=$([[ "${NO_OS_SUFFIX}" == true ]] && echo "${REPOSITORY}:${VERSION}" || echo "${REPOSITORY}:${VERSION}-${OS}")
+
+    - docker pull "${IMAGE_NAME}" && echo "Tag already exists, aborting so that we don't rewrite it" && false
+
+    - docker build -t "${IMAGE_NAME}" -f "docker/${OS}/${ARCH}/Dockerfile" .
+
+    - docker login -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}"
+    - docker push "${IMAGE_NAME}"
+
+amd64:centos7:
+    <<: *release_definition
+
+amd64:ubuntu16.04:
+    <<: *release_definition
+    variables:
+        NO_OS_SUFFIX: "true"
+
+ppc64le:centos7:
+   <<: *release_definition
+   tags:
+   - binfmt_misc
+   - dind
+
+ppc64le:ubuntu16.04:
+   <<: *release_definition
+   tags:
+   - binfmt_misc
+   - dind
