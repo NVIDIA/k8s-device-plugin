@@ -29,7 +29,13 @@ func getDevices() []*pluginapi.Device {
 		devs = append(devs, &pluginapi.Device{
 			ID:     d.UUID,
 			Health: pluginapi.Healthy,
-		})
+			Topology: &pluginapi.TopologyInfo{
+				Nodes: []*pluginapi.NUMANode{
+					&pluginapi.NUMANode{
+						ID: int64(*(d.CPUAffinity)),
+					},
+				},
+			}})
 	}
 
 	return devs
