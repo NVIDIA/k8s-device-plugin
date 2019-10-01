@@ -3,21 +3,22 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:442a2adddbd6d274a0be75cc491057b9ec52a5fe5cd6f04ee9b88332935277b6"
+  digest = "1:8184adbf306f9e028cdfe3adf403dec014b2dd3f7748c60a8fdf9d99056ef0d3"
   name = "github.com/NVIDIA/gpu-monitoring-tools"
   packages = ["bindings/go/nvml"]
   pruneopts = "UT"
-  revision = "e019f3b160a4df4a2f22fac2a918ad1c128e69b1"
+  revision = "0474d08c7a070ac97e9723d8f18f9cfaa64d5918"
 
 [[projects]]
-  digest = "1:28c2511ad34394d299bca82becccc5dff425819faca8b9fbef0bcd5a88c87d29"
+  digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
   pruneopts = "UT"
-  revision = "f12c6236fe7b5cf6bcf30e5935d08cb079d78334"
+  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
+  version = "v1.4.7"
 
 [[projects]]
-  digest = "1:aa01c876fb4c8fb74b7e37bcf23e5359b32335b24b7cad1d5a343d856c916305"
+  digest = "1:43ba1b70c14af39f51fb3553b40c528214d7a9ddf1dd384d8748d1010ecb9d6b"
   name = "github.com/gogo/protobuf"
   packages = [
     "gogoproto",
@@ -26,10 +27,11 @@
     "sortkeys",
   ]
   pruneopts = "UT"
-  revision = "c0656edd0d9eab7c66d1eb0c568f9039345796f7"
+  revision = "0ca988a254f991240804bf9821f3450d87ccbb1b"
+  version = "v1.3.0"
 
 [[projects]]
-  digest = "1:8f2df6167daef6f4d56d07f99bbcf4733117db0dedfd959995b9a679c52561f1"
+  digest = "1:f5ce1529abc1204444ec73779f44f94e2fa8fcdb7aca3c355b0c95947e4005c6"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -39,37 +41,47 @@
     "ptypes/timestamp",
   ]
   pruneopts = "UT"
-  revision = "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
+  revision = "6c65a5562fc06764971b7c5d05c76c75e84bdbf7"
+  version = "v1.3.2"
 
 [[projects]]
-  digest = "1:eb1363f1b6505a1bbc2fb12df67f9ab63eabff7c8465991e5b2d1c586690ba27"
+  branch = "master"
+  digest = "1:970a34b46fc4d6dcea441fb2f1419c40fa47fd53fc800bbf0951efda11d99df7"
   name = "golang.org/x/net"
   packages = [
     "context",
+    "http/httpguts",
     "http2",
     "http2/hpack",
     "idna",
     "internal/timeseries",
-    "lex/httplex",
     "trace",
   ]
   pruneopts = "UT"
-  revision = "1c05540f6879653db88113bc4a2b70aec4bd491f"
+  revision = "c00fd9afed17cfdca9b3e1e3b8de7ef2b3f0347b"
 
 [[projects]]
-  digest = "1:1435c3b63fada2c5837e52169490cbf1649b58e0146c26019d5609efdbf874ce"
+  branch = "master"
+  digest = "1:1b90e63244513e8514749f45da58e89350d35cb3e12416ce6ed95f41c2a1f177"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "95c6576299259db960f6c5b9b69ea52422860fce"
+  revision = "855e68c8590b0d6a9d08863d2982eb8aeddd98d3"
 
 [[projects]]
-  digest = "1:97337ef8cb438f9e3a99ea91a300e916ed9a96fbf3ad50f9a020d30ea9f8692f"
+  digest = "1:8d8faad6b12a3a4c819a3f9618cb6ee1fa1cfc33253abeeea8b55336721e3405"
   name = "golang.org/x/text"
   packages = [
+    "collate",
+    "collate/build",
+    "internal/colltab",
     "internal/gen",
+    "internal/language",
+    "internal/language/compact",
+    "internal/tag",
     "internal/triegen",
     "internal/ucd",
+    "language",
     "secure/bidirule",
     "transform",
     "unicode/bidi",
@@ -78,48 +90,66 @@
     "unicode/rangetable",
   ]
   pruneopts = "UT"
-  revision = "b19bf474d317b857955b12035d2c5acb57ce8b01"
+  revision = "342b2e1fbaa52c93f31447ad2c6abc048c63e475"
+  version = "v0.3.2"
 
 [[projects]]
-  digest = "1:93180612a69db36a06d801302b867d53a50a8a5f0943b34db66adc0574ea57df"
+  branch = "master"
+  digest = "1:583a0c80f5e3a9343d33aea4aead1e1afcc0043db66fdf961ddd1fe8cd3a4faf"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   pruneopts = "UT"
-  revision = "09f6ed296fc66555a25fe4ce95173148778dfa85"
+  revision = "7ee9db18f195a533914d703fa8b21f3518ffd7f2"
 
 [[projects]]
-  digest = "1:c91f531431e38fdb3172acc315845998993e55bbeb5bcf726ff3922fd1c98ddd"
+  digest = "1:6cd77d0b616d2dcebd363dfecba593f27b0151fc82cdb5fbfb96c5a7cfbc95b5"
   name = "google.golang.org/grpc"
   packages = [
     ".",
     "balancer",
+    "balancer/base",
+    "balancer/roundrobin",
+    "binarylog/grpc_binarylog_v1",
     "codes",
     "connectivity",
     "credentials",
-    "grpclb/grpc_lb_v1/messages",
+    "credentials/internal",
+    "encoding",
+    "encoding/proto",
     "grpclog",
     "internal",
+    "internal/backoff",
+    "internal/balancerload",
+    "internal/binarylog",
+    "internal/channelz",
+    "internal/envconfig",
+    "internal/grpcrand",
+    "internal/grpcsync",
+    "internal/syscall",
+    "internal/transport",
     "keepalive",
     "metadata",
     "naming",
     "peer",
     "resolver",
+    "resolver/dns",
+    "resolver/passthrough",
+    "serviceconfig",
     "stats",
     "status",
     "tap",
-    "transport",
   ]
   pruneopts = "UT"
-  revision = "5b3c4e850e90a4cf6a20ebd46c8b32a0a3afcb9e"
-  version = "v1.7.5"
+  revision = "f6d0f9ee430895e87ef1ceb5ac8f39725bafceef"
+  version = "v1.24.0"
 
 [[projects]]
-  digest = "1:f104fbafafd5a054a134f2a27436bd3a4b73f3321bda04eaab334f9de2a5f018"
+  digest = "1:6a15e7ea08b2ddf329857d6611bbc7b17801d34175b0d93088ae1aede3f47872"
   name = "k8s.io/kubernetes"
   packages = ["pkg/kubelet/apis/deviceplugin/v1beta1"]
   pruneopts = "UT"
-  revision = "91e7b4fd31fcd3d5f436da26c980becec37ceefe"
-  version = "v1.11.0"
+  revision = "2bd9643cee5b3b3a5ecbd3af49d09018f0773c77"
+  version = "v1.16.0"
 
 [solve-meta]
   analyzer-name = "dep"
