@@ -40,13 +40,18 @@ func getDevices() []*pluginapi.Device {
 	for i := uint(0); i < n; i++ {
 		d, err := nvml.NewDeviceLite(i)
 		check(err)
+		var cpu_affinity int64 = 0
+		if d.CPUAffinity != nil {
+			cpu_affinity = int64(*(d.CPUAffinity))
+		}
+
 		devs = append(devs, &pluginapi.Device{
 			ID:     d.UUID,
 			Health: pluginapi.Healthy,
 			Topology: &pluginapi.TopologyInfo{
 				Nodes: []*pluginapi.NUMANode{
 					&pluginapi.NUMANode{
-						ID: int64(*(d.CPUAffinity)),
+						ID: cpu_affinity,
 					},
 				},
 			}})
