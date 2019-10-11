@@ -31,14 +31,29 @@ build:device-plugin:
     - VERSION="${CI_COMMIT_TAG}"
 
     - REPOSITORY="${IMAGE}-${ARCH}"
-    - IMAGE_NAME=$([[ "${NO_OS_SUFFIX}" == true ]] && echo "${REPOSITORY}:${VERSION}" || echo "${REPOSITORY}:${VERSION}-${OS}")
+    - IMAGE_NAME="${REPOSITORY}:${VERSION}-${OS}"
 
     - docker pull "${IMAGE_NAME}" && echo "Tag already exists, aborting so that we don't rewrite it" && false
-
     - docker build -t "${IMAGE_NAME}" -f "docker/${OS}/${ARCH}/Dockerfile" .
 
     - docker login -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}"
     - docker push "${IMAGE_NAME}"
+
+    - >
+      if [[ "${TAG_AND_PUSH_VERSION}" == true ]]; then
+        docker tag "${IMAGE_NAME}" "${REPOSITORY}:${VERSION}"
+        docker push "${REPOSITORY}:${VERSION}"
+      fi
+    - >
+      if [[ "${TAG_AND_PUSH_LATEST}" == true ]]; then
+        docker tag "${IMAGE_NAME}" "${REPOSITORY}:latest"
+        docker push "${REPOSITORY}:latest"
+      fi
+    - >
+      if [[ "${TAG_AND_PUSH_BETA}" == true ]]; then
+        docker tag "${IMAGE_NAME}" "${REPOSITORY}:beta"
+        docker push "${REPOSITORY}:beta"
+      fi
 
 amd64:centos7:
     <<: *release_definition
@@ -46,7 +61,9 @@ amd64:centos7:
 amd64:ubuntu16.04:
     <<: *release_definition
     variables:
-        NO_OS_SUFFIX: "true"
+        TAG_AND_PUSH_VERSION: "true"
+        TAG_AND_PUSH_LATEST: "true"
+        TAG_AND_PUSH_BETA: "true"
 
 ppc64le:centos7:
    <<: *release_definition
