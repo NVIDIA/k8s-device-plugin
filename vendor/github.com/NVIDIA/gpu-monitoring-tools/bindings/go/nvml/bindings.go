@@ -297,7 +297,7 @@ func (h handle) deviceGetAllNvLinkRemotePciInfo() ([]*string, error) {
 		}
 
 		if state == nil {
-			return nil, nil
+			continue
 		}
 
 		if *state == C.NVML_FEATURE_ENABLED {
@@ -307,7 +307,7 @@ func (h handle) deviceGetAllNvLinkRemotePciInfo() ([]*string, error) {
 			}
 
 			if pci == nil {
-				return nil, nil
+				continue
 			}
 
 			busIds = append(busIds, pci)
