@@ -15,47 +15,90 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: nvidia-device-plugin-daemonset
+  annotations:
+    deprecated.daemonset.template.generation: "1"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"DaemonSet","metadata":{"annotations":{},"labels":{"addonmanager.kubernetes.io/mode":"Reconcile","k8s-app":"nvidia-gpu-device-plugin"},"name":"nvidia-gpu-device-plugin","namespace":"kube-system"},"spec":{"selector":{"matchLabels":{"k8s-app":"nvidia-gpu-device-plugin"}},"template":{"metadata":{"annotations":{"scheduler.alpha.kubernetes.io/critical-pod":""},"labels":{"k8s-app":"nvidia-gpu-device-plugin"}},"spec":{"affinity":{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"cloud.google.com/gke-accelerator","operator":"Exists"}]}]}}},"containers":[{"command":["/usr/bin/nvidia-gpu-device-plugin","-logtostderr"],"image":"k8s.gcr.io/nvidia-gpu-device-plugin@sha256:4b036e8844920336fa48f36edeb7d4398f426d6a934ba022848deed2edbf09aa","name":"nvidia-gpu-device-plugin","resources":{"limits":{"cpu":"50m","memory":"10Mi"},"requests":{"cpu":"50m","memory":"10Mi"}},"securityContext":{"privileged":true},"volumeMounts":[{"mountPath":"/device-plugin","name":"device-plugin"},{"mountPath":"/dev","name":"dev"}]}],"priorityClassName":"system-node-critical","tolerations":[{"effect":"NoExecute","operator":"Exists"},{"effect":"NoSchedule","operator":"Exists"}],"volumes":[{"hostPath":{"path":"/var/lib/kubelet/device-plugins"},"name":"device-plugin"},{"hostPath":{"path":"/dev"},"name":"dev"}]}},"updateStrategy":{"type":"RollingUpdate"}}}
+  creationTimestamp: "2019-12-15T08:43:12Z"
+  generation: 1
+  labels:
+    addonmanager.kubernetes.io/mode: Reconcile
+    k8s-app: nvidia-gpu-device-plugin
+  name: nvidia-gpu-device-plugin
   namespace: kube-system
+  resourceVersion: "578"
+  selfLink: /apis/apps/v1/namespaces/kube-system/daemonsets/nvidia-gpu-device-plugin
+  uid: edecc85b-1f16-11ea-aecf-42010a8000f4
 spec:
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
-      name: nvidia-device-plugin-ds
-  updateStrategy:
-    type: RollingUpdate
+      k8s-app: nvidia-gpu-device-plugin
   template:
     metadata:
-      # This annotation is deprecated. Kept here for backward compatibility
-      # See https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ""
+      creationTimestamp: null
       labels:
-        name: nvidia-device-plugin-ds
+        k8s-app: nvidia-gpu-device-plugin
     spec:
-      tolerations:
-      # This toleration is deprecated. Kept here for backward compatibility
-      # See https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
-      - key: CriticalAddonsOnly
-        operator: Exists
-      - key: nvidia.com/gpu
-        operator: Exists
-        effect: NoSchedule
-      # Mark this pod as a critical add-on; when enabled, the critical add-on
-      # scheduler reserves resources for critical add-on pods so that they can
-      # be rescheduled after a failure.
-      # See https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
-      priorityClassName: "system-node-critical"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cloud.google.com/gke-accelerator
+                operator: Exists
       containers:
-      - image: nvidia/k8s-device-plugin:1.0.0-beta4
-        name: nvidia-device-plugin-ctr
+      - command:
+        - /usr/bin/nvidia-gpu-device-plugin
+        - -logtostderr
+        image: k8s.gcr.io/nvidia-gpu-device-plugin@sha256:4b036e8844920336fa48f36edeb7d4398f426d6a934ba022848deed2edbf09aa
+        imagePullPolicy: IfNotPresent
+        name: nvidia-gpu-device-plugin
+        resources:
+          limits:
+            cpu: 50m
+            memory: 10Mi
+          requests:
+            cpu: 50m
+            memory: 10Mi
         securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: ["ALL"]
+          privileged: true
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
         volumeMounts:
-          - name: device-plugin
-            mountPath: /var/lib/kubelet/device-plugins
+        - mountPath: /device-plugin
+          name: device-plugin
+        - mountPath: /dev
+          name: dev
+      dnsPolicy: ClusterFirst
+      priorityClassName: system-node-critical
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - effect: NoExecute
+        operator: Exists
+      - effect: NoSchedule
+        operator: Exists
       volumes:
-        - name: device-plugin
-          hostPath:
-            path: /var/lib/kubelet/device-plugins
+      - hostPath:
+          path: /var/lib/kubelet/device-plugins
+          type: ""
+        name: device-plugin
+      - hostPath:
+          path: /dev
+          type: ""
+        name: dev
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
+status:
+  currentNumberScheduled: 0
+  desiredNumberScheduled: 0
+  numberMisscheduled: 0
+  numberReady: 0
+  observedGeneration: 1
