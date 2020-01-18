@@ -42,8 +42,8 @@ func getDevices() []*pluginapi.Device {
 		check(err)
 
 		dev := pluginapi.Device{
-			ID:		d.UUID,
-			Health:	pluginapi.Healthy,
+			ID:     d.UUID,
+			Health: pluginapi.Healthy,
 		}
 		if d.CPUAffinity != nil {
 			dev.Topology = &pluginapi.TopologyInfo{
