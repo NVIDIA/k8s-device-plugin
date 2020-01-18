@@ -152,8 +152,8 @@ func (m *NvidiaDevicePlugin) Stop() error {
 }
 
 // Register registers the device plugin for the given resourceName with Kubelet.
-func (m *NvidiaDevicePlugin) Register(kubeletEndpoint string) error {
-	conn, err := dial(kubeletEndpoint, 5*time.Second)
+func (m *NvidiaDevicePlugin) Register() error {
+	conn, err := dial(pluginapi.KubeletSocket, 5*time.Second)
 	if err != nil {
 		return err
 	}
@@ -248,7 +248,7 @@ func (m *NvidiaDevicePlugin) Serve() error {
 	}
 	log.Println("Starting to serve on", m.socket)
 
-	err = m.Register(pluginapi.KubeletSocket)
+	err = m.Register()
 	if err != nil {
 		log.Printf("Could not register device plugin: %s", err)
 		m.Stop()
