@@ -30,11 +30,6 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
-const (
-	resourceName           = "nvidia.com/gpu"
-	serverSock             = pluginapi.DevicePluginPath + "nvidia.sock"
-)
-
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
 	resourceName string
@@ -48,11 +43,11 @@ type NvidiaDevicePlugin struct {
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin() *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(resourceName string, devices []*pluginapi.Device, socket string) *NvidiaDevicePlugin {
 	return &NvidiaDevicePlugin{
 		resourceName: resourceName,
-		devs:         getDevices(),
-		socket:       serverSock,
+		devs:         devices,
+		socket:       socket,
 
 		stop:   make(chan interface{}),
 		health: make(chan *pluginapi.Device),

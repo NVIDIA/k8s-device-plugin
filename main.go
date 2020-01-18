@@ -26,6 +26,11 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
+const (
+	resourceName = "nvidia.com/gpu"
+	serverSock   = pluginapi.DevicePluginPath + "nvidia.sock"
+)
+
 func main() {
 	log.Println("Loading NVML")
 	if err := nvml.Init(); err != nil {
@@ -63,7 +68,7 @@ L:
 		if restart {
 			devicePlugin.Stop()
 
-			devicePlugin = NewNvidiaDevicePlugin()
+			devicePlugin = NewNvidiaDevicePlugin(resourceName, getDevices(), serverSock)
 			if err := devicePlugin.Serve(); err != nil {
 				log.Println("Could not contact Kubelet, retrying. Did you enable the device plugin feature gate?")
 				log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
