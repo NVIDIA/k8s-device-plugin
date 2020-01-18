@@ -37,8 +37,9 @@ const (
 
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
-	devs   []*pluginapi.Device
-	socket string
+	resourceName string
+	devs         []*pluginapi.Device
+	socket       string
 
 	stop   chan interface{}
 	health chan *pluginapi.Device
@@ -49,8 +50,9 @@ type NvidiaDevicePlugin struct {
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
 func NewNvidiaDevicePlugin() *NvidiaDevicePlugin {
 	return &NvidiaDevicePlugin{
-		devs:   getDevices(),
-		socket: serverSock,
+		resourceName: resourceName,
+		devs:         getDevices(),
+		socket:       serverSock,
 
 		stop:   make(chan interface{}),
 		health: make(chan *pluginapi.Device),
@@ -150,7 +152,7 @@ func (m *NvidiaDevicePlugin) Stop() error {
 }
 
 // Register registers the device plugin for the given resourceName with Kubelet.
-func (m *NvidiaDevicePlugin) Register(kubeletEndpoint, resourceName string) error {
+func (m *NvidiaDevicePlugin) Register(kubeletEndpoint string) error {
 	conn, err := dial(kubeletEndpoint, 5*time.Second)
 	if err != nil {
 		return err
@@ -161,7 +163,7 @@ func (m *NvidiaDevicePlugin) Register(kubeletEndpoint, resourceName string) erro
 	reqt := &pluginapi.RegisterRequest{
 		Version:      pluginapi.Version,
 		Endpoint:     path.Base(m.socket),
-		ResourceName: resourceName,
+		ResourceName: m.resourceName,
 	}
 
 	_, err = client.Register(context.Background(), reqt)
@@ -246,7 +248,7 @@ func (m *NvidiaDevicePlugin) Serve() error {
 	}
 	log.Println("Starting to serve on", m.socket)
 
-	err = m.Register(pluginapi.KubeletSocket, resourceName)
+	err = m.Register(pluginapi.KubeletSocket)
 	if err != nil {
 		log.Printf("Could not register device plugin: %s", err)
 		m.Stop()
