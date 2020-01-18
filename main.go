@@ -61,9 +61,7 @@ func main() {
 L:
 	for {
 		if restart {
-			if devicePlugin != nil {
-				devicePlugin.Stop()
-			}
+			devicePlugin.Stop()
 
 			devicePlugin = NewNvidiaDevicePlugin()
 			if err := devicePlugin.Serve(); err != nil {

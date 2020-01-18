@@ -138,7 +138,7 @@ func (m *NvidiaDevicePlugin) Start() error {
 
 // Stop stops the gRPC server
 func (m *NvidiaDevicePlugin) Stop() error {
-	if m.server == nil {
+	if m == nil || m.server == nil {
 		return nil
 	}
 
