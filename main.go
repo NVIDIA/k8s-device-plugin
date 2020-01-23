@@ -26,11 +26,21 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
-const (
-	resourceName            = "nvidia.com/gpu"
-	envNvidiaVisibleDevices = "NVIDIA_VISIBLE_DEVICES"
-	serverSock              = pluginapi.DevicePluginPath + "nvidia.sock"
-)
+type PluginParams struct {
+	getDevices     getDevicesFunc
+	healthChecker  healthCheckFunc
+	allocateEnvvar string
+	socket         string
+}
+
+var pluginParams = map[string]PluginParams{
+	"nvidia.com/gpu": {
+		getDevices,
+		watchXIDs,
+		"NVIDIA_VISIBLE_DEVICES",
+		pluginapi.DevicePluginPath + "nvidia.sock",
+	},
+}
 
 func main() {
 	log.Println("Loading NVML")
@@ -62,20 +72,36 @@ func main() {
 	sigs := newOSWatcher(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	restart := true
-	var devicePlugin *NvidiaDevicePlugin
+	plugins := map[string]*NvidiaDevicePlugin{}
+	for r := range pluginParams {
+		plugins[r] = nil
+	}
 
 L:
 	for {
 		if restart {
-			devicePlugin.Stop()
+			restart = false
 
-			devicePlugin = NewNvidiaDevicePlugin(resourceName, getDevices(), watchXIDs, envNvidiaVisibleDevices, serverSock)
-			if err := devicePlugin.Serve(); err != nil {
-				log.Println("Could not contact Kubelet, retrying. Did you enable the device plugin feature gate?")
-				log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
-				log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
-			} else {
-				restart = false
+			for r := range pluginParams {
+				plugins[r].Stop()
+
+				devices := pluginParams[r].getDevices()
+				if len(devices) == 0 {
+					continue
+				}
+
+				plugins[r] = NewNvidiaDevicePlugin(r, devices, pluginParams[r].healthChecker, pluginParams[r].allocateEnvvar, pluginParams[r].socket)
+				if err := plugins[r].Serve(); err != nil {
+					log.Println("Could not contact Kubelet, retrying. Did you enable the device plugin feature gate?")
+					log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
+					log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
+					restart = true
+					break
+				}
+			}
+
+			if restart {
+				goto L
 			}
 		}
 
@@ -96,7 +122,9 @@ L:
 				restart = true
 			default:
 				log.Printf("Received signal \"%v\", shutting down.", s)
-				devicePlugin.Stop()
+				for _, p := range plugins {
+					p.Stop()
+				}
 				break L
 			}
 		}
