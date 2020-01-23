@@ -30,18 +30,19 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
+type getDevicesFunc func() []*pluginapi.Device
 type healthCheckFunc func(ctx context.Context, devs []*pluginapi.Device, unhealthy chan<- *pluginapi.Device)
 
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
 	resourceName string
 	devs         []*pluginapi.Device
-	socket       string
 
-	stop          chan interface{}
-	health        chan *pluginapi.Device
 	healthChecker healthCheckFunc
+	health        chan *pluginapi.Device
+	stop          chan interface{}
 
+	socket string
 	server *grpc.Server
 }
 
@@ -50,11 +51,13 @@ func NewNvidiaDevicePlugin(resourceName string, devices []*pluginapi.Device, hea
 	return &NvidiaDevicePlugin{
 		resourceName: resourceName,
 		devs:         devices,
-		socket:       socket,
 
-		stop:          make(chan interface{}),
-		health:        make(chan *pluginapi.Device),
 		healthChecker: healthChecker,
+		health:        make(chan *pluginapi.Device),
+		stop:          make(chan interface{}),
+
+		socket: socket,
+		server: nil,
 	}
 }
 
