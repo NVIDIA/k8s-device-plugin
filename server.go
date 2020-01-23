@@ -98,6 +98,11 @@ func (m *NvidiaDevicePlugin) Start() error {
 		lastCrashTime := time.Now()
 		restartCount := 0
 		for {
+			// If m.server is nil at this point, we know the server has been
+			// manually stopped, so exit this loop gracefully.
+			if m.server == nil {
+				break
+			}
 			log.Println("Starting GRPC server")
 			err := m.server.Serve(sock)
 			if err != nil {
