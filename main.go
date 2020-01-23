@@ -27,8 +27,9 @@ import (
 )
 
 const (
-	resourceName = "nvidia.com/gpu"
-	serverSock   = pluginapi.DevicePluginPath + "nvidia.sock"
+	resourceName            = "nvidia.com/gpu"
+	envNvidiaVisibleDevices = "NVIDIA_VISIBLE_DEVICES"
+	serverSock              = pluginapi.DevicePluginPath + "nvidia.sock"
 )
 
 func main() {
@@ -68,7 +69,7 @@ L:
 		if restart {
 			devicePlugin.Stop()
 
-			devicePlugin = NewNvidiaDevicePlugin(resourceName, getDevices(), watchXIDs, serverSock)
+			devicePlugin = NewNvidiaDevicePlugin(resourceName, getDevices(), watchXIDs, envNvidiaVisibleDevices, serverSock)
 			if err := devicePlugin.Serve(); err != nil {
 				log.Println("Could not contact Kubelet, retrying. Did you enable the device plugin feature gate?")
 				log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")

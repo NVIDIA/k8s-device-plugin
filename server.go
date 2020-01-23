@@ -35,8 +35,9 @@ type healthCheckFunc func(ctx context.Context, devs []*pluginapi.Device, unhealt
 
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
-	resourceName string
-	devs         []*pluginapi.Device
+	resourceName   string
+	devs           []*pluginapi.Device
+	allocateEnvvar string
 
 	healthChecker healthCheckFunc
 	health        chan *pluginapi.Device
@@ -47,10 +48,11 @@ type NvidiaDevicePlugin struct {
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(resourceName string, devices []*pluginapi.Device, healthChecker healthCheckFunc, socket string) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(resourceName string, devices []*pluginapi.Device, healthChecker healthCheckFunc, allocateEnvvar string, socket string) *NvidiaDevicePlugin {
 	return &NvidiaDevicePlugin{
-		resourceName: resourceName,
-		devs:         devices,
+		resourceName:   resourceName,
+		devs:           devices,
+		allocateEnvvar: allocateEnvvar,
 
 		healthChecker: healthChecker,
 		health:        make(chan *pluginapi.Device),
@@ -199,7 +201,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 	for _, req := range reqs.ContainerRequests {
 		response := pluginapi.ContainerAllocateResponse{
 			Envs: map[string]string{
-				"NVIDIA_VISIBLE_DEVICES": strings.Join(req.DevicesIDs, ","),
+				m.allocateEnvvar: strings.Join(req.DevicesIDs, ","),
 			},
 		}
 
