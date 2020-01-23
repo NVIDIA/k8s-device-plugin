@@ -30,27 +30,31 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
+type healthCheckFunc func(ctx context.Context, devs []*pluginapi.Device, unhealthy chan<- *pluginapi.Device)
+
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
 	resourceName string
 	devs         []*pluginapi.Device
 	socket       string
 
-	stop   chan interface{}
-	health chan *pluginapi.Device
+	stop          chan interface{}
+	health        chan *pluginapi.Device
+	healthChecker healthCheckFunc
 
 	server *grpc.Server
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(resourceName string, devices []*pluginapi.Device, socket string) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(resourceName string, devices []*pluginapi.Device, healthChecker healthCheckFunc, socket string) *NvidiaDevicePlugin {
 	return &NvidiaDevicePlugin{
 		resourceName: resourceName,
 		devs:         devices,
 		socket:       socket,
 
-		stop:   make(chan interface{}),
-		health: make(chan *pluginapi.Device),
+		stop:          make(chan interface{}),
+		health:        make(chan *pluginapi.Device),
+		healthChecker: healthChecker,
 	}
 }
 
@@ -223,7 +227,7 @@ func (m *NvidiaDevicePlugin) cleanup() error {
 func (m *NvidiaDevicePlugin) healthcheck() {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	go watchXIDs(ctx, m.devs, m.health)
+	go m.healthChecker(ctx, m.devs, m.health)
 
 	for {
 		select {

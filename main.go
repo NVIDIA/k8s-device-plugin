@@ -68,7 +68,7 @@ L:
 		if restart {
 			devicePlugin.Stop()
 
-			devicePlugin = NewNvidiaDevicePlugin(resourceName, getDevices(), serverSock)
+			devicePlugin = NewNvidiaDevicePlugin(resourceName, getDevices(), watchXIDs, serverSock)
 			if err := devicePlugin.Serve(); err != nil {
 				log.Println("Could not contact Kubelet, retrying. Did you enable the device plugin feature gate?")
 				log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
