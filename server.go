@@ -33,8 +33,6 @@ import (
 const (
 	resourceName           = "nvidia.com/gpu"
 	serverSock             = pluginapi.DevicePluginPath + "nvidia.sock"
-	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
-	allHealthChecks        = "xids"
 )
 
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
@@ -190,10 +188,6 @@ func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.Device
 	}
 }
 
-func (m *NvidiaDevicePlugin) unhealthy(dev *pluginapi.Device) {
-	m.health <- dev
-}
-
 // Allocate which return list of devices.
 func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	devs := m.devs
@@ -230,26 +224,15 @@ func (m *NvidiaDevicePlugin) cleanup() error {
 }
 
 func (m *NvidiaDevicePlugin) healthcheck() {
-	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
-	if disableHealthChecks == "all" {
-		disableHealthChecks = allHealthChecks
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 
-	var xids chan *pluginapi.Device
-	if !strings.Contains(disableHealthChecks, "xids") {
-		xids = make(chan *pluginapi.Device)
-		go watchXIDs(ctx, m.devs, xids)
-	}
+	go watchXIDs(ctx, m.devs, m.health)
 
 	for {
 		select {
 		case <-m.stop:
 			cancel()
 			return
-		case dev := <-xids:
-			m.unhealthy(dev)
 		}
 	}
 }

@@ -18,12 +18,18 @@ package main
 
 import (
 	"log"
+	"os"
 	"strings"
 
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 
 	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
+)
+
+const (
+	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
+	allHealthChecks        = "xids"
 )
 
 func check(err error) {
@@ -69,7 +75,15 @@ func deviceExists(devs []*pluginapi.Device, id string) bool {
 	return false
 }
 
-func watchXIDs(ctx context.Context, devs []*pluginapi.Device, xids chan<- *pluginapi.Device) {
+func watchXIDs(ctx context.Context, devs []*pluginapi.Device, unhealthy chan<- *pluginapi.Device) {
+	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
+	if disableHealthChecks == "all" {
+		disableHealthChecks = allHealthChecks
+	}
+	if !strings.Contains(disableHealthChecks, "xids") {
+		return
+	}
+
 	eventSet := nvml.NewEventSet()
 	defer nvml.DeleteEventSet(eventSet)
 
@@ -78,7 +92,7 @@ func watchXIDs(ctx context.Context, devs []*pluginapi.Device, xids chan<- *plugi
 		if err != nil && strings.HasSuffix(err.Error(), "Not Supported") {
 			log.Printf("Warning: %s is too old to support healthchecking: %s. Marking it unhealthy.", d.ID, err)
 
-			xids <- d
+			unhealthy <- d
 			continue
 		}
 
@@ -110,7 +124,7 @@ func watchXIDs(ctx context.Context, devs []*pluginapi.Device, xids chan<- *plugi
 			// All devices are unhealthy
 			for _, d := range devs {
 				log.Printf("XidCriticalError: Xid=%d, All devices will go unhealthy.", e.Edata)
-				xids <- d
+				unhealthy <- d
 			}
 			continue
 		}
@@ -118,7 +132,7 @@ func watchXIDs(ctx context.Context, devs []*pluginapi.Device, xids chan<- *plugi
 		for _, d := range devs {
 			if d.ID == *e.UUID {
 				log.Printf("XidCriticalError: Xid=%d on GPU=%s, the device will go unhealthy.", e.Edata, d.ID)
-				xids <- d
+				unhealthy <- d
 			}
 		}
 	}
