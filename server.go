@@ -253,3 +253,12 @@ func (m *NvidiaDevicePlugin) Serve() error {
 
 	return nil
 }
+
+func deviceExists(devs []*pluginapi.Device, id string) bool {
+	for _, d := range devs {
+		if d.ID == id {
+			return true
+		}
+	}
+	return false
+}

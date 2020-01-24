@@ -66,15 +66,6 @@ func getDevices() []*pluginapi.Device {
 	return devs
 }
 
-func deviceExists(devs []*pluginapi.Device, id string) bool {
-	for _, d := range devs {
-		if d.ID == id {
-			return true
-		}
-	}
-	return false
-}
-
 func watchXIDs(ctx context.Context, devs []*pluginapi.Device, unhealthy chan<- *pluginapi.Device) {
 	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
 	if disableHealthChecks == "all" {
