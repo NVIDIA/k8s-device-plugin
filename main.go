@@ -83,47 +83,35 @@ func main() {
 		plugins[r] = nil
 	}
 
-	// Use 'restart' to indicate whether the plugins should be restarted once
-	// returning to the top of the infinite loop below. A restart is necessary,
-	// for example, if one of the plugins fails to initialize, the kubelet is
-	// restarted, or a SIGHUP signal is received.
-	restart := true
+restart:
+	// Loop through all plugins, idempotently stopping them,
+	// initializing them to a new plugin instance, and then starting
+	// them. If even one plugin fails to start properly, go back to the
+	// top of the loop and try starting them all again.
+	for r := range resources {
+		plugins[r].Stop()
 
-L:
-	for {
-		if restart {
-			restart = false
-
-			// Loop through all plugins, idempotently stopping them,
-			// initializing them to a new plugin instance, and then starting
-			// them. If even one plugin fails to start properly, go back to the
-			// top of the loop and try starting them all again.
-			for r := range resources {
-				plugins[r].Stop()
-
-				// If there are no devices associated with resource type 'r',
-				// don't create a plugin for it or start it.
-				if len(resources[r].Devices()) == 0 {
-					continue
-				}
-
-				// Create a plugin for resource type 'r' and start up its gRPC
-				// server to connect with the kubelet.
-				plugins[r] = NewNvidiaDevicePlugin(r, resources[r], resources[r].AllocateEnvvar, resources[r].Socket)
-				if err := plugins[r].Serve(); err != nil {
-					log.Println("Could not contact Kubelet, retrying. Did you enable the device plugin feature gate?")
-					log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
-					log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
-					restart = true
-					break
-				}
-			}
-
-			if restart {
-				goto L
-			}
+		// If there are no devices associated with resource type 'r',
+		// don't create a plugin for it or start it.
+		if len(resources[r].Devices()) == 0 {
+			continue
 		}
 
+		// Create a plugin for resource type 'r' and start up its gRPC
+		// server to connect with the kubelet.
+		plugins[r] = NewNvidiaDevicePlugin(r, resources[r], resources[r].AllocateEnvvar, resources[r].Socket)
+		if err := plugins[r].Serve(); err != nil {
+			log.Println("Could not contact Kubelet, retrying. Did you enable the device plugin feature gate?")
+			log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
+			log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
+			goto restart
+		}
+	}
+
+events:
+	// Start an infinite loop, waiting for several indicators to either log
+	// some messages, trigger a restart of the plugins, or exit the program.
+	for {
 		select {
 		// Detect a kubelet restart by watching for a newly created
 		// 'pluginapi.KubeletSocket' file. When this occurs, restart this loop,
@@ -131,7 +119,7 @@ L:
 		case event := <-watcher.Events:
 			if event.Name == pluginapi.KubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
 				log.Printf("inotify: %s created, restarting.", pluginapi.KubeletSocket)
-				restart = true
+				goto restart
 			}
 
 		// Watch for any other fs errors and log them.
@@ -145,13 +133,13 @@ L:
 			switch s {
 			case syscall.SIGHUP:
 				log.Println("Received SIGHUP, restarting.")
-				restart = true
+				goto restart
 			default:
 				log.Printf("Received signal \"%v\", shutting down.", s)
 				for _, p := range plugins {
 					p.Stop()
 				}
-				break L
+				break events
 			}
 		}
 	}
