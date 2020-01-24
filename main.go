@@ -26,6 +26,8 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
+// PluginParams defines the set of parameters needed to initialize an
+// NvidiaDevicePlugin
 type PluginParams struct {
 	getDevices     getDevicesFunc
 	healthChecker  healthCheckFunc
@@ -33,6 +35,8 @@ type PluginParams struct {
 	socket         string
 }
 
+// pluginParams maps a set of resource types (e.g. nvidia.com/gpu) to the set
+// of PluginParams needed to initialize an NvidiaDevicePlugin for that type.
 var pluginParams = map[string]PluginParams{
 	"nvidia.com/gpu": {
 		getDevices,
@@ -71,25 +75,42 @@ func main() {
 	log.Println("Starting OS watcher.")
 	sigs := newOSWatcher(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	restart := true
+	// Create a map of plugins keyed by the same resource types present in
+	// 'pluginParams'. For now, we just initialize each of these plugins to
+	// 'nil'. They will be properly initialized to a real plugin in the
+	// infinite loop below.
 	plugins := map[string]*NvidiaDevicePlugin{}
 	for r := range pluginParams {
 		plugins[r] = nil
 	}
+
+	// Use 'restart' to indicate whether the plugins should be restarted once
+	// returning to the top of the infinite loop below. A restart is necessary,
+	// for example, if one of the plugins fails to initialize, the kubelet is
+	// restarted, or a SIGHUP signal is received.
+	restart := true
 
 L:
 	for {
 		if restart {
 			restart = false
 
+			// Loop through all plugins, idempotently stopping them,
+			// initializing them to a new plugin instance, and then starting
+			// them. If even one plugin fails to start properly, go back to the
+			// top of the loop and try starting them all again.
 			for r := range pluginParams {
 				plugins[r].Stop()
 
+				// If there are no devices associated with plugin 'r', don't
+				// create it or start it.
 				devices := pluginParams[r].getDevices()
 				if len(devices) == 0 {
 					continue
 				}
 
+				// Create a plugin for resource type 'r' and start up its gRPC
+				// server to connect with the kubelet.
 				plugins[r] = NewNvidiaDevicePlugin(r, devices, pluginParams[r].healthChecker, pluginParams[r].allocateEnvvar, pluginParams[r].socket)
 				if err := plugins[r].Serve(); err != nil {
 					log.Println("Could not contact Kubelet, retrying. Did you enable the device plugin feature gate?")
@@ -106,15 +127,22 @@ L:
 		}
 
 		select {
+		// Detect a kubelet restart by watching for a newly created
+		// 'pluginapi.KubeletSocket' file. When this occurs, restart this loop,
+		// reinitializing all of the plugins in the process.
 		case event := <-watcher.Events:
 			if event.Name == pluginapi.KubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
 				log.Printf("inotify: %s created, restarting.", pluginapi.KubeletSocket)
 				restart = true
 			}
 
+		// Watch for any other fs errors and log them.
 		case err := <-watcher.Errors:
 			log.Printf("inotify: %s", err)
 
+		// Watch for any signals from the OS. On SIGHUP, restart this loop,
+		// reinitializing all of the plugins in the process. On all other
+		// signals, exit the loop and exit the program.
 		case s := <-sigs:
 			switch s {
 			case syscall.SIGHUP:
