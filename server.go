@@ -30,33 +30,30 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
-type getDevicesFunc func() []*pluginapi.Device
-type healthCheckFunc func(ctx context.Context, devs []*pluginapi.Device, unhealthy chan<- *pluginapi.Device)
-
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
+	ResourceManager
+
 	resourceName   string
-	devs           []*pluginapi.Device
 	allocateEnvvar string
 
-	healthChecker healthCheckFunc
-	health        chan *pluginapi.Device
-	stop          chan interface{}
+	health chan *pluginapi.Device
+	stop   chan interface{}
 
 	socket string
 	server *grpc.Server
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(resourceName string, devices []*pluginapi.Device, healthChecker healthCheckFunc, allocateEnvvar string, socket string) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(resourceName string, resourceManager ResourceManager, allocateEnvvar string, socket string) *NvidiaDevicePlugin {
 	return &NvidiaDevicePlugin{
+		ResourceManager: resourceManager,
+
 		resourceName:   resourceName,
-		devs:           devices,
 		allocateEnvvar: allocateEnvvar,
 
-		healthChecker: healthChecker,
-		health:        make(chan *pluginapi.Device),
-		stop:          make(chan interface{}),
+		health: make(chan *pluginapi.Device),
+		stop:   make(chan interface{}),
 
 		socket: socket,
 		server: nil,
@@ -179,7 +176,7 @@ func (m *NvidiaDevicePlugin) Register() error {
 
 // ListAndWatch lists devices and update that list according to the health status
 func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
-	s.Send(&pluginapi.ListAndWatchResponse{Devices: m.devs})
+	s.Send(&pluginapi.ListAndWatchResponse{Devices: m.Devices()})
 
 	for {
 		select {
@@ -189,14 +186,13 @@ func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.Device
 			// FIXME: there is no way to recover from the Unhealthy state.
 			d.Health = pluginapi.Unhealthy
 			log.Printf("device marked unhealthy: %s", d.ID)
-			s.Send(&pluginapi.ListAndWatchResponse{Devices: m.devs})
+			s.Send(&pluginapi.ListAndWatchResponse{Devices: m.Devices()})
 		}
 	}
 }
 
 // Allocate which return list of devices.
 func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
-	devs := m.devs
 	responses := pluginapi.AllocateResponse{}
 	for _, req := range reqs.ContainerRequests {
 		response := pluginapi.ContainerAllocateResponse{
@@ -206,7 +202,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 		}
 
 		for _, id := range req.DevicesIDs {
-			if !deviceExists(devs, id) {
+			if !deviceExists(m.Devices(), id) {
 				return nil, fmt.Errorf("invalid allocation request: unknown device: %s", id)
 			}
 		}
@@ -232,7 +228,7 @@ func (m *NvidiaDevicePlugin) cleanup() error {
 func (m *NvidiaDevicePlugin) healthcheck() {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	go m.healthChecker(ctx, m.devs, m.health)
+	go m.CheckHealth(ctx, m.health)
 
 	for {
 		select {

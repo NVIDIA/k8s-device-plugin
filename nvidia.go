@@ -32,13 +32,33 @@ const (
 	allHealthChecks        = "xids"
 )
 
+type ResourceManager interface {
+	Devices() []*pluginapi.Device
+	CheckHealth(ctx context.Context, unhealthy chan<- *pluginapi.Device)
+}
+
+type GpuDeviceManager struct {
+	cachedDevices []*pluginapi.Device
+}
+
 func check(err error) {
 	if err != nil {
 		log.Panicln("Fatal:", err)
 	}
 }
 
-func getDevices() []*pluginapi.Device {
+func NewGpuDeviceManager() *GpuDeviceManager {
+	return &GpuDeviceManager{}
+}
+
+func (g *GpuDeviceManager) Devices() []*pluginapi.Device {
+	if g.cachedDevices == nil {
+		g.cachedDevices = g.getDevices()
+	}
+	return g.cachedDevices
+}
+
+func (g *GpuDeviceManager) getDevices() []*pluginapi.Device {
 	n, err := nvml.GetDeviceCount()
 	check(err)
 
@@ -66,7 +86,7 @@ func getDevices() []*pluginapi.Device {
 	return devs
 }
 
-func watchXIDs(ctx context.Context, devs []*pluginapi.Device, unhealthy chan<- *pluginapi.Device) {
+func (g *GpuDeviceManager) CheckHealth(ctx context.Context, unhealthy chan<- *pluginapi.Device) {
 	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
 	if disableHealthChecks == "all" {
 		disableHealthChecks = allHealthChecks
@@ -78,7 +98,7 @@ func watchXIDs(ctx context.Context, devs []*pluginapi.Device, unhealthy chan<- *
 	eventSet := nvml.NewEventSet()
 	defer nvml.DeleteEventSet(eventSet)
 
-	for _, d := range devs {
+	for _, d := range g.Devices() {
 		err := nvml.RegisterEventForDevice(eventSet, nvml.XidCriticalError, d.ID)
 		if err != nil && strings.HasSuffix(err.Error(), "Not Supported") {
 			log.Printf("Warning: %s is too old to support healthchecking: %s. Marking it unhealthy.", d.ID, err)
@@ -113,14 +133,14 @@ func watchXIDs(ctx context.Context, devs []*pluginapi.Device, unhealthy chan<- *
 
 		if e.UUID == nil || len(*e.UUID) == 0 {
 			// All devices are unhealthy
-			for _, d := range devs {
+			for _, d := range g.Devices() {
 				log.Printf("XidCriticalError: Xid=%d, All devices will go unhealthy.", e.Edata)
 				unhealthy <- d
 			}
 			continue
 		}
 
-		for _, d := range devs {
+		for _, d := range g.Devices() {
 			if d.ID == *e.UUID {
 				log.Printf("XidCriticalError: Xid=%d on GPU=%s, the device will go unhealthy.", e.Edata, d.ID)
 				unhealthy <- d
