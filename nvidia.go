@@ -23,7 +23,6 @@ import (
 
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 
-	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
@@ -34,12 +33,10 @@ const (
 
 type ResourceManager interface {
 	Devices() []*pluginapi.Device
-	CheckHealth(ctx context.Context, unhealthy chan<- *pluginapi.Device)
+	CheckHealth(stop <-chan interface{}, devices []*pluginapi.Device, unhealthy chan<- *pluginapi.Device)
 }
 
-type GpuDeviceManager struct {
-	cachedDevices []*pluginapi.Device
-}
+type GpuDeviceManager struct {}
 
 func check(err error) {
 	if err != nil {
@@ -52,13 +49,6 @@ func NewGpuDeviceManager() *GpuDeviceManager {
 }
 
 func (g *GpuDeviceManager) Devices() []*pluginapi.Device {
-	if g.cachedDevices == nil {
-		g.cachedDevices = g.getDevices()
-	}
-	return g.cachedDevices
-}
-
-func (g *GpuDeviceManager) getDevices() []*pluginapi.Device {
 	n, err := nvml.GetDeviceCount()
 	check(err)
 
@@ -86,7 +76,7 @@ func (g *GpuDeviceManager) getDevices() []*pluginapi.Device {
 	return devs
 }
 
-func (g *GpuDeviceManager) CheckHealth(ctx context.Context, unhealthy chan<- *pluginapi.Device) {
+func (g *GpuDeviceManager) CheckHealth(stop <-chan interface{}, devices []*pluginapi.Device, unhealthy chan<- *pluginapi.Device) {
 	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
 	if disableHealthChecks == "all" {
 		disableHealthChecks = allHealthChecks
@@ -98,7 +88,7 @@ func (g *GpuDeviceManager) CheckHealth(ctx context.Context, unhealthy chan<- *pl
 	eventSet := nvml.NewEventSet()
 	defer nvml.DeleteEventSet(eventSet)
 
-	for _, d := range g.Devices() {
+	for _, d := range devices {
 		err := nvml.RegisterEventForDevice(eventSet, nvml.XidCriticalError, d.ID)
 		if err != nil && strings.HasSuffix(err.Error(), "Not Supported") {
 			log.Printf("Warning: %s is too old to support healthchecking: %s. Marking it unhealthy.", d.ID, err)
@@ -114,7 +104,7 @@ func (g *GpuDeviceManager) CheckHealth(ctx context.Context, unhealthy chan<- *pl
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-stop:
 			return
 		default:
 		}
@@ -133,14 +123,14 @@ func (g *GpuDeviceManager) CheckHealth(ctx context.Context, unhealthy chan<- *pl
 
 		if e.UUID == nil || len(*e.UUID) == 0 {
 			// All devices are unhealthy
-			for _, d := range g.Devices() {
+			for _, d := range devices {
 				log.Printf("XidCriticalError: Xid=%d, All devices will go unhealthy.", e.Edata)
 				unhealthy <- d
 			}
 			continue
 		}
 
-		for _, d := range g.Devices() {
+		for _, d := range devices {
 			if d.ID == *e.UUID {
 				log.Printf("XidCriticalError: Xid=%d on GPU=%s, the device will go unhealthy.", e.Edata, d.ID)
 				unhealthy <- d

@@ -26,23 +26,14 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
-// PluginResourceManager wraps an underlying ResourceManager with the set of
-// parameters we need to pass to the instantiation of an NvidiaDevicePlugin for
-// a specific resource type.
-type PluginResourceManager struct {
-	ResourceManager
-	AllocateEnvvar string
-	Socket         string
-}
-
-// resources maps a set of resource types (e.g. nvidia.com/gpu) to the set of
-// PluginResourceManagers needed for the NvidiaDevicePlugin of that type.
-var resources = map[string]PluginResourceManager{
-	"nvidia.com/gpu": {
-		NewGpuDeviceManager(),
-		"NVIDIA_VISIBLE_DEVICES",
-		pluginapi.DevicePluginPath + "nvidia.sock",
-	},
+func getAllPlugins() []*NvidiaDevicePlugin {
+	return []*NvidiaDevicePlugin{
+		NewNvidiaDevicePlugin(
+			"nvidia.com/gpu",
+			NewGpuDeviceManager(),
+			"NVIDIA_VISIBLE_DEVICES",
+			pluginapi.DevicePluginPath + "nvidia.sock"),
+	}
 }
 
 func main() {
@@ -57,12 +48,6 @@ func main() {
 	}
 	defer func() { log.Println("Shutdown of NVML returned:", nvml.Shutdown()) }()
 
-	log.Println("Fetching devices.")
-	if len(resources["nvidia.com/gpu"].Devices()) == 0 {
-		log.Println("No devices found. Waiting indefinitely.")
-		select {}
-	}
-
 	log.Println("Starting FS watcher.")
 	watcher, err := newFSWatcher(pluginapi.DevicePluginPath)
 	if err != nil {
@@ -74,38 +59,34 @@ func main() {
 	log.Println("Starting OS watcher.")
 	sigs := newOSWatcher(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	// Create a map of plugins keyed by the same resource types present in
-	// 'resources'. For now, we just initialize each of these plugins to
-	// 'nil'. They will be properly initialized to a real plugin in the
-	// infinite loop below.
-	plugins := map[string]*NvidiaDevicePlugin{}
-	for r := range resources {
-		plugins[r] = nil
-	}
+	log.Println("Retreiving plugins.")
+	plugins := getAllPlugins()
 
 restart:
-	// Loop through all plugins, idempotently stopping them,
-	// initializing them to a new plugin instance, and then starting
-	// them. If even one plugin fails to start properly, go back to the
-	// top of the loop and try starting them all again.
-	for r := range resources {
-		plugins[r].Stop()
+	// Loop through all plugins, idempotently stopping them, and then starting
+	// them if they have any devices to serve. If even one plugin fails to
+	// start properly, try starting them all again.
+	started := 0
+	for _, p := range plugins {
+		p.Stop()
 
-		// If there are no devices associated with resource type 'r',
-		// don't create a plugin for it or start it.
-		if len(resources[r].Devices()) == 0 {
+		// Just continue if there are no devices to serve for plugin p.
+		if len(p.Devices()) == 0 {
 			continue
 		}
 
-		// Create a plugin for resource type 'r' and start up its gRPC
-		// server to connect with the kubelet.
-		plugins[r] = NewNvidiaDevicePlugin(r, resources[r], resources[r].AllocateEnvvar, resources[r].Socket)
-		if err := plugins[r].Serve(); err != nil {
+		// Start the gRPC server for plugin p and connect it with the kubelet.
+		if err := p.Serve(); err != nil {
 			log.Println("Could not contact Kubelet, retrying. Did you enable the device plugin feature gate?")
 			log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
 			log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
 			goto restart
 		}
+		started++
+	}
+
+	if started == 0 {
+		log.Println("No devices found. Waiting indefinitely.")
 	}
 
 events:
@@ -115,7 +96,7 @@ events:
 		select {
 		// Detect a kubelet restart by watching for a newly created
 		// 'pluginapi.KubeletSocket' file. When this occurs, restart this loop,
-		// reinitializing all of the plugins in the process.
+		// restarting all of the plugins in the process.
 		case event := <-watcher.Events:
 			if event.Name == pluginapi.KubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
 				log.Printf("inotify: %s created, restarting.", pluginapi.KubeletSocket)
@@ -127,7 +108,7 @@ events:
 			log.Printf("inotify: %s", err)
 
 		// Watch for any signals from the OS. On SIGHUP, restart this loop,
-		// reinitializing all of the plugins in the process. On all other
+		// restarting all of the plugins in the process. On all other
 		// signals, exit the loop and exit the program.
 		case s := <-sigs:
 			switch s {
