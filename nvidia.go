@@ -81,7 +81,7 @@ func (g *GpuDeviceManager) CheckHealth(stop <-chan interface{}, devices []*plugi
 	if disableHealthChecks == "all" {
 		disableHealthChecks = allHealthChecks
 	}
-	if !strings.Contains(disableHealthChecks, "xids") {
+	if strings.Contains(disableHealthChecks, "xids") {
 		return
 	}
 
