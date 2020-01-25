@@ -98,7 +98,7 @@ func (m *NvidiaDevicePlugin) dial(unixSocketPath string, timeout time.Duration) 
 }
 
 // Serve starts the gRPC server of the device plugin.
-func (m *NvidiaDevicePlugin) Start() error {
+func (m *NvidiaDevicePlugin) Serve() error {
 	sock, err := net.Listen("unix", m.socket)
 	if err != nil {
 		return err
@@ -227,10 +227,10 @@ func (m *NvidiaDevicePlugin) PreStartContainer(context.Context, *pluginapi.PreSt
 
 // Start starts the gRPC server, registers the device plugin with the Kubelet,
 // and starts the device healthecks.
-func (m *NvidiaDevicePlugin) Serve() error {
+func (m *NvidiaDevicePlugin) Start() error {
 	m.initialize()
 
-	err := m.Start()
+	err := m.Serve()
 	if err != nil {
 		log.Printf("Could not start device plugin for '%s': %s", m.resourceName, err)
 		m.cleanup()

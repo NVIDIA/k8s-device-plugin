@@ -76,7 +76,7 @@ restart:
 		}
 
 		// Start the gRPC server for plugin p and connect it with the kubelet.
-		if err := p.Serve(); err != nil {
+		if err := p.Start(); err != nil {
 			log.Println("Could not contact Kubelet, retrying. Did you enable the device plugin feature gate?")
 			log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
 			log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
