@@ -76,25 +76,44 @@ func (m *NvidiaDevicePlugin) cleanup() {
 	m.stop = nil
 }
 
-func (m *NvidiaDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
-	return &pluginapi.DevicePluginOptions{}, nil
+// Start starts the gRPC server, registers the device plugin with the Kubelet,
+// and starts the device healthecks.
+func (m *NvidiaDevicePlugin) Start() error {
+	m.initialize()
+
+	err := m.Serve()
+	if err != nil {
+		log.Printf("Could not start device plugin for '%s': %s", m.resourceName, err)
+		m.cleanup()
+		return err
+	}
+	log.Printf("Starting to serve '%s' on %s", m.resourceName, m.socket)
+
+	err = m.Register()
+	if err != nil {
+		log.Printf("Could not register device plugin: %s", err)
+		m.Stop()
+		return err
+	}
+	log.Printf("Registered device plugin for '%s' with Kubelet", m.resourceName)
+
+	go m.CheckHealth(m.stop, m.cachedDevices, m.health)
+
+	return nil
 }
 
-
-// dial establishes the gRPC communication with the registered device plugin.
-func (m *NvidiaDevicePlugin) dial(unixSocketPath string, timeout time.Duration) (*grpc.ClientConn, error) {
-	c, err := grpc.Dial(unixSocketPath, grpc.WithInsecure(), grpc.WithBlock(),
-		grpc.WithTimeout(timeout),
-		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("unix", addr, timeout)
-		}),
-	)
-
-	if err != nil {
-		return nil, err
+// Stop stops the gRPC server.
+func (m *NvidiaDevicePlugin) Stop() error {
+	if m == nil || m.server == nil {
+		return nil
 	}
-
-	return c, nil
+	log.Printf("Stopping to serve '%s' on %s", m.resourceName, m.socket)
+	m.server.Stop()
+	if err := os.Remove(m.socket); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	m.cleanup()
+	return nil
 }
 
 // Serve starts the gRPC server of the device plugin.
@@ -146,20 +165,6 @@ func (m *NvidiaDevicePlugin) Serve() error {
 	return nil
 }
 
-// Stop stops the gRPC server.
-func (m *NvidiaDevicePlugin) Stop() error {
-	if m == nil || m.server == nil {
-		return nil
-	}
-	log.Printf("Stopping to serve '%s' on %s", m.resourceName, m.socket)
-	m.server.Stop()
-	if err := os.Remove(m.socket); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	m.cleanup()
-	return nil
-}
-
 // Register registers the device plugin for the given resourceName with Kubelet.
 func (m *NvidiaDevicePlugin) Register() error {
 	conn, err := m.dial(pluginapi.KubeletSocket, 5*time.Second)
@@ -180,6 +185,10 @@ func (m *NvidiaDevicePlugin) Register() error {
 		return err
 	}
 	return nil
+}
+
+func (m *NvidiaDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
+	return &pluginapi.DevicePluginOptions{}, nil
 }
 
 // ListAndWatch lists devices and update that list according to the health status
@@ -225,31 +234,22 @@ func (m *NvidiaDevicePlugin) PreStartContainer(context.Context, *pluginapi.PreSt
 	return &pluginapi.PreStartContainerResponse{}, nil
 }
 
-// Start starts the gRPC server, registers the device plugin with the Kubelet,
-// and starts the device healthecks.
-func (m *NvidiaDevicePlugin) Start() error {
-	m.initialize()
+// dial establishes the gRPC communication with the registered device plugin.
+func (m *NvidiaDevicePlugin) dial(unixSocketPath string, timeout time.Duration) (*grpc.ClientConn, error) {
+	c, err := grpc.Dial(unixSocketPath, grpc.WithInsecure(), grpc.WithBlock(),
+		grpc.WithTimeout(timeout),
+		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
+			return net.DialTimeout("unix", addr, timeout)
+		}),
+	)
 
-	err := m.Serve()
 	if err != nil {
-		log.Printf("Could not start device plugin for '%s': %s", m.resourceName, err)
-		m.cleanup()
-		return err
+		return nil, err
 	}
-	log.Printf("Starting to serve '%s' on %s", m.resourceName, m.socket)
 
-	err = m.Register()
-	if err != nil {
-		log.Printf("Could not register device plugin: %s", err)
-		m.Stop()
-		return err
-	}
-	log.Printf("Registered device plugin for '%s' with Kubelet", m.resourceName)
-
-	go m.CheckHealth(m.stop, m.cachedDevices, m.health)
-
-	return nil
+	return c, nil
 }
+
 
 func (m *NvidiaDevicePlugin) deviceExists(devs []*pluginapi.Device, id string) bool {
 	for _, d := range devs {
