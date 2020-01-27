@@ -2,7 +2,7 @@
 
 package nvml
 
-// #include "nvml_dl.h"
+// #include "nvml.h"
 import "C"
 
 import (

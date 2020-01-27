@@ -3,7 +3,7 @@
 package nvml
 
 // #cgo LDFLAGS: -ldl -Wl,--unresolved-symbols=ignore-in-object-files
-// #include "nvml_dl.h"
+// #include "nvml.h"
 import "C"
 
 import (
@@ -58,7 +58,7 @@ func errorString(ret C.nvmlReturn_t) error {
 }
 
 func init_() error {
-	r := C.nvmlInit_dl()
+	r := dl.nvmlInit()
 	if r == C.NVML_ERROR_LIBRARY_NOT_FOUND {
 		return errors.New("could not load NVML library")
 	}
@@ -146,7 +146,7 @@ func WaitForEvent(es EventSet, timeout uint) (Event, error) {
 }
 
 func shutdown() error {
-	return errorString(C.nvmlShutdown_dl())
+	return errorString(dl.nvmlShutdown())
 }
 
 func systemGetCudaDriverVersion() (*uint, *uint, error) {
@@ -192,12 +192,17 @@ func deviceGetHandleByIndex(idx uint) (handle, error) {
 }
 
 func deviceGetTopologyCommonAncestor(h1, h2 handle) (*uint, error) {
-	var level C.nvmlGpuTopologyLevel_t
-
-	r := C.nvmlDeviceGetTopologyCommonAncestor_dl(h1.dev, h2.dev, &level)
-	if r == C.NVML_ERROR_FUNCTION_NOT_FOUND || r == C.NVML_ERROR_NOT_SUPPORTED {
+	r := dl.lookupSymbol("nvmlDeviceGetTopologyCommonAncestor")
+	if r == C.NVML_ERROR_FUNCTION_NOT_FOUND {
 		return nil, nil
 	}
+
+	var level C.nvmlGpuTopologyLevel_t
+	r = C.nvmlDeviceGetTopologyCommonAncestor(h1.dev, h2.dev, &level)
+	if r == C.NVML_ERROR_NOT_SUPPORTED {
+		return nil, nil
+	}
+
 	return uintPtr(C.uint(level)), errorString(r)
 }
 
