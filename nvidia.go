@@ -18,13 +18,25 @@ package main
 
 import (
 	"log"
+	"os"
 	"strings"
 
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 
-	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
+
+const (
+	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
+	allHealthChecks        = "xids"
+)
+
+type ResourceManager interface {
+	Devices() []*pluginapi.Device
+	CheckHealth(stop <-chan interface{}, devices []*pluginapi.Device, unhealthy chan<- *pluginapi.Device)
+}
+
+type GpuDeviceManager struct {}
 
 func check(err error) {
 	if err != nil {
@@ -32,7 +44,11 @@ func check(err error) {
 	}
 }
 
-func getDevices() []*pluginapi.Device {
+func NewGpuDeviceManager() *GpuDeviceManager {
+	return &GpuDeviceManager{}
+}
+
+func (g *GpuDeviceManager) Devices() []*pluginapi.Device {
 	n, err := nvml.GetDeviceCount()
 	check(err)
 
@@ -42,8 +58,8 @@ func getDevices() []*pluginapi.Device {
 		check(err)
 
 		dev := pluginapi.Device{
-			ID:		d.UUID,
-			Health:	pluginapi.Healthy,
+			ID:     d.UUID,
+			Health: pluginapi.Healthy,
 		}
 		if d.CPUAffinity != nil {
 			dev.Topology = &pluginapi.TopologyInfo{
@@ -60,25 +76,24 @@ func getDevices() []*pluginapi.Device {
 	return devs
 }
 
-func deviceExists(devs []*pluginapi.Device, id string) bool {
-	for _, d := range devs {
-		if d.ID == id {
-			return true
-		}
+func (g *GpuDeviceManager) CheckHealth(stop <-chan interface{}, devices []*pluginapi.Device, unhealthy chan<- *pluginapi.Device) {
+	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
+	if disableHealthChecks == "all" {
+		disableHealthChecks = allHealthChecks
 	}
-	return false
-}
+	if strings.Contains(disableHealthChecks, "xids") {
+		return
+	}
 
-func watchXIDs(ctx context.Context, devs []*pluginapi.Device, xids chan<- *pluginapi.Device) {
 	eventSet := nvml.NewEventSet()
 	defer nvml.DeleteEventSet(eventSet)
 
-	for _, d := range devs {
+	for _, d := range devices {
 		err := nvml.RegisterEventForDevice(eventSet, nvml.XidCriticalError, d.ID)
 		if err != nil && strings.HasSuffix(err.Error(), "Not Supported") {
 			log.Printf("Warning: %s is too old to support healthchecking: %s. Marking it unhealthy.", d.ID, err)
 
-			xids <- d
+			unhealthy <- d
 			continue
 		}
 
@@ -89,7 +104,7 @@ func watchXIDs(ctx context.Context, devs []*pluginapi.Device, xids chan<- *plugi
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-stop:
 			return
 		default:
 		}
@@ -108,17 +123,17 @@ func watchXIDs(ctx context.Context, devs []*pluginapi.Device, xids chan<- *plugi
 
 		if e.UUID == nil || len(*e.UUID) == 0 {
 			// All devices are unhealthy
-			for _, d := range devs {
+			for _, d := range devices {
 				log.Printf("XidCriticalError: Xid=%d, All devices will go unhealthy.", e.Edata)
-				xids <- d
+				unhealthy <- d
 			}
 			continue
 		}
 
-		for _, d := range devs {
+		for _, d := range devices {
 			if d.ID == *e.UUID {
 				log.Printf("XidCriticalError: Xid=%d on GPU=%s, the device will go unhealthy.", e.Edata, d.ID)
-				xids <- d
+				unhealthy <- d
 			}
 		}
 	}
