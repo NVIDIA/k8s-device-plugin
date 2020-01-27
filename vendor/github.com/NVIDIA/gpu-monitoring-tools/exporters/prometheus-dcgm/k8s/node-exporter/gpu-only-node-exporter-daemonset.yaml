@@ -1,0 +1,96 @@
+# Node exporter collecting only GPU metrics from dcgm-exporter.
+# Except textfile collector, all other collectors that are enabled by default are disabled.
+# Refer: https://github.com/prometheus/node_exporter/tree/release-0.16
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: dcgm-exporter
+spec:
+  template:
+    metadata:
+      labels:
+        app: dcgm-exporter
+      name: dcgm-exporter
+    spec:
+      nodeSelector:
+        hardware-type: NVIDIAGPU
+      containers:
+      - image: quay.io/prometheus/node-exporter:v0.16.0
+        name: node-exporter
+        args:
+        - "--web.listen-address=0.0.0.0:9101"
+        - "--path.procfs=/host/proc"
+        - "--path.sysfs=/host/sys"
+        - "--collector.textfile.directory=/run/prometheus"
+        - "--no-collector.arp"
+        - "--no-collector.bcache"
+        - "--no-collector.bonding"
+        - "--no-collector.conntrack"
+        - "--no-collector.cpu"
+        - "--no-collector.diskstats"
+        - "--no-collector.edac"
+        - "--no-collector.entropy"
+        - "--no-collector.filefd"
+        - "--no-collector.filesystem"
+        - "--no-collector.hwmon"
+        - "--no-collector.infiniband"
+        - "--no-collector.ipvs"
+        - "--no-collector.loadavg"
+        - "--no-collector.mdadm"
+        - "--no-collector.meminfo"
+        - "--no-collector.netdev"
+        - "--no-collector.netstat"
+        - "--no-collector.nfs"
+        - "--no-collector.nfsd"
+        - "--no-collector.sockstat"
+        - "--no-collector.stat"
+        - "--no-collector.time"
+        - "--no-collector.timex"
+        - "--no-collector.uname"
+        - "--no-collector.vmstat"
+        - "--no-collector.wifi"
+        - "--no-collector.xfs"
+        - "--no-collector.zfs"
+        ports:
+        - name: metrics
+          containerPort: 9101
+          hostPort: 9101
+        resources:
+          requests:
+            memory: 30Mi
+            cpu: 100m
+          limits:
+            memory: 50Mi
+            cpu: 200m
+        volumeMounts:
+        - name: proc
+          readOnly:  true
+          mountPath: /host/proc
+        - name: sys
+          readOnly: true
+          mountPath: /host/sys
+        - name: collector-textfiles
+          readOnly: true
+          mountPath: /run/prometheus
+      - image: nvidia/dcgm-exporter:1.4.6
+        name: nvidia-dcgm-exporter
+        securityContext:
+          runAsNonRoot: false
+          runAsUser: 0
+        volumeMounts:
+        - name: collector-textfiles
+          mountPath: /run/prometheus
+
+      hostNetwork: true
+      hostPID: true
+
+      volumes:
+      - name: proc
+        hostPath:
+          path: /proc
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: collector-textfiles
+        emptyDir:
+          medium: Memory
