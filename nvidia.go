@@ -77,6 +77,27 @@ func (g *GpuDeviceManager) Devices() []*pluginapi.Device {
 }
 
 func (g *GpuDeviceManager) CheckHealth(stop <-chan interface{}, devices []*pluginapi.Device, unhealthy chan<- *pluginapi.Device) {
+	checkHealth(stop, devices, unhealthy)
+}
+
+func buildPluginDevice(d *nvml.Device) *pluginapi.Device {
+	dev := pluginapi.Device{
+		ID:     d.UUID,
+		Health: pluginapi.Healthy,
+	}
+	if d.CPUAffinity != nil {
+		dev.Topology = &pluginapi.TopologyInfo{
+			Nodes: []*pluginapi.NUMANode{
+				&pluginapi.NUMANode{
+					ID: int64(*(d.CPUAffinity)),
+				},
+			},
+		}
+	}
+	return &dev
+}
+
+func checkHealth(stop <-chan interface{}, devices []*pluginapi.Device, unhealthy chan<- *pluginapi.Device) {
 	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
 	if disableHealthChecks == "all" {
 		disableHealthChecks = allHealthChecks
