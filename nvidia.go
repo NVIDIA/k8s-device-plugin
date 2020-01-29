@@ -92,14 +92,10 @@ func (g *GpuDeviceManager) CheckHealth(stop <-chan interface{}, devices []*plugi
 		err := nvml.RegisterEventForDevice(eventSet, nvml.XidCriticalError, d.ID)
 		if err != nil && strings.HasSuffix(err.Error(), "Not Supported") {
 			log.Printf("Warning: %s is too old to support healthchecking: %s. Marking it unhealthy.", d.ID, err)
-
 			unhealthy <- d
 			continue
 		}
-
-		if err != nil {
-			log.Panicln("Fatal:", err)
-		}
+		check(err)
 	}
 
 	for {
@@ -123,8 +119,8 @@ func (g *GpuDeviceManager) CheckHealth(stop <-chan interface{}, devices []*plugi
 
 		if e.UUID == nil || len(*e.UUID) == 0 {
 			// All devices are unhealthy
+			log.Printf("XidCriticalError: Xid=%d, All devices will go unhealthy.", e.Edata)
 			for _, d := range devices {
-				log.Printf("XidCriticalError: Xid=%d, All devices will go unhealthy.", e.Edata)
 				unhealthy <- d
 			}
 			continue
@@ -132,7 +128,7 @@ func (g *GpuDeviceManager) CheckHealth(stop <-chan interface{}, devices []*plugi
 
 		for _, d := range devices {
 			if d.ID == *e.UUID {
-				log.Printf("XidCriticalError: Xid=%d on GPU=%s, the device will go unhealthy.", e.Edata, d.ID)
+				log.Printf("XidCriticalError: Xid=%d on Device=%s, the device will go unhealthy.", e.Edata, d.ID)
 				unhealthy <- d
 			}
 		}
