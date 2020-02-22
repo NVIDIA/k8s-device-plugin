@@ -77,7 +77,7 @@ func (m *NvidiaDevicePlugin) cleanup() {
 }
 
 // Start starts the gRPC server, registers the device plugin with the Kubelet,
-// and starts the device healthecks.
+// and starts the device healthchecks.
 func (m *NvidiaDevicePlugin) Start() error {
 	m.initialize()
 
