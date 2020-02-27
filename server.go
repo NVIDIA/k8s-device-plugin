@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -25,7 +26,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
@@ -35,12 +35,12 @@ type NvidiaDevicePlugin struct {
 	ResourceManager
 	resourceName   string
 	allocateEnvvar string
-	socket string
+	socket         string
 
-	server *grpc.Server
+	server        *grpc.Server
 	cachedDevices []*pluginapi.Device
-	health chan *pluginapi.Device
-	stop   chan interface{}
+	health        chan *pluginapi.Device
+	stop          chan interface{}
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
@@ -57,7 +57,6 @@ func NewNvidiaDevicePlugin(resourceName string, resourceManager ResourceManager,
 		server:        nil,
 		health:        nil,
 		stop:          nil,
-
 	}
 }
 
@@ -236,20 +235,19 @@ func (m *NvidiaDevicePlugin) PreStartContainer(context.Context, *pluginapi.PreSt
 
 // dial establishes the gRPC communication with the registered device plugin.
 func (m *NvidiaDevicePlugin) dial(unixSocketPath string, timeout time.Duration) (*grpc.ClientConn, error) {
-	c, err := grpc.Dial(unixSocketPath, grpc.WithInsecure(), grpc.WithBlock(),
-		grpc.WithTimeout(timeout),
-		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
+	ctx, cancel := context.WithTimeout(context.Background, timeout)
+	defer cancel()
+
+	c, err := grpc.DialContext(ctx, unixSocketPath, grpc.WithInsecure(), grpc.WithBlock(),
+		grpc.WithContextDialer(func(_ context.Context, addr string) (net.Conn, error) {
 			return net.DialTimeout("unix", addr, timeout)
 		}),
 	)
-
 	if err != nil {
 		return nil, err
 	}
-
 	return c, nil
 }
-
 
 func (m *NvidiaDevicePlugin) deviceExists(devs []*pluginapi.Device, id string) bool {
 	for _, d := range devs {
