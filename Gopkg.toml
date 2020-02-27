@@ -34,16 +34,12 @@
   version = "1.4.7"
 
 [[constraint]]
-  branch = "master"
-  name = "golang.org/x/net"
-
-[[constraint]]
   name = "google.golang.org/grpc"
-  version = "1.24.0"
+  version = "1.26.0"
 
 [[constraint]]
   name = "k8s.io/kubernetes"
-  version = "1.16.0"
+  version = "1.16.6"
 
 [prune]
   go-tests = true
