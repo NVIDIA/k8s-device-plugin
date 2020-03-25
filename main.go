@@ -37,17 +37,20 @@ func getAllPlugins() []*NvidiaDevicePlugin {
 }
 
 func main() {
-	log.Println("Loading NVML")
-	if err := nvml.Init(); err != nil {
-		log.Printf("Failed to initialize NVML: %s.", err)
-		log.Printf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
-		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
-		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
+	if _, err := os.Stat("/sys/module/tegra_fuse/parameters/tegra_chip_id"); !os.IsNotExist(err) {
+                log.Printf("NVIDIA Tegra device detected!")
+        } else {
+		log.Println("Loading NVML")
+		if err := nvml.Init(); err != nil {
+			log.Printf("Failed to initialize NVML: %s.", err)
+			log.Printf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
+			log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
+			log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
 
-		select {}
+			select {}
+		}
+		defer func() { log.Println("Shutdown of NVML returned:", nvml.Shutdown()) }()
 	}
-	defer func() { log.Println("Shutdown of NVML returned:", nvml.Shutdown()) }()
-
 	log.Println("Starting FS watcher.")
 	watcher, err := newFSWatcher(pluginapi.DevicePluginPath)
 	if err != nil {
