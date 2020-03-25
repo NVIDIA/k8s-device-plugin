@@ -49,10 +49,21 @@ func NewGpuDeviceManager() *GpuDeviceManager {
 }
 
 func (g *GpuDeviceManager) Devices() []*pluginapi.Device {
+	var devs []*pluginapi.Device
+
+	// If it is a Tegra board only one GPU is available
+	if _, err := os.Stat("/sys/module/tegra_fuse/parameters/tegra_chip_id"); !os.IsNotExist(err) {
+		// On Jetson there is no way of getting an UUID, however default is 0
+		// More info : https://forums.developer.nvidia.com/t/chip-uid/48217#5100481
+		 var device = &nvml.Device{
+			UUID: "0",
+		}
+		devs = append(devs, buildPluginDevice(device))
+		return devs
+	}
 	n, err := nvml.GetDeviceCount()
 	check(err)
 
-	var devs []*pluginapi.Device
 	for i := uint(0); i < n; i++ {
 		d, err := nvml.NewDeviceLite(i)
 		check(err)
@@ -89,6 +100,10 @@ func checkHealth(stop <-chan interface{}, devices []*pluginapi.Device, unhealthy
 		disableHealthChecks = allHealthChecks
 	}
 	if strings.Contains(disableHealthChecks, "xids") {
+		return
+	}
+	// No health cheks for Jetson
+	if _, err := os.Stat("/sys/module/tegra_fuse/parameters/tegra_chip_id"); !os.IsNotExist(err) {
 		return
 	}
 
