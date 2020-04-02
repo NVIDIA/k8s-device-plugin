@@ -31,9 +31,14 @@ const (
 	allHealthChecks        = "xids"
 )
 
+type Device struct {
+	pluginapi.Device
+	Path string
+}
+
 type ResourceManager interface {
-	Devices() []*pluginapi.Device
-	CheckHealth(stop <-chan interface{}, devices []*pluginapi.Device, unhealthy chan<- *pluginapi.Device)
+	Devices() []*Device
+	CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device)
 }
 
 type GpuDeviceManager struct {}
@@ -48,29 +53,29 @@ func NewGpuDeviceManager() *GpuDeviceManager {
 	return &GpuDeviceManager{}
 }
 
-func (g *GpuDeviceManager) Devices() []*pluginapi.Device {
+func (g *GpuDeviceManager) Devices() []*Device {
 	n, err := nvml.GetDeviceCount()
 	check(err)
 
-	var devs []*pluginapi.Device
+	var devs []*Device
 	for i := uint(0); i < n; i++ {
 		d, err := nvml.NewDeviceLite(i)
 		check(err)
-		devs = append(devs, buildPluginDevice(d))
+		devs = append(devs, buildDevice(d))
 	}
 
 	return devs
 }
 
-func (g *GpuDeviceManager) CheckHealth(stop <-chan interface{}, devices []*pluginapi.Device, unhealthy chan<- *pluginapi.Device) {
+func (g *GpuDeviceManager) CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device) {
 	checkHealth(stop, devices, unhealthy)
 }
 
-func buildPluginDevice(d *nvml.Device) *pluginapi.Device {
-	dev := pluginapi.Device{
-		ID:     d.UUID,
-		Health: pluginapi.Healthy,
-	}
+func buildDevice(d *nvml.Device) *Device {
+	dev := Device{}
+	dev.ID = d.UUID
+	dev.Health = pluginapi.Healthy
+	dev.Path = d.Path
 	if d.CPUAffinity != nil {
 		dev.Topology = &pluginapi.TopologyInfo{
 			Nodes: []*pluginapi.NUMANode{
@@ -83,7 +88,7 @@ func buildPluginDevice(d *nvml.Device) *pluginapi.Device {
 	return &dev
 }
 
-func checkHealth(stop <-chan interface{}, devices []*pluginapi.Device, unhealthy chan<- *pluginapi.Device) {
+func checkHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device) {
 	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
 	if disableHealthChecks == "all" {
 		disableHealthChecks = allHealthChecks
