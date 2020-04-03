@@ -11,6 +11,7 @@ Publishing the container is automated through gitlab-ci and only requires on to 
 - [ ] Update the README changelog
 
 - [ ] Update the device plugin (1.16+) to use the new container version (nvidia-device-plugin.yml)
+- [ ] Update the device plugin compatible with the CPUManager (1.16+) to use the new container version (nvidia-device-plugin-compat-with-cpumanager.yml)
 - [ ] Update the legacy device plugin (pre 1.16) to use the new container version (extensions-v1beta1-nvidia-device-plugin.yml)
 - [ ] Commit, Tag and Push to Gitlab
 - [ ] Trigger the [multi arch manifest CI](https://gitlab.com/nvidia/container-images/dockerhub-manifests)
