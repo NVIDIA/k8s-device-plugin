@@ -17,6 +17,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 	"syscall"
@@ -37,6 +38,8 @@ func getAllPlugins() []*NvidiaDevicePlugin {
 }
 
 func main() {
+	flag.Parse()
+
 	log.Println("Loading NVML")
 	if err := nvml.Init(); err != nil {
 		log.Printf("Failed to initialize NVML: %s.", err)

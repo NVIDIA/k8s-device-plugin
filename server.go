@@ -17,6 +17,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -30,6 +31,8 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
+var passDeviceSpecs = flag.Bool("pass-device-specs", false, "pass the list of DeviceSpecs to the kubelet on Allocate()")
+
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
 	ResourceManager
@@ -38,8 +41,8 @@ type NvidiaDevicePlugin struct {
 	socket string
 
 	server *grpc.Server
-	cachedDevices []*pluginapi.Device
-	health chan *pluginapi.Device
+	cachedDevices []*Device
+	health chan *Device
 	stop   chan interface{}
 }
 
@@ -57,14 +60,13 @@ func NewNvidiaDevicePlugin(resourceName string, resourceManager ResourceManager,
 		server:        nil,
 		health:        nil,
 		stop:          nil,
-
 	}
 }
 
 func (m *NvidiaDevicePlugin) initialize() {
 	m.cachedDevices = m.Devices()
 	m.server = grpc.NewServer([]grpc.ServerOption{}...)
-	m.health = make(chan *pluginapi.Device)
+	m.health = make(chan *Device)
 	m.stop = make(chan interface{})
 }
 
@@ -193,7 +195,7 @@ func (m *NvidiaDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.
 
 // ListAndWatch lists devices and update that list according to the health status
 func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
-	s.Send(&pluginapi.ListAndWatchResponse{Devices: m.cachedDevices})
+	s.Send(&pluginapi.ListAndWatchResponse{Devices: m.apiDevices()})
 
 	for {
 		select {
@@ -203,7 +205,7 @@ func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.Device
 			// FIXME: there is no way to recover from the Unhealthy state.
 			d.Health = pluginapi.Unhealthy
 			log.Printf("'%s' device marked unhealthy: %s", m.resourceName, d.ID)
-			s.Send(&pluginapi.ListAndWatchResponse{Devices: m.cachedDevices})
+			s.Send(&pluginapi.ListAndWatchResponse{Devices: m.apiDevices()})
 		}
 	}
 }
@@ -212,16 +214,19 @@ func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.Device
 func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	responses := pluginapi.AllocateResponse{}
 	for _, req := range reqs.ContainerRequests {
+		for _, id := range req.DevicesIDs {
+			if !m.deviceExists(id) {
+				return nil, fmt.Errorf("invalid allocation request for '%s': unknown device: %s", m.resourceName, id)
+			}
+		}
+
 		response := pluginapi.ContainerAllocateResponse{
 			Envs: map[string]string{
 				m.allocateEnvvar: strings.Join(req.DevicesIDs, ","),
 			},
 		}
-
-		for _, id := range req.DevicesIDs {
-			if !m.deviceExists(m.cachedDevices, id) {
-				return nil, fmt.Errorf("invalid allocation request for '%s': unknown device: %s", m.resourceName, id)
-			}
+		if *passDeviceSpecs {
+			response.Devices = m.apiDeviceSpecs(req.DevicesIDs)
 		}
 
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
@@ -250,12 +255,56 @@ func (m *NvidiaDevicePlugin) dial(unixSocketPath string, timeout time.Duration) 
 	return c, nil
 }
 
-
-func (m *NvidiaDevicePlugin) deviceExists(devs []*pluginapi.Device, id string) bool {
-	for _, d := range devs {
+func (m *NvidiaDevicePlugin) deviceExists(id string) bool {
+	for _, d := range m.cachedDevices {
 		if d.ID == id {
 			return true
 		}
 	}
 	return false
+}
+
+func (m *NvidiaDevicePlugin) apiDevices() []*pluginapi.Device {
+	var pdevs []*pluginapi.Device
+	for _, d := range m.cachedDevices {
+		pdevs = append(pdevs, &d.Device)
+	}
+	return pdevs
+}
+
+func (m *NvidiaDevicePlugin) apiDeviceSpecs(filter []string) []*pluginapi.DeviceSpec {
+	var specs []*pluginapi.DeviceSpec
+
+	paths := []string{
+		"/dev/nvidiactl",
+		"/dev/nvidia-uvm",
+		"/dev/nvidia-uvm-tools",
+		"/dev/nvidia-modeset",
+	}
+
+	for _, p := range paths {
+		if _, err := os.Stat(p); err == nil {
+			spec := &pluginapi.DeviceSpec{
+				ContainerPath: p,
+				HostPath:      p,
+				Permissions:   "rw",
+			}
+			specs = append(specs, spec)
+		}
+	}
+
+	for _, d := range m.cachedDevices {
+		for _, id := range filter {
+			if d.ID == id {
+				spec := &pluginapi.DeviceSpec{
+					ContainerPath: d.Path,
+					HostPath:      d.Path,
+					Permissions:   "rw",
+				}
+				specs = append(specs, spec)
+			}
+		}
+	}
+
+	return specs
 }
