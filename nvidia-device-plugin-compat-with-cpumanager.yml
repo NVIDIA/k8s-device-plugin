@@ -48,10 +48,9 @@ spec:
       containers:
       - image: nvidia/k8s-device-plugin:1.0.0-beta5
         name: nvidia-device-plugin-ctr
+        args: ["--pass-device-specs"]
         securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: ["ALL"]
+          privileged: true
         volumeMounts:
           - name: device-plugin
             mountPath: /var/lib/kubelet/device-plugins

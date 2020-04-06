@@ -70,7 +70,7 @@ Once you have enabled this option on *all* the GPU nodes you wish to use,
 you can then enable GPU support in your cluster by deploying the following Daemonset:
 
 ```shell
-$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/1.0.0-beta4/nvidia-device-plugin.yml
+$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/1.0.0-beta5/nvidia-device-plugin.yml
 ```
 
 ### Running GPU Jobs
@@ -115,24 +115,24 @@ The next sections are focused on building the device plugin and running it.
 #### Build
 Option 1, pull the prebuilt image from [Docker Hub](https://hub.docker.com/r/nvidia/k8s-device-plugin):
 ```shell
-$ docker pull nvidia/k8s-device-plugin:1.0.0-beta4
+$ docker pull nvidia/k8s-device-plugin:1.0.0-beta5
 ```
 
 Option 2, build without cloning the repository:
 ```shell
-$ docker build -t nvidia/k8s-device-plugin:1.0.0-beta4 https://github.com/NVIDIA/k8s-device-plugin.git#1.0.0-beta4
+$ docker build -t nvidia/k8s-device-plugin:1.0.0-beta5 https://github.com/NVIDIA/k8s-device-plugin.git#1.0.0-beta5
 ```
 
 Option 3, if you want to modify the code:
 ```shell
 $ git clone https://github.com/NVIDIA/k8s-device-plugin.git && cd k8s-device-plugin
-$ git checkout 1.0.0-beta4
-$ docker build -t nvidia/k8s-device-plugin:1.0.0-beta4 .
+$ git checkout 1.0.0-beta5
+$ docker build -t nvidia/k8s-device-plugin:1.0.0-beta5 .
 ```
 
 #### Run locally
 ```shell
-$ docker run --security-opt=no-new-privileges --cap-drop=ALL --network=none -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia/k8s-device-plugin:1.0.0-beta4
+$ docker run --security-opt=no-new-privileges --cap-drop=ALL --network=none -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia/k8s-device-plugin:1.0.0-beta5
 ```
 
 #### Deploy as Daemon Set:
@@ -153,6 +153,17 @@ $ ./k8s-device-plugin
 ```
 
 ## Changelog
+
+### Version 1.0.0-beta5
+
+- Add a new plugin.yml variant that is compatible with the CPUManager
+- Change CMD in Dockerfile to ENTRYPOINT
+- Add flag to optionally return list of device nodes in Allocate() call
+- Refactor device plugin to eventually handle multiple resource types
+- Move plugin error retry to event loop so we can exit with a signal
+- Update all vendored dependencies to their latest versions
+- Fix bug that was inadvertently *always* disabling health checks
+- Update minimal driver version to 384.81
 
 ### Version 1.0.0-beta4
 
