@@ -18,6 +18,7 @@
 
 ##### Global variables #####
 
+DOCKER   ?= docker
 REGISTRY ?= nvidia
 VERSION  ?= 1.0.0-beta.6
 
@@ -39,17 +40,17 @@ push-latest:
 	$(DOCKER) push "$(REGISTRY)/k8s-device-plugin:latest"
 
 ubuntu16.04:
-	docker build --pull \
+	$(DOCKER) build --pull \
 		--tag $(REGISTRY)/k8s-device-plugin:$(VERSION)-ubuntu16.04 \
 		--file docker/amd64/Dockerfile.ubuntu16.04 .
 
 ubi8:
-	docker build --pull \
+	$(DOCKER) build --pull \
 		--tag $(REGISTRY)/k8s-device-plugin:$(VERSION)-ubi8 \
 		--file docker/amd64/Dockerfile.ubi8 .
 
 centos7:
-	docker build --pull \
+	$(DOCKER) build --pull \
 		--tag $(REGISTRY)/k8s-device-plugin:$(VERSION)-centos7 \
 		--file docker/amd64/Dockerfile.centos7 .
 
