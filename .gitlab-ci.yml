@@ -1,11 +1,6 @@
 image: docker:stable
-
 services:
     - docker:stable-dind
-
-variables:
-    ARCH: "${CI_COMMIT_REF_NAME}"
-    IMAGE: "docker.io/nvidia/k8s-device-plugin"
 
 stages:
     - build
@@ -15,10 +10,13 @@ stages:
 build:device-plugin:
     stage: build
     script:
+    - apk add make
     - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-    - docker build -t "${CI_REGISTRY_IMAGE}/k8s-device-plugin:${CI_COMMIT_REF_NAME}"
-                   -f "docker/ubuntu16.04/amd64/Dockerfile" .
-    - docker push "${CI_REGISTRY_IMAGE}/k8s-device-plugin:${CI_COMMIT_REF_NAME}"
+
+    - make REGISTRY="${CI_REGISTRY_IMAGE}" TAG="${CI_COMMIT_SHA}" all
+    - make REGISTRY="${CI_REGISTRY_IMAGE}" TAG="${CI_COMMIT_SHA}" push
+    - make REGISTRY="${CI_REGISTRY_IMAGE}" TAG="${CI_COMMIT_SHA}" push-short
+    - make REGISTRY="${CI_REGISTRY_IMAGE}" TAG="${CI_COMMIT_SHA}" push-latest
 
 .release_template: &release_definition
     stage: release
@@ -26,53 +24,10 @@ build:device-plugin:
     - tags
 
     script:
-    - OS="${CI_JOB_NAME#*:}"
-    - ARCH="${CI_JOB_NAME%:*}"
-    - VERSION="${CI_COMMIT_TAG}"
-
-    - REPOSITORY="${IMAGE}-${ARCH}"
-    - IMAGE_NAME="${REPOSITORY}:${VERSION}-${OS}"
-
-    - docker pull "${IMAGE_NAME}" && echo "Tag already exists, aborting so that we don't rewrite it" && false
-    - docker build -t "${IMAGE_NAME}" -f "docker/${OS}/${ARCH}/Dockerfile" .
-
+    - apk add make
     - docker login -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}"
-    - docker push "${IMAGE_NAME}"
 
-    - >
-      if [[ "${TAG_AND_PUSH_VERSION}" == true ]]; then
-        docker tag "${IMAGE_NAME}" "${REPOSITORY}:${VERSION}"
-        docker push "${REPOSITORY}:${VERSION}"
-      fi
-    - >
-      if [[ "${TAG_AND_PUSH_LATEST}" == true ]]; then
-        docker tag "${IMAGE_NAME}" "${REPOSITORY}:latest"
-        docker push "${REPOSITORY}:latest"
-      fi
-    - >
-      if [[ "${TAG_AND_PUSH_BETA}" == true ]]; then
-        docker tag "${IMAGE_NAME}" "${REPOSITORY}:beta"
-        docker push "${REPOSITORY}:beta"
-      fi
-
-amd64:centos7:
-    <<: *release_definition
-
-amd64:ubuntu16.04:
-    <<: *release_definition
-    variables:
-        TAG_AND_PUSH_VERSION: "true"
-        TAG_AND_PUSH_LATEST: "true"
-        TAG_AND_PUSH_BETA: "true"
-
-ppc64le:centos7:
-   <<: *release_definition
-   tags:
-   - binfmt_misc
-   - dind
-
-ppc64le:ubuntu16.04:
-   <<: *release_definition
-   tags:
-   - binfmt_misc
-   - dind
+    - make TAG="${CI_COMMIT_SHA}" all
+    - make TAG="${CI_COMMIT_SHA}" push
+    - make TAG="${CI_COMMIT_SHA}" push-short
+    - make TAG="${CI_COMMIT_SHA}" push-latest
