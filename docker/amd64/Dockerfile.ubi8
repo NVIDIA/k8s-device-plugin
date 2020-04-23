@@ -38,6 +38,15 @@ FROM registry.access.redhat.com/ubi8:latest
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=utility
 
+LABEL io.k8s.display-name="NVIDIA Device Plugin"
+LABEL name="NVIDIA Device Plugin"
+LABEL vendor="NVIDIA"
+LABEL version="1.0.0-beta"
+LABEL release="N/A"
+LABEL summary="NVIDIA device plugin for Kubernetes"
+LABEL description="See summary"
+
+
 COPY --from=build /go/bin/nvidia-device-plugin /usr/bin/nvidia-device-plugin
 
 CMD ["nvidia-device-plugin"]
