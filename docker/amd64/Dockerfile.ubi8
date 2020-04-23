@@ -46,6 +46,7 @@ LABEL release="N/A"
 LABEL summary="NVIDIA device plugin for Kubernetes"
 LABEL description="See summary"
 
+COPY ./LICENSE ./licenses/LICENSE
 
 COPY --from=build /go/bin/nvidia-device-plugin /usr/bin/nvidia-device-plugin
 
