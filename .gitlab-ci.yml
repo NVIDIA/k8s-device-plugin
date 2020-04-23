@@ -27,7 +27,7 @@ release:device-plugin:
     - apk add make
     - docker login -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}"
 
-    - make VERSION="${CI_COMMIT_SHA}" all
-    - make VERSION="${CI_COMMIT_SHA}" push
-    - make VERSION="${CI_COMMIT_SHA}" push-short
-    - make VERSION="${CI_COMMIT_SHA}" push-latest
+    - make VERSION="${CI_COMMIT_TAG}" all
+    - make VERSION="${CI_COMMIT_TAG}" push
+    - make VERSION="${CI_COMMIT_TAG}" push-short
+    - make VERSION="${CI_COMMIT_TAG}" push-latest
