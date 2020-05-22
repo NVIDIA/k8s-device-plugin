@@ -52,9 +52,9 @@ spec:
         securityContext:
           privileged: true
         volumeMounts:
-          - name: device-plugin
-            mountPath: /var/lib/kubelet/device-plugins
-      volumes:
         - name: device-plugin
-          hostPath:
-            path: /var/lib/kubelet/device-plugins
+          mountPath: /var/lib/kubelet/device-plugins
+      volumes:
+      - name: device-plugin
+        hostPath:
+          path: /var/lib/kubelet/device-plugins
