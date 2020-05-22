@@ -156,6 +156,10 @@ $ ./k8s-device-plugin
 
 ### Version 1.0.0-beta6
 
+- Update CI, build system, and vendoring mechanism
+
+### Version 1.0.0-beta5
+
 - Add a new plugin.yml variant that is compatible with the CPUManager
 - Change CMD in Dockerfile to ENTRYPOINT
 - Add flag to optionally return list of device nodes in Allocate() call
