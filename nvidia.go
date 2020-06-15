@@ -41,7 +41,14 @@ type ResourceManager interface {
 	CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device)
 }
 
-type GpuDeviceManager struct{}
+type GpuDeviceManager struct {
+	skipMigEnabledGPUs bool
+}
+
+type MigDeviceManager struct {
+	strategy MigStrategy
+	resource string
+}
 
 func check(err error) {
 	if err != nil {
@@ -49,8 +56,17 @@ func check(err error) {
 	}
 }
 
-func NewGpuDeviceManager() *GpuDeviceManager {
-	return &GpuDeviceManager{}
+func NewGpuDeviceManager(skipMigEnabledGPUs bool) *GpuDeviceManager {
+	return &GpuDeviceManager{
+		skipMigEnabledGPUs: skipMigEnabledGPUs,
+	}
+}
+
+func NewMigDeviceManager(strategy MigStrategy, resource string) *MigDeviceManager {
+	return &MigDeviceManager{
+		strategy: strategy,
+		resource: resource,
+	}
 }
 
 func (g *GpuDeviceManager) Devices() []*Device {
@@ -61,13 +77,55 @@ func (g *GpuDeviceManager) Devices() []*Device {
 	for i := uint(0); i < n; i++ {
 		d, err := nvml.NewDeviceLite(i)
 		check(err)
+
+		migEnabled, err := d.IsMigEnabled()
+		check(err)
+
+		if migEnabled && g.skipMigEnabledGPUs {
+			continue
+		}
+
 		devs = append(devs, buildDevice(d))
 	}
 
 	return devs
 }
 
+func (m *MigDeviceManager) Devices() []*Device {
+	n, err := nvml.GetDeviceCount()
+	check(err)
+
+	var devs []*Device
+	for i := uint(0); i < n; i++ {
+		d, err := nvml.NewDeviceLite(i)
+		check(err)
+
+		migEnabled, err := d.IsMigEnabled()
+		check(err)
+
+		if !migEnabled {
+			continue
+		}
+
+		migs, err := d.GetMigDevices()
+		check(err)
+
+		for _, mig := range migs {
+			if !m.strategy.MatchesResource(mig, m.resource) {
+				continue
+			}
+			devs = append(devs, buildDevice(mig))
+		}
+	}
+
+	return devs
+}
+
 func (g *GpuDeviceManager) CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device) {
+	checkHealth(stop, devices, unhealthy)
+}
+
+func (g *MigDeviceManager) CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device) {
 	checkHealth(stop, devices, unhealthy)
 }
 
@@ -101,7 +159,12 @@ func checkHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *D
 	defer nvml.DeleteEventSet(eventSet)
 
 	for _, d := range devices {
-		err := nvml.RegisterEventForDevice(eventSet, nvml.XidCriticalError, d.ID)
+		gpu, _, _, err := nvml.ParseMigDeviceUUID(d.ID)
+		if err != nil {
+			gpu = d.ID
+		}
+
+		err = nvml.RegisterEventForDevice(eventSet, nvml.XidCriticalError, gpu)
 		if err != nil && strings.HasSuffix(err.Error(), "Not Supported") {
 			log.Printf("Warning: %s is too old to support healthchecking: %s. Marking it unhealthy.", d.ID, err)
 			unhealthy <- d
@@ -139,7 +202,16 @@ func checkHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *D
 		}
 
 		for _, d := range devices {
-			if d.ID == *e.UUID {
+			// Please see https://github.com/NVIDIA/gpu-monitoring-tools/blob/148415f505c96052cb3b7fdf443b34ac853139ec/bindings/go/nvml/nvml.h#L1424
+			// for the rationale why gi and ci can be set as such when the UUID is a full GPU UUID and not a MIG device UUID.
+			gpu, gi, ci, err := nvml.ParseMigDeviceUUID(d.ID)
+			if err != nil {
+				gpu = d.ID
+				gi = 0xFFFFFFFF
+				ci = 0xFFFFFFFF
+			}
+
+			if gpu == *e.UUID && gi == *e.GpuInstanceId && ci == *e.ComputeInstanceId {
 				log.Printf("XidCriticalError: Xid=%d on Device=%s, the device will go unhealthy.", e.Edata, d.ID)
 				unhealthy <- d
 			}
