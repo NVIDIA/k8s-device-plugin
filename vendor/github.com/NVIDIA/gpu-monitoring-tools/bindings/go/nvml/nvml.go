@@ -602,3 +602,97 @@ func (d *Device) GetDeviceMode() (mode *DeviceMode, err error) {
 	}
 	return
 }
+
+func (d *Device) IsMigEnabled() (bool, error) {
+	return d.handle.isMigEnabled()
+}
+
+func (d *Device) GetMigDevices() ([]*Device, error) {
+	handles, err := d.handle.getMigDevices()
+	if err != nil {
+		return nil, err
+	}
+
+	var devices []*Device
+	for _, h := range handles {
+		uuid, err := h.deviceGetUUID()
+		if err != nil {
+			return nil, err
+		}
+
+		model, err := d.deviceGetName()
+		if err != nil {
+			return nil, err
+		}
+
+		totalMem, _, err := h.deviceGetMemoryInfo()
+		if err != nil {
+			return nil, err
+		}
+
+		device := &Device{
+			handle:      h,
+			UUID:        *uuid,
+			Model:       model,
+			Memory:      totalMem,
+			CPUAffinity: d.CPUAffinity,
+			Path:        d.Path,
+		}
+
+		devices = append(devices, device)
+	}
+
+	return devices, nil
+}
+
+func (d *Device) GetMigParentDevice() (*Device, error) {
+	parent, err := d.handle.deviceGetDeviceHandleFromMigDeviceHandle()
+	if err != nil {
+		return nil, err
+	}
+
+	index, err := parent.deviceGetIndex()
+	if err != nil {
+		return nil, err
+	}
+
+	return NewDevice(*index)
+}
+
+func (d *Device) GetMigParentDeviceLite() (*Device, error) {
+	parent, err := d.handle.deviceGetDeviceHandleFromMigDeviceHandle()
+	if err != nil {
+		return nil, err
+	}
+
+	index, err := parent.deviceGetIndex()
+	if err != nil {
+		return nil, err
+	}
+
+	return NewDeviceLite(*index)
+}
+
+func ParseMigDeviceUUID(mig string) (string, uint, uint, error) {
+	tokens := strings.SplitN(mig, "-", 2)
+	if len(tokens) != 2 || tokens[0] != "MIG" {
+		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+	}
+
+	tokens = strings.SplitN(tokens[1], "/", 3)
+	if len(tokens) != 3 || !strings.HasPrefix(tokens[0], "GPU-") {
+		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+	}
+
+	gi, err := strconv.Atoi(tokens[1])
+	if err != nil {
+		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+	}
+
+	ci, err := strconv.Atoi(tokens[2])
+	if err != nil {
+		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+	}
+
+	return tokens[0], uint(gi), uint(ci), nil
+}
