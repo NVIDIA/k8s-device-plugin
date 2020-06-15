@@ -26,6 +26,7 @@ import (
 const (
 	MigStrategyNone   = "none"
 	MigStrategySingle = "single"
+	MigStrategyMixed  = "mixed"
 )
 
 type MigStrategyResourceSet map[string]struct{}
@@ -41,12 +42,15 @@ func NewMigStrategy(strategy string) (MigStrategy, error) {
 		return &migStrategyNone{}, nil
 	case MigStrategySingle:
 		return &migStrategySingle{}, nil
+	case MigStrategyMixed:
+		return &migStrategyMixed{}, nil
 	}
 	return nil, fmt.Errorf("Unknown strategy: %v", strategy)
 }
 
 type migStrategyNone struct{}
 type migStrategySingle struct{}
+type migStrategyMixed struct{}
 
 // getAllMigDevices() across all full GPUs
 func getAllMigDevices() []*nvml.Device {
@@ -125,4 +129,47 @@ func (s *migStrategySingle) getResourceName(mig *nvml.Device) string {
 
 func (s *migStrategySingle) MatchesResource(mig *nvml.Device, resource string) bool {
 	return true
+}
+
+// migStrategyMixed
+func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
+	resources := make(MigStrategyResourceSet)
+	for _, mig := range getAllMigDevices() {
+		r := s.getResourceName(mig)
+		resources[r] = struct{}{}
+	}
+
+	plugins := []*NvidiaDevicePlugin{
+		NewNvidiaDevicePlugin(
+			"nvidia.com/gpu",
+			NewGpuDeviceManager(true),
+			"NVIDIA_VISIBLE_DEVICES",
+			pluginapi.DevicePluginPath+"nvidia-gpu.sock"),
+	}
+
+	for resource := range resources {
+		plugin := NewNvidiaDevicePlugin(
+			"nvidia.com/"+resource,
+			NewMigDeviceManager(s, resource),
+			"NVIDIA_VISIBLE_DEVICES",
+			pluginapi.DevicePluginPath+"nvidia-"+resource+".sock")
+		plugins = append(plugins, plugin)
+	}
+
+	return plugins
+}
+
+func (s *migStrategyMixed) getResourceName(mig *nvml.Device) string {
+	attr, err := mig.GetAttributes()
+	check(err)
+
+	g := attr.GpuInstanceSliceCount
+	gb := ((attr.MemorySizeMB + 1000 - 1) / 1000)
+	r := fmt.Sprintf("mig-%dg.%dgb", g, gb)
+
+	return r
+}
+
+func (s *migStrategyMixed) MatchesResource(mig *nvml.Device, resource string) bool {
+	return s.getResourceName(mig) == resource
 }
