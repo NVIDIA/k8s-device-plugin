@@ -24,8 +24,11 @@ import (
 )
 
 const (
-	MigStrategyNone = "none"
+	MigStrategyNone   = "none"
+	MigStrategySingle = "single"
 )
+
+type MigStrategyResourceSet map[string]struct{}
 
 type MigStrategy interface {
 	GetPlugins() []*NvidiaDevicePlugin
@@ -36,11 +39,40 @@ func NewMigStrategy(strategy string) (MigStrategy, error) {
 	switch strategy {
 	case MigStrategyNone:
 		return &migStrategyNone{}, nil
+	case MigStrategySingle:
+		return &migStrategySingle{}, nil
 	}
 	return nil, fmt.Errorf("Unknown strategy: %v", strategy)
 }
 
 type migStrategyNone struct{}
+type migStrategySingle struct{}
+
+// getAllMigDevices() across all full GPUs
+func getAllMigDevices() []*nvml.Device {
+	n, err := nvml.GetDeviceCount()
+	check(err)
+
+	var migs []*nvml.Device
+	for i := uint(0); i < n; i++ {
+		d, err := nvml.NewDeviceLite(i)
+		check(err)
+
+		migEnabled, err := d.IsMigEnabled()
+		check(err)
+
+		if !migEnabled {
+			continue
+		}
+
+		devs, err := d.GetMigDevices()
+		check(err)
+
+		migs = append(migs, devs...)
+	}
+
+	return migs
+}
 
 // migStrategyNone
 func (s *migStrategyNone) GetPlugins() []*NvidiaDevicePlugin {
@@ -56,4 +88,41 @@ func (s *migStrategyNone) GetPlugins() []*NvidiaDevicePlugin {
 func (s *migStrategyNone) MatchesResource(mig *nvml.Device, resource string) bool {
 	panic("Should never be called")
 	return false
+}
+
+// migStrategySingle
+func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
+	resources := make(MigStrategyResourceSet)
+	for _, mig := range getAllMigDevices() {
+		r := s.getResourceName(mig)
+		resources[r] = struct{}{}
+	}
+
+	if len(resources) != 1 {
+		panic("More than one MIG device type present on node")
+	}
+
+	return []*NvidiaDevicePlugin{
+		NewNvidiaDevicePlugin(
+			"nvidia.com/gpu",
+			NewMigDeviceManager(s, "gpu"),
+			"NVIDIA_VISIBLE_DEVICES",
+			pluginapi.DevicePluginPath+"nvidia-gpu.sock"),
+	}
+}
+
+func (s *migStrategySingle) getResourceName(mig *nvml.Device) string {
+	attr, err := mig.GetAttributes()
+	check(err)
+
+	g := attr.GpuInstanceSliceCount
+	c := attr.ComputeInstanceSliceCount
+	gb := ((attr.MemorySizeMB + 1000 - 1) / 1000)
+	r := fmt.Sprintf("mig-%dc.%dg.%dgb", c, g, gb)
+
+	return r
+}
+
+func (s *migStrategySingle) MatchesResource(mig *nvml.Device, resource string) bool {
+	return true
 }

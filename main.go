@@ -31,7 +31,7 @@ var migStrategyFlag = flag.String(
 	"mig-strategy",
 	"none",
 	"pass the desired strategy for exposing MIG devices on GPUs that support it\n"+
-		"[none]")
+		"[none | single]")
 
 func main() {
 	flag.Parse()
