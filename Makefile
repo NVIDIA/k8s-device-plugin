@@ -20,7 +20,7 @@
 
 DOCKER   ?= docker
 REGISTRY ?= nvidia
-VERSION  ?= 1.0.0-beta6
+VERSION  ?= v0.6.0
 
 ##### Public rules #####
 
