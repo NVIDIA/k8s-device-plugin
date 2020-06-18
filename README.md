@@ -70,7 +70,7 @@ Once you have enabled this option on *all* the GPU nodes you wish to use,
 you can then enable GPU support in your cluster by deploying the following Daemonset:
 
 ```shell
-$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/1.0.0-beta6/nvidia-device-plugin.yml
+$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.6.0/nvidia-device-plugin.yml
 ```
 
 ### Running GPU Jobs
@@ -101,7 +101,7 @@ spec:
 ## Docs
 
 Please note that:
-- the device plugin feature is beta as of Kubernetes v1.11.
+- the device plugin feature is beta as of Kubernetes v1.10.
 - the NVIDIA device plugin is still considered beta and is missing
     - More comprehensive GPU health checking features
     - GPU cleanup features
@@ -115,24 +115,24 @@ The next sections are focused on building the device plugin and running it.
 #### Build
 Option 1, pull the prebuilt image from [Docker Hub](https://hub.docker.com/r/nvidia/k8s-device-plugin):
 ```shell
-$ docker pull nvidia/k8s-device-plugin:1.0.0-beta6
+$ docker pull nvidia/k8s-device-plugin:v0.6.0
 ```
 
 Option 2, build without cloning the repository:
 ```shell
-$ docker build -t nvidia/k8s-device-plugin:1.0.0-beta6 https://github.com/NVIDIA/k8s-device-plugin.git#1.0.0-beta6
+$ docker build -t nvidia/k8s-device-plugin:v0.6.0 https://github.com/NVIDIA/k8s-device-plugin.git#v0.6.0
 ```
 
 Option 3, if you want to modify the code:
 ```shell
 $ git clone https://github.com/NVIDIA/k8s-device-plugin.git && cd k8s-device-plugin
-$ git checkout 1.0.0-beta6
-$ docker build -t nvidia/k8s-device-plugin:1.0.0-beta6 .
+$ git checkout 0.6.1
+$ docker build -t nvidia/k8s-device-plugin:v0.6.0 .
 ```
 
 #### Run locally
 ```shell
-$ docker run --security-opt=no-new-privileges --cap-drop=ALL --network=none -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia/k8s-device-plugin:1.0.0-beta6
+$ docker run --security-opt=no-new-privileges --cap-drop=ALL --network=none -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia/k8s-device-plugin:v0.6.0
 ```
 
 #### Deploy as Daemon Set:
@@ -154,11 +154,11 @@ $ ./k8s-device-plugin
 
 ## Changelog
 
-### Version 1.0.0-beta6
+### Version v0.6.0
 
 - Update CI, build system, and vendoring mechanism
 
-### Version 1.0.0-beta5
+### Version v0.5.0
 
 - Add a new plugin.yml variant that is compatible with the CPUManager
 - Change CMD in Dockerfile to ENTRYPOINT
@@ -169,36 +169,36 @@ $ ./k8s-device-plugin
 - Fix bug that was inadvertently *always* disabling health checks
 - Update minimal driver version to 384.81
 
-### Version 1.0.0-beta4
+### Version v0.4.0
 
 - Fixes a bug with a nil pointer dereference around `getDevices:CPUAffinity`
 
-### Version 1.0.0-beta3
+### Version v0.3.0
 
 - Manifest is updated for Kubernetes 1.16+ (apps/v1)
 - Adds more logging information
 
-### Version 1.0.0-beta2
+### Version v0.2.0
 
 - Adds the Topology field for Kubernetes 1.16+
 
-### Version 1.0.0-beta1
+### Version v0.1.0
 
 - If gRPC throws an error, the device plugin no longer ends up in a non responsive state.
 
-### Version 1.0.0-beta
+### Version v0.0.0
 
 - Reversioned to SEMVER as device plugins aren't tied to a specific version of kubernetes anymore.
 
-### Version 1.11
+### Version v1.11
 
 - No change.
 
-### Version 1.10
+### Version v1.10
 
 - The device Plugin API is now v1beta1
 
-### Version 1.9
+### Version v1.9
 
 - The device Plugin API changed and is no longer compatible with 1.8
 - Error messages were added
@@ -211,25 +211,36 @@ $ ./k8s-device-plugin
 
 ## Versioning
 
-Before 1.10 the versioning scheme of the device plugin had to match exactly the version of Kubernetes.
+Before v1.10 the versioning scheme of the device plugin had to match exactly the version of Kubernetes.
 After the promotion of device plugins to beta this condition was was no longer required.
 We quickly noticed that this versioning scheme was very confusing for users as they still expected to see
 a version of the device plugin for each version of Kubernetes.
 
-We recently decided to reversion to follow a SEMVER scheme. This means that we are currently a
-beta project (as we depend on the device plugin API which is beta).
-If you have a version of Kubernetes > 1.10 you can deploy this device plugin.
+This versioning scheme applies to the tags `v1.8`, `v1.9`, `v1.10`, `v1.11`, `v1.12`.
+
+We have now changed the versioning to follow [SEMVER](https://semver.org/). The
+first version following this scheme has been tagged `v0.0.0`.
+
+Going forward, the major version of the device plugin will only change
+following a change in the device plugin API itself. For example, version
+`v1beta1` of the device plugin API corresponds to version `v0.x.x` of the
+device plugin. If a new `v2beta2` version of the device plugin API comes out,
+then the device plugin will increase its major version to `1.x.x`.
+
+As of now, the device plugin API for Kubernetes >= v1.10 is `v1beta1`.  If you
+have a version of Kubernetes >= 1.10 you can deploy any device plugin version >
+`v0.0.0`.
 
 ## Upgrading Kubernetes with the device plugin
 
-Upgrading Kubernetes when you have a device plugin deployed doesn't require you to do any,
-particular changes to your workflow.
-The API is versioned and is pretty stable (though it is not guaranteed to be non breaking),
-you can therefore use the 1.0.0-beta3 version starting from kubernetes version 1.10, upgrading
-kubernetes won't require you to deploy a different version of the device plugin and you will
-see GPUs re-registering themselves after your node comes back online.
+Upgrading Kubernetes when you have a device plugin deployed doesn't require you
+to do any, particular changes to your workflow.  The API is versioned and is
+pretty stable (though it is not guaranteed to be non breaking). Starting with
+Kubernetes version 1.10, you can use `v0.3.0` of the device plugin to perform
+upgrades, and Kubernetes won't require you to deploy a different version of the
+device plugin. Once a node comes back online after the upgrade, you will see
+GPUs re-registering themselves automatically.
 
-
-Upgrading the device plugin is a more complex task. It is recommended to drain GPU tasks as
-we cannot guarantee that GPU tasks will survive a rolling upgrade.
-However we make best efforts to preserve GPU tasks during an upgrade.
+Upgrading the device plugin itself is a more complex task. It is recommended to
+drain GPU tasks as we cannot guarantee that GPU tasks will survive a rolling
+upgrade. However we make best efforts to preserve GPU tasks during an upgrade.
