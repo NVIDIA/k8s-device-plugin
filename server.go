@@ -38,12 +38,12 @@ type NvidiaDevicePlugin struct {
 	ResourceManager
 	resourceName   string
 	allocateEnvvar string
-	socket string
+	socket         string
 
-	server *grpc.Server
+	server        *grpc.Server
 	cachedDevices []*Device
-	health chan *Device
-	stop   chan interface{}
+	health        chan *Device
+	stop          chan interface{}
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin

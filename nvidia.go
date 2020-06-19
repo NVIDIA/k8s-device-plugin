@@ -41,7 +41,7 @@ type ResourceManager interface {
 	CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device)
 }
 
-type GpuDeviceManager struct {}
+type GpuDeviceManager struct{}
 
 func check(err error) {
 	if err != nil {
