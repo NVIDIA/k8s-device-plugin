@@ -27,15 +27,11 @@ import (
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
-func getAllPlugins() []*NvidiaDevicePlugin {
-	return []*NvidiaDevicePlugin{
-		NewNvidiaDevicePlugin(
-			"nvidia.com/gpu",
-			NewGpuDeviceManager(),
-			"NVIDIA_VISIBLE_DEVICES",
-			pluginapi.DevicePluginPath + "nvidia.sock"),
-	}
-}
+var migStrategyFlag = flag.String(
+	"mig-strategy",
+	"none",
+	"pass the desired strategy for exposing MIG devices on GPUs that support it\n"+
+		"[none | single | mixed]")
 
 func main() {
 	flag.Parse()
@@ -63,7 +59,12 @@ func main() {
 	sigs := newOSWatcher(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	log.Println("Retreiving plugins.")
-	plugins := getAllPlugins()
+	migStrategy, err := NewMigStrategy(*migStrategyFlag)
+	if err != nil {
+		log.Printf("Error creating MIG strategy: %v\n", err)
+		os.Exit(1)
+	}
+	plugins := migStrategy.GetPlugins()
 
 restart:
 	// Loop through all plugins, idempotently stopping them, and then starting
