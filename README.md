@@ -8,9 +8,11 @@
   - [Preparing your GPU Nodes](#preparing-your-gpu-nodes)
   - [Enabling GPU Support in Kubernetes](#enabling-gpu-support-in-kubernetes)
   - [Running GPU Jobs](#running-gpu-jobs)
-- [Docs](#docs)
+- [Building and Running Locally](#building-and-running-locally)
 - [Changelog](#changelog)
 - [Issues and Contributing](#issues-and-contributing)
+- [Versioning](#versioning)
+- [Upgrading Kubernetes with the Device Plugin](#upgrading-kubernetes-with-the-device-plugin)
 
 
 ## About
@@ -21,6 +23,15 @@ The NVIDIA device plugin for Kubernetes is a Daemonset that allows you to automa
 - Run GPU enabled containers in your Kubernetes cluster.
 
 This repository contains NVIDIA's official implementation of the [Kubernetes device plugin](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/resource-management/device-plugin.md).
+
+Please note that:
+- The NVIDIA device plugin API is beta as of Kubernetes v1.10.
+- The NVIDIA device plugin is still considered beta and is missing
+    - More comprehensive GPU health checking features
+    - GPU cleanup features
+    - ...
+- Support will only be provided for the official NVIDIA device plugin (and not
+  for forks or other variants of this plugin).
 
 ## Prerequisites
 
@@ -35,9 +46,9 @@ The list of prerequisites for running the NVIDIA device plugin is described belo
 ### Preparing your GPU Nodes
 
 The following steps need to be executed on all your GPU nodes.
-This README assumes that the NVIDIA drivers and nvidia-docker have been installed.
+This README assumes that the NVIDIA drivers and `nvidia-docker` have been installed.
 
-Note that you need to install the nvidia-docker2 package and not the nvidia-container-toolkit.
+Note that you need to install the `nvidia-docker2` package and not the `nvidia-container-toolkit`.
 This is because the new `--gpus` options hasn't reached kubernetes yet. Example:
 ```bash
 # Add the package repositories
@@ -66,16 +77,32 @@ We will be editing the docker daemon config file which is usually present at `/e
 
 ### Enabling GPU Support in Kubernetes
 
-Once you have enabled this option on *all* the GPU nodes you wish to use,
-you can then enable GPU support in your cluster by deploying the following Daemonset:
+The latest official release of this plugin is `v0.6.0`, and we provide two
+different daemonsets for you to select from when deploying this plugin to your
+cluster.
+
+The first variant does not require any special privileges to run, but is
+incompatible with the use of the `CPUManager` static policy. Only choose this
+variant if you do not run the `CPUManager` static policy on your GPU nodes. You
+can deploy this variant as below:
 
 ```shell
 $ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.6.0/nvidia-device-plugin.yml
 ```
 
+The second variant can used together with the `CPUManager` static policy, but
+requires `privileged` access in order to deploy. You can deploy this variant
+as below:
+
+```shell
+$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.6.0/nvidia-device-plugin-compat-with-cpumanager.yml
+```
+
 ### Running GPU Jobs
 
-NVIDIA GPUs can now be consumed via container level resource requirements using the resource name nvidia.com/gpu:
+With this daemonset deployed, NVIDIA GPUs can now be consumed via container
+level resource requirements using the resource name `nvidia.com/gpu`:
+
 ```yaml
 apiVersion: v1
 kind: Pod
@@ -98,17 +125,12 @@ spec:
 > **WARNING:** *if you don't request GPUs when using the device plugin with NVIDIA images all
 > the GPUs on the machine will be exposed inside your container.*
 
-## Docs
+## Building and Running Locally
 
-Please note that:
-- the device plugin feature is beta as of Kubernetes v1.10.
-- the NVIDIA device plugin is still considered beta and is missing
-    - More comprehensive GPU health checking features
-    - GPU cleanup features
-    - ...
-- support will only be provided for the official NVIDIA device plugin.
-
-The next sections are focused on building the device plugin and running it.
+The next sections are focused on building the device plugin locally and running it.
+It is intended purely for development and testing, and not required by most users.
+It assumes you are running off of the latest release tag (i.e. `v0.6.0`), but
+can easily be modified to work with any available tag or branch.
 
 ### With Docker
 
@@ -126,18 +148,30 @@ $ docker build -t nvidia/k8s-device-plugin:v0.6.0 https://github.com/NVIDIA/k8s-
 Option 3, if you want to modify the code:
 ```shell
 $ git clone https://github.com/NVIDIA/k8s-device-plugin.git && cd k8s-device-plugin
-$ git checkout 0.6.1
+$ git checkout v0.6.0
 $ docker build -t nvidia/k8s-device-plugin:v0.6.0 .
 ```
 
-#### Run locally
+#### Run Directly
+Without compatibility for the `CPUManager` static policy:
 ```shell
 $ docker run --security-opt=no-new-privileges --cap-drop=ALL --network=none -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia/k8s-device-plugin:v0.6.0
 ```
 
+With compatibility for the `CPUManager` static policy:
+```shell
+$ docker run --privileged --network=none -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia/k8s-device-plugin:v0.6.0 --pass-device-specs
+```
+
 #### Deploy as Daemon Set:
+Without compatibility for the `CPUManager` static policy:
 ```shell
 $ kubectl create -f nvidia-device-plugin.yml
+```
+
+With compatibility for the `CPUManager` static policy:
+```shell
+$ kubectl create -f nvidia-device-plugin-compat-with-cpumanager.yml
 ```
 
 ### Without Docker
@@ -147,9 +181,15 @@ $ kubectl create -f nvidia-device-plugin.yml
 $ C_INCLUDE_PATH=/usr/local/cuda/include LIBRARY_PATH=/usr/local/cuda/lib64 go build
 ```
 
-#### Run locally
+#### Run
+Without compatibility for the `CPUManager` static policy:
 ```shell
 $ ./k8s-device-plugin
+```
+
+With compatibility for the `CPUManager` static policy:
+```shell
+$ ./k8s-device-plugin --pass-device-specs
 ```
 
 ## Changelog
@@ -231,7 +271,7 @@ As of now, the device plugin API for Kubernetes >= v1.10 is `v1beta1`.  If you
 have a version of Kubernetes >= 1.10 you can deploy any device plugin version >
 `v0.0.0`.
 
-## Upgrading Kubernetes with the device plugin
+## Upgrading Kubernetes with the Device Plugin
 
 Upgrading Kubernetes when you have a device plugin deployed doesn't require you
 to do any, particular changes to your workflow.  The API is versioned and is
