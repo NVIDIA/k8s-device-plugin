@@ -8,6 +8,7 @@
   - [Preparing your GPU Nodes](#preparing-your-gpu-nodes)
   - [Enabling GPU Support in Kubernetes](#enabling-gpu-support-in-kubernetes)
   - [Running GPU Jobs](#running-gpu-jobs)
+- [Deployment via `helm`](#deployment-via-helm)
 - [Building and Running Locally](#building-and-running-locally)
 - [Changelog](#changelog)
 - [Issues and Contributing](#issues-and-contributing)
@@ -77,31 +78,22 @@ We will be editing the docker daemon config file which is usually present at `/e
 
 ### Enabling GPU Support in Kubernetes
 
-The latest official release of this plugin is `v0.6.0`, and we provide two
-different daemonsets for you to select from when deploying this plugin to your
-cluster.
-
-The first variant does not require any special privileges to run, but is
-incompatible with the use of the `CPUManager` static policy. Only choose this
-variant if you do not run the `CPUManager` static policy on your GPU nodes. You
-can deploy this variant as below:
+Once you have configured the options above on all the GPU nodes in your
+cluster, you can enable GPU support by deploying the following Daemonset:
 
 ```shell
 $ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.6.0/nvidia-device-plugin.yml
 ```
 
-The second variant can used together with the `CPUManager` static policy, but
-requires `privileged` access in order to deploy. You can deploy this variant
-as below:
-
-```shell
-$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.6.0/nvidia-device-plugin-compat-with-cpumanager.yml
-```
+**Note:** This is a simple static daemonset meant to demonstrate the basic
+features of the `nvidia-device-plugin`. Please see the instructions below for
+[Deployment via `helm`](#deployment-via-helm) when deploying the plugin in a
+production setting.
 
 ### Running GPU Jobs
 
-With this daemonset deployed, NVIDIA GPUs can now be consumed via container
-level resource requirements using the resource name `nvidia.com/gpu`:
+With the daemonset deployed, NVIDIA GPUs can now be requested by a container
+using the `nvidia.com/gpu` resource type:
 
 ```yaml
 apiVersion: v1
@@ -125,12 +117,157 @@ spec:
 > **WARNING:** *if you don't request GPUs when using the device plugin with NVIDIA images all
 > the GPUs on the machine will be exposed inside your container.*
 
+## Deployment via `helm`
+
+The preferred method to deploy the device plugin is as a daemonset using `helm`.
+Instructions for installing `helm` can be found
+[here](https://helm.sh/docs/intro/install/).
+
+The `helm` chart for the latest release of the plugin (`v0.6.0`) includes the
+follow customizeable values:
+
+```
+  compatWithCPUManager:
+      run with escalated privileges to be compatible with the static CPUManager policy
+      (default 'false')
+  legacyDaemonsetAPI:
+      use the legacy daemonset API version 'extensions/v1beta1'
+      (default 'false')
+```
+
+The `compatWithCPUManager` flag configures the daemonset to be able to
+interoperate with the static `CPUManager` of the `kubelet`.  Setting this flag
+requires one to deploy the daemonset with elevated privileges, so only do so if
+you know you need to interoperate with the `CPUManager`.
+
+The `legacyDaemonsetAPI` flag configures the daemonset to use version
+`extensions/v1beta1` of the DaemonSet API. This API version was removed in
+Kubernetes `v1.16`, so is only intended to allow newer plugins to run on older
+versions of Kubernetes.
+
+We also allow overrides of the following common user-specific settings:
+- namespace
+- nodeSelector
+- affinity
+- tolerations
+
+#### Installing via `helm install`from the `nvidia-device-plugin` `helm` repository
+
+The preferred method of deployment is with `helm install` via the
+`nvidia-device-plugin` `helm` repository.
+
+This repository can be installed as follows:
+```shell
+$ helm repo add nvdp https://nvidia.github.io/k8s-device-plugin
+$ helm repo update
+```
+
+Once this repo is updated, you can begin installing packages from it to depoloy
+the `nvidia-device-plugin` daemonset. Below are some examples of deploying the
+plugin with the various flags from above.
+
+Using the default values for the flags:
+```shell
+$ helm install \
+    --version=0.6.0 \
+    --generate-name \
+    nvdp/nvidia-device-plugin
+```
+
+Enabling compatibility with the `CPUManager` and deploying only to nodes with
+Tesla GPUs on them:
+```shell
+$ helm install \
+    --version=0.6.0 \
+    --generate-name \
+    --set compatWithCPUManager=true \
+    --set nodeSelector."nvidia\.com/gpu\.family"=tesla \
+    nvdp/nvidia-device-plugin
+```
+
+Use the legacy Daemonset API (only available on Kubernetes < `v1.16`):
+```shell
+$ helm install \
+    --version=0.6.0 \
+    --generate-name \
+    --set legacyDaemonsetAPI=true \
+    nvdp/nvidia-device-plugin
+```
+
+#### Deploying via `helm install` with a direct URL to the `helm` package
+
+If you prefer not to install from the `nvidia-device-plugin` `helm` repo, you can
+run `helm install` directly against the tarball of the plugin's `helm` package.
+The examples below install the same daemonsets as the method above, except that
+they use direct URLs to the `helm` package instead of the `helm` repo.
+
+Using the default values for the flags:
+```shell
+$ helm install \
+    --generate-name \
+    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.6.0.tgz
+```
+
+Enabling compatibility with the `CPUManager` and deploying only to nodes with
+Tesla GPUs on them:
+```shell
+$ helm install \
+    --generate-name \
+    --set compatWithCPUManager=true \
+    --set nodeSelector."nvidia\.com/gpu\.family"=tesla \
+    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.6.0.tgz
+```
+
+Use the legacy Daemonset API (only available on Kubernetes < `v1.16`):
+```shell
+$ helm install \
+    --generate-name \
+    --set legacyDaemonsetAPI=true \
+    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.6.0.tgz
+```
+
+#### Deploying via `kubectl apply`
+
+If you prefer to deploy the plugin directly with `kubectl apply` you can
+extract the generated template from `helm` using `helm template` and feed that to
+`kubectl apply`. The examples below install the same daemonsets as the `helm
+install` variants above, but use `kubectl apply` instead.
+
+Using the default values for the flags (i.e. no compatibility with the
+`CPUManager` and without the legacy DaemonSet API):
+```shell
+$ helm template \
+    --name-template=nvidia-device-plugin-$(date +%s) \
+    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.6.0.tgz \
+  | kubectl apply -f -
+```
+
+Enabling compatibility with the `CPUManager` and deploying only to nodes with
+Tesla GPUs on them:
+```shell
+$ helm template \
+    --name-template=nvidia-device-plugin-$(date +%s) \
+    --set compatWithCPUManager=true \
+    --set nodeSelector."nvidia\.com/gpu\.family"=tesla \
+    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.6.0.tgz \
+  | kubectl apply -f -
+```
+
+Using the legacy Daemonset API (only available on Kubernetes < `v1.16`):
+```shell
+$ helm template \
+    --name-template=nvidia-device-plugin-$(date +%s) \
+    --set legacyDaemonsetAPI=true \
+    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.6.0.tgz \
+  | kubectl apply -f -
+```
+
 ## Building and Running Locally
 
 The next sections are focused on building the device plugin locally and running it.
 It is intended purely for development and testing, and not required by most users.
-It assumes you are running off of the latest release tag (i.e. `v0.6.0`), but
-can easily be modified to work with any available tag or branch.
+It assumes you are pinning to the latest release tag (i.e. `v0.6.0`), but can
+easily be modified to work with any available tag or branch.
 
 ### With Docker
 
@@ -138,40 +275,46 @@ can easily be modified to work with any available tag or branch.
 Option 1, pull the prebuilt image from [Docker Hub](https://hub.docker.com/r/nvidia/k8s-device-plugin):
 ```shell
 $ docker pull nvidia/k8s-device-plugin:v0.6.0
+$ docker tag nvidia/k8s-device-plugin:v0.6.0 nvidia/k8s-device-plugin:devel
 ```
 
 Option 2, build without cloning the repository:
 ```shell
-$ docker build -t nvidia/k8s-device-plugin:v0.6.0 https://github.com/NVIDIA/k8s-device-plugin.git#v0.6.0
+$ docker build \
+    -t nvidia/k8s-device-plugin:devel \
+    -f docker/amd64/Dockerfile.ubuntu16.04 \
+    https://github.com/NVIDIA/k8s-device-plugin.git#v0.6.0
 ```
 
 Option 3, if you want to modify the code:
 ```shell
 $ git clone https://github.com/NVIDIA/k8s-device-plugin.git && cd k8s-device-plugin
-$ git checkout v0.6.0
-$ docker build -t nvidia/k8s-device-plugin:v0.6.0 .
+$ docker build \
+    -t nvidia/k8s-device-plugin:devel \
+    -f docker/amd64/Dockerfile.ubuntu16.04 \
+    .
 ```
 
-#### Run Directly
+#### Run
 Without compatibility for the `CPUManager` static policy:
 ```shell
-$ docker run --security-opt=no-new-privileges --cap-drop=ALL --network=none -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia/k8s-device-plugin:v0.6.0
+$ docker run \
+    -it \
+    --security-opt=no-new-privileges \
+    --cap-drop=ALL \
+    --network=none \
+    -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins \
+    nvidia/k8s-device-plugin:devel
 ```
 
 With compatibility for the `CPUManager` static policy:
 ```shell
-$ docker run --privileged --network=none -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins nvidia/k8s-device-plugin:v0.6.0 --pass-device-specs
-```
-
-#### Deploy as Daemon Set:
-Without compatibility for the `CPUManager` static policy:
-```shell
-$ kubectl create -f nvidia-device-plugin.yml
-```
-
-With compatibility for the `CPUManager` static policy:
-```shell
-$ kubectl create -f nvidia-device-plugin-compat-with-cpumanager.yml
+$ docker run \
+    -it \
+    --privileged \
+    --network=none \
+    -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins \
+    nvidia/k8s-device-plugin:devel --pass-device-specs
 ```
 
 ### Without Docker
