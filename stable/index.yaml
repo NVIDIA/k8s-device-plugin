@@ -1,3 +1,16 @@
 apiVersion: v1
-entries: {}
-generated: "2020-06-24T22:38:34.213179485Z"
+entries:
+  nvidia-device-plugin:
+  - apiVersion: v2
+    appVersion: 0.6.0
+    created: "2020-06-24T22:41:01.287144277Z"
+    description: A Helm chart for the nvidia-device-plugin on Kubernetes
+    digest: 9e41b02c88844890c5f4b78a6d0beaeb936b478116172bb015381ccf32f6057a
+    home: https://github.com/NVIDIA/k8s-device-plugin
+    kubeVersion: '>= 1.10.0-0'
+    name: nvidia-device-plugin
+    type: application
+    urls:
+    - https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.6.0.tgz
+    version: 0.6.0
+generated: "2020-06-24T22:41:01.286580834Z"
