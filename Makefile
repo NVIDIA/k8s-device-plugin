@@ -46,6 +46,7 @@ ubuntu16.04:
 
 ubi8:
 	$(DOCKER) build --pull \
+		--build-arg PLUGIN_VERSION=$(VERSION) \
 		--tag $(REGISTRY)/k8s-device-plugin:$(VERSION)-ubi8 \
 		--file docker/amd64/Dockerfile.ubi8 .
 
