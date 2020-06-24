@@ -50,10 +50,11 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: nvidia-device-plugin-ctr
         {{- if .Values.compatWithCPUManager }}
-        args: ["--pass-device-specs"]
+        args: ["--mig-strategy={{ .Values.migStrategy }}", "--pass-device-specs"]
         securityContext:
           privileged: true
         {{- else }}
+        args: ["--mig-strategy={{ .Values.migStrategy }}"]
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
