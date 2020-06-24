@@ -147,6 +147,7 @@ versions of Kubernetes.
 
 We also allow overrides of the following common user-specific settings:
 - namespace
+- image.pullPolicy
 - nodeSelector
 - affinity
 - tolerations

@@ -47,6 +47,7 @@ spec:
       priorityClassName: "system-node-critical"
       containers:
       - image: nvidia/k8s-device-plugin:v{{ .Chart.AppVersion }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: nvidia-device-plugin-ctr
         {{- if .Values.compatWithCPUManager }}
         args: ["--pass-device-specs"]
