@@ -82,7 +82,7 @@ Once you have configured the options above on all the GPU nodes in your
 cluster, you can enable GPU support by deploying the following Daemonset:
 
 ```shell
-$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.6.0/nvidia-device-plugin.yml
+$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.7.0-rc.1/nvidia-device-plugin.yml
 ```
 
 **Note:** This is a simple static daemonset meant to demonstrate the basic
@@ -123,7 +123,7 @@ The preferred method to deploy the device plugin is as a daemonset using `helm`.
 Instructions for installing `helm` can be found
 [here](https://helm.sh/docs/intro/install/).
 
-The `helm` chart for the latest release of the plugin (`v0.6.0`) includes the
+The `helm` chart for the latest release of the plugin (`v0.7.0-rc.1`) includes the
 follow customizeable values:
 
 ```
@@ -133,6 +133,9 @@ follow customizeable values:
   legacyDaemonsetAPI:
       use the legacy daemonset API version 'extensions/v1beta1'
       (default 'false')
+  migStrategy:
+      pass the desired strategy for exposing MIG devices on GPUs that support it
+      [none | single | mixed] (default "none)
 ```
 
 The `compatWithCPUManager` flag configures the daemonset to be able to
@@ -144,6 +147,16 @@ The `legacyDaemonsetAPI` flag configures the daemonset to use version
 `extensions/v1beta1` of the DaemonSet API. This API version was removed in
 Kubernetes `v1.16`, so is only intended to allow newer plugins to run on older
 versions of Kubernetes.
+
+The `migStrategy` flag configures the daemonset to be able to expose
+Multi-Instance GPUs (MIG) on GPUs that support them. More information on what
+these strategies are and how they should be used can be found in [Supporting
+Multi-Instance GPUs (MIG) in
+Kubernetes](https://docs.google.com/document/d/1mdgMQ8g7WmaI_XVVRrCvHPFPOMCm5LQD5JefgAh6N8g).
+
+**Note:** With a `migStrategy` of mixed, you will have additional resources
+available to you of the form `nvidia.com/mig-<slice_count>g.<memory_size>gb`
+that you can set in your pod spec to get access to a specific MIG device.
 
 We also allow overrides of the following common user-specific settings:
 - namespace
@@ -167,10 +180,13 @@ Once this repo is updated, you can begin installing packages from it to depoloy
 the `nvidia-device-plugin` daemonset. Below are some examples of deploying the
 plugin with the various flags from above.
 
+**Note:** Since this is a pre-release version, you will need to pass the
+`--devel` flag to `helm search repo` in order to see this release listed.
+
 Using the default values for the flags:
 ```shell
 $ helm install \
-    --version=0.6.0 \
+    --version=0.7.0-rc.1 \
     --generate-name \
     nvdp/nvidia-device-plugin
 ```
@@ -179,7 +195,7 @@ Enabling compatibility with the `CPUManager` and deploying only to nodes with
 Tesla GPUs on them:
 ```shell
 $ helm install \
-    --version=0.6.0 \
+    --version=0.7.0-rc.1 \
     --generate-name \
     --set compatWithCPUManager=true \
     --set nodeSelector."nvidia\.com/gpu\.family"=tesla \
@@ -189,9 +205,19 @@ $ helm install \
 Use the legacy Daemonset API (only available on Kubernetes < `v1.16`):
 ```shell
 $ helm install \
-    --version=0.6.0 \
+    --version=0.7.0-rc.1 \
     --generate-name \
     --set legacyDaemonsetAPI=true \
+    nvdp/nvidia-device-plugin
+```
+
+Enabling compatibility with the `CPUManager` and the `mixed` `migStrategy`
+```shell
+$ helm install \
+    --version=0.7.0-rc.1 \
+    --generate-name \
+    --set compatWithCPUManager=true \
+    --set migStrategy=mixed \
     nvdp/nvidia-device-plugin
 ```
 
@@ -206,7 +232,7 @@ Using the default values for the flags:
 ```shell
 $ helm install \
     --generate-name \
-    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.6.0.tgz
+    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz
 ```
 
 Enabling compatibility with the `CPUManager` and deploying only to nodes with
@@ -216,7 +242,7 @@ $ helm install \
     --generate-name \
     --set compatWithCPUManager=true \
     --set nodeSelector."nvidia\.com/gpu\.family"=tesla \
-    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.6.0.tgz
+    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz
 ```
 
 Use the legacy Daemonset API (only available on Kubernetes < `v1.16`):
@@ -224,9 +250,17 @@ Use the legacy Daemonset API (only available on Kubernetes < `v1.16`):
 $ helm install \
     --generate-name \
     --set legacyDaemonsetAPI=true \
-    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.6.0.tgz
+    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz
 ```
 
+Enabling compatibility with the `CPUManager` and the `mixed` `migStrategy`
+```shell
+$ helm install \
+    --generate-name \
+    --set compatWithCPUManager=true \
+    --set migStrategy=mixed \
+    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz
+```
 #### Deploying via `kubectl apply`
 
 If you prefer to deploy the plugin directly with `kubectl apply` you can
@@ -239,7 +273,7 @@ Using the default values for the flags (i.e. no compatibility with the
 ```shell
 $ helm template \
     --name-template=nvidia-device-plugin-$(date +%s) \
-    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.6.0.tgz \
+    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz \
   | kubectl apply -f -
 ```
 
@@ -250,7 +284,7 @@ $ helm template \
     --name-template=nvidia-device-plugin-$(date +%s) \
     --set compatWithCPUManager=true \
     --set nodeSelector."nvidia\.com/gpu\.family"=tesla \
-    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.6.0.tgz \
+    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz \
   | kubectl apply -f -
 ```
 
@@ -259,7 +293,17 @@ Using the legacy Daemonset API (only available on Kubernetes < `v1.16`):
 $ helm template \
     --name-template=nvidia-device-plugin-$(date +%s) \
     --set legacyDaemonsetAPI=true \
-    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.6.0.tgz \
+    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz \
+  | kubectl apply -f -
+```
+
+Enabling compatibility with the `CPUManager` and the `mixed` `migStrategy`
+```shell
+$ helm template \
+    --name-template=nvidia-device-plugin-$(date +%s) \
+    --set compatWithCPUManager=true \
+    --set migStrategy=mixed \
+    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz \
   | kubectl apply -f -
 ```
 
@@ -267,7 +311,7 @@ $ helm template \
 
 The next sections are focused on building the device plugin locally and running it.
 It is intended purely for development and testing, and not required by most users.
-It assumes you are pinning to the latest release tag (i.e. `v0.6.0`), but can
+It assumes you are pinning to the latest release tag (i.e. `v0.7.0-rc.1`), but can
 easily be modified to work with any available tag or branch.
 
 ### With Docker
@@ -275,8 +319,8 @@ easily be modified to work with any available tag or branch.
 #### Build
 Option 1, pull the prebuilt image from [Docker Hub](https://hub.docker.com/r/nvidia/k8s-device-plugin):
 ```shell
-$ docker pull nvidia/k8s-device-plugin:v0.6.0
-$ docker tag nvidia/k8s-device-plugin:v0.6.0 nvidia/k8s-device-plugin:devel
+$ docker pull nvidia/k8s-device-plugin:v0.7.0-rc.1
+$ docker tag nvidia/k8s-device-plugin:v0.7.0-rc.1 nvidia/k8s-device-plugin:devel
 ```
 
 Option 2, build without cloning the repository:
@@ -284,7 +328,7 @@ Option 2, build without cloning the repository:
 $ docker build \
     -t nvidia/k8s-device-plugin:devel \
     -f docker/amd64/Dockerfile.ubuntu16.04 \
-    https://github.com/NVIDIA/k8s-device-plugin.git#v0.6.0
+    https://github.com/NVIDIA/k8s-device-plugin.git#v0.7.0-rc.1
 ```
 
 Option 3, if you want to modify the code:
@@ -337,6 +381,14 @@ $ ./k8s-device-plugin --pass-device-specs
 ```
 
 ## Changelog
+
+### Version v0.7.0-rc.1
+
+- Added `migStrategy` as a parameter to select the MIG strategy to the helm chart
+- Add support for MIG with different strategies {none, single, mixed}
+- Update vendored NVML bindings to latest (to include MIG APIs)
+- Add license in UBI image
+- Update UBI image with certification requirements
 
 ### Version v0.6.0
 
