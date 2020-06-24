@@ -350,6 +350,8 @@ $ ./k8s-device-plugin --pass-device-specs
 ### Version v0.6.0
 
 - Update CI, build system, and vendoring mechanism
+- Change versioning scheme to v0.x.x instead of v1.0.0-betax
+- Introduced helm charts as a mechanism to deploy the plugin
 
 ### Version v0.5.0
 
