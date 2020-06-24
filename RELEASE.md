@@ -7,7 +7,7 @@ The device plugin consists in two artifacts:
 Publishing the container is automated through gitlab-ci and only requires on to tag the commit and push it to gitlab.
 
 # Release Process Checklist
-- [ ] Update the README to change occurances of the old version (e.g: `v0.6.0`) with the new version
+- [ ] Update the README to change occurances of the old version (e.g: `v0.7.0-rc.1`) with the new version
 - [ ] Update the README changelog
 - [ ] Commit, Tag and Push to Gitlab
 - [ ] Build a new helm package with `helm package ./deployments/helm/nvidia-device-plugin`
