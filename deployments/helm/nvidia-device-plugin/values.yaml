@@ -1,5 +1,9 @@
 legacyDaemonsetAPI: false
 compatWithCPUManager: false
+migStrategy: none
+
+image:
+  pullPolicy: IfNotPresent
 
 namespace: kube-system
 

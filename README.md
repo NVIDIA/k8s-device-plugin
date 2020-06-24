@@ -147,6 +147,7 @@ versions of Kubernetes.
 
 We also allow overrides of the following common user-specific settings:
 - namespace
+- image.pullPolicy
 - nodeSelector
 - affinity
 - tolerations
@@ -336,6 +337,15 @@ $ ./k8s-device-plugin --pass-device-specs
 ```
 
 ## Changelog
+
+### Version v0.7.0-rc.1
+
+- Added script to generate the YAML for the device-plugin daemonsets
+- Add support for MIG with different strategies {none, single, mixed}
+- Update vendored NVML bindings to latest (to include MIG APIs)
+- Change versioning scheme to v0.x.x instead of v1.0.0-betax
+- Add license in UBI image
+- Update UBI image with certification requirements
 
 ### Version v0.6.0
 

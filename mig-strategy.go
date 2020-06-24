@@ -102,6 +102,10 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 		resources[r] = struct{}{}
 	}
 
+	if len(resources) == 0 {
+		panic("No MIG devices present on node")
+	}
+
 	if len(resources) != 1 {
 		panic("More than one MIG device type present on node")
 	}
