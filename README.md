@@ -161,6 +161,7 @@ that you can set in your pod spec to get access to a specific MIG device.
 We also allow overrides of the following common user-specific settings:
 - namespace
 - image.pullPolicy
+- resources
 - nodeSelector
 - affinity
 - tolerations
@@ -191,14 +192,15 @@ $ helm install \
     nvdp/nvidia-device-plugin
 ```
 
-Enabling compatibility with the `CPUManager` and deploying only to nodes with
-Tesla GPUs on them:
+Enabling compatibility with the `CPUManager` and running with a request for
+100ms of CPU time and a limit of 512MB of memory.
 ```shell
 $ helm install \
     --version=0.7.0-rc.1 \
     --generate-name \
     --set compatWithCPUManager=true \
-    --set nodeSelector."nvidia\.com/gpu\.family"=tesla \
+    --set resources.requests.cpu=100m \
+    --set resources.limits.memory=512Mi \
     nvdp/nvidia-device-plugin
 ```
 
@@ -235,13 +237,14 @@ $ helm install \
     https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz
 ```
 
-Enabling compatibility with the `CPUManager` and deploying only to nodes with
-Tesla GPUs on them:
+Enabling compatibility with the `CPUManager` and running with a request for
+100ms of CPU time and a limit of 512MB of memory.
 ```shell
 $ helm install \
     --generate-name \
     --set compatWithCPUManager=true \
-    --set nodeSelector."nvidia\.com/gpu\.family"=tesla \
+    --set resources.requests.cpu=100m \
+    --set resources.limits.memory=512Mi \
     https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz
 ```
 
@@ -277,13 +280,14 @@ $ helm template \
   | kubectl apply -f -
 ```
 
-Enabling compatibility with the `CPUManager` and deploying only to nodes with
-Tesla GPUs on them:
+Enabling compatibility with the `CPUManager` and running with a request for
+100ms of CPU time and a limit of 512MB of memory.
 ```shell
 $ helm template \
     --name-template=nvidia-device-plugin-$(date +%s) \
     --set compatWithCPUManager=true \
-    --set nodeSelector."nvidia\.com/gpu\.family"=tesla \
+    --set resources.requests.cpu=100m \
+    --set resources.limits.memory=512Mi \
     https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz \
   | kubectl apply -f -
 ```
