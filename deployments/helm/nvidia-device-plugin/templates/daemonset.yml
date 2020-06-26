@@ -63,6 +63,10 @@ spec:
         volumeMounts:
           - name: device-plugin
             mountPath: /var/lib/kubelet/device-plugins
+        {{- with .Values.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
       volumes:
         - name: device-plugin
           hostPath:
