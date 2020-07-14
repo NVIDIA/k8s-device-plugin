@@ -2,6 +2,9 @@ legacyDaemonsetAPI: false
 compatWithCPUManager: false
 migStrategy: none
 
+nameOverride: ""
+fullnameOverride: ""
+
 image:
   pullPolicy: IfNotPresent
 
