@@ -123,8 +123,8 @@ The preferred method to deploy the device plugin is as a daemonset using `helm`.
 Instructions for installing `helm` can be found
 [here](https://helm.sh/docs/intro/install/).
 
-The `helm` chart for the latest release of the plugin (`v0.7.0-rc.1`) includes the
-follow customizeable values:
+The `helm` chart for the latest release of the plugin (`v0.7.0-rc.1`) includes
+a number of customizable values. The most commonly overridden ones are:
 
 ```
   compatWithCPUManager:
@@ -158,13 +158,10 @@ Kubernetes](https://docs.google.com/document/d/1mdgMQ8g7WmaI_XVVRrCvHPFPOMCm5LQD
 available to you of the form `nvidia.com/mig-<slice_count>g.<memory_size>gb`
 that you can set in your pod spec to get access to a specific MIG device.
 
-We also allow overrides of the following common user-specific settings:
-- namespace
-- image.pullPolicy
-- resources
-- nodeSelector
-- affinity
-- tolerations
+Please take a look in the following `values.yaml` file to see the full set of
+overridable parameters for the device plugin.
+
+* https://github.com/NVIDIA/k8s-device-plugin/blob/v0.7.0-rc.1/deployments/helm/nvidia-device-plugin/values.yaml
 
 #### Installing via `helm install`from the `nvidia-device-plugin` `helm` repository
 
