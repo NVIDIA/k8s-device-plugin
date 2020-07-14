@@ -49,17 +49,23 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: nvidia-device-plugin-ctr
+        args:
+        - "--mig-strategy={{ .Values.migStrategy }}"
         {{- if .Values.compatWithCPUManager }}
-        args: ["--mig-strategy={{ .Values.migStrategy }}", "--pass-device-specs"]
+        - "--pass-device-specs"
+        {{- end }}
         securityContext:
+        {{- if ne (len .Values.securityContext) 0 }}
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        {{- else if .Values.compatWithCPUManager }}
           privileged: true
         {{- else }}
-        args: ["--mig-strategy={{ .Values.migStrategy }}"]
-        securityContext:
           allowPrivilegeEscalation: false
           capabilities:
             drop: ["ALL"]
