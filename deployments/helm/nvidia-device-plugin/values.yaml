@@ -5,10 +5,14 @@ migStrategy: none
 nameOverride: ""
 fullnameOverride: ""
 
-image:
-  pullPolicy: IfNotPresent
-
 namespace: kube-system
+
+imagePullSecrets: []
+image:
+  repository: nvidia/k8s-device-plugin
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
 
 resources: {}
 

@@ -50,3 +50,11 @@ Selector labels
 app.kubernetes.io/name: {{ include "nvidia-device-plugin.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Full image name with tag
+*/}}
+{{- define "nvidia-device-plugin.fullimage" -}}
+{{- $tag := printf "v%s" .Chart.AppVersion }}
+{{- .Values.image.repository -}}:{{- .Values.image.tag | default $tag -}}
+{{- end }}

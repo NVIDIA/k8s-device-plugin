@@ -45,8 +45,12 @@ spec:
       # be rescheduled after a failure.
       # See https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
       priorityClassName: "system-node-critical"
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
-      - image: nvidia/k8s-device-plugin:v{{ .Chart.AppVersion }}
+      - image: {{ include "nvidia-device-plugin.fullimage" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: nvidia-device-plugin-ctr
         {{- if .Values.compatWithCPUManager }}
