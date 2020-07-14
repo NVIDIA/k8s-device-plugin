@@ -261,52 +261,6 @@ $ helm install \
     --set migStrategy=mixed \
     https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz
 ```
-#### Deploying via `kubectl apply`
-
-If you prefer to deploy the plugin directly with `kubectl apply` you can
-extract the generated template from `helm` using `helm template` and feed that to
-`kubectl apply`. The examples below install the same daemonsets as the `helm
-install` variants above, but use `kubectl apply` instead.
-
-Using the default values for the flags (i.e. no compatibility with the
-`CPUManager` and without the legacy DaemonSet API):
-```shell
-$ helm template \
-    --name-template=nvidia-device-plugin-$(date +%s) \
-    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz \
-  | kubectl apply -f -
-```
-
-Enabling compatibility with the `CPUManager` and running with a request for
-100ms of CPU time and a limit of 512MB of memory.
-```shell
-$ helm template \
-    --name-template=nvidia-device-plugin-$(date +%s) \
-    --set compatWithCPUManager=true \
-    --set resources.requests.cpu=100m \
-    --set resources.limits.memory=512Mi \
-    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz \
-  | kubectl apply -f -
-```
-
-Using the legacy Daemonset API (only available on Kubernetes < `v1.16`):
-```shell
-$ helm template \
-    --name-template=nvidia-device-plugin-$(date +%s) \
-    --set legacyDaemonsetAPI=true \
-    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz \
-  | kubectl apply -f -
-```
-
-Enabling compatibility with the `CPUManager` and the `mixed` `migStrategy`
-```shell
-$ helm template \
-    --name-template=nvidia-device-plugin-$(date +%s) \
-    --set compatWithCPUManager=true \
-    --set migStrategy=mixed \
-    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.7.0-rc.1.tgz \
-  | kubectl apply -f -
-```
 
 ## Building and Running Locally
 
