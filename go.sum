@@ -24,6 +24,8 @@ github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20200615121514-4975d1f4597b h1:Tkq
 github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20200615121514-4975d1f4597b/go.mod h1:l0Cq257MSJMvg9URCXUjc8pgKY2SK1oSvIx6qG0bzzc=
 github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20200615193909-2bf4f2bae622 h1:NQsxoD5I9dBUkt7jU/c/+j1pCxnfmJZKT1Dzwzj7cxk=
 github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20200615193909-2bf4f2bae622/go.mod h1:l0Cq257MSJMvg9URCXUjc8pgKY2SK1oSvIx6qG0bzzc=
+github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20200717104948-f7f1d83f1843 h1:mT7nqHP4D8SnbpIYFLXMrF89uFfmbIWZiGhNhB1IAZY=
+github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20200717104948-f7f1d83f1843/go.mod h1:l0Cq257MSJMvg9URCXUjc8pgKY2SK1oSvIx6qG0bzzc=
 github.com/NYTimes/gziphandler v0.0.0-20170623195520-56545f4a5d46/go.mod h1:3wb06e3pkSAbeQ52E9H9iFoQsEEwGN64994WTCIhntQ=
 github.com/OpenPeeDeeP/depguard v1.0.0/go.mod h1:7/4sitnI9YlQgTLLk734QlzXT8DuHVnAyztLplQjk+o=
 github.com/OpenPeeDeeP/depguard v1.0.1/go.mod h1:xsIw86fROiiwelg+jB2uM9PiKihMMmUx/1V+TNhjQvM=

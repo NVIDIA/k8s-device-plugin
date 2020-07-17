@@ -1,15 +1,14 @@
 // Copyright (c) 2015-2018, NVIDIA CORPORATION. All rights reserved.
 
-// +build linux darwin
+// +build windows
 
 package nvml
 
 import (
-	"unsafe"
+	"syscall"
 )
 
 /*
-#include <dlfcn.h>
 #include "nvml.h"
 
 // We wrap the call to nvmlInit() here to ensure that we pick up the correct
@@ -21,14 +20,14 @@ static nvmlReturn_t nvmlInit_dl(void) {
 */
 import "C"
 
-type dlhandles struct{ handles []unsafe.Pointer }
+type dlhandles struct{ handles []*syscall.LazyDLL }
 
 var dl dlhandles
 
 // Initialize NVML, opening a dynamic reference to the NVML library in the process.
 func (dl *dlhandles) nvmlInit() C.nvmlReturn_t {
-	handle := C.dlopen(C.CString("libnvidia-ml.so.1"), C.RTLD_LAZY|C.RTLD_GLOBAL)
-	if handle == C.NULL {
+	handle := syscall.NewLazyDLL("nvml.dll")
+	if handle == nil {
 		return C.NVML_ERROR_LIBRARY_NOT_FOUND
 	}
 	dl.handles = append(dl.handles, handle)
@@ -42,12 +41,7 @@ func (dl *dlhandles) nvmlShutdown() C.nvmlReturn_t {
 		return ret
 	}
 
-	for _, handle := range dl.handles {
-		err := C.dlclose(handle)
-		if err != 0 {
-			return C.NVML_ERROR_UNKNOWN
-		}
-	}
+	dl.handles = dl.handles[:0]
 
 	return C.NVML_SUCCESS
 }
@@ -55,9 +49,7 @@ func (dl *dlhandles) nvmlShutdown() C.nvmlReturn_t {
 // Check to see if a specific symbol is present in the NVML library.
 func (dl *dlhandles) lookupSymbol(symbol string) C.nvmlReturn_t {
 	for _, handle := range dl.handles {
-		C.dlerror()
-		C.dlsym(handle, C.CString(symbol))
-		if unsafe.Pointer(C.dlerror()) == C.NULL {
+		if proc := handle.NewProc(symbol); proc != nil {
 			return C.NVML_SUCCESS
 		}
 	}

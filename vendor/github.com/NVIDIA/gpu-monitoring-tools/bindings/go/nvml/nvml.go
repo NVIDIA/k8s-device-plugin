@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -255,6 +256,7 @@ type ProcessInfo struct {
 
 type DeviceStatus struct {
 	Power       *uint
+	FanSpeed    *uint
 	Temperature *uint
 	Utilization UtilizationInfo
 	Memory      MemoryInfo
@@ -357,10 +359,17 @@ func NewDevice(idx uint) (device *Device, err error) {
 	cccMajor, cccMinor, err := h.deviceGetCudaComputeCapability()
 	assert(err)
 
-	if minor == nil || busid == nil || uuid == nil {
-		return nil, ErrUnsupportedGPU
+	var path string
+	if runtime.GOOS == "windows" {
+		if busid == nil || uuid == nil {
+			return nil, ErrUnsupportedGPU
+		}
+	} else {
+		if minor == nil || busid == nil || uuid == nil {
+			return nil, ErrUnsupportedGPU
+		}
+		path = fmt.Sprintf("/dev/nvidia%d", *minor)
 	}
-	path := fmt.Sprintf("/dev/nvidia%d", *minor)
 	node, err := numaNode(*busid)
 	assert(err)
 
@@ -439,6 +448,8 @@ func (d *Device) Status() (status *DeviceStatus, err error) {
 
 	power, err := d.deviceGetPowerUsage()
 	assert(err)
+	fanSpeed, err := d.deviceGetFanSpeed()
+	assert(err)
 	temp, err := d.deviceGetTemperature()
 	assert(err)
 	ugpu, umem, err := d.deviceGetUtilizationRates()
@@ -466,7 +477,8 @@ func (d *Device) Status() (status *DeviceStatus, err error) {
 
 	status = &DeviceStatus{
 		Power:       power,
-		Temperature: temp, // °C
+		FanSpeed:    fanSpeed, // %
+		Temperature: temp,     // °C
 		Utilization: UtilizationInfo{
 			GPU:     ugpu, // %
 			Memory:  umem, // %
