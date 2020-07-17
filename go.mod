@@ -27,6 +27,7 @@ replace (
 )
 
 require (
+	github.com/NVIDIA/go-gpuallocator v0.2.0
 	github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20200717104948-f7f1d83f1843
 	github.com/fsnotify/fsnotify v1.4.9
 	golang.org/x/net v0.0.0-20200421231249-e086a090c8fd

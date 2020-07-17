@@ -1,3 +1,6 @@
+# github.com/NVIDIA/go-gpuallocator v0.2.0
+## explicit
+github.com/NVIDIA/go-gpuallocator/gpuallocator
 # github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20200717104948-f7f1d83f1843
 ## explicit
 github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml
