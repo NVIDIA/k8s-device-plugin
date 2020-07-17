@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
@@ -38,6 +39,7 @@ type NvidiaDevicePlugin struct {
 	ResourceManager
 	resourceName   string
 	allocateEnvvar string
+	allocatePolicy gpuallocator.Policy
 	socket         string
 
 	server        *grpc.Server
@@ -47,11 +49,12 @@ type NvidiaDevicePlugin struct {
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(resourceName string, resourceManager ResourceManager, allocateEnvvar string, socket string) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(resourceName string, resourceManager ResourceManager, allocateEnvvar string, allocatePolicy gpuallocator.Policy, socket string) *NvidiaDevicePlugin {
 	return &NvidiaDevicePlugin{
 		ResourceManager: resourceManager,
 		resourceName:    resourceName,
 		allocateEnvvar:  allocateEnvvar,
+		allocatePolicy:  allocatePolicy,
 		socket:          socket,
 
 		// These will be reinitialized every
@@ -180,6 +183,9 @@ func (m *NvidiaDevicePlugin) Register() error {
 		Version:      pluginapi.Version,
 		Endpoint:     path.Base(m.socket),
 		ResourceName: m.resourceName,
+		Options:      &pluginapi.DevicePluginOptions{
+			GetPreferredAllocationAvailable: (m.allocatePolicy != nil),
+		},
 	}
 
 	_, err = client.Register(context.Background(), reqt)
@@ -190,7 +196,10 @@ func (m *NvidiaDevicePlugin) Register() error {
 }
 
 func (m *NvidiaDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
-	return &pluginapi.DevicePluginOptions{}, nil
+	options := &pluginapi.DevicePluginOptions{
+		GetPreferredAllocationAvailable: (m.allocatePolicy != nil),
+	}
+	return options, nil
 }
 
 // ListAndWatch lists devices and update that list according to the health status
@@ -212,7 +221,32 @@ func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.Device
 
 // GetPreferredAllocation returns the preferred allocation from the set of devices specified in the request
 func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
-	return &pluginapi.PreferredAllocationResponse{}, nil
+	response := &pluginapi.PreferredAllocationResponse{}
+	for _, req := range r.ContainerRequests {
+		available, err := gpuallocator.NewDevicesFrom(req.AvailableDeviceIDs)
+		if err != nil {
+				return nil, fmt.Errorf("Unable to retrieve list of available devices: %v", err)
+		}
+
+		required, err := gpuallocator.NewDevicesFrom(req.MustIncludeDeviceIDs)
+		if err != nil {
+				return nil, fmt.Errorf("Unable to retrieve list of required devices: %v", err)
+		}
+
+		allocated := m.allocatePolicy.Allocate(available, required, int(req.AllocationSize))
+
+		var deviceIds []string
+		for _, device := range allocated {
+			deviceIds = append(deviceIds, device.UUID)
+		}
+
+		resp := &pluginapi.ContainerPreferredAllocationResponse{
+			DeviceIDs: deviceIds,
+		}
+
+		response.ContainerResponses = append(response.ContainerResponses, resp)
+	}
+	return response, nil
 }
 
 // Allocate which return list of devices.
