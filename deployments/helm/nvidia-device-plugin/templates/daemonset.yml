@@ -29,8 +29,10 @@ spec:
     matchLabels:
       {{- include "nvidia-device-plugin.selectorLabels" . | nindent 6 }}
   {{- end }}
+  {{- with .Values.updateStrategy }}
   updateStrategy:
-    type: RollingUpdate
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   template:
     metadata:
       # This annotation is deprecated. Kept here for backward compatibility
