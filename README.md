@@ -127,6 +127,9 @@ The `helm` chart for the latest release of the plugin (`v0.7.0-rc.2`) includes
 a number of customizable values. The most commonly overridden ones are:
 
 ```
+  failOnInitError:
+      fail the plugin if an error is encountered during initialization, otherwise block indefinitely
+      (default 'true')
   compatWithCPUManager:
       run with escalated privileges to be compatible with the static CPUManager policy
       (default 'false')
@@ -137,6 +140,18 @@ a number of customizable values. The most commonly overridden ones are:
       pass the desired strategy for exposing MIG devices on GPUs that support it
       [none | single | mixed] (default "none)
 ```
+
+When set to true, the `failOnInitError` flag fails the plugin if an error is
+encountered during initialization. When set to false, it prints an error
+message and blocks the plugin indefinitely instead of failing. Blocking
+indefinitely follows legacy semantics that allow the plugin to deploy
+successfully on nodes that don't have GPUs on them (and aren't supposed to have
+GPUs on them) without throwing an error. In this way, you can blindly deploy a
+daemonset with the plugin on all nodes in your cluster, whether they have GPUs
+on them or not, without encountering an error.  However, doing so means that
+there is no way to detect an actual error on nodes that are supposed to have
+GPUs on them. Failing if an initilization error is encountered is now the
+default and should be adopted by all new deployments.
 
 The `compatWithCPUManager` flag configures the daemonset to be able to
 interoperate with the static `CPUManager` of the `kubelet`.  Setting this flag
