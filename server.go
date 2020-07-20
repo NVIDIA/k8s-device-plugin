@@ -123,6 +123,7 @@ func (m *NvidiaDevicePlugin) Stop() error {
 
 // Serve starts the gRPC server of the device plugin.
 func (m *NvidiaDevicePlugin) Serve() error {
+	os.Remove(m.socket)
 	sock, err := net.Listen("unix", m.socket)
 	if err != nil {
 		return err
