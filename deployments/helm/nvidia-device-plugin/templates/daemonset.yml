@@ -57,9 +57,8 @@ spec:
         name: nvidia-device-plugin-ctr
         args:
         - "--mig-strategy={{ .Values.migStrategy }}"
-        {{- if .Values.compatWithCPUManager }}
-        - "--pass-device-specs"
-        {{- end }}
+        - "--pass-device-specs={{ .Values.compatWithCPUManager }}"
+        - "--fail-on-init-error={{ .Values.failOnInitError }}"
         securityContext:
         {{- if ne (len .Values.securityContext) 0 }}
           {{- toYaml .Values.securityContext | nindent 10 }}
