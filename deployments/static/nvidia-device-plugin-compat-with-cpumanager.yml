@@ -48,7 +48,7 @@ spec:
       containers:
       - image: nvidia/k8s-device-plugin:v0.7.0-rc.2
         name: nvidia-device-plugin-ctr
-        args: ["--pass-device-specs"]
+        args: ["--fail-on-init-error=false", "--pass-device-specs"]
         securityContext:
           privileged: true
         volumeMounts:

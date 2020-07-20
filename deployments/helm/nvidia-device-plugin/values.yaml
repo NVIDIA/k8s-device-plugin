@@ -1,6 +1,7 @@
 legacyDaemonsetAPI: false
 compatWithCPUManager: false
 migStrategy: none
+failOnInitError: true
 
 nameOverride: ""
 fullnameOverride: ""
