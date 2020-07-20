@@ -33,17 +33,25 @@ var migStrategyFlag = flag.String(
 	"pass the desired strategy for exposing MIG devices on GPUs that support it\n"+
 		"[none | single | mixed]")
 
+var failOnInitErrorFlag = flag.Bool(
+	"fail-on-init-error",
+	true,
+	"fail the plugin if an error is encountered during initialization, otherwise block indefinitely [default: true]\n")
+
 func main() {
 	flag.Parse()
 
 	log.Println("Loading NVML")
 	if err := nvml.Init(); err != nil {
 		log.SetOutput(os.Stderr)
-		log.Printf("Failed to initialize NVML: %s.", err)
+		log.Printf("Failed to initialize NVML: %v.", err)
 		log.Printf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
 		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
 		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
-
+		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
+		if *failOnInitErrorFlag {
+			os.Exit(1)
+		}
 		select {}
 	}
 	defer func() { log.Println("Shutdown of NVML returned:", nvml.Shutdown()) }()
