@@ -38,6 +38,7 @@ func main() {
 
 	log.Println("Loading NVML")
 	if err := nvml.Init(); err != nil {
+		log.SetOutput(os.Stderr)
 		log.Printf("Failed to initialize NVML: %s.", err)
 		log.Printf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
 		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
@@ -50,6 +51,7 @@ func main() {
 	log.Println("Starting FS watcher.")
 	watcher, err := newFSWatcher(pluginapi.DevicePluginPath)
 	if err != nil {
+		log.SetOutput(os.Stderr)
 		log.Println("Failed to created FS watcher.")
 		os.Exit(1)
 	}
@@ -61,6 +63,7 @@ func main() {
 	log.Println("Retreiving plugins.")
 	migStrategy, err := NewMigStrategy(*migStrategyFlag)
 	if err != nil {
+		log.SetOutput(os.Stderr)
 		log.Printf("Error creating MIG strategy: %v\n", err)
 		os.Exit(1)
 	}
@@ -82,6 +85,7 @@ restart:
 
 		// Start the gRPC server for plugin p and connect it with the kubelet.
 		if err := p.Start(); err != nil {
+			log.SetOutput(os.Stderr)
 			log.Println("Could not contact Kubelet, retrying. Did you enable the device plugin feature gate?")
 			log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
 			log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
