@@ -36,7 +36,7 @@ Common labels
 */}}
 {{- define "nvidia-device-plugin.labels" -}}
 helm.sh/chart: {{ include "nvidia-device-plugin.chart" . }}
-{{ include "nvidia-device-plugin.selectorLabels" . }}
+{{ include "nvidia-device-plugin.templateLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -44,11 +44,25 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
+Template labels
+*/}}
+{{- define "nvidia-device-plugin.templateLabels" -}}
+app.kubernetes.io/name: {{ include "nvidia-device-plugin.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if .Values.selectorLabelsOverride }}
+{{ toYaml .Values.selectorLabelsOverride }}
+{{- end }}
+{{- end }}
+
+{{/*
 Selector labels
 */}}
 {{- define "nvidia-device-plugin.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "nvidia-device-plugin.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if .Values.selectorLabelsOverride -}}
+{{ toYaml .Values.selectorLabelsOverride }}
+{{- else -}}
+{{ include "nvidia-device-plugin.templateLabels" . }}
+{{- end }}
 {{- end }}
 
 {{/*

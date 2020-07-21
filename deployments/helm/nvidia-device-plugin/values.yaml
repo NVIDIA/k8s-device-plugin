@@ -5,6 +5,7 @@ failOnInitError: true
 
 nameOverride: ""
 fullnameOverride: ""
+selectorLabelsOverride: {}
 
 namespace: kube-system
 
@@ -14,6 +15,9 @@ image:
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
+
+updateStrategy:
+  type: RollingUpdate
 
 podSecurityContext: {}
 securityContext: {}
