@@ -5,6 +5,7 @@ failOnInitError: true
 
 nameOverride: ""
 fullnameOverride: ""
+selectorLabelsOverride: {}
 
 namespace: kube-system
 
