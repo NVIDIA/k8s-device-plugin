@@ -43,8 +43,20 @@ var passDeviceSpecs = flag.Bool(
 	false,
 	"pass the list of DeviceSpecs to the kubelet on Allocate()")
 
+var deviceListStrategyFlag = flag.String(
+	"device-list-strategy",
+	"envvar",
+	"the desired strategy for passing the device list to the underlying runtime\n"+
+		"[envvar | volume-mounts]")
+
 func main() {
 	flag.Parse()
+
+	if *deviceListStrategyFlag != DeviceListStrategyEnvvar && *deviceListStrategyFlag != DeviceListStrategyVolumeMounts {
+		log.SetOutput(os.Stderr)
+		log.Printf("Invalid --device-list-strategy option: %v", *deviceListStrategyFlag)
+		os.Exit(1)
+	}
 
 	log.Println("Loading NVML")
 	if err := nvml.Init(); err != nil {

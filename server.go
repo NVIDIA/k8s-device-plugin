@@ -22,6 +22,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -29,6 +30,16 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
+)
+
+const (
+	DeviceListStrategyEnvvar       = "envvar"
+	DeviceListStrategyVolumeMounts = "volume-mounts"
+)
+
+const (
+	deviceListAsVolumeMountsHostPath          = "/dev/null"
+	deviceListAsVolumeMountsContainerPathRoot = "/var/run/nvidia-container-devices"
 )
 
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
@@ -257,10 +268,14 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 			}
 		}
 
-		response := pluginapi.ContainerAllocateResponse{
-			Envs: map[string]string{
-				m.deviceListEnvvar: strings.Join(req.DevicesIDs, ","),
-			},
+		response := pluginapi.ContainerAllocateResponse{}
+
+		if *deviceListStrategyFlag == DeviceListStrategyEnvvar {
+			response.Envs = m.apiEnvs(m.deviceListEnvvar, req.DevicesIDs)
+		}
+		if *deviceListStrategyFlag == DeviceListStrategyVolumeMounts {
+			response.Envs = m.apiEnvs(m.deviceListEnvvar, []string{deviceListAsVolumeMountsContainerPathRoot})
+			response.Mounts = m.apiMounts(req.DevicesIDs)
 		}
 		if *passDeviceSpecs {
 			response.Devices = m.apiDeviceSpecs(req.DevicesIDs)
@@ -307,6 +322,26 @@ func (m *NvidiaDevicePlugin) apiDevices() []*pluginapi.Device {
 		pdevs = append(pdevs, &d.Device)
 	}
 	return pdevs
+}
+
+func (m *NvidiaDevicePlugin) apiEnvs(envvar string, filter []string) map[string]string {
+	return map[string]string{
+		envvar: strings.Join(filter, ","),
+	}
+}
+
+func (m *NvidiaDevicePlugin) apiMounts(filter []string) []*pluginapi.Mount {
+	var mounts []*pluginapi.Mount
+
+	for _, id := range filter {
+		mount := &pluginapi.Mount{
+			HostPath:      deviceListAsVolumeMountsHostPath,
+			ContainerPath: filepath.Join(deviceListAsVolumeMountsContainerPathRoot, id),
+		}
+		mounts = append(mounts, mount)
+	}
+
+	return mounts
 }
 
 func (m *NvidiaDevicePlugin) apiDeviceSpecs(filter []string) []*pluginapi.DeviceSpec {
