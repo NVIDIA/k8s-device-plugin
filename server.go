@@ -34,10 +34,10 @@ import (
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
 	ResourceManager
-	resourceName   string
-	allocateEnvvar string
-	allocatePolicy gpuallocator.Policy
-	socket         string
+	resourceName     string
+	deviceListEnvvar string
+	allocatePolicy   gpuallocator.Policy
+	socket           string
 
 	server        *grpc.Server
 	cachedDevices []*Device
@@ -46,13 +46,13 @@ type NvidiaDevicePlugin struct {
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(resourceName string, resourceManager ResourceManager, allocateEnvvar string, allocatePolicy gpuallocator.Policy, socket string) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(resourceName string, resourceManager ResourceManager, deviceListEnvvar string, allocatePolicy gpuallocator.Policy, socket string) *NvidiaDevicePlugin {
 	return &NvidiaDevicePlugin{
-		ResourceManager: resourceManager,
-		resourceName:    resourceName,
-		allocateEnvvar:  allocateEnvvar,
-		allocatePolicy:  allocatePolicy,
-		socket:          socket,
+		ResourceManager:  resourceManager,
+		resourceName:     resourceName,
+		deviceListEnvvar: deviceListEnvvar,
+		allocatePolicy:   allocatePolicy,
+		socket:           socket,
 
 		// These will be reinitialized every
 		// time the plugin server is restarted.
@@ -259,7 +259,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 
 		response := pluginapi.ContainerAllocateResponse{
 			Envs: map[string]string{
-				m.allocateEnvvar: strings.Join(req.DevicesIDs, ","),
+				m.deviceListEnvvar: strings.Join(req.DevicesIDs, ","),
 			},
 		}
 		if *passDeviceSpecs {
