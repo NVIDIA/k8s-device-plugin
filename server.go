@@ -184,7 +184,7 @@ func (m *NvidiaDevicePlugin) Register() error {
 		Version:      pluginapi.Version,
 		Endpoint:     path.Base(m.socket),
 		ResourceName: m.resourceName,
-		Options:      &pluginapi.DevicePluginOptions{
+		Options: &pluginapi.DevicePluginOptions{
 			GetPreferredAllocationAvailable: (m.allocatePolicy != nil),
 		},
 	}
@@ -226,12 +226,12 @@ func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *plug
 	for _, req := range r.ContainerRequests {
 		available, err := gpuallocator.NewDevicesFrom(req.AvailableDeviceIDs)
 		if err != nil {
-				return nil, fmt.Errorf("Unable to retrieve list of available devices: %v", err)
+			return nil, fmt.Errorf("Unable to retrieve list of available devices: %v", err)
 		}
 
 		required, err := gpuallocator.NewDevicesFrom(req.MustIncludeDeviceIDs)
 		if err != nil {
-				return nil, fmt.Errorf("Unable to retrieve list of required devices: %v", err)
+			return nil, fmt.Errorf("Unable to retrieve list of required devices: %v", err)
 		}
 
 		allocated := m.allocatePolicy.Allocate(available, required, int(req.AllocationSize))
