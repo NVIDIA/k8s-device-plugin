@@ -30,13 +30,18 @@ import (
 var migStrategyFlag = flag.String(
 	"mig-strategy",
 	"none",
-	"pass the desired strategy for exposing MIG devices on GPUs that support it\n"+
+	"the desired strategy for exposing MIG devices on GPUs that support it\n"+
 		"[none | single | mixed]")
 
 var failOnInitErrorFlag = flag.Bool(
 	"fail-on-init-error",
 	true,
 	"fail the plugin if an error is encountered during initialization, otherwise block indefinitely [default: true]\n")
+
+var passDeviceSpecs = flag.Bool(
+	"pass-device-specs",
+	false,
+	"pass the list of DeviceSpecs to the kubelet on Allocate()")
 
 func main() {
 	flag.Parse()
