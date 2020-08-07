@@ -61,6 +61,7 @@ spec:
         - "--mig-strategy={{ .Values.migStrategy }}"
         - "--pass-device-specs={{ .Values.compatWithCPUManager }}"
         - "--fail-on-init-error={{ .Values.failOnInitError }}"
+        - "--device-list-strategy={{ .Values.deviceListStrategy }}"
         securityContext:
         {{- if ne (len .Values.securityContext) 0 }}
           {{- toYaml .Values.securityContext | nindent 10 }}
