@@ -2,6 +2,7 @@ legacyDaemonsetAPI: false
 compatWithCPUManager: false
 migStrategy: none
 failOnInitError: true
+deviceListStrategy: envvar
 
 nameOverride: ""
 fullnameOverride: ""
