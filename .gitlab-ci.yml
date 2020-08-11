@@ -1,16 +1,23 @@
-image: docker:stable
-services:
-    - docker:stable-dind
-
 stages:
     - build
     - release
 
+.build-and-release-setup: &build-and-release-setup
+    image: docker:stable
+    services:
+        - docker:stable-dind
+
+    before_script:
+        - apk add make
+
 # Build pushes to the local gitlab registry
 build:device-plugin:
+    <<: *build-and-release-setup
     stage: build
+    rules:
+    - when: always
+
     script:
-    - apk add make
     - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
 
     - make REGISTRY="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" all
@@ -18,13 +25,14 @@ build:device-plugin:
     - make REGISTRY="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" push-short
     - make REGISTRY="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" push-latest
 
+# Release pushes to dockerhub
 release:device-plugin:
+    <<: *build-and-release-setup
     stage: release
     only:
     - tags
 
     script:
-    - apk add make
     - docker login -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}"
 
     - make VERSION="${CI_COMMIT_TAG}" all
