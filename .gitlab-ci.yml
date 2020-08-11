@@ -1,6 +1,21 @@
 stages:
+    - tests
     - build
     - release
+
+.tests-setup: &tests-setup
+  image: golang:1.14.4
+
+  rules:
+    - when: always
+
+  variables:
+    GITHUB_ROOT: "github.com/NVIDIA"
+    PROJECT_GOPATH: "${GITHUB_ROOT}/k8s-device-plugin"
+
+  before_script:
+    - mkdir -p ${GOPATH}/src/${GITHUB_ROOT}
+    - ln -s ${CI_PROJECT_DIR} ${GOPATH}/src/${PROJECT_GOPATH}
 
 .build-and-release-setup: &build-and-release-setup
     image: docker:stable
@@ -9,6 +24,51 @@ stages:
 
     before_script:
         - apk add make
+
+# Run a series of sanity-check tests over the code
+lint:
+  <<: *tests-setup
+  stage: tests
+  script:
+    - go get -u golang.org/x/lint/golint
+    - go mod vendor
+    - golint -set_exit_status ${PROJECT_GOPATH}
+
+vet:
+  <<: *tests-setup
+  stage: tests
+  script:
+    - go vet ${PROJECT_GOPATH}
+
+unit_test:
+  <<: *tests-setup
+  stage: tests
+  script:
+    - go test ${PROJECT_GOPATH}
+
+fmt:
+  <<: *tests-setup
+  stage: tests
+  script:
+    - res=$(gofmt -l *.go)
+    - echo "$res"
+    - test -z "$res"
+
+ineffassign:
+  <<: *tests-setup
+  stage: tests
+  script:
+    - go get -u github.com/gordonklaus/ineffassign
+    - go mod vendor
+    - ineffassign *.go
+
+misspell:
+  <<: *tests-setup
+  stage: tests
+  script:
+    - go get -u github.com/client9/misspell/cmd/misspell
+    - go mod vendor
+    - misspell *.go
 
 # Build pushes to the local gitlab registry
 build:device-plugin:
