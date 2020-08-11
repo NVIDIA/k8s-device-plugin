@@ -8,7 +8,7 @@ Publishing the container is automated through gitlab-ci and only requires one to
 Publishing the helm chart is currently manual, and we should move to an automated process ASAP
 
 # Release Process Checklist
-- [ ] Update the README to change occurances of the old version (e.g: `v0.7.0-rc.4`) with the new version
+- [ ] Update the README to change occurances of the old version (e.g: `v0.7.0-rc.5`) with the new version
 - [ ] Update the README changelog
 - [ ] Commit, Tag and Push to Gitlab
 - [ ] Build a new helm package with `helm package ./deployments/helm/nvidia-device-plugin`
