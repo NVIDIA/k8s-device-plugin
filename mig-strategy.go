@@ -24,19 +24,23 @@ import (
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
+// Constants representing the various MIG strategies
 const (
 	MigStrategyNone   = "none"
 	MigStrategySingle = "single"
 	MigStrategyMixed  = "mixed"
 )
 
+// MigStrategyResourceSet holds a set of resource names for a given MIG strategy
 type MigStrategyResourceSet map[string]struct{}
 
+// MigStrategy provides an interface for building the set of plugins required to implement a given MIG strategy
 type MigStrategy interface {
 	GetPlugins() []*NvidiaDevicePlugin
 	MatchesResource(mig *nvml.Device, resource string) bool
 }
 
+// NewMigStrategy returns a reference to a given MigStrategy based on the 'strategy' passed in
 func NewMigStrategy(strategy string) (MigStrategy, error) {
 	switch strategy {
 	case MigStrategyNone:
@@ -93,7 +97,6 @@ func (s *migStrategyNone) GetPlugins() []*NvidiaDevicePlugin {
 
 func (s *migStrategyNone) MatchesResource(mig *nvml.Device, resource string) bool {
 	panic("Should never be called")
-	return false
 }
 
 // migStrategySingle
