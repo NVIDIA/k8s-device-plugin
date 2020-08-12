@@ -32,11 +32,13 @@ import (
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
+// Constants to represent the variousdevice list strategies
 const (
 	DeviceListStrategyEnvvar       = "envvar"
 	DeviceListStrategyVolumeMounts = "volume-mounts"
 )
 
+// Constants for use by the 'volume-mounts' device list strategy
 const (
 	deviceListAsVolumeMountsHostPath          = "/dev/null"
 	deviceListAsVolumeMountsContainerPathRoot = "/var/run/nvidia-container-devices"
@@ -155,7 +157,7 @@ func (m *NvidiaDevicePlugin) Serve() error {
 			// i.e. if server has crashed more than 5 times and it didn't last more than one hour each time
 			if restartCount > 5 {
 				// quit
-				log.Fatal("GRPC server for '%s' has repeatedly crashed recently. Quitting", m.resourceName)
+				log.Fatalf("GRPC server for '%s' has repeatedly crashed recently. Quitting", m.resourceName)
 			}
 			timeSinceLastCrash := time.Since(lastCrashTime).Seconds()
 			lastCrashTime = time.Now()
@@ -164,7 +166,7 @@ func (m *NvidiaDevicePlugin) Serve() error {
 				// to reflect on the frequency
 				restartCount = 1
 			} else {
-				restartCount += 1
+				restartCount++
 			}
 		}
 	}()
@@ -204,6 +206,7 @@ func (m *NvidiaDevicePlugin) Register() error {
 	return nil
 }
 
+// GetDevicePluginOptions returns the values of the optional settings for this plugin
 func (m *NvidiaDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
 	options := &pluginapi.DevicePluginOptions{
 		GetPreferredAllocationAvailable: (m.allocatePolicy != nil),
@@ -287,6 +290,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 	return &responses, nil
 }
 
+// PreStartContainer is unimplemented for this plugin
 func (m *NvidiaDevicePlugin) PreStartContainer(context.Context, *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {
 	return &pluginapi.PreStartContainerResponse{}, nil
 }
