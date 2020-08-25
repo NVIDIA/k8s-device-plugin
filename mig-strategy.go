@@ -131,7 +131,7 @@ func (s *migStrategySingle) getResourceName(mig *nvml.Device) string {
 
 	g := attr.GpuInstanceSliceCount
 	c := attr.ComputeInstanceSliceCount
-	gb := ((attr.MemorySizeMB + 1000 - 1) / 1000)
+	gb := ((attr.MemorySizeMB + 1024 - 1) / 1024)
 	r := fmt.Sprintf("mig-%dc.%dg.%dgb", c, g, gb)
 
 	return r
@@ -176,7 +176,7 @@ func (s *migStrategyMixed) getResourceName(mig *nvml.Device) string {
 	check(err)
 
 	g := attr.GpuInstanceSliceCount
-	gb := ((attr.MemorySizeMB + 1000 - 1) / 1000)
+	gb := ((attr.MemorySizeMB + 1024 - 1) / 1024)
 	r := fmt.Sprintf("mig-%dg.%dgb", g, gb)
 
 	return r
