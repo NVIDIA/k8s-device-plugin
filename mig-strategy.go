@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
@@ -104,6 +105,9 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 	resources := make(MigStrategyResourceSet)
 	for _, mig := range getAllMigDevices() {
 		r := s.getResourceName(mig)
+		if !s.validMigDevice(mig) {
+			panic("Unsupported MIG device found: " + r)
+		}
 		resources[r] = struct{}{}
 	}
 
@@ -123,6 +127,13 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 			gpuallocator.Policy(nil),
 			pluginapi.DevicePluginPath+"nvidia-gpu.sock"),
 	}
+}
+
+func (s *migStrategySingle) validMigDevice(mig *nvml.Device) bool {
+	attr, err := mig.GetAttributes()
+	check(err)
+
+	return attr.GpuInstanceSliceCount == attr.ComputeInstanceSliceCount
 }
 
 func (s *migStrategySingle) getResourceName(mig *nvml.Device) string {
@@ -152,6 +163,10 @@ func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
 	resources := make(MigStrategyResourceSet)
 	for _, mig := range getAllMigDevices() {
 		r := s.getResourceName(mig)
+		if !s.validMigDevice(mig) {
+			log.Printf("Skipping unsupported MIG device: %v", r)
+			continue
+		}
 		resources[r] = struct{}{}
 	}
 
@@ -175,6 +190,13 @@ func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
 	}
 
 	return plugins
+}
+
+func (s *migStrategyMixed) validMigDevice(mig *nvml.Device) bool {
+	attr, err := mig.GetAttributes()
+	check(err)
+
+	return attr.GpuInstanceSliceCount == attr.ComputeInstanceSliceCount
 }
 
 func (s *migStrategyMixed) getResourceName(mig *nvml.Device) string {
