@@ -18,25 +18,30 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
+// Constants representing the various MIG strategies
 const (
 	MigStrategyNone   = "none"
 	MigStrategySingle = "single"
 	MigStrategyMixed  = "mixed"
 )
 
+// MigStrategyResourceSet holds a set of resource names for a given MIG strategy
 type MigStrategyResourceSet map[string]struct{}
 
+// MigStrategy provides an interface for building the set of plugins required to implement a given MIG strategy
 type MigStrategy interface {
 	GetPlugins() []*NvidiaDevicePlugin
 	MatchesResource(mig *nvml.Device, resource string) bool
 }
 
+// NewMigStrategy returns a reference to a given MigStrategy based on the 'strategy' passed in
 func NewMigStrategy(strategy string) (MigStrategy, error) {
 	switch strategy {
 	case MigStrategyNone:
@@ -93,7 +98,6 @@ func (s *migStrategyNone) GetPlugins() []*NvidiaDevicePlugin {
 
 func (s *migStrategyNone) MatchesResource(mig *nvml.Device, resource string) bool {
 	panic("Should never be called")
-	return false
 }
 
 // migStrategySingle
@@ -101,6 +105,9 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 	resources := make(MigStrategyResourceSet)
 	for _, mig := range getAllMigDevices() {
 		r := s.getResourceName(mig)
+		if !s.validMigDevice(mig) {
+			panic("Unsupported MIG device found: " + r)
+		}
 		resources[r] = struct{}{}
 	}
 
@@ -122,14 +129,27 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 	}
 }
 
+func (s *migStrategySingle) validMigDevice(mig *nvml.Device) bool {
+	attr, err := mig.GetAttributes()
+	check(err)
+
+	return attr.GpuInstanceSliceCount == attr.ComputeInstanceSliceCount
+}
+
 func (s *migStrategySingle) getResourceName(mig *nvml.Device) string {
 	attr, err := mig.GetAttributes()
 	check(err)
 
 	g := attr.GpuInstanceSliceCount
 	c := attr.ComputeInstanceSliceCount
-	gb := ((attr.MemorySizeMB + 1000 - 1) / 1000)
-	r := fmt.Sprintf("mig-%dc.%dg.%dgb", c, g, gb)
+	gb := ((attr.MemorySizeMB + 1024 - 1) / 1024)
+
+	var r string
+	if g == c {
+		r = fmt.Sprintf("mig-%dg.%dgb", g, gb)
+	} else {
+		r = fmt.Sprintf("mig-%dc.%dg.%dgb", c, g, gb)
+	}
 
 	return r
 }
@@ -143,6 +163,10 @@ func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
 	resources := make(MigStrategyResourceSet)
 	for _, mig := range getAllMigDevices() {
 		r := s.getResourceName(mig)
+		if !s.validMigDevice(mig) {
+			log.Printf("Skipping unsupported MIG device: %v", r)
+			continue
+		}
 		resources[r] = struct{}{}
 	}
 
@@ -168,13 +192,27 @@ func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
 	return plugins
 }
 
+func (s *migStrategyMixed) validMigDevice(mig *nvml.Device) bool {
+	attr, err := mig.GetAttributes()
+	check(err)
+
+	return attr.GpuInstanceSliceCount == attr.ComputeInstanceSliceCount
+}
+
 func (s *migStrategyMixed) getResourceName(mig *nvml.Device) string {
 	attr, err := mig.GetAttributes()
 	check(err)
 
 	g := attr.GpuInstanceSliceCount
-	gb := ((attr.MemorySizeMB + 1000 - 1) / 1000)
-	r := fmt.Sprintf("mig-%dg.%dgb", g, gb)
+	c := attr.ComputeInstanceSliceCount
+	gb := ((attr.MemorySizeMB + 1024 - 1) / 1024)
+
+	var r string
+	if g == c {
+		r = fmt.Sprintf("mig-%dg.%dgb", g, gb)
+	} else {
+		r = fmt.Sprintf("mig-%dc.%dg.%dgb", c, g, gb)
+	}
 
 	return r
 }

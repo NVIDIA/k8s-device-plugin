@@ -30,7 +30,7 @@ import (
 var migStrategyFlag = flag.String(
 	"mig-strategy",
 	"none",
-	"pass the desired strategy for exposing MIG devices on GPUs that support it\n"+
+	"the desired strategy for exposing MIG devices on GPUs that support it\n"+
 		"[none | single | mixed]")
 
 var failOnInitErrorFlag = flag.Bool(
@@ -38,8 +38,25 @@ var failOnInitErrorFlag = flag.Bool(
 	true,
 	"fail the plugin if an error is encountered during initialization, otherwise block indefinitely [default: true]\n")
 
+var passDeviceSpecs = flag.Bool(
+	"pass-device-specs",
+	false,
+	"pass the list of DeviceSpecs to the kubelet on Allocate()")
+
+var deviceListStrategyFlag = flag.String(
+	"device-list-strategy",
+	"envvar",
+	"the desired strategy for passing the device list to the underlying runtime\n"+
+		"[envvar | volume-mounts]")
+
 func main() {
 	flag.Parse()
+
+	if *deviceListStrategyFlag != DeviceListStrategyEnvvar && *deviceListStrategyFlag != DeviceListStrategyVolumeMounts {
+		log.SetOutput(os.Stderr)
+		log.Printf("Invalid --device-list-strategy option: %v", *deviceListStrategyFlag)
+		os.Exit(1)
+	}
 
 	log.Println("Loading NVML")
 	if err := nvml.Init(); err != nil {

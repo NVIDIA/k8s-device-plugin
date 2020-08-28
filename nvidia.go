@@ -31,20 +31,24 @@ const (
 	allHealthChecks        = "xids"
 )
 
+// Device couples an underlying pluginapi.Device type with its device node path
 type Device struct {
 	pluginapi.Device
 	Path string
 }
 
+// ResourceManager provides an interface for listing a set of Devices and checking health on them
 type ResourceManager interface {
 	Devices() []*Device
 	CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device)
 }
 
+// GpuDeviceManager implements the ResourceManager interface for full GPU devices
 type GpuDeviceManager struct {
 	skipMigEnabledGPUs bool
 }
 
+// MigDeviceManager implements the ResourceManager interface for MIG devices
 type MigDeviceManager struct {
 	strategy MigStrategy
 	resource string
@@ -56,12 +60,14 @@ func check(err error) {
 	}
 }
 
+// NewGpuDeviceManager returns a reference to a new GpuDeviceManager
 func NewGpuDeviceManager(skipMigEnabledGPUs bool) *GpuDeviceManager {
 	return &GpuDeviceManager{
 		skipMigEnabledGPUs: skipMigEnabledGPUs,
 	}
 }
 
+// NewMigDeviceManager returns a reference to a new MigDeviceManager
 func NewMigDeviceManager(strategy MigStrategy, resource string) *MigDeviceManager {
 	return &MigDeviceManager{
 		strategy: strategy,
@@ -69,6 +75,7 @@ func NewMigDeviceManager(strategy MigStrategy, resource string) *MigDeviceManage
 	}
 }
 
+// Devices returns a list of devices from the GpuDeviceManager
 func (g *GpuDeviceManager) Devices() []*Device {
 	n, err := nvml.GetDeviceCount()
 	check(err)
@@ -91,6 +98,7 @@ func (g *GpuDeviceManager) Devices() []*Device {
 	return devs
 }
 
+// Devices returns a list of devices from the MigDeviceManager
 func (m *MigDeviceManager) Devices() []*Device {
 	n, err := nvml.GetDeviceCount()
 	check(err)
@@ -121,11 +129,13 @@ func (m *MigDeviceManager) Devices() []*Device {
 	return devs
 }
 
+// CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
 func (g *GpuDeviceManager) CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device) {
 	checkHealth(stop, devices, unhealthy)
 }
 
-func (g *MigDeviceManager) CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device) {
+// CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
+func (m *MigDeviceManager) CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device) {
 	checkHealth(stop, devices, unhealthy)
 }
 
