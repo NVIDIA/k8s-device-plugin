@@ -137,8 +137,11 @@ a number of customizable values. The most commonly overridden ones are:
       use the legacy daemonset API version 'extensions/v1beta1'
       (default 'false')
   migStrategy:
-      pass the desired strategy for exposing MIG devices on GPUs that support it
-      [none | single | mixed] (default "none)
+      the desired strategy for exposing MIG devices on GPUs that support it
+      [none | single | mixed] (default "none")
+  deviceListStrategy:
+      the desired strategy for passing the device list to the underlying runtime
+      [envvar | volume-mounts] (default "envvar")
 ```
 
 When set to true, the `failOnInitError` flag fails the plugin if an error is
@@ -172,6 +175,18 @@ Kubernetes](https://docs.google.com/document/d/1mdgMQ8g7WmaI_XVVRrCvHPFPOMCm5LQD
 **Note:** With a `migStrategy` of mixed, you will have additional resources
 available to you of the form `nvidia.com/mig-<slice_count>g.<memory_size>gb`
 that you can set in your pod spec to get access to a specific MIG device.
+
+The `deviceListStrategy` flag allows one to choose which strategy the plugin
+will use to advertise the list of GPUs allocated to a container. This is
+traditionally done by setting the `NVIDIA_VISIBLE_DEVICES` environment variable
+as described
+[here](https://github.com/NVIDIA/nvidia-container-runtime#nvidia_visible_devices).
+This strategy can be selected via the (default) `envvar` option. Support was
+recently added to the `nvidia-container-toolkit` to also allow passing the list
+of devices as a set of volume mounts instead of as an environment variable.
+This strategy can be selected via the `volume-mounts` option. Details for the
+rationale behind this strategy can be found
+[here](https://docs.google.com/document/d/1uXVF-NWZQXgP1MLb87_kMkQvidpnkNWicdpO2l9g-fw/edit#heading=h.b3ti65rojfy5).
 
 Please take a look in the following `values.yaml` file to see the full set of
 overridable parameters for the device plugin.
