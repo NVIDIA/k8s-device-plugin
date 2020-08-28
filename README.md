@@ -367,6 +367,13 @@ $ ./k8s-device-plugin --pass-device-specs
 
 ## Changelog
 
+### Version v0.7.0-rc.6
+
+- Add logic to skip / error out when unsupported MIG device encountered
+- Fix bug treating memory as multiple of 1000 instead of 1024
+- Switch to using CUDA base images
+- Add a set of standard tests to the .gitlab-ci.yml file
+
 ### Version v0.7.0-rc.5
 
 - Add deviceListStrategyFlag to allow device list passing as volume mounts
