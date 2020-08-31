@@ -33,9 +33,8 @@ RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' &
     go install -ldflags="-s -w" -v nvidia-device-plugin
 
 
-FROM nvidia/cuda:10.2-base-ubi8
+FROM registry.access.redhat.com/ubi8:latest
 
-ENV NVIDIA_REQUIRE_CUDA=""
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=utility
 
