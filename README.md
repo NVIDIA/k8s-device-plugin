@@ -367,6 +367,10 @@ $ ./k8s-device-plugin --pass-device-specs
 
 ## Changelog
 
+### Version v0.7.0-rc.7
+
+- Fix bug which only allowed running the plugin on machines with CUDA 10.2+ installed
+
 ### Version v0.7.0-rc.6
 
 - Add logic to skip / error out when unsupported MIG device encountered
