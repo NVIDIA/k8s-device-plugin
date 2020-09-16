@@ -1,0 +1,126 @@
+---
+##
+## Variables that control where build artifacts are places for scanning and testing:
+## CI_REGISTRY
+## CI_REGISTRY_IMAGE
+## CI_REGISTRY_USER
+## CI_REGISTRY_PASSWORD
+##
+## Variables that control where release artifacts go:
+## RELEASE_REGISTRY
+## RELEASE_REGISTRY_IMAGE
+## RELEASE_REGISTRY_USER
+## RELEASE_REGISTRY_PASSWORD
+##
+
+default:
+  image: docker:stable
+  services:
+    - docker:stable-dind
+  tags:
+    - type/docker
+    - docker/privileged
+    - cnt
+    - container-dev
+    - os/linux
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+
+stages:
+  - build
+  - test
+  - scan
+  - deploy
+  - release
+
+.builddep_setup: &builddep_setup
+  - apk add --no-cache bash findutils libmagic curl make git
+
+.testdep_setup: &testdep_setup
+  - apk add --no-cache bash make perl
+
+.python_setup: &python_setup
+  - apk add --no-cache python3 python3-dev py3-pip py3-wheel
+
+.dockerlogin_setup: &dockerlogin_setup
+  - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+
+# tags pulled images with $CI_PROJECT_NAME to work-around issue with contamer's support for local scans.
+.pull_images: &pull_images
+  - docker pull ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}-ubuntu16.04
+  - docker pull ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}-centos7
+  - docker pull ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}-ubi8
+  - docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}-ubuntu16.04 ${CI_PROJECT_NAME}:${CI_COMMIT_SHA}-ubuntu16.04
+  - docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}-centos7 ${CI_PROJECT_NAME}:${CI_COMMIT_SHA}-centos7
+  - docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}-ubi8 ${CI_PROJECT_NAME}:${CI_COMMIT_SHA}-ubi8
+
+.releasedockerlogin_setup: &releasedockerlogin_setup
+  - 'docker login -u "${RELEASE_REGISTRY_USER}" -p "${RELEASE_REGISTRY_PASSWORD}" "${RELEASE_REGISTRY}"'
+
+.build_action: &build_action
+  - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" all
+  - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" push
+
+.test_action: &test_action
+  - "true"
+
+.deploy_action: &deploy_action
+  - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" push-short
+  - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" push-latest
+
+# contamer does not support local scans on images that contain a port number
+.scan_action: &scan_action
+  - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab-master.nvidia.com/sectooling/scanning/contamer.git
+  - cd contamer
+  - pip3 install -r requirements.txt
+  - python3 contamer.py -ls --fail-on-non-os ${CI_PROJECT_NAME}:${CI_COMMIT_SHA}-ubuntu16.04
+  - python3 contamer.py -ls --fail-on-non-os ${CI_PROJECT_NAME}:${CI_COMMIT_SHA}-centos7
+  - python3 contamer.py -ls --fail-on-non-os --suppress-vulns CVE-2020-14352 CVE-2020-15888 -- ${CI_PROJECT_NAME}:${CI_COMMIT_SHA}-ubi8
+
+.release_action: &release_action
+  - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" all
+  - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push
+  - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push-short
+  - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push-latest
+
+build:
+  stage: build
+  script:
+    - *builddep_setup
+    - *dockerlogin_setup
+    - *build_action
+
+test:
+  stage: test
+  script:
+    - *testdep_setup
+    - *test_action
+
+scan:
+  stage: scan
+  script:
+    - *builddep_setup
+    - *python_setup
+    - *dockerlogin_setup
+    - *pull_images
+    - *scan_action
+
+deploy:
+  stage: deploy
+  script:
+    - *builddep_setup
+    - *dockerlogin_setup
+    - *pull_images
+    - *deploy_action
+
+release:
+  stage: release
+  only:
+    - tags
+  script:
+    - 'echo Commit Tag: $CI_COMMIT_TAG ; [[ -n "$CI_COMMIT_TAG" ]] || exit 1'
+    - *builddep_setup
+    - *releasedockerlogin_setup
+    - *release_action
