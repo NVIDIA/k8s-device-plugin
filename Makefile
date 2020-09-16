@@ -19,7 +19,10 @@
 ##### Global variables #####
 
 DOCKER   ?= docker
+ifeq ($(IMAGE),)
 REGISTRY ?= nvidia
+IMAGE := $(REGISTRY)/k8s-device-plugin
+endif
 VERSION  ?= v0.7.0-rc.7
 
 ##### Public rules #####
@@ -27,31 +30,31 @@ VERSION  ?= v0.7.0-rc.7
 all: ubuntu16.04 centos7 ubi8
 
 push:
-	$(DOCKER) push "$(REGISTRY)/k8s-device-plugin:$(VERSION)-ubuntu16.04"
-	$(DOCKER) push "$(REGISTRY)/k8s-device-plugin:$(VERSION)-centos7"
-	$(DOCKER) push "$(REGISTRY)/k8s-device-plugin:$(VERSION)-ubi8"
+	$(DOCKER) push "$(IMAGE):$(VERSION)-ubuntu16.04"
+	$(DOCKER) push "$(IMAGE):$(VERSION)-centos7"
+	$(DOCKER) push "$(IMAGE):$(VERSION)-ubi8"
 
 push-short:
-	$(DOCKER) tag "$(REGISTRY)/k8s-device-plugin:$(VERSION)-ubuntu16.04" "$(REGISTRY)/k8s-device-plugin:$(VERSION)"
-	$(DOCKER) push "$(REGISTRY)/k8s-device-plugin:$(VERSION)"
+	$(DOCKER) tag "$(IMAGE):$(VERSION)-ubuntu16.04" "$(IMAGE):$(VERSION)"
+	$(DOCKER) push "$(IMAGE):$(VERSION)"
 
 push-latest:
-	$(DOCKER) tag "$(REGISTRY)/k8s-device-plugin:$(VERSION)-ubuntu16.04" "$(REGISTRY)/k8s-device-plugin:latest"
-	$(DOCKER) push "$(REGISTRY)/k8s-device-plugin:latest"
+	$(DOCKER) tag "$(IMAGE):$(VERSION)-ubuntu16.04" "$(IMAGE):latest"
+	$(DOCKER) push "$(IMAGE):latest"
 
 ubuntu16.04:
 	$(DOCKER) build --pull \
-		--tag $(REGISTRY)/k8s-device-plugin:$(VERSION)-ubuntu16.04 \
+		--tag $(IMAGE):$(VERSION)-ubuntu16.04 \
 		--file docker/amd64/Dockerfile.ubuntu16.04 .
 
 ubi8:
 	$(DOCKER) build --pull \
 		--build-arg PLUGIN_VERSION=$(VERSION) \
-		--tag $(REGISTRY)/k8s-device-plugin:$(VERSION)-ubi8 \
+		--tag $(IMAGE):$(VERSION)-ubi8 \
 		--file docker/amd64/Dockerfile.ubi8 .
 
 centos7:
 	$(DOCKER) build --pull \
-		--tag $(REGISTRY)/k8s-device-plugin:$(VERSION)-centos7 \
+		--tag $(IMAGE):$(VERSION)-centos7 \
 		--file docker/amd64/Dockerfile.centos7 .
 
