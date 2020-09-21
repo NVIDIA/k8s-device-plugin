@@ -227,6 +227,13 @@ func deviceGetHandleByIndex(idx uint) (handle, error) {
 	return handle{dev}, errorString(r)
 }
 
+func deviceGetHandleByUUID(uuid string) (handle, error) {
+	var dev C.nvmlDevice_t
+
+	r := C.nvmlDeviceGetHandleByUUID(C.CString(uuid), &dev)
+	return handle{dev}, errorString(r)
+}
+
 func deviceGetTopologyCommonAncestor(h1, h2 handle) (*uint, error) {
 	r := dl.lookupSymbol("nvmlDeviceGetTopologyCommonAncestor")
 	if r == C.NVML_ERROR_FUNCTION_NOT_FOUND {
