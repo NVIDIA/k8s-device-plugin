@@ -12,13 +12,13 @@ github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/protoc-gen-gogo/descriptor
 github.com/gogo/protobuf/sortkeys
-# github.com/golang/protobuf v1.3.3
+# github.com/golang/protobuf v1.4.2
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
-# golang.org/x/net v0.0.0-20200421231249-e086a090c8fd
+# golang.org/x/net v0.0.0-20200707034311-ab3426394381
 ## explicit
 golang.org/x/net/context
 golang.org/x/net/http/httpguts
@@ -27,14 +27,15 @@ golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
-# golang.org/x/sys v0.0.0-20200413165638-669c56c373c4
+# golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
+golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
-# golang.org/x/text v0.3.2
+# golang.org/x/text v0.3.3
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55
+# google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.29.0
 ## explicit
@@ -77,27 +78,58 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# k8s.io/kubelet v0.0.0 => k8s.io/kubelet v0.19.0-rc.0
+# google.golang.org/protobuf v1.24.0
+google.golang.org/protobuf/encoding/prototext
+google.golang.org/protobuf/encoding/protowire
+google.golang.org/protobuf/internal/descfmt
+google.golang.org/protobuf/internal/descopts
+google.golang.org/protobuf/internal/detrand
+google.golang.org/protobuf/internal/encoding/defval
+google.golang.org/protobuf/internal/encoding/messageset
+google.golang.org/protobuf/internal/encoding/tag
+google.golang.org/protobuf/internal/encoding/text
+google.golang.org/protobuf/internal/errors
+google.golang.org/protobuf/internal/fieldnum
+google.golang.org/protobuf/internal/fieldsort
+google.golang.org/protobuf/internal/filedesc
+google.golang.org/protobuf/internal/filetype
+google.golang.org/protobuf/internal/flags
+google.golang.org/protobuf/internal/genname
+google.golang.org/protobuf/internal/impl
+google.golang.org/protobuf/internal/mapsort
+google.golang.org/protobuf/internal/pragma
+google.golang.org/protobuf/internal/set
+google.golang.org/protobuf/internal/strs
+google.golang.org/protobuf/internal/version
+google.golang.org/protobuf/proto
+google.golang.org/protobuf/reflect/protoreflect
+google.golang.org/protobuf/reflect/protoregistry
+google.golang.org/protobuf/runtime/protoiface
+google.golang.org/protobuf/runtime/protoimpl
+google.golang.org/protobuf/types/known/anypb
+google.golang.org/protobuf/types/known/durationpb
+google.golang.org/protobuf/types/known/timestamppb
+# k8s.io/kubelet v0.0.0 => k8s.io/kubelet v0.19.1
 ## explicit
 k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1
-# k8s.io/api => k8s.io/api v0.18.2
-# k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.18.2
-# k8s.io/apimachinery => k8s.io/apimachinery v0.18.2
-# k8s.io/apiserver => k8s.io/apiserver v0.18.2
-# k8s.io/cli-runtime => k8s.io/cli-runtime v0.18.2
-# k8s.io/client-go => k8s.io/client-go v0.18.2
-# k8s.io/cloud-provider => k8s.io/cloud-provider v0.18.2
-# k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.18.2
-# k8s.io/code-generator => k8s.io/code-generator v0.18.2
-# k8s.io/component-base => k8s.io/component-base v0.18.2
-# k8s.io/cri-api => k8s.io/cri-api v0.18.2
-# k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.18.2
-# k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.18.2
-# k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.18.2
-# k8s.io/kube-proxy => k8s.io/kube-proxy v0.18.2
-# k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.18.2
-# k8s.io/kubectl => k8s.io/kubectl v0.18.2
-# k8s.io/kubelet => k8s.io/kubelet v0.19.0-rc.0
-# k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.18.2
-# k8s.io/metrics => k8s.io/metrics v0.18.2
-# k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.18.2
+# k8s.io/api => k8s.io/api v0.19.1
+# k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.19.1
+# k8s.io/apimachinery => k8s.io/apimachinery v0.19.1
+# k8s.io/apiserver => k8s.io/apiserver v0.19.1
+# k8s.io/cli-runtime => k8s.io/cli-runtime v0.19.1
+# k8s.io/client-go => k8s.io/client-go v0.19.1
+# k8s.io/cloud-provider => k8s.io/cloud-provider v0.19.1
+# k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.19.1
+# k8s.io/code-generator => k8s.io/code-generator v0.19.1
+# k8s.io/component-base => k8s.io/component-base v0.19.1
+# k8s.io/cri-api => k8s.io/cri-api v0.19.1
+# k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.19.1
+# k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.19.1
+# k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.19.1
+# k8s.io/kube-proxy => k8s.io/kube-proxy v0.19.1
+# k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.19.1
+# k8s.io/kubectl => k8s.io/kubectl v0.19.1
+# k8s.io/kubelet => k8s.io/kubelet v0.19.1
+# k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.19.1
+# k8s.io/metrics => k8s.io/metrics v0.19.1
+# k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.19.1
