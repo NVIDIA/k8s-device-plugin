@@ -1,16 +1,21 @@
 ---
 ##
-## Variables that control where build artifacts are places for scanning and testing:
+## Variables that control the CI artifacts (private registry, for scanning and testing):
 ## CI_REGISTRY
 ## CI_REGISTRY_IMAGE
 ## CI_REGISTRY_USER
 ## CI_REGISTRY_PASSWORD
 ##
-## Variables that control where release artifacts go:
-## RELEASE_REGISTRY
-## RELEASE_REGISTRY_IMAGE
-## RELEASE_REGISTRY_USER
-## RELEASE_REGISTRY_PASSWORD
+## Variables that control where NGC release artifacts go:
+## NGC_REGISTRY
+## NGC_REGISTRY_IMAGE
+## NGC_REGISTRY_USER
+## NGC_REGISTRY_TOKEN
+##
+## Variables that control where Docker Hub release artifacts go:
+## REGISTRY_TOKEN
+## REGISTRY_USER
+## DOCKERHUB_REGISTRY_IMAGE
 ##
 
 default:
@@ -34,6 +39,7 @@ stages:
   - scan
   - deploy
   - release
+  - release_dockerhub
 
 .builddep_setup: &builddep_setup
   - apk add --no-cache bash findutils libmagic curl make git
@@ -56,8 +62,11 @@ stages:
   - docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}-centos7 ${CI_PROJECT_NAME}:${CI_COMMIT_SHA}-centos7
   - docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}-ubi8 ${CI_PROJECT_NAME}:${CI_COMMIT_SHA}-ubi8
 
-.releasedockerlogin_setup: &releasedockerlogin_setup
-  - 'docker login -u "${RELEASE_REGISTRY_USER}" -p "${RELEASE_REGISTRY_PASSWORD}" "${RELEASE_REGISTRY}"'
+.ngc_release_login: &ngc_release_login
+  - 'docker login -u "${NGC_REGISTRY_USER}" -p "${NGC_REGISTRY_TOKEN}" "${NGC_REGISTRY}"'
+
+.dockerhub_login: &dockerhub_login
+  - 'docker login -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}"'
 
 .build_action: &build_action
   - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" all
@@ -80,10 +89,16 @@ stages:
   - python3 contamer.py -ls --fail-on-non-os --suppress-vulns CVE-2020-14352 CVE-2020-15888 -- ${CI_PROJECT_NAME}:${CI_COMMIT_SHA}-ubi8
 
 .release_action: &release_action
-  - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" all
-  - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push
-  - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push-short
-  - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push-latest
+  - make IMAGE="${NGC_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" all
+  - make IMAGE="${NGC_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push
+  - make IMAGE="${NGC_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push-short
+  - make IMAGE="${NGC_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push-latest
+
+.dockerhub_release_action: &dockerhub_release_action
+  - make IMAGE="${DOCKERHUB_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" all
+  - make IMAGE="${DOCKERHUB_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push
+  - make IMAGE="${DOCKERHUB_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push-short
+  - make IMAGE="${DOCKERHUB_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push-latest
 
 build:
   stage: build
@@ -122,5 +137,14 @@ release:
   script:
     - 'echo Commit Tag: $CI_COMMIT_TAG ; [[ -n "$CI_COMMIT_TAG" ]] || exit 1'
     - *builddep_setup
-    - *releasedockerlogin_setup
+    - *ngc_release_login
     - *release_action
+
+release_dockerhub:
+  stage: release_dockerhub
+  only:
+    - tags
+  script:
+    - *builddep_setup
+    - *dockerhub_login
+    - *dockerhub_release_action
