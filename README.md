@@ -367,6 +367,10 @@ $ ./k8s-device-plugin --pass-device-specs
 
 ## Changelog
 
+### Version v0.7.0
+
+- Promote v0.7.0-rc.8 to v0.7.0
+
 ### Version v0.7.0-rc.8
 
 - Permit configuration of alternative container registry through environment variables.
