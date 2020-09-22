@@ -336,6 +336,30 @@ func NewDevice(idx uint) (device *Device, err error) {
 
 	h, err := deviceGetHandleByIndex(idx)
 	assert(err)
+
+	device, err = newDevice(h)
+	assert(err)
+
+	return device, err
+}
+
+func NewDeviceByUUID(uuid string) (device *Device, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = r.(error)
+		}
+	}()
+
+	h, err := deviceGetHandleByUUID(uuid)
+	assert(err)
+
+	device, err = newDevice(h)
+	assert(err)
+
+	return device, err
+}
+
+func newDevice(h handle) (device *Device, err error) {
 	model, err := h.deviceGetName()
 	assert(err)
 	uuid, err := h.deviceGetUUID()
@@ -413,6 +437,30 @@ func NewDeviceLite(idx uint) (device *Device, err error) {
 
 	h, err := deviceGetHandleByIndex(idx)
 	assert(err)
+
+	device, err = newDeviceLite(h)
+	assert(err)
+
+	return device, err
+}
+
+func NewDeviceLiteByUUID(uuid string) (device *Device, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = r.(error)
+		}
+	}()
+
+	h, err := deviceGetHandleByUUID(uuid)
+	assert(err)
+
+	device, err = newDeviceLite(h)
+	assert(err)
+
+	return device, err
+}
+
+func newDeviceLite(h handle) (device *Device, err error) {
 	uuid, err := h.deviceGetUUID()
 	assert(err)
 	minor, err := h.deviceGetMinorNumber()
@@ -685,7 +733,41 @@ func (d *Device) GetMigParentDeviceLite() (*Device, error) {
 	return NewDeviceLite(*index)
 }
 
-func ParseMigDeviceUUID(mig string) (string, uint, uint, error) {
+func ParseMigDeviceUUID(uuid string) (string, uint, uint, error) {
+	migHandle, err := deviceGetHandleByUUID(uuid)
+	if err == nil {
+		return getMIGDeviceInfo(migHandle)
+	}
+	return parseMigDeviceUUID(uuid)
+}
+
+func getMIGDeviceInfo(migHandle handle) (string, uint, uint, error) {
+	parentHandle, err := migHandle.deviceGetDeviceHandleFromMigDeviceHandle()
+	if err != nil {
+		return "", 0, 0, err
+	}
+
+	parentUUID, err := parentHandle.deviceGetUUID()
+	if err != nil {
+		return "", 0, 0, err
+	}
+
+	migDevice := Device{handle: migHandle}
+
+	gi, err := migDevice.GetGPUInstanceId()
+	if err != nil {
+		return "", 0, 0, err
+	}
+
+	ci, err := migDevice.GetComputeInstanceId()
+	if err != nil {
+		return "", 0, 0, err
+	}
+
+	return *parentUUID, uint(gi), uint(ci), err
+}
+
+func parseMigDeviceUUID(mig string) (string, uint, uint, error) {
 	tokens := strings.SplitN(mig, "-", 2)
 	if len(tokens) != 2 || tokens[0] != "MIG" {
 		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
