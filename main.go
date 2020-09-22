@@ -85,6 +85,14 @@ func main() {
 	log.Println("Starting OS watcher.")
 	sigs := newOSWatcher(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
+	var plugins []*NvidiaDevicePlugin
+restart:
+	// If we are restarting, idempotently stop any running plugins before
+	// recreating them below.
+	for _, p := range plugins {
+		p.Stop()
+	}
+
 	log.Println("Retreiving plugins.")
 	migStrategy, err := NewMigStrategy(*migStrategyFlag)
 	if err != nil {
@@ -92,17 +100,14 @@ func main() {
 		log.Printf("Error creating MIG strategy: %v\n", err)
 		os.Exit(1)
 	}
-	plugins := migStrategy.GetPlugins()
+	plugins = migStrategy.GetPlugins()
 
-restart:
-	// Loop through all plugins, idempotently stopping them, and then starting
-	// them if they have any devices to serve. If even one plugin fails to
-	// start properly, try starting them all again.
+	// Loop through all plugins, starting them if they have any devices
+	// to serve. If even one plugin fails to start properly, try
+	// starting them all again.
 	started := 0
 	pluginStartError := make(chan struct{})
 	for _, p := range plugins {
-		p.Stop()
-
 		// Just continue if there are no devices to serve for plugin p.
 		if len(p.Devices()) == 0 {
 			continue
