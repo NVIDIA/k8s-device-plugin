@@ -367,6 +367,14 @@ $ ./k8s-device-plugin --pass-device-specs
 
 ## Changelog
 
+### Version v0.7.0-rc.8
+
+- Permit configuration of alternative container registry through environment variables.
+- Add an alternate set of gitlab-ci directives under .nvidia-ci.yml
+- Update all k8s dependencies to v1.19.1
+- Update vendoring for NVML Go bindings
+- Move restart loop to force recreate of plugins on SIGHUP
+
 ### Version v0.7.0-rc.7
 
 - Fix bug which only allowed running the plugin on machines with CUDA 10.2+ installed
