@@ -93,7 +93,7 @@ restart:
 		p.Stop()
 	}
 
-	log.Println("Retreiving plugins.")
+	log.Println("Retrieving plugins.")
 	migStrategy, err := NewMigStrategy(*migStrategyFlag)
 	if err != nil {
 		log.SetOutput(os.Stderr)
