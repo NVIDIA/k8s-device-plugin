@@ -77,7 +77,7 @@ func main() {
 	watcher, err := newFSWatcher(pluginapi.DevicePluginPath)
 	if err != nil {
 		log.SetOutput(os.Stderr)
-		log.Println("Failed to created FS watcher.")
+		log.Println("Failed to create FS watcher:", err)
 		os.Exit(1)
 	}
 	defer watcher.Close()
