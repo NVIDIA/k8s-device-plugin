@@ -1,7 +1,7 @@
-# github.com/NVIDIA/go-gpuallocator v0.2.0
+# github.com/NVIDIA/go-gpuallocator v0.2.1
 ## explicit
 github.com/NVIDIA/go-gpuallocator/gpuallocator
-# github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20200922190416-1e3b4dbd36b2
+# github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201117195648-87592e0a46df
 ## explicit
 github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml
 # github.com/fsnotify/fsnotify v1.4.9
@@ -18,12 +18,6 @@ github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
-# github.com/gorilla/mux v1.7.4
-## explicit
-# github.com/stretchr/testify v1.5.1
-## explicit
-# github.com/urfave/cli/v2 v2.2.0
-## explicit
 # golang.org/x/net v0.0.0-20200707034311-ab3426394381
 ## explicit
 golang.org/x/net/context
@@ -118,8 +112,6 @@ google.golang.org/protobuf/types/known/timestamppb
 # k8s.io/kubelet v0.0.0 => k8s.io/kubelet v0.19.1
 ## explicit
 k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1
-# k8s.io/kubernetes v1.18.2
-## explicit
 # k8s.io/api => k8s.io/api v0.19.1
 # k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.19.1
 # k8s.io/apimachinery => k8s.io/apimachinery v0.19.1
