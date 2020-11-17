@@ -337,6 +337,18 @@ func calculateGPUPairScore(gpu0 *Device, gpu1 *Device) int {
 			score += 500
 		case nvml.SixNVLINKLinks:
 			score += 600
+		case nvml.SevenNVLINKLinks:
+			score += 700
+		case nvml.EightNVLINKLinks:
+			score += 800
+		case nvml.NineNVLINKLinks:
+			score += 900
+		case nvml.TenNVLINKLinks:
+			score += 1000
+		case nvml.ElevenNVLINKLinks:
+			score += 1100
+		case nvml.TwelveNVLINKLinks:
+			score += 1200
 		}
 	}
 

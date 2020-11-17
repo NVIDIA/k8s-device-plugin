@@ -36,10 +36,12 @@ github.com/JeffAshton/win_pdh v0.0.0-20161109143554-76bb4ee9f0ab/go.mod h1:3VYc5
 github.com/MakeNowJust/heredoc v0.0.0-20170808103936-bb23615498cd/go.mod h1:64YHyfSL2R96J44Nlwm39UHepQbyR5q10x7iYa1ks2E=
 github.com/Microsoft/go-winio v0.4.14/go.mod h1:qXqCSQ3Xa7+6tgxaGTIe4Kpcdsi+P8jBhyzoq1bpyYA=
 github.com/Microsoft/hcsshim v0.0.0-20190417211021-672e52e9209d/go.mod h1:Op3hHsoHPAvb6lceZHDtd9OkTew38wNoXnJs8iY7rUg=
-github.com/NVIDIA/go-gpuallocator v0.2.0 h1:2vJysKwqCwQ+zFhhy3gfd3IyC+jJ49Fj4m1Zm7Zsj2k=
-github.com/NVIDIA/go-gpuallocator v0.2.0/go.mod h1:+2ke2/CGym+5xSxHfkIFi9Oof1Kj0KMSXgQDpk39ikk=
+github.com/NVIDIA/go-gpuallocator v0.2.1 h1:8EodCWEPjDl5Q+2ONB2EdwFJpcGnmACmlgLB8RkP/W0=
+github.com/NVIDIA/go-gpuallocator v0.2.1/go.mod h1:+2ke2/CGym+5xSxHfkIFi9Oof1Kj0KMSXgQDpk39ikk=
 github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20200922190416-1e3b4dbd36b2 h1:Nn0877T/IBZ5ACw3whpeLh29EcA67NOsZ30cy59hBUg=
 github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20200922190416-1e3b4dbd36b2/go.mod h1:l0Cq257MSJMvg9URCXUjc8pgKY2SK1oSvIx6qG0bzzc=
+github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201117195648-87592e0a46df h1:uNdbfa22U46TB0NpA4s6t71i4hr4jUkBo5hyyTznBic=
+github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201117195648-87592e0a46df/go.mod h1:l0Cq257MSJMvg9URCXUjc8pgKY2SK1oSvIx6qG0bzzc=
 github.com/NYTimes/gziphandler v0.0.0-20170623195520-56545f4a5d46/go.mod h1:3wb06e3pkSAbeQ52E9H9iFoQsEEwGN64994WTCIhntQ=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/OpenPeeDeeP/depguard v1.0.0/go.mod h1:7/4sitnI9YlQgTLLk734QlzXT8DuHVnAyztLplQjk+o=
