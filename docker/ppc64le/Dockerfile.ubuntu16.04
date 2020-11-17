@@ -33,7 +33,7 @@ RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' &
     go install -ldflags="-s -w" -v nvidia-device-plugin
 
 
-FROM nvidia/cuda-ppc64le:10.2-base-ubuntu16.04
+FROM nvcr.io/nvidia/cuda-ppc64le:11.1-base-ubuntu16.04
 
 ENV NVIDIA_DISABLE_REQUIRE="true"
 ENV NVIDIA_VISIBLE_DEVICES=all
