@@ -39,7 +39,6 @@ stages:
   - scan
   - deploy
   - release
-  - release_dockerhub
 
 .builddep_setup: &builddep_setup
   - apk add --no-cache bash findutils libmagic curl make git
@@ -138,7 +137,7 @@ deploy:
     - *pull_images
     - *deploy_action
 
-release:
+release:ngc:
   stage: release
   only:
     - tags
@@ -148,8 +147,8 @@ release:
     - *ngc_release_login
     - *release_action
 
-release_dockerhub:
-  stage: release_dockerhub
+release:dockerhub:
+  stage: release
   only:
     - tags
   script:
