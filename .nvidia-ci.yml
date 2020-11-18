@@ -109,12 +109,20 @@ build:
 
 test:
   stage: test
+  except:
+    variables:
+    - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]tests?\]/i
+    - $SKIP_TESTS
   script:
     - *testdep_setup
     - *test_action
 
 scan:
   stage: scan
+  except:
+    variables:
+    - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scan?\]/i
+    - $SKIP_SCAN
   script:
     - *builddep_setup
     - *python_setup
