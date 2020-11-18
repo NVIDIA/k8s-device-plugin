@@ -121,8 +121,8 @@ scan:
   stage: scan
   except:
     variables:
-    - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scan?\]/i
-    - $SKIP_SCAN
+    - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
+    - $SKIP_SCANS
   script:
     - *builddep_setup
     - *python_setup
