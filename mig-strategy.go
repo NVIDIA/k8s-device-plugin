@@ -42,10 +42,10 @@ type MigStrategy interface {
 }
 
 // NewMigStrategy returns a reference to a given MigStrategy based on the 'strategy' passed in
-func NewMigStrategy(strategy string) (MigStrategy, error) {
+func NewMigStrategy(strategy string, devType DeviceType) (MigStrategy, error) {
 	switch strategy {
 	case MigStrategyNone:
-		return &migStrategyNone{}, nil
+		return &migStrategyNone{devType: devType}, nil
 	case MigStrategySingle:
 		return &migStrategySingle{}, nil
 	case MigStrategyMixed:
@@ -54,7 +54,9 @@ func NewMigStrategy(strategy string) (MigStrategy, error) {
 	return nil, fmt.Errorf("Unknown strategy: %v", strategy)
 }
 
-type migStrategyNone struct{}
+type migStrategyNone struct{
+	devType DeviceType
+}
 type migStrategySingle struct{}
 type migStrategyMixed struct{}
 
@@ -86,10 +88,18 @@ func getAllMigDevices() []*nvml.Device {
 
 // migStrategyNone
 func (s *migStrategyNone) GetPlugins() []*NvidiaDevicePlugin {
+	var deviceManager ResourceManager
+
+	if s.devType == DeviceTypeFullGPU {
+		deviceManager = NewGpuDeviceManager(false) // Enumerate device even if MIG enabled
+	} else {
+		deviceManager = NewTegraDeviceManager()
+	}
+
 	return []*NvidiaDevicePlugin{
 		NewNvidiaDevicePlugin(
 			"nvidia.com/gpu",
-			NewGpuDeviceManager(false), // Enumerate device even if MIG enabled
+			deviceManager, // Enumerate device even if MIG enabled
 			"NVIDIA_VISIBLE_DEVICES",
 			gpuallocator.NewBestEffortPolicy(),
 			pluginapi.DevicePluginPath+"nvidia-gpu.sock"),

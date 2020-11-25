@@ -22,7 +22,6 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	"github.com/fsnotify/fsnotify"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
@@ -58,20 +57,37 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Println("Loading NVML")
-	if err := nvml.Init(); err != nil {
+	var devCtrl DeviceControl
+	var devType DeviceType
+
+	if _, err := os.Stat("/sys/module/tegra_fuse/parameters/tegra_chip_id"); !os.IsNotExist(err) {
+		devCtrl = TegraDeviceControl{}
+		devType = DeviceTypeTegra
+
+		if *migStrategyFlag != MigStrategyNone {
+			log.SetOutput(os.Stderr)
+			log.Printf("MIG is unsupported on Tegra, forcing none")
+			*migStrategyFlag = MigStrategyNone
+		}
+	} else {
+		devCtrl = NvmlDeviceControl{}
+		devType = DeviceTypeFullGPU
+	}
+
+	err := devCtrl.Init()
+	if err != nil {
 		log.SetOutput(os.Stderr)
-		log.Printf("Failed to initialize NVML: %v.", err)
 		log.Printf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
 		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
 		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
 		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
+
 		if *failOnInitErrorFlag {
 			os.Exit(1)
 		}
 		select {}
 	}
-	defer func() { log.Println("Shutdown of NVML returned:", nvml.Shutdown()) }()
+	defer devCtrl.Shutdown()
 
 	log.Println("Starting FS watcher.")
 	watcher, err := newFSWatcher(pluginapi.DevicePluginPath)
@@ -94,7 +110,7 @@ restart:
 	}
 
 	log.Println("Retreiving plugins.")
-	migStrategy, err := NewMigStrategy(*migStrategyFlag)
+	migStrategy, err := NewMigStrategy(*migStrategyFlag, devType)
 	if err != nil {
 		log.SetOutput(os.Stderr)
 		log.Printf("Error creating MIG strategy: %v\n", err)

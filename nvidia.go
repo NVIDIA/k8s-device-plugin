@@ -54,6 +54,9 @@ type MigDeviceManager struct {
 	resource string
 }
 
+// TegraDeviceManager implements the ResourceManager interface for Tegra GPU devices
+type TegraDeviceManager struct {}
+
 func check(err error) {
 	if err != nil {
 		log.Panicln("Fatal:", err)
@@ -73,6 +76,11 @@ func NewMigDeviceManager(strategy MigStrategy, resource string) *MigDeviceManage
 		strategy: strategy,
 		resource: resource,
 	}
+}
+
+// NewTegraDeviceManager returns a reference to a new TegraDeviceManager
+func NewTegraDeviceManager() *TegraDeviceManager {
+	return &TegraDeviceManager{}
 }
 
 // Devices returns a list of devices from the GpuDeviceManager
@@ -129,6 +137,23 @@ func (m *MigDeviceManager) Devices() []*Device {
 	return devs
 }
 
+// Devices returns a list of devices from the TegraDeviceManager
+func (t *TegraDeviceManager) Devices() []*Device {
+	var devs []*Device
+
+	// If it is a Tegra board only one GPU is available
+	if _, err := os.Stat("/sys/module/tegra_fuse/parameters/tegra_chip_id"); !os.IsNotExist(err) {
+		// On Jetson there is no way of getting an UUID, however default is 0
+		// More info : https://forums.developer.nvidia.com/t/chip-uid/48217#5100481
+		var device = &nvml.Device{
+			UUID: "0",
+		}
+		devs = append(devs, buildDevice(device))
+	}
+
+	return devs
+}
+
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
 func (g *GpuDeviceManager) CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device) {
 	checkHealth(stop, devices, unhealthy)
@@ -137,6 +162,11 @@ func (g *GpuDeviceManager) CheckHealth(stop <-chan interface{}, devices []*Devic
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
 func (m *MigDeviceManager) CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device) {
 	checkHealth(stop, devices, unhealthy)
+}
+
+// CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
+func (t *TegraDeviceManager) CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device) {
+	// Currently not supported on Tegra devices
 }
 
 func buildDevice(d *nvml.Device) *Device {
