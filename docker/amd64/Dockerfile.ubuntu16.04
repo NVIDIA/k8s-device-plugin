@@ -39,6 +39,8 @@ ENV NVIDIA_DISABLE_REQUIRE="true"
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=utility
 
+RUN apt-get remove -y ca-certificates libssl1.0.0 openssl || true
+
 COPY --from=build /go/bin/nvidia-device-plugin /usr/bin/nvidia-device-plugin
 
 ENTRYPOINT ["nvidia-device-plugin"]
