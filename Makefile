@@ -23,7 +23,7 @@ ifeq ($(IMAGE),)
 REGISTRY ?= nvidia
 IMAGE := $(REGISTRY)/k8s-device-plugin
 endif
-VERSION  ?= v0.7.1
+VERSION  ?= v0.7.2
 
 ##### Public rules #####
 
