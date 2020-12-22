@@ -1,7 +1,7 @@
 # github.com/NVIDIA/go-gpuallocator v0.2.1
 ## explicit
 github.com/NVIDIA/go-gpuallocator/gpuallocator
-# github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201117195648-87592e0a46df
+# github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201222072828-352eb4c503a7
 ## explicit
 github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml
 # github.com/fsnotify/fsnotify v1.4.9
