@@ -58,32 +58,6 @@ type migStrategyNone struct{}
 type migStrategySingle struct{}
 type migStrategyMixed struct{}
 
-// getAllMigDevices() across all full GPUs
-func getAllMigDevices() []*nvml.Device {
-	n, err := nvml.GetDeviceCount()
-	check(err)
-
-	var migs []*nvml.Device
-	for i := uint(0); i < n; i++ {
-		d, err := nvml.NewDeviceLite(i)
-		check(err)
-
-		migEnabled, err := d.IsMigEnabled()
-		check(err)
-
-		if !migEnabled {
-			continue
-		}
-
-		devs, err := d.GetMigDevices()
-		check(err)
-
-		migs = append(migs, devs...)
-	}
-
-	return migs
-}
-
 // migStrategyNone
 func (s *migStrategyNone) GetPlugins() []*NvidiaDevicePlugin {
 	return []*NvidiaDevicePlugin{
@@ -102,8 +76,39 @@ func (s *migStrategyNone) MatchesResource(mig *nvml.Device, resource string) boo
 
 // migStrategySingle
 func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
+	devices := NewMIGCapableDevices()
+
+	migEnabledDevices, err := devices.GetDevicesWithMigEnabled()
+	if err != nil {
+		panic(fmt.Errorf("Unabled to retrieve list of MIG-enabled devices: %v", err))
+	}
+
+	// If no MIG devices are available fallback to "none" strategy
+	if len(migEnabledDevices) == 0 {
+		none, _ := NewMigStrategy(MigStrategyNone)
+		log.Printf("No MIG devices found. Falling back to mig.strategy=%v", none)
+		return none.GetPlugins()
+	}
+
+	migDisabledDevices, err := devices.GetDevicesWithMigDisabled()
+	if err != nil {
+		panic(fmt.Errorf("Unabled to retrieve list of non-MIG-enabled devices: %v", err))
+	}
+	if len(migDisabledDevices) != 0 {
+		panic(fmt.Errorf("For mig.strategy=single all devices on the node must all be configured with the same migEnabled value"))
+	}
+
+	if err := devices.AssertAllMigEnabledDevicesAreValid(); err != nil {
+		panic(fmt.Errorf("At least one device with migEnabled=true was not configured corectly: %v", err))
+	}
+
 	resources := make(MigStrategyResourceSet)
-	for _, mig := range getAllMigDevices() {
+
+	migs, err := devices.GetAllMigDevices()
+	if err != nil {
+		panic(fmt.Errorf("Unable to retrieve list of MIG devices: %v", err))
+	}
+	for _, mig := range migs {
 		r := s.getResourceName(mig)
 		if !s.validMigDevice(mig) {
 			panic("Unsupported MIG device found: " + r)
@@ -160,8 +165,15 @@ func (s *migStrategySingle) MatchesResource(mig *nvml.Device, resource string) b
 
 // migStrategyMixed
 func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
+	devices := NewMIGCapableDevices()
+
 	resources := make(MigStrategyResourceSet)
-	for _, mig := range getAllMigDevices() {
+
+	migs, err := devices.GetAllMigDevices()
+	if err != nil {
+		panic(fmt.Errorf("Unable to retrieve list of MIG devices: %v", err))
+	}
+	for _, mig := range migs {
 		r := s.getResourceName(mig)
 		if !s.validMigDevice(mig) {
 			log.Printf("Skipping unsupported MIG device: %v", r)
