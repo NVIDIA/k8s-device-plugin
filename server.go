@@ -287,6 +287,8 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
 	}
 
+	log.Printf("Allocate responses %+v", responses)
+
 	return &responses, nil
 }
 
