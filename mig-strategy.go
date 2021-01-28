@@ -167,8 +167,11 @@ func (s *migStrategySingle) MatchesResource(mig *nvml.Device, resource string) b
 func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
 	devices := NewMIGCapableDevices()
 
-	resources := make(MigStrategyResourceSet)
+	if err := devices.AssertAllMigEnabledDevicesAreValid(); err != nil {
+		panic(fmt.Errorf("At least one device with migEnabled=true was not configured corectly: %v", err))
+	}
 
+	resources := make(MigStrategyResourceSet)
 	migs, err := devices.GetAllMigDevices()
 	if err != nil {
 		panic(fmt.Errorf("Unable to retrieve list of MIG devices: %v", err))
