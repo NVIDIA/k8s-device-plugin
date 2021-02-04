@@ -280,8 +280,8 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 			response.Envs = m.apiEnvs(m.deviceListEnvvar, []string{deviceListAsVolumeMountsContainerPathRoot})
 			response.Mounts = m.apiMounts(req.DevicesIDs)
 		}
-		if *passDeviceSpecs {
-			response.Devices = m.apiDeviceSpecs(req.DevicesIDs)
+		if *passDeviceSpecsFlag {
+			response.Devices = m.apiDeviceSpecs(*nvidiaDriverRootFlag, req.DevicesIDs)
 		}
 
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
@@ -348,7 +348,7 @@ func (m *NvidiaDevicePlugin) apiMounts(filter []string) []*pluginapi.Mount {
 	return mounts
 }
 
-func (m *NvidiaDevicePlugin) apiDeviceSpecs(filter []string) []*pluginapi.DeviceSpec {
+func (m *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, filter []string) []*pluginapi.DeviceSpec {
 	var specs []*pluginapi.DeviceSpec
 
 	paths := []string{
@@ -362,7 +362,7 @@ func (m *NvidiaDevicePlugin) apiDeviceSpecs(filter []string) []*pluginapi.Device
 		if _, err := os.Stat(p); err == nil {
 			spec := &pluginapi.DeviceSpec{
 				ContainerPath: p,
-				HostPath:      p,
+				HostPath:      filepath.Join(driverRoot, p),
 				Permissions:   "rw",
 			}
 			specs = append(specs, spec)
@@ -374,7 +374,7 @@ func (m *NvidiaDevicePlugin) apiDeviceSpecs(filter []string) []*pluginapi.Device
 			if d.ID == id {
 				spec := &pluginapi.DeviceSpec{
 					ContainerPath: d.Path,
-					HostPath:      d.Path,
+					HostPath:      filepath.Join(driverRoot, d.Path),
 					Permissions:   "rw",
 				}
 				specs = append(specs, spec)
