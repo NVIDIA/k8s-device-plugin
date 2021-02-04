@@ -38,7 +38,7 @@ var failOnInitErrorFlag = flag.Bool(
 	true,
 	"fail the plugin if an error is encountered during initialization, otherwise block indefinitely [default: true]\n")
 
-var passDeviceSpecs = flag.Bool(
+var passDeviceSpecsFlag = flag.Bool(
 	"pass-device-specs",
 	false,
 	"pass the list of DeviceSpecs to the kubelet on Allocate()")
@@ -48,6 +48,11 @@ var deviceListStrategyFlag = flag.String(
 	"envvar",
 	"the desired strategy for passing the device list to the underlying runtime\n"+
 		"[envvar | volume-mounts]")
+
+var nvidiaDriverRootFlag = flag.String(
+	"nvidia-driver-root",
+	"/",
+	"the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')")
 
 func main() {
 	flag.Parse()

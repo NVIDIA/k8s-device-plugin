@@ -142,6 +142,8 @@ a number of customizable values. The most commonly overridden ones are:
   deviceListStrategy:
       the desired strategy for passing the device list to the underlying runtime
       [envvar | volume-mounts] (default "envvar")
+  nvidiaDriverRoot:
+      the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')
 ```
 
 When set to true, the `failOnInitError` flag fails the plugin if an error is
