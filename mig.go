@@ -30,7 +30,7 @@ func (devices *MIGCapableDevices) getDevicesMap() (map[bool][]*nvml.Device, erro
 
 		migEnabledDevicesMap := make(map[bool][]*nvml.Device)
 		for i := uint(0); i < n; i++ {
-			d, err := nvml.NewDevice(i)
+			d, err := nvml.NewDeviceLite(i)
 			if err != nil {
 				return nil, err
 			}
