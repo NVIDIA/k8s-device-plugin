@@ -99,7 +99,7 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 	}
 
 	if err := devices.AssertAllMigEnabledDevicesAreValid(); err != nil {
-		panic(fmt.Errorf("At least one device with migEnabled=true was not configured corectly: %v", err))
+		panic(fmt.Errorf("At least one device with migEnabled=true was not configured correctly: %v", err))
 	}
 
 	resources := make(MigStrategyResourceSet)
@@ -168,7 +168,7 @@ func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
 	devices := NewMIGCapableDevices()
 
 	if err := devices.AssertAllMigEnabledDevicesAreValid(); err != nil {
-		panic(fmt.Errorf("At least one device with migEnabled=true was not configured corectly: %v", err))
+		panic(fmt.Errorf("At least one device with migEnabled=true was not configured correctly: %v", err))
 	}
 
 	resources := make(MigStrategyResourceSet)
