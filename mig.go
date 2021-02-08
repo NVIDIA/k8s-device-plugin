@@ -30,7 +30,7 @@ func (devices *MIGCapableDevices) getDevicesMap() (map[bool][]*nvml.Device, erro
 
 		migEnabledDevicesMap := make(map[bool][]*nvml.Device)
 		for i := uint(0); i < n; i++ {
-			d, err := nvml.NewDevice(i)
+			d, err := nvml.NewDeviceLite(i)
 			if err != nil {
 				return nil, err
 			}
@@ -81,7 +81,7 @@ func (devices *MIGCapableDevices) AssertAllMigEnabledDevicesAreValid() error {
 			return err
 		}
 		if len(migs) == 0 {
-			return fmt.Errorf("No MIG devices associated with %v", d)
+			return fmt.Errorf("No MIG devices associated with %v: %v", d.Path, d.UUID)
 		}
 	}
 	return nil
