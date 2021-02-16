@@ -13,7 +13,7 @@ namespace: kube-system
 
 imagePullSecrets: []
 image:
-  repository: nvidia/k8s-device-plugin
+  repository: nvcr.io/nvidia/k8s-device-plugin
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
