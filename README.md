@@ -103,12 +103,12 @@ metadata:
 spec:
   containers:
     - name: cuda-container
-      image: nvidia/cuda:9.0-devel
+      image: nvcr.io/nvidia/cuda:9.0-devel
       resources:
         limits:
           nvidia.com/gpu: 2 # requesting 2 GPUs
     - name: digits-container
-      image: nvidia/digits:6.0
+      image: nvcr.io/nvidia/digits:20.12-tensorflow-py3
       resources:
         limits:
           nvidia.com/gpu: 2 # requesting 2 GPUs
@@ -306,14 +306,14 @@ easily be modified to work with any available tag or branch.
 #### Build
 Option 1, pull the prebuilt image from [Docker Hub](https://hub.docker.com/r/nvidia/k8s-device-plugin):
 ```shell
-$ docker pull nvidia/k8s-device-plugin:v0.8.1
-$ docker tag nvidia/k8s-device-plugin:v0.8.1 nvidia/k8s-device-plugin:devel
+$ docker pull nvcr.io/nvidia/k8s-device-plugin:v0.8.1
+$ docker tag nvcr.io/nvidia/k8s-device-plugin:v0.8.1 nvcr.io/nvidia/k8s-device-plugin:devel
 ```
 
 Option 2, build without cloning the repository:
 ```shell
 $ docker build \
-    -t nvidia/k8s-device-plugin:devel \
+    -t nvcr.io/nvidia/k8s-device-plugin:devel \
     -f docker/amd64/Dockerfile.ubuntu16.04 \
     https://github.com/NVIDIA/k8s-device-plugin.git#v0.8.1
 ```
@@ -322,7 +322,7 @@ Option 3, if you want to modify the code:
 ```shell
 $ git clone https://github.com/NVIDIA/k8s-device-plugin.git && cd k8s-device-plugin
 $ docker build \
-    -t nvidia/k8s-device-plugin:devel \
+    -t nvcr.io/nvidia/k8s-device-plugin:devel \
     -f docker/amd64/Dockerfile.ubuntu16.04 \
     .
 ```
@@ -336,7 +336,7 @@ $ docker run \
     --cap-drop=ALL \
     --network=none \
     -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins \
-    nvidia/k8s-device-plugin:devel
+    nvcr.io/nvidia/k8s-device-plugin:devel
 ```
 
 With compatibility for the `CPUManager` static policy:
@@ -346,7 +346,7 @@ $ docker run \
     --privileged \
     --network=none \
     -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins \
-    nvidia/k8s-device-plugin:devel --pass-device-specs
+    nvcr.io/nvidia/k8s-device-plugin:devel --pass-device-specs
 ```
 
 ### Without Docker
