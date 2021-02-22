@@ -3,6 +3,7 @@ compatWithCPUManager: false
 migStrategy: none
 failOnInitError: true
 deviceListStrategy: envvar
+deviceIDStrategy: uuid
 nvidiaDriverRoot: "/"
 
 nameOverride: ""

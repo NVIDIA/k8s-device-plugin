@@ -142,6 +142,9 @@ a number of customizable values. The most commonly overridden ones are:
   deviceListStrategy:
       the desired strategy for passing the device list to the underlying runtime
       [envvar | volume-mounts] (default "envvar")
+  deviceIDStrategy:
+      the desired strategy for passing device IDs to the underlying runtime
+      [uuid | index] (default "uuid")
   nvidiaDriverRoot:
       the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')
 ```
@@ -189,6 +192,15 @@ of devices as a set of volume mounts instead of as an environment variable.
 This strategy can be selected via the `volume-mounts` option. Details for the
 rationale behind this strategy can be found
 [here](https://docs.google.com/document/d/1uXVF-NWZQXgP1MLb87_kMkQvidpnkNWicdpO2l9g-fw/edit#heading=h.b3ti65rojfy5).
+
+The `deviceIDStrategy` flag allows one to choose which strategy the plugin will
+use to pass the device ID of the GPUs allocated to a container. The device ID
+has traditionally been passed as the UUID of the GPU. This flag lets a user
+decide if they would like to use the UUID or the index of the GPU (as seen in
+the output of `nvidia-smi`) as the identifier passed to the underlying runtime.
+Passing the index may be desirable in situations where pods that have been
+allocated GPUs by the plugin get restarted with different physical GPUs
+attached to them.
 
 Please take a look in the following `values.yaml` file to see the full set of
 overridable parameters for the device plugin.

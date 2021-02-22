@@ -49,6 +49,12 @@ var deviceListStrategyFlag = flag.String(
 	"the desired strategy for passing the device list to the underlying runtime\n"+
 		"[envvar | volume-mounts]")
 
+var deviceIDStrategyFlag = flag.String(
+	"device-id-strategy",
+	"uuid",
+	"the desired strategy for passing device IDs to the underlying runtime\n"+
+		"[uuid | index]")
+
 var nvidiaDriverRootFlag = flag.String(
 	"nvidia-driver-root",
 	"/",
@@ -60,6 +66,12 @@ func main() {
 	if *deviceListStrategyFlag != DeviceListStrategyEnvvar && *deviceListStrategyFlag != DeviceListStrategyVolumeMounts {
 		log.SetOutput(os.Stderr)
 		log.Printf("Invalid --device-list-strategy option: %v", *deviceListStrategyFlag)
+		os.Exit(1)
+	}
+
+	if *deviceIDStrategyFlag != DeviceIDStrategyUUID && *deviceIDStrategyFlag != DeviceIDStrategyIndex {
+		log.SetOutput(os.Stderr)
+		log.Printf("Invalid --device-id-strategy option: %v", *deviceIDStrategyFlag)
 		os.Exit(1)
 	}
 
