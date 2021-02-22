@@ -20,7 +20,7 @@
 
 DOCKER   ?= docker
 ifeq ($(IMAGE),)
-REGISTRY ?= nvidia
+REGISTRY ?= nvcr.io/nvidia
 IMAGE := $(REGISTRY)/k8s-device-plugin
 endif
 VERSION  ?= v0.8.2
