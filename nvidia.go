@@ -123,7 +123,10 @@ func (m *MigDeviceManager) Devices() []*Device {
 				continue
 			}
 
-			devs = append(devs, buildDevice(mig, []string{d.Path}))
+			paths, err := GetMigDeviceNodePaths(d, mig)
+			check(err)
+
+			devs = append(devs, buildDevice(mig, paths))
 		}
 	}
 
