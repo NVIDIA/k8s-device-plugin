@@ -31,10 +31,10 @@ const (
 	allHealthChecks        = "xids"
 )
 
-// Device couples an underlying pluginapi.Device type with its device node path
+// Device couples an underlying pluginapi.Device type with its device node paths
 type Device struct {
 	pluginapi.Device
-	Path string
+	Paths []string
 }
 
 // ResourceManager provides an interface for listing a set of Devices and checking health on them
@@ -92,7 +92,7 @@ func (g *GpuDeviceManager) Devices() []*Device {
 			continue
 		}
 
-		devs = append(devs, buildDevice(d))
+		devs = append(devs, buildDevice(d, []string{d.Path}))
 	}
 
 	return devs
@@ -122,7 +122,8 @@ func (m *MigDeviceManager) Devices() []*Device {
 			if !m.strategy.MatchesResource(mig, m.resource) {
 				continue
 			}
-			devs = append(devs, buildDevice(mig))
+
+			devs = append(devs, buildDevice(mig, []string{d.Path}))
 		}
 	}
 
@@ -139,11 +140,11 @@ func (m *MigDeviceManager) CheckHealth(stop <-chan interface{}, devices []*Devic
 	checkHealth(stop, devices, unhealthy)
 }
 
-func buildDevice(d *nvml.Device) *Device {
+func buildDevice(d *nvml.Device, paths []string) *Device {
 	dev := Device{}
 	dev.ID = d.UUID
 	dev.Health = pluginapi.Healthy
-	dev.Path = d.Path
+	dev.Paths = paths
 	if d.CPUAffinity != nil {
 		dev.Topology = &pluginapi.TopologyInfo{
 			Nodes: []*pluginapi.NUMANode{

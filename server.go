@@ -372,12 +372,14 @@ func (m *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, filter []string) 
 	for _, d := range m.cachedDevices {
 		for _, id := range filter {
 			if d.ID == id {
-				spec := &pluginapi.DeviceSpec{
-					ContainerPath: d.Path,
-					HostPath:      filepath.Join(driverRoot, d.Path),
-					Permissions:   "rw",
+				for _, p := range d.Paths {
+					spec := &pluginapi.DeviceSpec{
+						ContainerPath: p,
+						HostPath:      filepath.Join(driverRoot, p),
+						Permissions:   "rw",
+					}
+					specs = append(specs, spec)
 				}
-				specs = append(specs, spec)
 			}
 		}
 	}
