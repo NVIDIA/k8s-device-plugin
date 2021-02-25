@@ -282,15 +282,15 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 		uuids := req.DevicesIDs
 		deviceIDs := m.deviceIDsFromUUIDs(uuids)
 
-		if *deviceListStrategyFlag == DeviceListStrategyEnvvar {
+		if deviceListStrategyFlag == DeviceListStrategyEnvvar {
 			response.Envs = m.apiEnvs(m.deviceListEnvvar, deviceIDs)
 		}
-		if *deviceListStrategyFlag == DeviceListStrategyVolumeMounts {
+		if deviceListStrategyFlag == DeviceListStrategyVolumeMounts {
 			response.Envs = m.apiEnvs(m.deviceListEnvvar, []string{deviceListAsVolumeMountsContainerPathRoot})
 			response.Mounts = m.apiMounts(deviceIDs)
 		}
-		if *passDeviceSpecsFlag {
-			response.Devices = m.apiDeviceSpecs(*nvidiaDriverRootFlag, uuids)
+		if passDeviceSpecsFlag {
+			response.Devices = m.apiDeviceSpecs(nvidiaDriverRootFlag, uuids)
 		}
 
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
@@ -330,12 +330,12 @@ func (m *NvidiaDevicePlugin) deviceExists(id string) bool {
 }
 
 func (m *NvidiaDevicePlugin) deviceIDsFromUUIDs(uuids []string) []string {
-	if *deviceIDStrategyFlag == DeviceIDStrategyUUID {
+	if deviceIDStrategyFlag == DeviceIDStrategyUUID {
 		return uuids
 	}
 
 	var deviceIDs []string
-	if *deviceIDStrategyFlag == DeviceIDStrategyIndex {
+	if deviceIDStrategyFlag == DeviceIDStrategyIndex {
 		for _, d := range m.cachedDevices {
 			for _, id := range uuids {
 				if d.ID == id {
