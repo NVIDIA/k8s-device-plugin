@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"syscall"
@@ -78,20 +79,21 @@ func main() {
 		},
 	}
 
-	c.Run(os.Args)
+	err := c.Run(os.Args)
+	if err != nil {
+		log.SetOutput(os.Stderr)
+		log.Printf("Error: %v", err)
+		os.Exit(1)
+	}
 }
 
 func validateFlags(c *cli.Context) error {
 	if deviceListStrategyFlag != DeviceListStrategyEnvvar && deviceListStrategyFlag != DeviceListStrategyVolumeMounts {
-		log.SetOutput(os.Stderr)
-		log.Printf("Invalid --device-list-strategy option: %v", deviceListStrategyFlag)
-		os.Exit(1)
+		return fmt.Errorf("invalid --device-list-strategy option: %v", deviceListStrategyFlag)
 	}
 
 	if deviceIDStrategyFlag != DeviceIDStrategyUUID && deviceIDStrategyFlag != DeviceIDStrategyIndex {
-		log.SetOutput(os.Stderr)
-		log.Printf("Invalid --device-id-strategy option: %v", deviceIDStrategyFlag)
-		os.Exit(1)
+		return fmt.Errorf("invalid --device-id-strategy option: %v", deviceIDStrategyFlag)
 	}
 	return nil
 }
@@ -106,7 +108,7 @@ func start(c *cli.Context) error {
 		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
 		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
 		if failOnInitErrorFlag {
-			os.Exit(1)
+			return fmt.Errorf("failed to initialize NVML: %v", err)
 		}
 		select {}
 	}
@@ -115,9 +117,7 @@ func start(c *cli.Context) error {
 	log.Println("Starting FS watcher.")
 	watcher, err := newFSWatcher(pluginapi.DevicePluginPath)
 	if err != nil {
-		log.SetOutput(os.Stderr)
-		log.Println("Failed to create FS watcher:", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to create FS watcher: %v", err)
 	}
 	defer watcher.Close()
 
@@ -135,9 +135,7 @@ restart:
 	log.Println("Retreiving plugins.")
 	migStrategy, err := NewMigStrategy(migStrategyFlag)
 	if err != nil {
-		log.SetOutput(os.Stderr)
-		log.Printf("Error creating MIG strategy: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error creating MIG strategy: %v", err)
 	}
 	plugins = migStrategy.GetPlugins()
 
