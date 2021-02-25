@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -35,6 +36,7 @@ const (
 type Device struct {
 	pluginapi.Device
 	Paths []string
+	Index string
 }
 
 // ResourceManager provides an interface for listing a set of Devices and checking health on them
@@ -92,7 +94,7 @@ func (g *GpuDeviceManager) Devices() []*Device {
 			continue
 		}
 
-		devs = append(devs, buildDevice(d, []string{d.Path}))
+		devs = append(devs, buildDevice(d, []string{d.Path}, fmt.Sprintf("%v", i)))
 	}
 
 	return devs
@@ -118,7 +120,7 @@ func (m *MigDeviceManager) Devices() []*Device {
 		migs, err := d.GetMigDevices()
 		check(err)
 
-		for _, mig := range migs {
+		for j, mig := range migs {
 			if !m.strategy.MatchesResource(mig, m.resource) {
 				continue
 			}
@@ -126,7 +128,7 @@ func (m *MigDeviceManager) Devices() []*Device {
 			paths, err := GetMigDeviceNodePaths(d, mig)
 			check(err)
 
-			devs = append(devs, buildDevice(mig, paths))
+			devs = append(devs, buildDevice(mig, paths, fmt.Sprintf("%v:%v", i, j)))
 		}
 	}
 
@@ -143,11 +145,12 @@ func (m *MigDeviceManager) CheckHealth(stop <-chan interface{}, devices []*Devic
 	checkHealth(stop, devices, unhealthy)
 }
 
-func buildDevice(d *nvml.Device, paths []string) *Device {
+func buildDevice(d *nvml.Device, paths []string, index string) *Device {
 	dev := Device{}
 	dev.ID = d.UUID
 	dev.Health = pluginapi.Healthy
 	dev.Paths = paths
+	dev.Index = index
 	if d.CPUAffinity != nil {
 		dev.Topology = &pluginapi.TopologyInfo{
 			Nodes: []*pluginapi.NUMANode{

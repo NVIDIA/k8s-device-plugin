@@ -12,12 +12,12 @@ import (
 )
 
 const (
-	nvidiaProcDriver       = "/proc/driver/nvidia"
-	nvidiaCapabilitiesPath = nvidiaProcDriver + "/capabilities"
+	nvidiaProcDriverPath   = "/proc/driver/nvidia"
+	nvidiaCapabilitiesPath = nvidiaProcDriverPath + "/capabilities"
 
-	nvcapsProcDriver    = "/proc/driver/nvidia-caps"
-	nvcapsMigMinorsPath = nvcapsProcDriver + "/mig-minors"
-	nvcapsDevicePath    = "/dev/nvidia-caps"
+	nvcapsProcDriverPath = "/proc/driver/nvidia-caps"
+	nvcapsMigMinorsPath  = nvcapsProcDriverPath + "/mig-minors"
+	nvcapsDevicePath     = "/dev/nvidia-caps"
 )
 
 // MIGCapableDevices stores information about all devices on the node
@@ -119,20 +119,15 @@ func (devices *MIGCapableDevices) GetAllMigDevices() ([]*nvml.Device, error) {
 
 // GetMigCapabilityDevicePaths returns a mapping of MIG capability path to device node path
 func GetMigCapabilityDevicePaths() (map[string]string, error) {
+	// Open nvcapsMigMinorsPath for walking.
 	// If the nvcapsMigMinorsPath does not exist, then we are not on a MIG
 	// capable machine, so there is nothing to do.
-	_, err := os.Stat(nvcapsMigMinorsPath)
-	if os.IsNotExist(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("error stating MIG minors file: %v", err)
-	}
-
-	// Open nvcapsMigMinorsPath for walking.
 	// The format of this file is discussed in:
 	//     https://docs.nvidia.com/datacenter/tesla/mig-user-guide/index.html#unique_1576522674
 	minorsFile, err := os.Open(nvcapsMigMinorsPath)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("error opening MIG minors file: %v", err)
 	}

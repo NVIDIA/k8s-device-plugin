@@ -32,10 +32,16 @@ import (
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
-// Constants to represent the variousdevice list strategies
+// Constants to represent the various device list strategies
 const (
 	DeviceListStrategyEnvvar       = "envvar"
 	DeviceListStrategyVolumeMounts = "volume-mounts"
+)
+
+// Constants to represent the various device id strategies
+const (
+	DeviceIDStrategyUUID  = "uuid"
+	DeviceIDStrategyIndex = "index"
 )
 
 // Constants for use by the 'volume-mounts' device list strategy
@@ -273,15 +279,18 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 
 		response := pluginapi.ContainerAllocateResponse{}
 
+		uuids := req.DevicesIDs
+		deviceIDs := m.deviceIDsFromUUIDs(uuids)
+
 		if *deviceListStrategyFlag == DeviceListStrategyEnvvar {
-			response.Envs = m.apiEnvs(m.deviceListEnvvar, req.DevicesIDs)
+			response.Envs = m.apiEnvs(m.deviceListEnvvar, deviceIDs)
 		}
 		if *deviceListStrategyFlag == DeviceListStrategyVolumeMounts {
 			response.Envs = m.apiEnvs(m.deviceListEnvvar, []string{deviceListAsVolumeMountsContainerPathRoot})
-			response.Mounts = m.apiMounts(req.DevicesIDs)
+			response.Mounts = m.apiMounts(deviceIDs)
 		}
 		if *passDeviceSpecsFlag {
-			response.Devices = m.apiDeviceSpecs(*nvidiaDriverRootFlag, req.DevicesIDs)
+			response.Devices = m.apiDeviceSpecs(*nvidiaDriverRootFlag, uuids)
 		}
 
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
@@ -320,6 +329,24 @@ func (m *NvidiaDevicePlugin) deviceExists(id string) bool {
 	return false
 }
 
+func (m *NvidiaDevicePlugin) deviceIDsFromUUIDs(uuids []string) []string {
+	if *deviceIDStrategyFlag == DeviceIDStrategyUUID {
+		return uuids
+	}
+
+	var deviceIDs []string
+	if *deviceIDStrategyFlag == DeviceIDStrategyIndex {
+		for _, d := range m.cachedDevices {
+			for _, id := range uuids {
+				if d.ID == id {
+					deviceIDs = append(deviceIDs, d.Index)
+				}
+			}
+		}
+	}
+	return deviceIDs
+}
+
 func (m *NvidiaDevicePlugin) apiDevices() []*pluginapi.Device {
 	var pdevs []*pluginapi.Device
 	for _, d := range m.cachedDevices {
@@ -328,16 +355,16 @@ func (m *NvidiaDevicePlugin) apiDevices() []*pluginapi.Device {
 	return pdevs
 }
 
-func (m *NvidiaDevicePlugin) apiEnvs(envvar string, filter []string) map[string]string {
+func (m *NvidiaDevicePlugin) apiEnvs(envvar string, deviceIDs []string) map[string]string {
 	return map[string]string{
-		envvar: strings.Join(filter, ","),
+		envvar: strings.Join(deviceIDs, ","),
 	}
 }
 
-func (m *NvidiaDevicePlugin) apiMounts(filter []string) []*pluginapi.Mount {
+func (m *NvidiaDevicePlugin) apiMounts(deviceIDs []string) []*pluginapi.Mount {
 	var mounts []*pluginapi.Mount
 
-	for _, id := range filter {
+	for _, id := range deviceIDs {
 		mount := &pluginapi.Mount{
 			HostPath:      deviceListAsVolumeMountsHostPath,
 			ContainerPath: filepath.Join(deviceListAsVolumeMountsContainerPathRoot, id),
@@ -348,7 +375,7 @@ func (m *NvidiaDevicePlugin) apiMounts(filter []string) []*pluginapi.Mount {
 	return mounts
 }
 
-func (m *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, filter []string) []*pluginapi.DeviceSpec {
+func (m *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, uuids []string) []*pluginapi.DeviceSpec {
 	var specs []*pluginapi.DeviceSpec
 
 	paths := []string{
@@ -370,7 +397,7 @@ func (m *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, filter []string) 
 	}
 
 	for _, d := range m.cachedDevices {
-		for _, id := range filter {
+		for _, id := range uuids {
 			if d.ID == id {
 				for _, p := range d.Paths {
 					spec := &pluginapi.DeviceSpec{

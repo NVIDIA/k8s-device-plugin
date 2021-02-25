@@ -62,6 +62,7 @@ spec:
         - "--pass-device-specs={{ .Values.compatWithCPUManager }}"
         - "--fail-on-init-error={{ .Values.failOnInitError }}"
         - "--device-list-strategy={{ .Values.deviceListStrategy }}"
+        - "--device-id-strategy={{ .Values.deviceIDStrategy }}"
         - "--nvidia-driver-root={{ .Values.nvidiaDriverRoot }}"
         securityContext:
         {{- if ne (len .Values.securityContext) 0 }}
