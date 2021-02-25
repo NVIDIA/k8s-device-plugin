@@ -4,6 +4,8 @@ github.com/NVIDIA/go-gpuallocator/gpuallocator
 # github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201222072828-352eb4c503a7
 ## explicit
 github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml
+# github.com/cpuguy83/go-md2man/v2 v2.0.0
+github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/fsnotify/fsnotify v1.4.9
 ## explicit
 github.com/fsnotify/fsnotify
@@ -18,6 +20,13 @@ github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
+# github.com/russross/blackfriday/v2 v2.0.1
+github.com/russross/blackfriday/v2
+# github.com/shurcooL/sanitized_anchor_name v1.0.0
+github.com/shurcooL/sanitized_anchor_name
+# github.com/urfave/cli/v2 v2.2.0
+## explicit
+github.com/urfave/cli/v2
 # golang.org/x/net v0.0.0-20200707034311-ab3426394381
 ## explicit
 golang.org/x/net/context
