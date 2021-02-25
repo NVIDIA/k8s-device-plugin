@@ -46,36 +46,42 @@ func main() {
 			Value:       "none",
 			Usage:       "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
 			Destination: &migStrategyFlag,
+			EnvVars:     []string{"MIG_STRATEGY"},
 		},
 		&cli.BoolFlag{
 			Name:        "fail-on-init-error",
 			Value:       true,
 			Usage:       "fail the plugin if an error is encountered during initialization, otherwise block indefinitely",
 			Destination: &failOnInitErrorFlag,
+			EnvVars:     []string{"FAIL_ON_INIT_ERROR"},
 		},
 		&cli.BoolFlag{
 			Name:        "pass-device-specs",
 			Value:       false,
 			Usage:       "pass the list of DeviceSpecs to the kubelet on Allocate()",
 			Destination: &passDeviceSpecsFlag,
+			EnvVars:     []string{"PASS_DEVICE_SPECS"},
 		},
 		&cli.StringFlag{
 			Name:        "device-list-strategy",
 			Value:       "envvar",
 			Usage:       "the desired strategy for passing the device list to the underlying runtime:\n\t\t[envvar | volume-mounts]",
 			Destination: &deviceListStrategyFlag,
+			EnvVars:     []string{"DEVICE_LIST_STRATEGY"},
 		},
 		&cli.StringFlag{
 			Name:        "device-id-strategy",
 			Value:       "uuid",
 			Usage:       "the desired strategy for passing device IDs to the underlying runtime:\n\t\t[uuid | index]",
 			Destination: &deviceIDStrategyFlag,
+			EnvVars:     []string{"DEVICE_ID_STRATEGY"},
 		},
 		&cli.StringFlag{
 			Name:        "nvidia-driver-root",
 			Value:       "/",
 			Usage:       "the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')",
 			Destination: &nvidiaDriverRootFlag,
+			EnvVars:     []string{"NVIDIA_DRIVER_ROOT"},
 		},
 	}
 
