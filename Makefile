@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2020-2021, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,11 +27,10 @@ VERSION  ?= v0.9.0
 
 ##### Public rules #####
 
-all: ubuntu16.04 centos7 ubi8
+all: ubuntu16.04 ubi8
 
 push:
 	$(DOCKER) push "$(IMAGE):$(VERSION)-ubuntu16.04"
-	$(DOCKER) push "$(IMAGE):$(VERSION)-centos7"
 	$(DOCKER) push "$(IMAGE):$(VERSION)-ubi8"
 
 push-short:
@@ -52,9 +51,3 @@ ubi8:
 		--build-arg PLUGIN_VERSION=$(VERSION) \
 		--tag $(IMAGE):$(VERSION)-ubi8 \
 		--file docker/amd64/Dockerfile.ubi8 .
-
-centos7:
-	$(DOCKER) build --pull \
-		--tag $(IMAGE):$(VERSION)-centos7 \
-		--file docker/amd64/Dockerfile.centos7 .
-
