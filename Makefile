@@ -43,6 +43,7 @@ push-latest:
 
 ubuntu16.04:
 	$(DOCKER) build --pull \
+		--build-arg PLUGIN_VERSION=$(VERSION) \
 		--tag $(IMAGE):$(VERSION)-ubuntu16.04 \
 		--file docker/amd64/Dockerfile.ubuntu16.04 .
 

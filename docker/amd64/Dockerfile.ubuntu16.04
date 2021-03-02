@@ -1,4 +1,4 @@
-# Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2019-2021, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,6 +38,17 @@ FROM nvcr.io/nvidia/cuda:11.1-base-ubuntu16.04
 ENV NVIDIA_DISABLE_REQUIRE="true"
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=utility
+
+LABEL io.k8s.display-name="NVIDIA Device Plugin"
+LABEL name="NVIDIA Device Plugin"
+LABEL vendor="NVIDIA"
+ARG PLUGIN_VERSION="N/A"
+LABEL version=${PLUGIN_VERSION}
+LABEL release="N/A"
+LABEL summary="NVIDIA device plugin for Kubernetes"
+LABEL description="See summary"
+
+COPY ./LICENSE ./licenses/LICENSE
 
 RUN apt-get remove -y ca-certificates libssl1.0.0 openssl || true
 
