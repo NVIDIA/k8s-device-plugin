@@ -27,28 +27,34 @@ VERSION  ?= v0.9.0
 
 ##### Public rules #####
 
-all: ubuntu16.04 ubi8
+DISTRIBUTIONS = ubuntu16.04 ubi8
+DEFAULT_DISTRIBUTION := ubuntu16.04
 
-push:
-	$(DOCKER) push "$(IMAGE):$(VERSION)-ubuntu16.04"
-	$(DOCKER) push "$(IMAGE):$(VERSION)-ubi8"
+BUILD_TARGETS := $(patsubst %,build-%,$(DISTRIBUTIONS))
+PUSH_TARGETS := $(patsubst %,push-%,$(DISTRIBUTIONS))
+
+.PHONY: $(DISTRIBUTIONS) $(BUILD_TARGETS) $(PUSH_TARGETS)
+
+all: $(BUILD_TARGETS)
+
+push: $(PUSH_TARGETS)
+$(PUSH_TARGETS): push-%:
+	$(DOCKER) push "$(IMAGE):$(VERSION)-$(*)"
 
 push-short:
-	$(DOCKER) tag "$(IMAGE):$(VERSION)-ubuntu16.04" "$(IMAGE):$(VERSION)"
+	$(DOCKER) tag "$(IMAGE):$(VERSION)-$(DEFAULT_DISTRIBUTION)" "$(IMAGE):$(VERSION)"
 	$(DOCKER) push "$(IMAGE):$(VERSION)"
 
 push-latest:
-	$(DOCKER) tag "$(IMAGE):$(VERSION)-ubuntu16.04" "$(IMAGE):latest"
+	$(DOCKER) tag "$(IMAGE):$(VERSION)-$(DEFAULT_DISTRIBUTION)" "$(IMAGE):latest"
 	$(DOCKER) push "$(IMAGE):latest"
 
-ubuntu16.04:
-	$(DOCKER) build --pull \
-		--build-arg PLUGIN_VERSION=$(VERSION) \
-		--tag $(IMAGE):$(VERSION)-ubuntu16.04 \
-		--file docker/amd64/Dockerfile.ubuntu16.04 .
+$(DISTRIBUTIONS): %: build-%
 
-ubi8:
+build-%: DISTRIBUTION = $(*)
+$(BUILD_TARGETS): build-%:
 	$(DOCKER) build --pull \
 		--build-arg PLUGIN_VERSION=$(VERSION) \
-		--tag $(IMAGE):$(VERSION)-ubi8 \
-		--file docker/amd64/Dockerfile.ubi8 .
+		--tag $(IMAGE):$(VERSION)-$(DISTRIBUTION) \
+		--file docker/amd64/Dockerfile.$(DISTRIBUTION) \
+			.
