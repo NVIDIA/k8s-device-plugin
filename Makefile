@@ -29,8 +29,9 @@ GOLANG_VERSION ?= 1.15.8
 
 ##### Public rules #####
 
-DISTRIBUTIONS = ubuntu16.04 ubi8
-DEFAULT_DISTRIBUTION := ubuntu16.04
+DEFAULT_DISTRIBUTION := ubuntu20.04
+DISTRIBUTIONS = $(DEFAULT_DISTRIBUTION) ubi8
+
 
 BUILD_TARGETS := $(patsubst %,build-%,$(DISTRIBUTIONS))
 PUSH_TARGETS := $(patsubst %,push-%,$(DISTRIBUTIONS))

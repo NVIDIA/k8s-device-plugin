@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM nvcr.io/nvidia/cuda:11.1-base-ubuntu16.04 as build
+FROM nvcr.io/nvidia/cuda:11.1-base-ubuntu20.04 as build
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ \
@@ -35,7 +35,7 @@ RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' &
     go build -ldflags="-s -w -X 'main.Version=${PLUGIN_VERSION}'" -v -o /build/nvidia-device-plugin
 
 
-FROM nvcr.io/nvidia/cuda:11.1-base-ubuntu16.04
+FROM nvcr.io/nvidia/cuda:11.1-base-ubuntu20.04
 
 ENV NVIDIA_DISABLE_REQUIRE="true"
 ENV NVIDIA_VISIBLE_DEVICES=all
@@ -51,8 +51,6 @@ LABEL summary="NVIDIA device plugin for Kubernetes"
 LABEL description="See summary"
 
 COPY ./LICENSE ./licenses/LICENSE
-
-RUN apt-get remove -y ca-certificates libssl1.0.0 openssl || true
 
 COPY --from=build /build/nvidia-device-plugin /usr/bin/nvidia-device-plugin
 

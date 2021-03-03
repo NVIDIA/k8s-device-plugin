@@ -326,7 +326,7 @@ Option 2, build without cloning the repository:
 ```shell
 $ docker build \
     -t nvcr.io/nvidia/k8s-device-plugin:devel \
-    -f docker/amd64/Dockerfile.ubuntu16.04 \
+    -f docker/amd64/Dockerfile.ubuntu20.04 \
     https://github.com/NVIDIA/k8s-device-plugin.git#v0.9.0
 ```
 
@@ -335,7 +335,7 @@ Option 3, if you want to modify the code:
 $ git clone https://github.com/NVIDIA/k8s-device-plugin.git && cd k8s-device-plugin
 $ docker build \
     -t nvcr.io/nvidia/k8s-device-plugin:devel \
-    -f docker/amd64/Dockerfile.ubuntu16.04 \
+    -f docker/amd64/Dockerfile.ubuntu20.04 \
     .
 ```
 
