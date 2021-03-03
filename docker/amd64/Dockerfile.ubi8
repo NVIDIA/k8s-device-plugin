@@ -30,8 +30,9 @@ ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
 WORKDIR /build
 COPY . .
 
+ARG PLUGIN_VERSION="N/A"
 RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' && \
-    go build -ldflags="-s -w" -v -o /build/nvidia-device-plugin
+    go build -ldflags="-s -w -X 'main.Version=${PLUGIN_VERSION}'" -v -o /build/nvidia-device-plugin
 
 
 FROM nvcr.io/nvidia/cuda:11.1-base-ubi8
