@@ -1,4 +1,4 @@
-# Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2019-2021, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM registry.access.redhat.com/ubi8:latest as build
+FROM nvcr.io/nvidia/cuda:11.1-base-ubi8 as build
 
 RUN dnf install -y \
         gcc-c++ \
@@ -20,7 +20,8 @@ RUN dnf install -y \
         wget && \
     rm -rf /var/cache/yum/*
 
-ENV GOLANG_VERSION 1.10.3
+ARG GOLANG_VERSION=1.10.3
+RUN : "${GOLANG_VERSION:?ERROR: Build argument GOLANG_VERSION needs to be set and non-empty.}"
 RUN wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz \
     | tar -C /usr/local -xz
 ENV GOPATH /go

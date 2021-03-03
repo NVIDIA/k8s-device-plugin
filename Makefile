@@ -25,6 +25,8 @@ IMAGE := $(REGISTRY)/k8s-device-plugin
 endif
 VERSION  ?= v0.9.0
 
+GOLANG_VERSION ?= 1.10.3
+
 ##### Public rules #####
 
 DISTRIBUTIONS = ubuntu16.04 ubi8
@@ -54,6 +56,7 @@ $(DISTRIBUTIONS): %: build-%
 build-%: DISTRIBUTION = $(*)
 $(BUILD_TARGETS): build-%:
 	$(DOCKER) build --pull \
+		--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
 		--build-arg PLUGIN_VERSION=$(VERSION) \
 		--tag $(IMAGE):$(VERSION)-$(DISTRIBUTION) \
 		--file docker/amd64/Dockerfile.$(DISTRIBUTION) \

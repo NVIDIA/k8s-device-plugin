@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:16.04 as build
+FROM nvcr.io/nvidia/cuda:11.1-base-ubuntu16.04 as build
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ \
@@ -20,7 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         wget && \
     rm -rf /var/lib/apt/lists/*
 
-ENV GOLANG_VERSION 1.10.3
+ARG GOLANG_VERSION=1.10.3
+RUN : "${GOLANG_VERSION:?ERROR: Build argument GOLANG_VERSION needs to be set and non-empty.}"
 RUN wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz \
     | tar -C /usr/local -xz
 ENV GOPATH /go
