@@ -60,5 +60,5 @@ $(BUILD_TARGETS): build-%:
 		--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
 		--build-arg PLUGIN_VERSION=$(VERSION) \
 		--tag $(IMAGE):$(VERSION)-$(DISTRIBUTION) \
-		--file docker/amd64/Dockerfile.$(DISTRIBUTION) \
+		--file docker/Dockerfile.$(DISTRIBUTION) \
 			.
