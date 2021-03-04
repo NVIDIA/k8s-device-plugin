@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ARG CUDA_IMAGE=cuda
-FROM nvcr.io/nvidia/${CUDA_IMAGE}:11.1-base-ubi8 as build
+FROM nvcr.io/nvidia/${CUDA_IMAGE}:11.2.1-base-ubi8 as build
 
 RUN dnf install -y \
         gcc-c++ \
@@ -37,7 +37,7 @@ RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' &
 
 
 ARG CUDA_IMAGE=cuda
-FROM nvcr.io/nvidia/${CUDA_IMAGE}:11.1-base-ubi8
+FROM nvcr.io/nvidia/${CUDA_IMAGE}:11.2.1-base-ubi8
 
 ENV NVIDIA_DISABLE_REQUIRE="true"
 ENV NVIDIA_VISIBLE_DEVICES=all
