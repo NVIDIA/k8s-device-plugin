@@ -1,4 +1,4 @@
-# Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2019-2021, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,28 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM registry.access.redhat.com/ubi8:latest as build
+ARG CUDA_IMAGE=cuda
+FROM nvcr.io/nvidia/${CUDA_IMAGE}:11.2.1-base-ubuntu20.04 as build
 
-RUN dnf install -y \
-        gcc-c++ \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        g++ \
         ca-certificates \
         wget && \
-    rm -rf /var/cache/yum/*
+    rm -rf /var/lib/apt/lists/*
 
-ENV GOLANG_VERSION 1.10.3
+ARG GOLANG_VERSION=1.15.8
+RUN : "${GOLANG_VERSION:?ERROR: Build argument GOLANG_VERSION needs to be set and non-empty.}"
 RUN wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz \
     | tar -C /usr/local -xz
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
 
-WORKDIR /go/src/nvidia-device-plugin
+WORKDIR /build
 COPY . .
 
+ARG PLUGIN_VERSION="N/A"
 RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' && \
-    go install -ldflags="-s -w" -v nvidia-device-plugin
+    go build -ldflags="-s -w -X 'main.Version=${PLUGIN_VERSION}'" -v -o /build/nvidia-device-plugin
 
 
-FROM nvcr.io/nvidia/cuda:11.1-base-ubi8
+ARG CUDA_IMAGE=cuda
+FROM nvcr.io/nvidia/${CUDA_IMAGE}:11.2.1-base-ubuntu20.04
 
 ENV NVIDIA_DISABLE_REQUIRE="true"
 ENV NVIDIA_VISIBLE_DEVICES=all
@@ -50,6 +54,6 @@ LABEL description="See summary"
 
 COPY ./LICENSE ./licenses/LICENSE
 
-COPY --from=build /go/bin/nvidia-device-plugin /usr/bin/nvidia-device-plugin
+COPY --from=build /build/nvidia-device-plugin /usr/bin/nvidia-device-plugin
 
 ENTRYPOINT ["nvidia-device-plugin"]
