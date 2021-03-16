@@ -34,6 +34,8 @@ var passDeviceSpecsFlag bool
 var deviceListStrategyFlag string
 var deviceIDStrategyFlag string
 var nvidiaDriverRootFlag string
+var deviceSplitCountFlag uint
+var deviceMemoryScalingFlag float64
 
 var version string // This should be set at build time to indicate the actual version
 
@@ -43,14 +45,15 @@ func main() {
 	c.Before = validateFlags
 	c.Action = start
 
+	migStrategyFlag = MigStrategyNone
 	c.Flags = []cli.Flag{
-		&cli.StringFlag{
-			Name:        "mig-strategy",
-			Value:       "none",
-			Usage:       "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
-			Destination: &migStrategyFlag,
-			EnvVars:     []string{"MIG_STRATEGY"},
-		},
+		//&cli.StringFlag{
+		//	Name:        "mig-strategy",
+		//	Value:       "none",
+		//	Usage:       "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
+		//	Destination: &migStrategyFlag,
+		//	EnvVars:     []string{"MIG_STRATEGY"},
+		//},
 		&cli.BoolFlag{
 			Name:        "fail-on-init-error",
 			Value:       true,
@@ -85,6 +88,20 @@ func main() {
 			Usage:       "the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')",
 			Destination: &nvidiaDriverRootFlag,
 			EnvVars:     []string{"NVIDIA_DRIVER_ROOT"},
+		},
+		&cli.UintFlag{
+			Name:        "device-split-count",
+			Value:       2,
+			Usage:       "the number for NVIDIA device split)",
+			Destination: &deviceSplitCountFlag,
+			EnvVars:     []string{"DEVICE_SPLIT_COUNT"},
+		},
+		&cli.Float64Flag{
+			Name:        "device-memory-scaling",
+			Value:       1.0,
+			Usage:       "the ratio for NVIDIA device memory scaling)",
+			Destination: &deviceMemoryScalingFlag,
+			EnvVars:     []string{"DEVICE_MEMORY_SCALING"},
 		},
 	}
 

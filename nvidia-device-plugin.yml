@@ -56,7 +56,12 @@ spec:
         volumeMounts:
           - name: device-plugin
             mountPath: /var/lib/kubelet/device-plugins
+          - name: vgpu-dir
+            mountPath: /usr/local/vgpu
       volumes:
         - name: device-plugin
           hostPath:
             path: /var/lib/kubelet/device-plugins
+        - name: vgpu-dir
+          hostPath:
+            path: /usr/local/vgpu

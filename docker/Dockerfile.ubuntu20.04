@@ -15,6 +15,7 @@
 ARG CUDA_IMAGE=cuda
 FROM nvcr.io/nvidia/${CUDA_IMAGE}:11.2.1-base-ubuntu20.04 as build
 
+RUN rm -rf /etc/apt/sources.list.d/cuda.list /etc/apt/sources.list.d/nvidia-ml.list
 RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ \
         ca-certificates \
@@ -53,7 +54,9 @@ LABEL summary="NVIDIA device plugin for Kubernetes"
 LABEL description="See summary"
 
 COPY ./LICENSE ./licenses/LICENSE
+COPY --from=build /build/entrypoint.sh /entrypoint.sh
+COPY --from=build /build/vgpu /etc/vgpu
 
 COPY --from=build /build/nvidia-device-plugin /usr/bin/nvidia-device-plugin
 
-ENTRYPOINT ["nvidia-device-plugin"]
+ENTRYPOINT ["/entrypoint.sh"]

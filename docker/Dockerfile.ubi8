@@ -53,7 +53,9 @@ LABEL summary="NVIDIA device plugin for Kubernetes"
 LABEL description="See summary"
 
 COPY ./LICENSE ./licenses/LICENSE
+COPY --from=build /build/entrypoint.sh /entrypoint.sh
+COPY --from=build /build/vgpu /etc/vgpu
 
 COPY --from=build /build/nvidia-device-plugin /usr/bin/nvidia-device-plugin
 
-ENTRYPOINT ["nvidia-device-plugin"]
+ENTRYPOINT ["/entrypoint.sh"]

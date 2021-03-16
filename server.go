@@ -62,6 +62,7 @@ type NvidiaDevicePlugin struct {
 	cachedDevices []*Device
 	health        chan *Device
 	stop          chan interface{}
+	vDevices      []*VDevice
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
@@ -84,6 +85,7 @@ func NewNvidiaDevicePlugin(resourceName string, resourceManager ResourceManager,
 
 func (m *NvidiaDevicePlugin) initialize() {
 	m.cachedDevices = m.Devices()
+	m.vDevices = Device2VDevice(m.cachedDevices)
 	m.server = grpc.NewServer([]grpc.ServerOption{}...)
 	m.health = make(chan *Device)
 	m.stop = make(chan interface{})
@@ -91,6 +93,7 @@ func (m *NvidiaDevicePlugin) initialize() {
 
 func (m *NvidiaDevicePlugin) cleanup() {
 	close(m.stop)
+	m.vDevices = nil
 	m.cachedDevices = nil
 	m.server = nil
 	m.health = nil
@@ -201,7 +204,8 @@ func (m *NvidiaDevicePlugin) Register() error {
 		Endpoint:     path.Base(m.socket),
 		ResourceName: m.resourceName,
 		Options: &pluginapi.DevicePluginOptions{
-			GetPreferredAllocationAvailable: (m.allocatePolicy != nil),
+			GetPreferredAllocationAvailable: false,
+			//GetPreferredAllocationAvailable: (m.allocatePolicy != nil),
 		},
 	}
 
@@ -240,6 +244,7 @@ func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.Device
 // GetPreferredAllocation returns the preferred allocation from the set of devices specified in the request
 func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
 	response := &pluginapi.PreferredAllocationResponse{}
+	// get device
 	for _, req := range r.ContainerRequests {
 		available, err := gpuallocator.NewDevicesFrom(req.AvailableDeviceIDs)
 		if err != nil {
@@ -271,15 +276,14 @@ func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *plug
 func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	responses := pluginapi.AllocateResponse{}
 	for _, req := range reqs.ContainerRequests {
-		for _, id := range req.DevicesIDs {
-			if !m.deviceExists(id) {
-				return nil, fmt.Errorf("invalid allocation request for '%s': unknown device: %s", m.resourceName, id)
-			}
+		vdevices, err := VDevicesByIDs(m.vDevices, req.DevicesIDs)
+		if err != nil {
+			return nil, err
 		}
 
 		response := pluginapi.ContainerAllocateResponse{}
 
-		uuids := req.DevicesIDs
+		uuids := UniqueDeviceIDs(vdevices)
 		deviceIDs := m.deviceIDsFromUUIDs(uuids)
 
 		if deviceListStrategyFlag == DeviceListStrategyEnvvar {
@@ -293,6 +297,18 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 			response.Devices = m.apiDeviceSpecs(nvidiaDriverRootFlag, uuids)
 		}
 
+		var mapEnvs []string
+		for i, vd := range vdevices {
+			limitKey := fmt.Sprintf("CUDA_DEVICE_MEMORY_LIMIT_%v", i)
+			response.Envs[limitKey] = fmt.Sprintf("%vm", vd.memory)
+			mapEnvs = append(mapEnvs, fmt.Sprintf("%v:%v", i, vd.dev.ID))
+		}
+		response.Envs["NVIDIA_DEVICE_MAP"] = strings.Join(mapEnvs, " ")
+		response.Mounts = append(response.Mounts,
+			&pluginapi.Mount{ContainerPath: "/usr/local/vgpu/libvgpu.so",
+				HostPath: "/usr/local/vgpu/libvgpu.so", ReadOnly: true},
+			&pluginapi.Mount{ContainerPath: "/etc/ld.so.preload",
+				HostPath: "/usr/local/vgpu/ld.so.preload", ReadOnly: true})
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
 	}
 
@@ -349,7 +365,8 @@ func (m *NvidiaDevicePlugin) deviceIDsFromUUIDs(uuids []string) []string {
 
 func (m *NvidiaDevicePlugin) apiDevices() []*pluginapi.Device {
 	var pdevs []*pluginapi.Device
-	for _, d := range m.cachedDevices {
+	for _, d := range m.vDevices {
+		d.Health = d.dev.Health
 		pdevs = append(pdevs, &d.Device)
 	}
 	return pdevs
