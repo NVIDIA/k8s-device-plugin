@@ -22,12 +22,14 @@ import (
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
+// VDevice virtual device
 type VDevice struct {
 	pluginapi.Device
 	dev    *Device
 	memory uint64
 }
 
+// Device2VDevice device to virtual device
 func Device2VDevice(devices []*Device) []*VDevice {
 	var vdevices []*VDevice
 	for _, d := range devices {
@@ -44,38 +46,34 @@ func Device2VDevice(devices []*Device) []*VDevice {
 	return vdevices
 }
 
+// VDevicesByIDs filter vdevices by uuids
 func VDevicesByIDs(vdevices []*VDevice, ids []string) ([]*VDevice, error) {
-	m := make(map[string]*VDevice, len(vdevices))
-	for _, vd := range vdevices {
-		m[vd.ID] = vd
-	}
-	var vds []*VDevice
-	for _, id := range ids {
-		if vd, ok := m[id]; ok {
-			vds = append(vds, vd)
-		} else {
-			return nil, fmt.Errorf("unknown device: %s", id)
+	//var vds []*VDevice
+	vds := make([]*VDevice, len(ids))
+OUTER:
+	for i, id := range ids {
+		for _, vd := range vdevices {
+			if vd.ID == id {
+				vds[i] = vd
+				continue OUTER
+			}
 		}
+		return nil, fmt.Errorf("unknown device: %s", id)
 	}
 	return vds, nil
 }
 
+// UniqueDeviceIDs get unique real device ids from vdevices
 func UniqueDeviceIDs(vdevices []*VDevice) []string {
-	m := make(map[string]bool, len(vdevices))
 	var ids []string
+OUTER:
 	for _, vd := range vdevices {
-		if _, ok := m[vd.dev.ID]; !ok {
-			m[vd.dev.ID] = true
-			ids = append(ids, vd.dev.ID)
+		for _, id := range ids {
+			if id == vd.dev.ID {
+				continue OUTER
+			}
 		}
+		ids = append(ids, vd.dev.ID)
 	}
 	return ids
 }
-
-//func VDeviceHealth(vdevices []*VDevice, id string, health string) {
-//	for _, vd := range vdevices {
-//		if vd.dev.ID == id {
-//			vd.Health = health
-//		}
-//	}
-//}

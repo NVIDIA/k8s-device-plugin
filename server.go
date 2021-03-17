@@ -204,8 +204,7 @@ func (m *NvidiaDevicePlugin) Register() error {
 		Endpoint:     path.Base(m.socket),
 		ResourceName: m.resourceName,
 		Options: &pluginapi.DevicePluginOptions{
-			GetPreferredAllocationAvailable: false,
-			//GetPreferredAllocationAvailable: (m.allocatePolicy != nil),
+			GetPreferredAllocationAvailable: (m.allocatePolicy != nil),
 		},
 	}
 
@@ -246,12 +245,20 @@ func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *plug
 	response := &pluginapi.PreferredAllocationResponse{}
 	// get device
 	for _, req := range r.ContainerRequests {
-		available, err := gpuallocator.NewDevicesFrom(req.AvailableDeviceIDs)
+		availableVDev, err := VDevicesByIDs(m.vDevices, req.AvailableDeviceIDs)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to retrieve list of available vdevices: %v", err)
+		}
+		available, err := gpuallocator.NewDevicesFrom(UniqueDeviceIDs(availableVDev))
 		if err != nil {
 			return nil, fmt.Errorf("Unable to retrieve list of available devices: %v", err)
 		}
 
-		required, err := gpuallocator.NewDevicesFrom(req.MustIncludeDeviceIDs)
+		requiredVDev, err := VDevicesByIDs(m.vDevices, req.MustIncludeDeviceIDs)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to retrieve list of available vdevices: %v", err)
+		}
+		required, err := gpuallocator.NewDevicesFrom(UniqueDeviceIDs(requiredVDev))
 		if err != nil {
 			return nil, fmt.Errorf("Unable to retrieve list of required devices: %v", err)
 		}
@@ -260,7 +267,12 @@ func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *plug
 
 		var deviceIds []string
 		for _, device := range allocated {
-			deviceIds = append(deviceIds, device.UUID)
+			for _, vd := range availableVDev {
+				if vd.dev.ID == device.UUID {
+					deviceIds = append(deviceIds, vd.ID)
+					break
+				}
+			}
 		}
 
 		resp := &pluginapi.ContainerPreferredAllocationResponse{
