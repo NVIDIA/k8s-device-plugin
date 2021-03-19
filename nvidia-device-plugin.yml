@@ -49,7 +49,7 @@ spec:
       - image: m7-ieg-pico-test01:5000/nvidia/k8s-device-plugin:v0.9.0-ubi8
         imagePullPolicy: Always
         name: nvidia-device-plugin-ctr
-        args: ["--fail-on-init-error=false", "device-split-count=4", "device-memory-scaling=1.5"]
+        args: ["--fail-on-init-error=false", "--device-split-count=4", "--device-memory-scaling=1.5"]
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

@@ -46,15 +46,20 @@ spec:
       # See https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
       priorityClassName: "system-node-critical"
       containers:
-      - image: nvcr.io/nvidia/k8s-device-plugin:v0.9.0
+      - image: m7-ieg-pico-test01:5000/nvidia/k8s-device-plugin:v0.9.0-ubi8
         name: nvidia-device-plugin-ctr
-        args: ["--fail-on-init-error=false", "--pass-device-specs"]
+        args: ["--fail-on-init-error=false", "--pass-device-specs", "--device-split-count=4", "--device-memory-scaling=1.5"]
         securityContext:
           privileged: true
         volumeMounts:
           - name: device-plugin
             mountPath: /var/lib/kubelet/device-plugins
+          - name: vgpu-dir
+            mountPath: /usr/local/vgpu
       volumes:
         - name: device-plugin
           hostPath:
             path: /var/lib/kubelet/device-plugins
+        - name: vgpu-dir
+          hostPath:
+            path: /usr/local/vgpu

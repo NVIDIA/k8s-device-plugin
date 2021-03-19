@@ -36,6 +36,7 @@ var deviceIDStrategyFlag string
 var nvidiaDriverRootFlag string
 var deviceSplitCountFlag uint
 var deviceMemoryScalingFlag float64
+var deviceCoresScalingFlag float64
 
 var version string // This should be set at build time to indicate the actual version
 
@@ -103,6 +104,13 @@ func main() {
 			Destination: &deviceMemoryScalingFlag,
 			EnvVars:     []string{"DEVICE_MEMORY_SCALING"},
 		},
+		&cli.Float64Flag{
+			Name:        "device-cores-scaling",
+			Value:       1.0,
+			Usage:       "the ratio for NVIDIA device cores scaling)",
+			Destination: &deviceCoresScalingFlag,
+			EnvVars:     []string{"DEVICE_CORES_SCALING"},
+		},
 	}
 
 	err := c.Run(os.Args)
@@ -120,6 +128,15 @@ func validateFlags(c *cli.Context) error {
 
 	if deviceIDStrategyFlag != DeviceIDStrategyUUID && deviceIDStrategyFlag != DeviceIDStrategyIndex {
 		return fmt.Errorf("invalid --device-id-strategy option: %v", deviceIDStrategyFlag)
+	}
+	if deviceSplitCountFlag < 1 {
+		return fmt.Errorf("invalid --device-split-count option: %v", deviceSplitCountFlag)
+	}
+	if deviceMemoryScalingFlag <= 0 {
+		return fmt.Errorf("invalid --device-memory-scaling option: %v", deviceMemoryScalingFlag)
+	}
+	if deviceCoresScalingFlag <= 0 {
+		return fmt.Errorf("invalid --device-core-scaling option: %v", deviceCoresScalingFlag)
 	}
 	return nil
 }

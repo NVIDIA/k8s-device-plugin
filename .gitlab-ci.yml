@@ -6,8 +6,8 @@ stages:
 .tests-setup: &tests-setup
   image: golang:1.14.4
 
-  rules:
-    - when: always
+#  rules:
+#    - when: always
 
   variables:
     GITHUB_ROOT: "github.com/NVIDIA"
@@ -74,11 +74,11 @@ misspell:
 build:device-plugin:
     <<: *build-and-release-setup
     stage: build
-    rules:
-    - when: always
+#    rules:
+#    - when: always
 
     script:
-    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+#    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
 
     - make REGISTRY="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" all
     - make REGISTRY="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" push
@@ -93,7 +93,7 @@ release:device-plugin:
     - tags
 
     script:
-    - docker login -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}"
+#    - docker login -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}"
 
     - make VERSION="${CI_COMMIT_TAG}" all
     - make VERSION="${CI_COMMIT_TAG}" push

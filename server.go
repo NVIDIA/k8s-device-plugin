@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -315,7 +316,11 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 			response.Envs[limitKey] = fmt.Sprintf("%vm", vd.memory)
 			mapEnvs = append(mapEnvs, fmt.Sprintf("%v:%v", i, vd.dev.ID))
 		}
+		response.Envs["CUDA_DEVICE_SM_LIMIT"] = strconv.Itoa(int(100 * deviceCoresScalingFlag / float64(deviceSplitCountFlag)))
 		response.Envs["NVIDIA_DEVICE_MAP"] = strings.Join(mapEnvs, " ")
+		if deviceMemoryScalingFlag > 1 {
+			response.Envs["CUDA_OVERSUBSCRIBE"] = "true"
+		}
 		response.Mounts = append(response.Mounts,
 			&pluginapi.Mount{ContainerPath: "/usr/local/vgpu/libvgpu.so",
 				HostPath: "/usr/local/vgpu/libvgpu.so", ReadOnly: true},
