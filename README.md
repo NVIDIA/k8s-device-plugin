@@ -1,5 +1,7 @@
 # NVIDIA device plugin for Kubernetes
 
+[中文版](README_cn.md)
+
 ## Table of Contents
 
 - [About](#about)
