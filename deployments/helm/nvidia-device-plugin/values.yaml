@@ -5,6 +5,9 @@ failOnInitError: true
 deviceListStrategy: envvar
 deviceIDStrategy: uuid
 nvidiaDriverRoot: "/"
+deviceSplitCount: 2
+deviceMemoryScaling: 1.0
+deviceCoresScaling: 1.0
 
 nameOverride: ""
 fullnameOverride: ""
@@ -14,10 +17,10 @@ namespace: kube-system
 
 imagePullSecrets: []
 image:
-  repository: nvcr.io/nvidia/k8s-device-plugin
+  repository: docker.4pd.io/adc/nvidia/k8s-device-plugin
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  tag: "latest"
 
 updateStrategy:
   type: RollingUpdate

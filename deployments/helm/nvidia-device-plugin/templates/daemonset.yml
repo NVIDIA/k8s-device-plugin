@@ -64,6 +64,9 @@ spec:
         - "--device-list-strategy={{ .Values.deviceListStrategy }}"
         - "--device-id-strategy={{ .Values.deviceIDStrategy }}"
         - "--nvidia-driver-root={{ .Values.nvidiaDriverRoot }}"
+        - "--device-split-count={{ .Values.deviceSplitCount }}"
+        - "--device-memory-scaling={{ .Values.deviceMemoryScaling }}"
+        - "--device-cores-scaling={{ .Values.deviceCoresScaling }}"
         securityContext:
         {{- if ne (len .Values.securityContext) 0 }}
           {{- toYaml .Values.securityContext | nindent 10 }}
@@ -77,6 +80,8 @@ spec:
         volumeMounts:
           - name: device-plugin
             mountPath: /var/lib/kubelet/device-plugins
+          - name: vgpu-dir
+            mountPath: /usr/local/vgpu
         {{- with .Values.resources }}
         resources:
           {{- toYaml . | nindent 10 }}
@@ -85,6 +90,9 @@ spec:
         - name: device-plugin
           hostPath:
             path: /var/lib/kubelet/device-plugins
+        - name: vgpu-dir
+          hostPath:
+            path: /usr/local/vgpu
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
