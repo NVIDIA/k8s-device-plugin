@@ -4,7 +4,7 @@ stages:
     - release
 
 .tests-setup: &tests-setup
-  image: docker.4pd.io/build:11.0
+  image: golang:1.14.4
 
 #  rules:
 #    - when: always
