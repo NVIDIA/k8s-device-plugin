@@ -4,7 +4,7 @@ stages:
     - release
 
 .tests-setup: &tests-setup
-  image: golang:1.14.4
+  image: docker.4pd.io/build:11.0
 
 #  rules:
 #    - when: always
@@ -18,12 +18,12 @@ stages:
     - ln -s ${CI_PROJECT_DIR} ${GOPATH}/src/${PROJECT_GOPATH}
 
 .build-and-release-setup: &build-and-release-setup
-    image: docker:stable
-    services:
-        - docker:stable-dind
+    image: docker.4pd.io/build:11.0
+#    services:
+#        - docker:stable-dind
 
-    before_script:
-        - apk add make
+#    before_script:
+#        - apk add make
 
 # Run a series of sanity-check tests over the code
 lint:
@@ -81,9 +81,9 @@ build:device-plugin:
 #    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
 
     - make REGISTRY="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" all
-#    - make REGISTRY="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" push
-#    - make REGISTRY="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" push-short
-#    - make REGISTRY="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" push-latest
+    - make REGISTRY="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" push
+    - make REGISTRY="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" push-short
+    - make REGISTRY="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" push-latest
 
 # Release pushes to dockerhub
 release:device-plugin:
