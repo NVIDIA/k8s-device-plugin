@@ -30,6 +30,7 @@ import (
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"github.com/google/uuid"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
@@ -318,6 +319,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 		}
 		response.Envs["CUDA_DEVICE_SM_LIMIT"] = strconv.Itoa(int(100 * deviceCoresScalingFlag / float64(deviceSplitCountFlag)))
 		response.Envs["NVIDIA_DEVICE_MAP"] = strings.Join(mapEnvs, " ")
+		response.Envs["CUDA_DEVICE_MEMORY_SHARED_CACHE"] = fmt.Sprintf("/tmp/%v.cache", uuid.NewString())
 		if deviceMemoryScalingFlag > 1 {
 			response.Envs["CUDA_OVERSUBSCRIBE"] = "true"
 		}

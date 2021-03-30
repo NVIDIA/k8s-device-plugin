@@ -18,14 +18,13 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os"
-	"syscall"
-
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	"github.com/fsnotify/fsnotify"
 	cli "github.com/urfave/cli/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
+	"log"
+	"os"
+	"syscall"
 )
 
 var migStrategyFlag string
