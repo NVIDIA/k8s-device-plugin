@@ -99,11 +99,11 @@ $ wget https://gitlab.4pd.io/peizhaoyou/k8s-device-plugin/raw/63ce301055065cd676
 * `fail-on-init-error:` 
   布尔类型, 预设值是true。当这个参数被设置为true时，如果装置插件在初始化过程遇到错误时程序会返回失败，当这个参数被设置为false时，遇到错误它会打印信息并且持续阻塞插件。持续阻塞插件能让装置插件即使部署在没有GPU的节点（也不应该有GPU）也不会抛出错误。这样你在部署装置插件在你的集群时就不需要考虑节点是否有GPU，不会遇到报错的问题。然而，这么做的缺点是如果GPU节点的装置插件因为一些原因执行失败，将不容易察觉。现在预设值为当初始化遇到错误时程序返回失败，这个做法应该被所有全新的部署采纳。
 * `device-split-count:` 
-  整数类型，预设值是2。NVIDIA装置的分割数。对于一个总共包含N张NVIDIA GPU的Kubernetes集群，如果我们将`device-split-count`参数配置为$K$，这个Kubernetes集群将有$K * N$个可分配的vGPU资源。注意，我们不建议将NVIDIA 1080 ti/NVIDIA 2080 ti `device-split-count`参数配置超过5，将NVIDIA  T4配置超过7，将NVIDIA A100配置超过15。
+  整数类型，预设值是2。NVIDIA装置的分割数。对于一个总共包含*N*张NVIDIA GPU的Kubernetes集群，如果我们将`device-split-count`参数配置为*K*，这个Kubernetes集群将有*K \* N*个可分配的vGPU资源。注意，我们不建议将NVIDIA 1080 ti/NVIDIA 2080 ti `device-split-count`参数配置超过5，将NVIDIA  T4配置超过7，将NVIDIA A100配置超过15。
 * `device-memory-scaling:` 
-  浮点数类型，预设值是1。NVIDIA装置显存使用比例，可以大于1（实验功能）。对于有$M$显存大小的NVIDIA GPU，如果我们配置`device-memory-scaling`参数为$S$，在部署了我们装置插件的Kubenetes集群中，这张GPU分出的vGPU将总共包含 $S * M$显存。每张vGPU的显存大小也受`device-split-count`参数影响。在先前的例子中，如果`device-split-count`参数配置为$K$，那每一张vGPU最后会取得 $S * M / K$ 大小的显存。
+  浮点数类型，预设值是1。NVIDIA装置显存使用比例，可以大于1（实验功能）。对于有*M​*显存大小的NVIDIA GPU，如果我们配置`device-memory-scaling`参数为*S*，在部署了我们装置插件的Kubenetes集群中，这张GPU分出的vGPU将总共包含 *S \* M*显存。每张vGPU的显存大小也受`device-split-count`参数影响。在先前的例子中，如果`device-split-count`参数配置为*K*，那每一张vGPU最后会取得 *S \* M / K* 大小的显存。
 * `device-cores-scaling:` 
-  浮点数类型，预设值是1。NVIDIA装置算力使用比例，可以大于1。如果`device-cores-scaling​`参数配置为$S$，`device-split-count`参数配置为$K$，那每一张vGPU对应的**一段时间内** sm 利用率平均上限为$S * M / K$。属于同一张物理GPU上的所有vGPU sm利用率总和不超过1。
+  浮点数类型，预设值是1。NVIDIA装置算力使用比例，可以大于1。如果`device-cores-scaling​`参数配置为*S​* `device-split-count`参数配置为*K*，那每一张vGPU对应的**一段时间内** sm 利用率平均上限为*S \* M / K*。属于同一张物理GPU上的所有vGPU sm利用率总和不超过1。
 
 完成这些可选参数的配置后，你能透过下面命令开启vGPU的支持：
 
@@ -201,7 +201,7 @@ spec:
 kubectl logs [pod id]
 ```
 
-# 问题反馈及代码贡献
+## 问题反馈及代码贡献
 
 * You can report a bug by [filing a new issue](https://github.com/4paradigm/k8s-device-plugin/issues/new)
 * You can contribute by opening a [pull request](https://help.github.com/articles/using-pull-requests/)
