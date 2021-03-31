@@ -28,9 +28,9 @@ import (
 	"time"
 
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
+	"github.com/google/uuid"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"github.com/google/uuid"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
@@ -206,7 +206,7 @@ func (m *NvidiaDevicePlugin) Register() error {
 		Endpoint:     path.Base(m.socket),
 		ResourceName: m.resourceName,
 		Options: &pluginapi.DevicePluginOptions{
-			GetPreferredAllocationAvailable: (m.allocatePolicy != nil),
+			GetPreferredAllocationAvailable: m.allocatePolicy != nil,
 		},
 	}
 
@@ -220,7 +220,7 @@ func (m *NvidiaDevicePlugin) Register() error {
 // GetDevicePluginOptions returns the values of the optional settings for this plugin
 func (m *NvidiaDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
 	options := &pluginapi.DevicePluginOptions{
-		GetPreferredAllocationAvailable: (m.allocatePolicy != nil),
+		GetPreferredAllocationAvailable: m.allocatePolicy != nil,
 	}
 	return options, nil
 }
