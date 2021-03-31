@@ -1,5 +1,49 @@
 # VGPU device plugin for Kubernetes
-[English version](README.md)
+[English version](README.md)|中文版
+
+[![Build Status](https://api.travis-ci.com/4paradigm/k8s-device-plugin.svg?branch=master)](https://travis-ci.com/github/4paradigm/k8s-device-plugin)
+
+## 目录
+
+- [关于](#关于)
+- [功能](#功能)
+- [实验性功能](#实验性功能)
+- [已知问题](#已知问题)
+- [开发计划](#开发计划)
+- [安装要求](#安装要求)
+- [快速入门](#快速入门)
+  - [GPU节点准备](#GPU节点准备)
+  - [Kubernetes开启vGPU支持](#Kubernetes开启vGPU支持)
+  - [运行GPU任务](#运行GPU任务)
+- [测试](#测试)
+- [性能测试](#性能测试)
+- [问题反馈及代码贡献](#问题反馈及代码贡献)
+
+## 关于
+
+**VGPU device plugin** 基于NVIDIA官方插件([NVIDIA/k8s-device-plugin](https://github.com/NVIDIA/k8s-device-plugin))，在保留官方功能的基础上，实现了对物理GPU进行切分，并对显存和计算单元进行限制，从而模拟出多张小的VGPU卡。在k8s集群中，基于这些切分后的VGPU进行调度，使不同的容器可以安全的共享同一张物理GPU，提高GPU的利用率。
+
+## 功能
+
+- 指定每张物理GPU切分的VGPU的数量
+- 限制VGPU的显存
+- 限制VGPU的计算单元
+
+## 实验性功能
+
+- 显存超用
+
+  VGPU的显存总和可以超过GPU实际的显存，这时候超过的部分会放到内存里，对性能有一定的影响。
+
+## 已知问题
+
+- 在显存超用时，如果某张物理GPU的显存已用满，而这张GPU上还有空余的VGPU，此时分配到这些VGPU上的任务会失败。
+- 目前仅支持计算任务，不支持视频编解码处理。
+
+## 开发计划
+
+- 支持视频编解码处理
+- 支持Multi-Instance GPUs (MIG) 
 
 ## 安装要求
 
@@ -8,15 +52,16 @@
 * docker已配置nvidia作为默认runtime
 * Kubernetes version >= 1.10
 
-
-
 ## 快速入门
-### 准备工作
 
-在所有GPU节点上安装`nvidia-docker2`（不是`nvidia-container-toolkit`）
+### GPU节点准备
+
+以下步骤要在所有GPU节点执行。这份README文档假定GPU节点已经安装NVIDIA驱动和`nvidia-docker`套件。
+
+注意你需要安装的是`nvidia-docker2`而非`nvidia-container-toolkit`。因为新的`--gpus`选项kubernetes尚不支持。安装步骤举例：
 
 ```
-# Add the package repositories
+# 加入套件仓库
 $ distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
 $ curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
 $ curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
@@ -25,7 +70,7 @@ $ sudo apt-get update && sudo apt-get install -y nvidia-docker2
 $ sudo systemctl restart docker
 ```
 
-配置docker的默认`runtime`为`nvidia`
+你需要在节点上将nvidia runtime做为你的docker runtime预设值。我们将编辑docker daemon的配置文件，此文件通常在`/etc/docker/daemon.json`路径：
 
 ```
 {
@@ -39,29 +84,36 @@ $ sudo systemctl restart docker
 }
 ```
 
-*其它系统可参考 [nvidia-docker](https://github.com/NVIDIA/nvidia-docker)*
+> *如果 `runtimes` 字段没有出现, 前往 [nvidia-docker]的安装页面执行安装操作(https://github.com/NVIDIA/nvidia-docker)*
 
-### 安装
+### Kubernetes开启vGPU支持
 
-作为k8s的Daemonset部署
+当你在所有GPU节点完成前面提到的准备动作，如果Kubernetes有已经存在的NVIDIA装置插件，需要先将它移除。然后，你能通过下面指令下载我们的Daemonset yaml文件：
 
 ```
-$ kubectl create -f nvidia-device-plugin.yml
+$ wget https://gitlab.4pd.io/peizhaoyou/k8s-device-plugin/raw/63ce301055065cd676e525742268f95cfe6b25c8/nvidia-device-plugin.yml
 ```
 
-可以修改容器命令的参数限制VGPU的数量、显存及core。
+在这个DaemonSet文件中, 你能发现`nvidia-device-plugin-ctr`容器有一共4个vGPU的客制化参数：
 
-参数说明：
+* `fail-on-init-error:` 
+  布尔类型, 预设值是true。当这个参数被设置为true时，如果装置插件在初始化过程遇到错误时程序会返回失败，当这个参数被设置为false时，遇到错误它会打印信息并且持续阻塞插件。持续阻塞插件能让装置插件即使部署在没有GPU的节点（也不应该有GPU）也不会抛出错误。这样你在部署装置插件在你的集群时就不需要考虑节点是否有GPU，不会遇到报错的问题。然而，这么做的缺点是如果GPU节点的装置插件因为一些原因执行失败，将不容易察觉。现在预设值为当初始化遇到错误时程序返回失败，这个做法应该被所有全新的部署采纳。
+* `device-split-count:` 
+  整数类型，预设值是2。NVIDIA装置的分割数。对于一个总共包含N张NVIDIA GPU的Kubernetes集群，如果我们将`device-split-count`参数配置为$K$，这个Kubernetes集群将有$K * N$个可分配的vGPU资源。注意，我们不建议将NVIDIA 1080 ti/NVIDIA 2080 ti `device-split-count`参数配置超过5，将NVIDIA  T4配置超过7，将NVIDIA A100配置超过15。
+* `device-memory-scaling:` 
+  浮点数类型，预设值是1。NVIDIA装置显使用比例，可以大于1（实验功能）。对于有$M$显存大小的NVIDIA GPU，如果我们配置`device-memory-scaling`参数为$S$，在部署了我们装置插件的Kubenetes集群中，这张GPU分出的vGPU将总共包含 $S * M$显存。每张vGPU的显存大小也受`device-split-count`参数影响。在先前的例子中，如果`device-split-count`参数配置为$K$，那每一张vGPU最后会取得 $S * M / K$ 大小的显存。
+* `device-cores-scaling:` 
+  浮点数类型，预设值是1。NVIDIA装置算力使用比例，可以大于1。如果`device-cores-scaling​`参数配置为$S$，`device-split-count`参数配置为$K$，那每一张vGPU对应的**一段时间内** sm 利用率平均上限为$S * M / K$。属于同一张物理GPU上的所有vGPU sm利用率总和不超过1。
 
-* --device-split-count： 每张GPU虚拟的VGPU个数
+完成这些可选参数的配置后，你能透过下面命令开启vGPU的支持：
 
-* --device-memory-scaling：所有VGPU使用的显存总和与实际物理显存的比例，每个容器实际使用的显存上限为 `物理显存 * device-memory-scaling / device-split-count`，超出后会oom，目前仅在 compute capabilities 下有效。可以大于1（超用），超出部分会使用机器的内存，对性能有一定的影响。
-
-* --device-cores-scaling：所有VGPU使用的core总和与实际物理core的比例，每个容器实际使用的core上限为`物理core * device-cores-scaling / device-split-count`，目前仅在 compute capabilities 下有效。 可以大于1，但实际使用总量不会大于1。
+```shell
+$ kubectl apply -f nvidia-device-plugin.yml
+```
 
 ### 运行GPU任务
 
-通过指定任务的请求资源类型 `nvidia.com/gpu` 来使用VGPU。
+NVIDIA vGPUs 现在能透过资源类型`nvidia.com/gpu`被容器请求：
 
 ```
 apiVersion: v1
@@ -70,15 +122,87 @@ metadata:
   name: gpu-pod
 spec:
   containers:
-    - name: cuda-container
-      image: nvcr.io/nvidia/cuda:9.0-devel
+    - name: ubuntu-container
+      image: ubuntu:18.04
+      command: ["bash", "-c", "sleep 86400"]
       resources:
         limits:
-          nvidia.com/gpu: 2 # requesting 2 GPUs
-    - name: digits-container
-      image: nvcr.io/nvidia/digits:20.12-tensorflow-py3
-      resources:
-        limits:
-          nvidia.com/gpu: 2 # requesting 2 GPUs
+          nvidia.com/gpu: 2 # 请求2个vGPUs
 ```
+
+现在你可以在容器执行`nvidia-smi`命令，然后比较vGPU和实际GPU显存大小的不同。
+
+> **注意:** 如果你使用插件装置时，如果没有请求vGPU资源，那容器所在机器的所有vGPU都将暴露给容器。
+
+## 测试
+
+- TensorFlow 1.14.0/2.4.1
+- torch1.1.0
+- mxnet 1.4.0
+- mindspore 1.1.1
+
+以上框架均通过测试。
+
+## 性能测试
+
+在测试报告中，我们一共在下面五种场景都执行了ai-benchmark 测试脚本，并汇总最终结果：
+
+| 测试编号 |                    测试用例                    |
+| -------- | :--------------------------------------------: |
+| 1        |       k8s + nvidia官方k8s-device-plugin        |
+| 2        |    k8s + vGPU k8s-device-plugin，无显存超卖    |
+| 3        | k8s + vGPU k8s-device-plugin，高负载，显存超卖 |
+
+
+测试内容
+
+| test id |     名称      |   类型    |         参数          |
+| ------- | :-----------: | :-------: | :-------------------: |
+| 1.1     | Inception-v3  | inference | batch=50,size=346*346 |
+| 1.2     | Inception-v3  | training  | batch=20,size=346*346 |
+| 2.1     | Resnet-V2-152 | inference | batch=10,size=256*256 |
+| 2.2     | Resnet-V2-152 | training  | batch=10,size=256*256 |
+| 3.1     |    VGG-19     | inference | batch=10,size=256*256 |
+| 3.2     |    VGG-19     | training  | batch=10,size=224*224 |
+
+测试结果：
+![](./imgs/benchmark.png)
+
+测试步骤：
+1. 安装nvidia-device-plugin，并配置相应的参数（虚拟比例，显存比例，若虚拟比例*显存比例>1则为超卖）
+2. kubectl apply -f test.yml，其中test.yml如下
+``` apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ai-benchmark
+spec:
+  template:
+    metadata:
+      name: ai-benchmark
+      labels:
+        qa: test
+    spec:
+      toleration:
+      - key: node.kubernetes.io/disk-pressure
+      containers:
+      - name: testgpu
+        image: m7-ieg-pico-test01:5000/ai-benchmark:latest-gpu
+        command: ["python", "/ai-benchmark/bin/ai-benchmark.py"]
+        resources:
+          requests:
+            nvidia.com/gpu: 1
+          limits:
+            nvidia.com/gpu: 1
+      restartPolicy: Never
+```
+
+3. 通过kubctl logs 查看结果
+```
+kubectl logs [pod id]
+```
+
+# 问题反馈及代码贡献
+
+* You can report a bug by [filing a new issue](https://github.com/4paradigm/k8s-device-plugin/issues/new)
+* You can contribute by opening a [pull request](https://help.github.com/articles/using-pull-requests/)
 
