@@ -49,9 +49,9 @@ Test Cases:
 | 5.1     |     LSTM      | inference | batch=100,size=1024*300 |
 | 5.2     |     LSTM      | training  | batch=10,size=1024*300  |
 
-Test Result: ![img](file:///Users/yoyo/code/k8s-device-plugin/imgs/benchmark_inf.png?lastModify=1617364855)
+Test Result: ![img](./imgs/benchmark_inf.png)
 
-![img](file:///Users/yoyo/code/k8s-device-plugin/imgs/benchmark_train.png?lastModify=1617364855)
+![img](./imgs/benchmark_train.png)
 
 To reproduce:
 

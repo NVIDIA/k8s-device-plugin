@@ -48,9 +48,9 @@
 | 5.1     |     LSTM      | inference | batch=100,size=1024*300 |
 | 5.2     |     LSTM      | training  | batch=10,size=1024*300  |
 
-测试结果： ![img](file:///Users/yoyo/code/k8s-device-plugin/imgs/benchmark_inf.png?lastModify=1617365179)
+测试结果： ![img](./imgs/benchmark_inf.png)
 
-![img](file:///Users/yoyo/code/k8s-device-plugin/imgs/benchmark_train.png?lastModify=1617365179)
+![img](./imgs/benchmark_train.png)
 
 测试步骤：
 
