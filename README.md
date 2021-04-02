@@ -7,6 +7,7 @@ English version|[中文版](README_cn.md)
 ## Table of Contents
 
 - [About](#about)
+- [Benchmarks](#Benchmarks)
 - [Features](#Features)
 - [Experimental Features](#Experimental-Features)
 - [Known Issues](#Known-Issues)
@@ -17,12 +18,77 @@ English version|[中文版](README_cn.md)
   - [Enabling vGPU Support in Kubernetes](#enabling-vGPU-support-in-kubernetes)
   - [Running GPU Jobs](#running-gpu-jobs)
 - [Tests](#Tests)
-- [Benchmarks](#Benchmarks)
 - [Issues and Contributing](#issues-and-contributing)
 
 ## About
 
-The **vGPU device plugin** is based on NVIDIA device plugin([NVIDIA/k8s-device-plugin](https://github.com/NVIDIA/k8s-device-plugin)), and on the basis of retaining the official features, it splits the physical GPU, and limits the memory and computing unit, thereby simulating multiple small vGPU cards. In the k8s cluster, scheduling is performed based on these splited vGPUs, so that different containers can safely share the same physical GPU and improve GPU utilization.In addition, the plug-in can oversell the global memory to a certain extent (the global memory used can be larger than the physical global memory), increase the number of shared tasks, and further improve the utilization of the GPU. You can refer to the performance test report below.
+The **vGPU device plugin** is based on NVIDIA device plugin([NVIDIA/k8s-device-plugin](https://github.com/NVIDIA/k8s-device-plugin)), and on the basis of retaining the official features, it splits the physical GPU, and limits the memory and computing unit, thereby simulating multiple small vGPU cards. In the k8s cluster, scheduling is performed based on these splited vGPUs, so that different containers can safely share the same physical GPU and improve GPU utilization.In addition, the plug-in can oversell the global memory to a certain extent (the global memory used can be larger than the physical global memory), increase the number of shared tasks, and further improve the utilization of the GPU. You can refer to the benchmarks report below.
+
+## Benchmarks
+
+Three instances from ai-benchmark have been used to evaluate vGPU-device-plugin performance as follows
+
+| Test instance |                         description                          |
+| ------------- | :----------------------------------------------------------: |
+| 1             |                k8s + nvidia k8s-device-plugin                |
+| 2             | k8s + VGPU k8s-device-plugin，no GPU memory oversubscription |
+| 3             | k8s + VGPU k8s-device-plugin，with GPU memory oversubscription |
+
+Test Cases:
+
+| test id |     case      |   type    |         params          |
+| ------- | :-----------: | :-------: | :---------------------: |
+| 1.1     | Resnet-V2-50  | inference |  batch=50,size=346*346  |
+| 1.2     | Resnet-v2-50  | training  |  batch=20,size=346*346  |
+| 2.1     | Resnet-V2-152 | inference |  batch=10,size=256*256  |
+| 2.2     | Resnet-V2-152 | training  |  batch=10,size=256*256  |
+| 3.1     |    VGG-16     | inference |  batch=20,size=224*224  |
+| 3.2     |    VGG-16     | training  |  batch=2,size=224*224   |
+| 4.1     |    DeepLab    | inference |  batch=2,size=512*512   |
+| 4.2     |    DeepLab    | training  |  batch=1,size=384*384   |
+| 5.1     |     LSTM      | inference | batch=100,size=1024*300 |
+| 5.2     |     LSTM      | training  | batch=10,size=1024*300  |
+
+Test Result: ![img](file:///Users/yoyo/code/k8s-device-plugin/imgs/benchmark_inf.png?lastModify=1617364855)
+
+![img](file:///Users/yoyo/code/k8s-device-plugin/imgs/benchmark_train.png?lastModify=1617364855)
+
+To reproduce:
+
+1. install vGPU-nvidia-device-plugin，and configure properly
+2. kubectl apply -f test.yml，with test.yml as follows:
+
+```
+ apiVersion: batch/v1
+ kind: Job
+ metadata:
+   name: ai-benchmark
+ spec:
+   template:
+     metadata:
+       name: ai-benchmark
+       labels:
+         qa: test
+     spec:
+       toleration:
+       - key: node.kubernetes.io/disk-pressure
+       containers:
+       - name: testgpu
+         image: m7-ieg-pico-test01:5000/ai-benchmark:latest-gpu
+         command: ["python", "/ai-benchmark/bin/ai-benchmark.py"]
+         resources:
+           requests:
+             nvidia.com/gpu: 1
+           limits:
+             nvidia.com/gpu: 1
+       restartPolicy: Never
+```
+
+1. View the result by using kubctl logs
+
+```
+     kubectl logs [pod id]
+```
 
 ## Features
 
@@ -149,70 +215,6 @@ You can now execute `nvidia-smi` command in the container and see the difference
 - mindspore 1.1.1
 
 The above frameworks have passed the test.
-
-## Benchmarks
-
-Three instances from ai-benchmark have been used to evaluate vGPU-device-plugin performance as follows
-
-| Test instance |                         description                          |
-| ------------- | :----------------------------------------------------------: |
-| 1             |                k8s + nvidia k8s-device-plugin                |
-| 2             | k8s + VGPU k8s-device-plugin，no GPU memory oversubscription |
-| 3             | k8s + VGPU k8s-device-plugin，with GPU memory oversubscription |
-
-
-Test Cases:
-
-| test id |     case      |   type    |        params         |
-| ------- | :-----------: | :-------: | :-------------------: |
-| 1.1     | Resnet-V2-50  | inference | batch=50,size=346*346 |
-| 1.2     | Resnet-v2-50  | training  | batch=20,size=346*346 |
-| 2.1     | Resnet-V2-152 | inference | batch=10,size=256*256 |
-| 2.2     | Resnet-V2-152 | training  | batch=10,size=256*256 |
-| 3.1     |    VGG-16     | inference | batch=20,size=224*224 |
-| 3.2     |    VGG-16     | training  | batch=2,size=224*224 |
-| 4.1     |    DeepLab    | inference | batch=2,size=512*512 |
-| 4.2     |    DeepLab    | training  | batch=1,size=384*384 |
-| 5.1     |    LSTM       | inference | batch=100,size=1024*300 |
-| 5.2     |    LSTM       | training  | batch=10,size=1024*300 |
-
-Test Result:
-![](imgs/benchmark_inf.png)
-
-![](imgs/benchmark_train.png)
-
-To reproduce:
-1. install vGPU-nvidia-device-plugin，and configure properly
-2. kubectl apply -f test.yml，with test.yml as follows:
-```
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: ai-benchmark
-spec:
-  template:
-    metadata:
-      name: ai-benchmark
-      labels:
-        qa: test
-    spec:
-      toleration:
-      - key: node.kubernetes.io/disk-pressure
-      containers:
-      - name: testgpu
-        image: m7-ieg-pico-test01:5000/ai-benchmark:latest-gpu
-        command: ["python", "/ai-benchmark/bin/ai-benchmark.py"]
-        resources:
-          requests:
-            nvidia.com/gpu: 1
-          limits:
-            nvidia.com/gpu: 1
-      restartPolicy: Never
-```
-3. View the result by using kubctl logs
-```
-    kubectl logs [pod id]
-```
 
 ## Issues and Contributing
 

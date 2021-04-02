@@ -49,7 +49,7 @@ spec:
       - image: docker.4pd.io/adc/nvidia/k8s-device-plugin:latest
         imagePullPolicy: Always
         name: nvidia-device-plugin-ctr
-        args: ["--fail-on-init-error=false", "--device-split-count=4", "--device-memory-scaling=1.5"]
+        args: ["--fail-on-init-error=false", "--device-split-count=4", "--device-memory-scaling=1.2", "--device-cores-scaling=1.2"]
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

@@ -6,6 +6,7 @@
 ## 目录
 
 - [关于](#关于)
+- [性能测试](#性能测试)
 - [功能](#功能)
 - [实验性功能](#实验性功能)
 - [已知问题](#已知问题)
@@ -16,12 +17,76 @@
   - [Kubernetes开启vGPU支持](#Kubernetes开启vGPU支持)
   - [运行GPU任务](#运行GPU任务)
 - [测试](#测试)
-- [性能测试](#性能测试)
 - [问题反馈及代码贡献](#问题反馈及代码贡献)
 
 ## 关于
 
 **vGPU device plugin** 基于NVIDIA官方插件([NVIDIA/k8s-device-plugin](https://github.com/NVIDIA/k8s-device-plugin))，在保留官方功能的基础上，实现了对物理GPU进行切分，并对显存和计算单元进行限制，从而模拟出多张小的vGPU卡。在k8s集群中，基于这些切分后的vGPU进行调度，使不同的容器可以安全的共享同一张物理GPU，提高GPU的利用率。此外，插件可以对显存做一定的超售处理（使用到的显存可以大于物理上的显存），提高共享任务的数量，进一步提高GPU的利用率，可参考下面的性能测试报告。
+
+## 性能测试
+
+在测试报告中，我们一共在下面五种场景都执行了ai-benchmark 测试脚本，并汇总最终结果：
+
+| 测试编号 |                    测试用例                    |
+| -------- | :--------------------------------------------: |
+| 1        |       k8s + nvidia官方k8s-device-plugin        |
+| 2        |    k8s + VGPU k8s-device-plugin，无显存超卖    |
+| 3        | k8s + VGPU k8s-device-plugin，高负载，显存超卖 |
+
+测试内容
+
+| test id |     名称      |   类型    |          参数           |
+| ------- | :-----------: | :-------: | :---------------------: |
+| 1.1     | Resnet-V2-50  | inference |  batch=50,size=346*346  |
+| 1.2     | Resnet-v2-50  | training  |  batch=20,size=346*346  |
+| 2.1     | Resnet-V2-152 | inference |  batch=10,size=256*256  |
+| 2.2     | Resnet-V2-152 | training  |  batch=10,size=256*256  |
+| 3.1     |    VGG-16     | inference |  batch=20,size=224*224  |
+| 3.2     |    VGG-16     | training  |  batch=2,size=224*224   |
+| 4.1     |    DeepLab    | inference |  batch=2,size=512*512   |
+| 4.2     |    DeepLab    | training  |  batch=1,size=384*384   |
+| 5.1     |     LSTM      | inference | batch=100,size=1024*300 |
+| 5.2     |     LSTM      | training  | batch=10,size=1024*300  |
+
+测试结果： ![img](file:///Users/yoyo/code/k8s-device-plugin/imgs/benchmark_inf.png?lastModify=1617365179)
+
+![img](file:///Users/yoyo/code/k8s-device-plugin/imgs/benchmark_train.png?lastModify=1617365179)
+
+测试步骤：
+
+1. 安装nvidia-device-plugin，并配置相应的参数（虚拟比例，显存比例，若虚拟比例*显存比例>1则为超卖）
+2. kubectl apply -f test.yml，其中test.yml如下
+
+```
+ kind: Job
+ metadata:
+   name: ai-benchmark
+ spec:
+   template:
+     metadata:
+       name: ai-benchmark
+       labels:
+         qa: test
+     spec:
+       toleration:
+       - key: node.kubernetes.io/disk-pressure
+       containers:
+       - name: testgpu
+         image: m7-ieg-pico-test01:5000/ai-benchmark:latest-gpu
+         command: ["python", "/ai-benchmark/bin/ai-benchmark.py"]
+         resources:
+           requests:
+             nvidia.com/gpu: 1
+           limits:
+             nvidia.com/gpu: 1
+       restartPolicy: Never
+```
+
+1. 通过kubctl logs 查看结果
+
+```
+ kubectl logs [pod id]
+```
 
 ## 功能
 
@@ -142,70 +207,6 @@ spec:
 - mindspore 1.1.1
 
 以上框架均通过测试。
-
-## 性能测试
-
-在测试报告中，我们一共在下面五种场景都执行了ai-benchmark 测试脚本，并汇总最终结果：
-
-| 测试编号 |                    测试用例                    |
-| -------- | :--------------------------------------------: |
-| 1        |       k8s + nvidia官方k8s-device-plugin        |
-| 2        |    k8s + VGPU k8s-device-plugin，无显存超卖    |
-| 3        | k8s + VGPU k8s-device-plugin，高负载，显存超卖 |
-
-
-测试内容
-
-| test id |     名称      |   类型    |         参数          |
-| ------- | :-----------: | :-------: | :-------------------: |
-| 1.1     | Resnet-V2-50  | inference | batch=50,size=346*346 |
-| 1.2     | Resnet-v2-50  | training  | batch=20,size=346*346 |
-| 2.1     | Resnet-V2-152 | inference | batch=10,size=256*256 |
-| 2.2     | Resnet-V2-152 | training  | batch=10,size=256*256 |
-| 3.1     |    VGG-16     | inference | batch=20,size=224*224 |
-| 3.2     |    VGG-16     | training  | batch=2,size=224*224 |
-| 4.1     |    DeepLab    | inference | batch=2,size=512*512 |
-| 4.2     |    DeepLab    | training  | batch=1,size=384*384 |
-| 5.1     |    LSTM       | inference | batch=100,size=1024*300 |
-| 5.2     |    LSTM       | training  | batch=10,size=1024*300 |
-
-测试结果：
-![](./imgs/benchmark_inf.png)
-
-![](./imgs/benchmark_train.png)
-
-测试步骤：
-1. 安装nvidia-device-plugin，并配置相应的参数（虚拟比例，显存比例，若虚拟比例*显存比例>1则为超卖）
-2. kubectl apply -f test.yml，其中test.yml如下
-``` apiVersion: batch/v1
-kind: Job
-metadata:
-  name: ai-benchmark
-spec:
-  template:
-    metadata:
-      name: ai-benchmark
-      labels:
-        qa: test
-    spec:
-      toleration:
-      - key: node.kubernetes.io/disk-pressure
-      containers:
-      - name: testgpu
-        image: m7-ieg-pico-test01:5000/ai-benchmark:latest-gpu
-        command: ["python", "/ai-benchmark/bin/ai-benchmark.py"]
-        resources:
-          requests:
-            nvidia.com/gpu: 1
-          limits:
-            nvidia.com/gpu: 1
-      restartPolicy: Never
-```
-
-3. 通过kubctl logs 查看结果
-```
-kubectl logs [pod id]
-```
 
 ## 反馈和参与
 
