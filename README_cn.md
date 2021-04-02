@@ -158,15 +158,21 @@ spec:
 
 | test id |     名称      |   类型    |         参数          |
 | ------- | :-----------: | :-------: | :-------------------: |
-| 1.1     | Inception-v3  | inference | batch=50,size=346*346 |
-| 1.2     | Inception-v3  | training  | batch=20,size=346*346 |
+| 1.1     | Resnet-V2-50  | inference | batch=50,size=346*346 |
+| 1.2     | Resnet-v2-50  | training  | batch=20,size=346*346 |
 | 2.1     | Resnet-V2-152 | inference | batch=10,size=256*256 |
 | 2.2     | Resnet-V2-152 | training  | batch=10,size=256*256 |
-| 3.1     |    VGG-19     | inference | batch=10,size=256*256 |
-| 3.2     |    VGG-19     | training  | batch=10,size=224*224 |
+| 3.1     |    VGG-16     | inference | batch=20,size=224*224 |
+| 3.2     |    VGG-16     | training  | batch=2,size=224*224 |
+| 4.1     |    DeepLab    | inference | batch=2,size=512*512 |
+| 4.2     |    DeepLab    | training  | batch=1,size=384*384 |
+| 5.1     |    LSTM       | inference | batch=100,size=1024*300 |
+| 5.2     |    LSTM       | training  | batch=10,size=1024*300 |
 
 测试结果：
-![](./imgs/benchmark.png)
+![](./imgs/benchmark_inf.png)
+
+![](./imgs/benchmark_train.png)
 
 测试步骤：
 1. 安装nvidia-device-plugin，并配置相应的参数（虚拟比例，显存比例，若虚拟比例*显存比例>1则为超卖）
