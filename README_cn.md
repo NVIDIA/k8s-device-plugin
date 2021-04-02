@@ -1,4 +1,4 @@
-# VGPU device plugin for Kubernetes
+# vGPU device plugin for Kubernetes
 [English version](README.md)|中文版
 
 [![Build Status](https://api.travis-ci.com/4paradigm/k8s-device-plugin.svg?branch=master)](https://travis-ci.com/github/4paradigm/k8s-device-plugin)
@@ -21,23 +21,23 @@
 
 ## 关于
 
-**VGPU device plugin** 基于NVIDIA官方插件([NVIDIA/k8s-device-plugin](https://github.com/NVIDIA/k8s-device-plugin))，在保留官方功能的基础上，实现了对物理GPU进行切分，并对显存和计算单元进行限制，从而模拟出多张小的VGPU卡。在k8s集群中，基于这些切分后的VGPU进行调度，使不同的容器可以安全的共享同一张物理GPU，提高GPU的利用率。
+**vGPU device plugin** 基于NVIDIA官方插件([NVIDIA/k8s-device-plugin](https://github.com/NVIDIA/k8s-device-plugin))，在保留官方功能的基础上，实现了对物理GPU进行切分，并对显存和计算单元进行限制，从而模拟出多张小的vGPU卡。在k8s集群中，基于这些切分后的vGPU进行调度，使不同的容器可以安全的共享同一张物理GPU，提高GPU的利用率。此外，插件可以对显存做一定的超售处理（使用到的显存可以大于物理上的显存），提高共享任务的数量，进一步提高GPU的利用率，可参考下面的性能测试报告。
 
 ## 功能
 
-- 指定每张物理GPU切分的VGPU的数量
-- 限制VGPU的显存
-- 限制VGPU的计算单元
+- 指定每张物理GPU切分的vGPU的数量
+- 限制vGPU的显存
+- 限制vGPU的计算单元
 
 ## 实验性功能
 
 - 显存超用
 
-  VGPU的显存总和可以超过GPU实际的显存，这时候超过的部分会放到内存里，对性能有一定的影响。
+  vGPU的显存总和可以超过GPU实际的显存，这时候超过的部分会放到内存里，对性能有一定的影响。
 
 ## 已知问题
 
-- 在显存超用时，如果某张物理GPU的显存已用满，而这张GPU上还有空余的VGPU，此时分配到这些VGPU上的任务会失败。
+- 在显存超用时，如果某张物理GPU的显存已用满，而这张GPU上还有空余的vGPU，此时分配到这些vGPU上的任务会失败。
 - 目前仅支持计算任务，不支持视频编解码处理。
 
 ## 开发计划
@@ -150,8 +150,8 @@ spec:
 | 测试编号 |                    测试用例                    |
 | -------- | :--------------------------------------------: |
 | 1        |       k8s + nvidia官方k8s-device-plugin        |
-| 2        |    k8s + vGPU k8s-device-plugin，无显存超卖    |
-| 3        | k8s + vGPU k8s-device-plugin，高负载，显存超卖 |
+| 2        |    k8s + VGPU k8s-device-plugin，无显存超卖    |
+| 3        | k8s + VGPU k8s-device-plugin，高负载，显存超卖 |
 
 
 测试内容
@@ -201,8 +201,8 @@ spec:
 kubectl logs [pod id]
 ```
 
-## 问题反馈及代码贡献
+## 反馈和参与
 
-* You can report a bug by [filing a new issue](https://github.com/4paradigm/k8s-device-plugin/issues/new)
-* You can contribute by opening a [pull request](https://help.github.com/articles/using-pull-requests/)
+* bug、疑惑、修改欢迎提在 [Github Issues](https://github.com/4paradigm/k8s-device-plugin/issues/new)
+* 想了解更多或者有想法可以参与到[Discussions](https://github.com/4paradigm/k8s-device-plugin/discussions)和[slack](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D/p1617019707000100)交流
 

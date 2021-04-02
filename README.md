@@ -1,4 +1,4 @@
-# VGPU device plugin for Kubernetes
+# vGPU device plugin for Kubernetes
 
 English version|[中文版](README_cn.md)
 
@@ -8,13 +8,13 @@ English version|[中文版](README_cn.md)
 
 - [About](#about)
 - [Features](#Features)
-- [Experimental Features](#Experimental Features)
-- [Known Issues](#Known Issues)
+- [Experimental Features](#Experimental-Features)
+- [Known Issues](#Known-Issues)
 - [TODO](#TODO)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
   - [Preparing your GPU Nodes](#preparing-your-gpu-nodes)
-  - [Enabling vGPU Support in Kubernetes](#enabling-vgpu-support-in-kubernetes)
+  - [Enabling vGPU Support in Kubernetes](#enabling-vGPU-support-in-kubernetes)
   - [Running GPU Jobs](#running-gpu-jobs)
 - [Tests](#Tests)
 - [Benchmarks](#Benchmarks)
@@ -22,23 +22,23 @@ English version|[中文版](README_cn.md)
 
 ## About
 
-The **VGPU device plugin** is based on NVIDIA device plugin([NVIDIA/k8s-device-plugin](https://github.com/NVIDIA/k8s-device-plugin)), and on the basis of retaining the official features, it splits the physical GPU, and limits the memory and computing unit, thereby simulating multiple small VGPU cards. In the k8s cluster, scheduling is performed based on these splited VGPUs, so that different containers can safely share the same physical GPU and improve GPU utilization.
+The **vGPU device plugin** is based on NVIDIA device plugin([NVIDIA/k8s-device-plugin](https://github.com/NVIDIA/k8s-device-plugin)), and on the basis of retaining the official features, it splits the physical GPU, and limits the memory and computing unit, thereby simulating multiple small vGPU cards. In the k8s cluster, scheduling is performed based on these splited vGPUs, so that different containers can safely share the same physical GPU and improve GPU utilization.In addition, the plug-in can oversell the global memory to a certain extent (the global memory used can be larger than the physical global memory), increase the number of shared tasks, and further improve the utilization of the GPU. You can refer to the performance test report below.
 
 ## Features
 
-- Specify the number of VGPUs divided by each physical GPU.
-- Limit VGPU's Global Memory.
-- Limit VGPU's Streaming Multiprocessor.
+- Specify the number of vGPUs divided by each physical GPU.
+- Limit vGPU's Global Memory.
+- Limit vGPU's Streaming Multiprocessor.
 
 ## Experimental Features
 
 - Global Memory overuse
 
-  The Global Memory of the VGPU can exceed the actual Global Memory of the GPU. At this time, the excess part will be put in the RAM, which will have a certain impact on the performance.
+  The Global Memory of the vGPU can exceed the actual Global Memory of the GPU. At this time, the excess part will be put in the RAM, which will have a certain impact on the performance.
 
 ## Known Issues
 
-- When the Global Memory is overused, if the Global Memory of a physical GPU is used up and there are vacant VGPUs on this GPU, the tasks assigned to these VGPUs will fail.
+- When the Global Memory is overused, if the Global Memory of a physical GPU is used up and there are vacant vGPUs on this GPU, the tasks assigned to these vGPUs will fail.
 - Currently, only computing tasks are supported, and video codec processing is not supported.
 
 ## TODO
@@ -157,8 +157,8 @@ Three instances from ai-benchmark have been used to evaluate vGPU-device-plugin 
 | Test instance |                         description                          |
 | ------------- | :----------------------------------------------------------: |
 | 1             |                k8s + nvidia k8s-device-plugin                |
-| 2             | k8s + vGPU k8s-device-plugin，no GPU memory oversubscription |
-| 3             | k8s + vGPU k8s-device-plugin，with GPU memory oversubscription |
+| 2             | k8s + VGPU k8s-device-plugin，no GPU memory oversubscription |
+| 3             | k8s + VGPU k8s-device-plugin，with GPU memory oversubscription |
 
 
 Test Cases:
@@ -210,7 +210,7 @@ spec:
 
 ## Issues and Contributing
 
-* You can report a bug by [filing a new issue](https://github.com/NVIDIA/k8s-device-plugin/issues/new)
-* You can contribute by opening a [pull request](https://help.github.com/articles/using-pull-requests/)
+* You can report a bug, a doubt or modify by [filing a new issue](https://github.com/NVIDIA/k8s-device-plugin/issues/new)
+* If you want to know more or have ideas, you can participate in [Discussions](https://github.com/4paradigm/k8s-device-plugin/discussions) and [slack](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D/p1617019707000100) exchanges
 
 
