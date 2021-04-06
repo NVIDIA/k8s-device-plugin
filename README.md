@@ -162,7 +162,7 @@ Once you have configured the options above on all the GPU nodes in your
 cluster, remove existing NVIDIA device plugin for Kubernetes if it already exists. Then, you can download our Daemonset yaml file by following command:
 
 ```
-$ wget https://gitlab.4pd.io/peizhaoyou/k8s-device-plugin/raw/63ce301055065cd676e525742268f95cfe6b25c8/nvidia-device-plugin.yml
+$ wget https://github.com/4paradigm/k8s-device-plugin/blob/vgpu/nvidia-device-plugin.yml
 ```
 
 In this Daemonset file, you can see the container `nvidia-device-plugin-ctr` takes four optional arguments to customize your vGPU support:

@@ -156,7 +156,7 @@ $ sudo systemctl restart docker
 当你在所有GPU节点完成前面提到的准备动作，如果Kubernetes有已经存在的NVIDIA装置插件，需要先将它移除。然后，你能通过下面指令下载我们的Daemonset yaml文件：
 
 ```
-$ wget https://gitlab.4pd.io/peizhaoyou/k8s-device-plugin/raw/63ce301055065cd676e525742268f95cfe6b25c8/nvidia-device-plugin.yml
+$ wget https://github.com/4paradigm/k8s-device-plugin/blob/vgpu/nvidia-device-plugin.yml
 ```
 
 在这个DaemonSet文件中, 你能发现`nvidia-device-plugin-ctr`容器有一共4个vGPU的客制化参数：

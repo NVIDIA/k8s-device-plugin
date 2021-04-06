@@ -43,7 +43,7 @@ spec:
       # See https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
       priorityClassName: "system-node-critical"
       containers:
-      - image: docker.4pd.io/adc/nvidia/k8s-device-plugin:latest
+      - image: 4pdosc/k8s-device-plugin
         name: nvidia-device-plugin-ctr
         args: ["--fail-on-init-error=false", "--device-split-count=4", "--device-memory-scaling=1.5"]
         securityContext:
