@@ -1,8 +1,12 @@
 # vGPU device plugin for Kubernetes
 
+* [**Slack Channel**](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D)
+* [**Discussions**](https://github.com/4paradigm/k8s-device-plugin/discussions)
+
 English version|[中文版](README_cn.md)
 
 [![Build Status](https://api.travis-ci.com/4paradigm/k8s-device-plugin.svg?branch=master)](https://travis-ci.com/github/4paradigm/k8s-device-plugin)
+
 
 ## Table of Contents
 
@@ -219,6 +223,6 @@ The above frameworks have passed the test.
 ## Issues and Contributing
 
 * You can report a bug, a doubt or modify by [filing a new issue](https://github.com/NVIDIA/k8s-device-plugin/issues/new)
-* If you want to know more or have ideas, you can participate in [Discussions](https://github.com/4paradigm/k8s-device-plugin/discussions) and [slack](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D/p1617019707000100) exchanges
+* If you want to know more or have ideas, you can participate in [Discussions](https://github.com/4paradigm/k8s-device-plugin/discussions) and [slack](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D) exchanges
 
 

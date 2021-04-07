@@ -1,4 +1,7 @@
 # vGPU device plugin for Kubernetes
+* [**Slack Channel**](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D)
+* [**Discussions**](https://github.com/4paradigm/k8s-device-plugin/discussions)
+
 [English version](README.md)|中文版
 
 [![Build Status](https://api.travis-ci.com/4paradigm/k8s-device-plugin.svg?branch=master)](https://travis-ci.com/github/4paradigm/k8s-device-plugin)
@@ -211,5 +214,5 @@ spec:
 ## 反馈和参与
 
 * bug、疑惑、修改欢迎提在 [Github Issues](https://github.com/4paradigm/k8s-device-plugin/issues/new)
-* 想了解更多或者有想法可以参与到[Discussions](https://github.com/4paradigm/k8s-device-plugin/discussions)和[slack](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D/p1617019707000100)交流
+* 想了解更多或者有想法可以参与到[Discussions](https://github.com/4paradigm/k8s-device-plugin/discussions)和[slack](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D)交流
 
