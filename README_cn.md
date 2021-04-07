@@ -1,10 +1,11 @@
 # vGPU device plugin for Kubernetes
+
+[![build status](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml/badge.svg)](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml)
+
 * [**Slack Channel**](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D)
 * [**Discussions**](https://github.com/4paradigm/k8s-device-plugin/discussions)
 
 [English version](README.md)|中文版
-
-[![Build Status](https://api.travis-ci.com/4paradigm/k8s-device-plugin.svg?branch=master)](https://travis-ci.com/github/4paradigm/k8s-device-plugin)
 
 ## 目录
 
