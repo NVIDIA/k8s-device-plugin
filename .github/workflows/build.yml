@@ -23,3 +23,26 @@ jobs:
     - run: golint -set_exit_status .
     - run: go vet .
     - run: go build
+
+  docker:
+    runs-on: ubuntu-latest
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    - name: Checkout
+        uses: actions/checkout@v2
+    - name: Get branch name
+      uses: nelonoel/branch-name@v1.0.1
+    - run: echo ${BRANCH_NAME}
+    - name: Build and push Docker images
+      uses: docker/build-push-action@v2.4.0
+      with:
+        build-args: |
+          GOLANG_VERSION=1.15.8
+          PLUGIN_VERSION=${BRANCH_NAME}
+        file: docker/Dockerfile.ubuntu20.04
+        push: true
+        tags: localhost:5000/k8s-device-plugin:${BRANCH_NAME}
+
