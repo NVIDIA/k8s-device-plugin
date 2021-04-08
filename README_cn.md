@@ -2,6 +2,8 @@
 
 [![build status](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml/badge.svg)](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml)
 
+[![docker pulls](https://img.shields.io/docker/pulls/4pdosc/k8s-device-plugin.svg)](https://hub.docker.com/r/4pdosc/k8s-device-plugin)
+
 * [**Slack Channel**](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D)
 * [**Discussions**](https://github.com/4paradigm/k8s-device-plugin/discussions)
 
@@ -25,7 +27,7 @@
 
 ## 关于
 
-**vGPU device plugin** 基于NVIDIA官方插件([NVIDIA/k8s-device-plugin](https://github.com/NVIDIA/k8s-device-plugin))，在保留官方功能的基础上，实现了对物理GPU进行切分，并对显存和计算单元进行限制，从而模拟出多张小的vGPU卡。在k8s集群中，基于这些切分后的vGPU进行调度，使不同的容器可以安全的共享同一张物理GPU，提高GPU的利用率。此外，插件可以对显存做一定的超售处理（使用到的显存可以大于物理上的显存），提高共享任务的数量，进一步提高GPU的利用率，可参考下面的性能测试报告。
+**vGPU device plugin** 基于NVIDIA官方插件([NVIDIA/k8s-device-plugin](https://github.com/NVIDIA/k8s-device-plugin))，在保留官方功能的基础上，实现了对物理GPU进行切分，并对显存和计算单元进行限制，从而模拟出多张小的vGPU卡。在k8s集群中，基于这些切分后的vGPU进行调度，使不同的容器可以安全的共享同一张物理GPU，提高GPU的利用率。此外，插件可以对显存做一定的超卖处理（使用到的显存可以大于物理上的显存），提高共享任务的数量，进一步提高GPU的利用率，可参考下面的性能测试报告。
 
 ## 性能测试
 
@@ -42,7 +44,7 @@
 | test id |     名称      |   类型    |          参数           |
 | ------- | :-----------: | :-------: | :---------------------: |
 | 1.1     | Resnet-V2-50  | inference |  batch=50,size=346*346  |
-| 1.2     | Resnet-v2-50  | training  |  batch=20,size=346*346  |
+| 1.2     | Resnet-V2-50  | training  |  batch=20,size=346*346  |
 | 2.1     | Resnet-V2-152 | inference |  batch=10,size=256*256  |
 | 2.2     | Resnet-V2-152 | training  |  batch=10,size=256*256  |
 | 3.1     |    VGG-16     | inference |  batch=20,size=224*224  |
@@ -58,38 +60,17 @@
 
 测试步骤：
 
-1. 安装nvidia-device-plugin，并配置相应的参数（虚拟比例，显存比例，若虚拟比例*显存比例>1则为超卖）
-2. kubectl apply -f test.yml，其中test.yml如下
+1. 安装nvidia-device-plugin，并配置相应的参数（虚拟比例，显存比例，若显存缩放比例>1则为超卖）
+2. 运行benchmark任务
 
 ```
- kind: Job
- metadata:
-   name: ai-benchmark
- spec:
-   template:
-     metadata:
-       name: ai-benchmark
-       labels:
-         qa: test
-     spec:
-       toleration:
-       - key: node.kubernetes.io/disk-pressure
-       containers:
-       - name: testgpu
-         image: m7-ieg-pico-test01:5000/ai-benchmark:latest-gpu
-         command: ["python", "/ai-benchmark/bin/ai-benchmark.py"]
-         resources:
-           requests:
-             nvidia.com/gpu: 1
-           limits:
-             nvidia.com/gpu: 1
-       restartPolicy: Never
+$ kubectl apply -f benchmarks/ai-benchmark/ai-benchmark.yml
 ```
 
-1. 通过kubctl logs 查看结果
+3. 通过kubctl logs 查看结果
 
 ```
- kubectl logs [pod id]
+$ kubectl logs [pod id]
 ```
 
 ## 功能
@@ -100,7 +81,7 @@
 
 ## 实验性功能
 
-- 显存超用
+- 显存超卖
 
   vGPU的显存总和可以超过GPU实际的显存，这时候超过的部分会放到内存里，对性能有一定的影响。
 
@@ -153,14 +134,14 @@ $ sudo systemctl restart docker
 }
 ```
 
-> *如果 `runtimes` 字段没有出现, 前往 [nvidia-docker]的安装页面执行安装操作(https://github.com/NVIDIA/nvidia-docker)*
+> *如果 `runtimes` 字段没有出现, 前往的安装页面执行安装操作 [nvidia-docker](https://github.com/NVIDIA/nvidia-docker)*
 
 ### Kubernetes开启vGPU支持
 
 当你在所有GPU节点完成前面提到的准备动作，如果Kubernetes有已经存在的NVIDIA装置插件，需要先将它移除。然后，你能通过下面指令下载我们的Daemonset yaml文件：
 
 ```
-$ wget https://github.com/4paradigm/k8s-device-plugin/blob/vgpu/nvidia-device-plugin.yml
+$ wget https://raw.githubusercontent.com/4paradigm/k8s-device-plugin/master/nvidia-device-plugin.yml
 ```
 
 在这个DaemonSet文件中, 你能发现`nvidia-device-plugin-ctr`容器有一共4个vGPU的客制化参数：
@@ -176,7 +157,7 @@ $ wget https://github.com/4paradigm/k8s-device-plugin/blob/vgpu/nvidia-device-pl
 
 完成这些可选参数的配置后，你能透过下面命令开启vGPU的支持：
 
-```shell
+```
 $ kubectl apply -f nvidia-device-plugin.yml
 ```
 

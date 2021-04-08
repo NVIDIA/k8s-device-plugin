@@ -17,7 +17,7 @@ namespace: kube-system
 
 imagePullSecrets: []
 image:
-  repository: 4pdosc/k8s-device-plugin
+  repository: 4pdosc/k8s-device-plugin:v0.9.0.0
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"

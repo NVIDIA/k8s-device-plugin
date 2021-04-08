@@ -2,6 +2,8 @@
 
 [![build status](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml/badge.svg)](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml)
 
+[![docker pulls](https://img.shields.io/docker/pulls/4pdosc/k8s-device-plugin.svg)](https://hub.docker.com/r/4pdosc/k8s-device-plugin)
+
 * [**Slack Channel**](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D)
 * [**Discussions**](https://github.com/4paradigm/k8s-device-plugin/discussions)
 
@@ -43,7 +45,7 @@ Test Cases:
 | test id |     case      |   type    |         params          |
 | ------- | :-----------: | :-------: | :---------------------: |
 | 1.1     | Resnet-V2-50  | inference |  batch=50,size=346*346  |
-| 1.2     | Resnet-v2-50  | training  |  batch=20,size=346*346  |
+| 1.2     | Resnet-V2-50  | training  |  batch=20,size=346*346  |
 | 2.1     | Resnet-V2-152 | inference |  batch=10,size=256*256  |
 | 2.2     | Resnet-V2-152 | training  |  batch=10,size=256*256  |
 | 3.1     |    VGG-16     | inference |  batch=20,size=224*224  |
@@ -60,38 +62,16 @@ Test Result: ![img](./imgs/benchmark_inf.png)
 To reproduce:
 
 1. install vGPU-nvidia-device-plugin，and configure properly
-2. kubectl apply -f test.yml，with test.yml as follows:
+2. run benchmark job
 
 ```
- apiVersion: batch/v1
- kind: Job
- metadata:
-   name: ai-benchmark
- spec:
-   template:
-     metadata:
-       name: ai-benchmark
-       labels:
-         qa: test
-     spec:
-       toleration:
-       - key: node.kubernetes.io/disk-pressure
-       containers:
-       - name: testgpu
-         image: m7-ieg-pico-test01:5000/ai-benchmark:latest-gpu
-         command: ["python", "/ai-benchmark/bin/ai-benchmark.py"]
-         resources:
-           requests:
-             nvidia.com/gpu: 1
-           limits:
-             nvidia.com/gpu: 1
-       restartPolicy: Never
+$ kubectl apply -f benchmarks/ai-benchmark/ai-benchmark.yml
 ```
 
-1. View the result by using kubctl logs
+3. View the result by using kubctl logs
 
 ```
-     kubectl logs [pod id]
+$ kubectl logs [pod id]
 ```
 
 ## Features
@@ -166,7 +146,7 @@ Once you have configured the options above on all the GPU nodes in your
 cluster, remove existing NVIDIA device plugin for Kubernetes if it already exists. Then, you can download our Daemonset yaml file by following command:
 
 ```
-$ wget https://github.com/4paradigm/k8s-device-plugin/blob/vgpu/nvidia-device-plugin.yml
+$ wget https://raw.githubusercontent.com/4paradigm/k8s-device-plugin/master/nvidia-device-plugin.yml
 ```
 
 In this Daemonset file, you can see the container `nvidia-device-plugin-ctr` takes four optional arguments to customize your vGPU support:
