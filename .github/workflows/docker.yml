@@ -23,9 +23,9 @@ jobs:
         with:
           build-args: |
             GOLANG_VERSION=1.15.8
-            PLUGIN_VERSION=${{ setps.tagName.outputs.tag }}
+            PLUGIN_VERSION=${{ steps.tagName.outputs.tag }}
           file: docker/Dockerfile.ubuntu20.04
           push: true
           tags: |
-            4pdosc/k8s-device-plugin:${{ setps.tagName.outputs.tag }}
+            4pdosc/k8s-device-plugin:${{ steps.tagName.outputs.tag }}
             4pdosc/k8s-device-plugin:latest
