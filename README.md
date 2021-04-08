@@ -1,6 +1,6 @@
 # vGPU device plugin for Kubernetes
 
-[![build status](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml/badge.svg)](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml)[![docker pulls](https://img.shields.io/docker/pulls/4pdosc/k8s-device-plugin.svg)](https://hub.docker.com/r/4pdosc/k8s-device-plugin)[![slack](https://img.shields.io/badge/Slack-Join%20Slack-blue)](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D)[![discuss](https://img.shields.io/badge/Discuss-Ask%20Questions-blue)](https://github.com/4paradigm/k8s-device-plugin/discussions)
+[![build status](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml/badge.svg)](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml)  [![docker pulls](https://img.shields.io/docker/pulls/4pdosc/k8s-device-plugin.svg)](https://hub.docker.com/r/4pdosc/k8s-device-plugin)  [![slack](https://img.shields.io/badge/Slack-Join%20Slack-blue)](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D)  [![discuss](https://img.shields.io/badge/Discuss-Ask%20Questions-blue)](https://github.com/4paradigm/k8s-device-plugin/discussions)
 
 English version|[中文版](README_cn.md)
 
