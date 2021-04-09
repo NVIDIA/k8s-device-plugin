@@ -42,31 +42,59 @@ type MigStrategy interface {
 }
 
 // NewMigStrategy returns a reference to a given MigStrategy based on the 'strategy' passed in
-func NewMigStrategy(strategy string) (MigStrategy, error) {
+func NewMigStrategy(strategy string, resourceConfig resourceConfiguration) (MigStrategy, error) {
 	switch strategy {
 	case MigStrategyNone:
-		return &migStrategyNone{}, nil
+		return &migStrategyNone{ResourceConfig: resourceConfig}, nil
 	case MigStrategySingle:
-		return &migStrategySingle{}, nil
+		return &migStrategySingle{ResourceConfig: resourceConfig}, nil
 	case MigStrategyMixed:
-		return &migStrategyMixed{}, nil
+		return &migStrategyMixed{ResourceConfig: resourceConfig}, nil
 	}
 	return nil, fmt.Errorf("Unknown strategy: %v", strategy)
 }
 
-type migStrategyNone struct{}
-type migStrategySingle struct{}
-type migStrategyMixed struct{}
+type variant struct {
+	Name     string
+	Replicas uint
+}
+
+type resourceConfiguration map[string]variant
+
+func (v *resourceConfiguration) Get(name string) variant {
+	x, exists := (*v)[name]
+	if exists {
+		return x
+	}
+	return variant{
+		Name:     name,
+		Replicas: 0,
+	}
+}
+
+type migStrategyNone struct {
+	ResourceConfig resourceConfiguration
+}
+
+type migStrategySingle struct {
+	ResourceConfig resourceConfiguration
+}
+
+type migStrategyMixed struct {
+	ResourceConfig resourceConfiguration
+}
 
 // migStrategyNone
 func (s *migStrategyNone) GetPlugins() []*NvidiaDevicePlugin {
+	rc := s.ResourceConfig.Get("gpu")
 	return []*NvidiaDevicePlugin{
 		NewNvidiaDevicePlugin(
-			"nvidia.com/gpu",
+			"nvidia.com/"+rc.Name,
 			NewGpuDeviceManager(false), // Enumerate device even if MIG enabled
 			"NVIDIA_VISIBLE_DEVICES",
 			gpuallocator.NewBestEffortPolicy(),
-			pluginapi.DevicePluginPath+"nvidia-gpu.sock"),
+			pluginapi.DevicePluginPath+"nvidia-gpu.sock",
+			rc.Replicas),
 	}
 }
 
@@ -85,7 +113,7 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 
 	// If no MIG devices are available fallback to "none" strategy
 	if len(migEnabledDevices) == 0 {
-		none, _ := NewMigStrategy(MigStrategyNone)
+		none, _ := NewMigStrategy(MigStrategyNone, s.ResourceConfig)
 		log.Printf("No MIG devices found. Falling back to mig.strategy=%v", none)
 		return none.GetPlugins()
 	}
@@ -124,13 +152,15 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 		panic("More than one MIG device type present on node")
 	}
 
+	rc := s.ResourceConfig.Get("gpu")
 	return []*NvidiaDevicePlugin{
 		NewNvidiaDevicePlugin(
-			"nvidia.com/gpu",
+			"nvidia.com/"+rc.Name,
 			NewMigDeviceManager(s, "gpu"),
 			"NVIDIA_VISIBLE_DEVICES",
 			gpuallocator.Policy(nil),
-			pluginapi.DevicePluginPath+"nvidia-gpu.sock"),
+			pluginapi.DevicePluginPath+"nvidia-gpu.sock",
+			rc.Replicas),
 	}
 }
 
@@ -185,22 +215,26 @@ func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
 		resources[r] = struct{}{}
 	}
 
+	rc := s.ResourceConfig.Get("gpu")
 	plugins := []*NvidiaDevicePlugin{
 		NewNvidiaDevicePlugin(
-			"nvidia.com/gpu",
+			"nvidia.com/"+rc.Name,
 			NewGpuDeviceManager(true),
 			"NVIDIA_VISIBLE_DEVICES",
 			gpuallocator.NewBestEffortPolicy(),
-			pluginapi.DevicePluginPath+"nvidia-gpu.sock"),
+			pluginapi.DevicePluginPath+"nvidia-gpu.sock",
+			rc.Replicas),
 	}
 
 	for resource := range resources {
+		rc := s.ResourceConfig.Get(resource)
 		plugin := NewNvidiaDevicePlugin(
 			"nvidia.com/"+resource,
 			NewMigDeviceManager(s, resource),
 			"NVIDIA_VISIBLE_DEVICES",
 			gpuallocator.Policy(nil),
-			pluginapi.DevicePluginPath+"nvidia-"+resource+".sock")
+			pluginapi.DevicePluginPath+"nvidia-"+resource+".sock",
+			rc.Replicas)
 		plugins = append(plugins, plugin)
 	}
 

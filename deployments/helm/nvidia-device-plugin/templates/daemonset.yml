@@ -64,6 +64,9 @@ spec:
         - "--device-list-strategy={{ .Values.deviceListStrategy }}"
         - "--device-id-strategy={{ .Values.deviceIDStrategy }}"
         - "--nvidia-driver-root={{ .Values.nvidiaDriverRoot }}"
+        {{- with .Values.resourceConfig }}
+        - "--resource-config={{ . }}"
+        {{- end }}
         securityContext:
         {{- if ne (len .Values.securityContext) 0 }}
           {{- toYaml .Values.securityContext | nindent 10 }}

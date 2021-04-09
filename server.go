@@ -17,6 +17,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -57,33 +58,50 @@ type NvidiaDevicePlugin struct {
 	deviceListEnvvar string
 	allocatePolicy   gpuallocator.Policy
 	socket           string
+	replicas         uint
 
-	server        *grpc.Server
-	cachedDevices []*Device
-	health        chan *Device
-	stop          chan interface{}
+	server         *grpc.Server
+	cachedDevices  []*Device // raw devices
+	deviceReplicas []*Device // devices presented to k8s that include the replicas
+	health         chan *Device
+	stop           chan interface{}
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(resourceName string, resourceManager ResourceManager, deviceListEnvvar string, allocatePolicy gpuallocator.Policy, socket string) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(resourceName string, resourceManager ResourceManager, deviceListEnvvar string, allocatePolicy gpuallocator.Policy, socket string, replicas uint) *NvidiaDevicePlugin {
+	// always replicate internally for consistency to avoid a few if statements later on
+	if replicas == 0 {
+		replicas = 1
+	}
+
 	return &NvidiaDevicePlugin{
 		ResourceManager:  resourceManager,
 		resourceName:     resourceName,
 		deviceListEnvvar: deviceListEnvvar,
 		allocatePolicy:   allocatePolicy,
 		socket:           socket,
+		replicas:         replicas,
 
 		// These will be reinitialized every
 		// time the plugin server is restarted.
-		cachedDevices: nil,
-		server:        nil,
-		health:        nil,
-		stop:          nil,
+		cachedDevices:  nil,
+		deviceReplicas: nil,
+		server:         nil,
+		health:         nil,
+		stop:           nil,
 	}
 }
 
 func (m *NvidiaDevicePlugin) initialize() {
 	m.cachedDevices = m.Devices()
+	for _, dev := range m.cachedDevices {
+		for i := uint(0); i < m.replicas; i++ {
+			replicatedDev := *dev // This is replicating the Device struct
+			replicatedDev.ID = fmt.Sprintf("%s%s%d", dev.ID, joinStr, i)
+			m.deviceReplicas = append(m.deviceReplicas, &replicatedDev)
+		}
+	}
+
 	m.server = grpc.NewServer([]grpc.ServerOption{}...)
 	m.health = make(chan *Device)
 	m.stop = make(chan interface{})
@@ -92,6 +110,7 @@ func (m *NvidiaDevicePlugin) initialize() {
 func (m *NvidiaDevicePlugin) cleanup() {
 	close(m.stop)
 	m.cachedDevices = nil
+	m.deviceReplicas = nil
 	m.server = nil
 	m.health = nil
 	m.stop = nil
@@ -201,7 +220,7 @@ func (m *NvidiaDevicePlugin) Register() error {
 		Endpoint:     path.Base(m.socket),
 		ResourceName: m.resourceName,
 		Options: &pluginapi.DevicePluginOptions{
-			GetPreferredAllocationAvailable: (m.allocatePolicy != nil),
+			GetPreferredAllocationAvailable: (m.allocatePolicy != nil || m.replicas > 1),
 		},
 	}
 
@@ -215,7 +234,7 @@ func (m *NvidiaDevicePlugin) Register() error {
 // GetDevicePluginOptions returns the values of the optional settings for this plugin
 func (m *NvidiaDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
 	options := &pluginapi.DevicePluginOptions{
-		GetPreferredAllocationAvailable: (m.allocatePolicy != nil),
+		GetPreferredAllocationAvailable: (m.allocatePolicy != nil || m.replicas > 1),
 	}
 	return options, nil
 }
@@ -239,23 +258,41 @@ func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.Device
 
 // GetPreferredAllocation returns the preferred allocation from the set of devices specified in the request
 func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
+
+	// Note there should only be -replica-0 and not any -replica-1 or -replica-2, etc.
+	// since this function is only called when we have no replicas.
 	response := &pluginapi.PreferredAllocationResponse{}
 	for _, req := range r.ContainerRequests {
-		available, err := gpuallocator.NewDevicesFrom(req.AvailableDeviceIDs)
+		available, err := gpuallocator.NewDevicesFrom(stripReplicas(req.AvailableDeviceIDs))
 		if err != nil {
-			return nil, fmt.Errorf("Unable to retrieve list of available devices: %v", err)
+			return nil, fmt.Errorf("unable to retrieve list of available devices: %w", err)
 		}
 
-		required, err := gpuallocator.NewDevicesFrom(req.MustIncludeDeviceIDs)
+		required, err := gpuallocator.NewDevicesFrom(stripReplicas(req.MustIncludeDeviceIDs))
 		if err != nil {
-			return nil, fmt.Errorf("Unable to retrieve list of required devices: %v", err)
+			return nil, fmt.Errorf("unable to retrieve list of required devices: %w", err)
 		}
-
-		allocated := m.allocatePolicy.Allocate(available, required, int(req.AllocationSize))
 
 		var deviceIds []string
-		for _, device := range allocated {
-			deviceIds = append(deviceIds, device.UUID)
+		if m.replicas > 1 {
+			ids, err := prioritizeDevices(req.AvailableDeviceIDs, req.MustIncludeDeviceIDs, int(req.AllocationSize))
+			if err != nil {
+				var nonUnique *NonUniqueError
+				if errors.As(err, &nonUnique) {
+					// non unique assignment is not fatal however sub-optimal
+					log.Print("Ignoring: ", nonUnique)
+				} else {
+					return nil, err
+				}
+			}
+			deviceIds = ids
+		} else if m.allocatePolicy != nil {
+			allocated := m.allocatePolicy.Allocate(available, required, int(req.AllocationSize))
+			for _, device := range allocated {
+				deviceIds = append(deviceIds, device.UUID)
+			}
+		} else {
+			return nil, errors.New("GetPreferredAllocation() not implemented in this case")
 		}
 
 		resp := &pluginapi.ContainerPreferredAllocationResponse{
@@ -272,6 +309,15 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 	responses := pluginapi.AllocateResponse{}
 	for _, req := range reqs.ContainerRequests {
 		for _, id := range req.DevicesIDs {
+			if !m.deviceReplicaExists(id) {
+				return nil, fmt.Errorf("invalid allocation request for '%s': unknown device: %s", m.resourceName, id)
+			}
+		}
+
+		uuids := stripReplicas(req.DevicesIDs)
+		log.Printf("kubelet is requesting devices %s, but using raw devices %s", req.DevicesIDs, uuids)
+
+		for _, id := range uuids {
 			if !m.deviceExists(id) {
 				return nil, fmt.Errorf("invalid allocation request for '%s': unknown device: %s", m.resourceName, id)
 			}
@@ -279,7 +325,6 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 
 		response := pluginapi.ContainerAllocateResponse{}
 
-		uuids := req.DevicesIDs
 		deviceIDs := m.deviceIDsFromUUIDs(uuids)
 
 		if deviceListStrategyFlag == DeviceListStrategyEnvvar {
@@ -320,6 +365,7 @@ func (m *NvidiaDevicePlugin) dial(unixSocketPath string, timeout time.Duration) 
 	return c, nil
 }
 
+// deviceExists checks if a k8s device exists
 func (m *NvidiaDevicePlugin) deviceExists(id string) bool {
 	for _, d := range m.cachedDevices {
 		if d.ID == id {
@@ -329,6 +375,17 @@ func (m *NvidiaDevicePlugin) deviceExists(id string) bool {
 	return false
 }
 
+// deviceReplicaExists checks if a k8s device replica exists
+func (m *NvidiaDevicePlugin) deviceReplicaExists(id string) bool {
+	for _, d := range m.deviceReplicas {
+		if d.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// apiDevices returns the K8S API Device type. This includes replicas
 func (m *NvidiaDevicePlugin) deviceIDsFromUUIDs(uuids []string) []string {
 	if deviceIDStrategyFlag == DeviceIDStrategyUUID {
 		return uuids
@@ -349,7 +406,7 @@ func (m *NvidiaDevicePlugin) deviceIDsFromUUIDs(uuids []string) []string {
 
 func (m *NvidiaDevicePlugin) apiDevices() []*pluginapi.Device {
 	var pdevs []*pluginapi.Device
-	for _, d := range m.cachedDevices {
+	for _, d := range m.deviceReplicas {
 		pdevs = append(pdevs, &d.Device)
 	}
 	return pdevs

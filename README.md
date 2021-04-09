@@ -147,6 +147,8 @@ a number of customizable values. The most commonly overridden ones are:
       [uuid | index] (default "uuid")
   nvidiaDriverRoot:
       the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')
+  resourceConfig:
+      This is used to specify renaming of resources and replicas (for enabling sharing of GPUs)
 ```
 
 When set to true, the `failOnInitError` flag fails the plugin if an error is
@@ -201,6 +203,13 @@ the output of `nvidia-smi`) as the identifier passed to the underlying runtime.
 Passing the index may be desirable in situations where pods that have been
 allocated GPUs by the plugin get restarted with different physical GPUs
 attached to them.
+
+The `resourceConfig` flag can allows you to map mig or regular GPUs names to different names.  
+It also allows for replicating the GPUs as presented to the device plugin API so that a GPU can be effectively shared among multiple pods.
+The format for this field is "[<name>:<new-name>:<replicas>][,<name>:<new-name>:<replicas>]".  For example, "gpu:sharedgpu:4" will share regular GPUs with a maximum of 4 pods and rename the resource to nvidia.com/sharedgpu.  A pod would then request a shared gpu by specifying a resource of `nvidia.com/sharedgpu: 1`.
+You can also share a MIG GPU.  For example "mig-3g.20gb:small:2" would rename mig-3g.20gb to "small" and share it to at most two pods.
+This renaming can also be used to convert mig devices into regular gpu devices for use by pods as nvidia.com/gpu, such as "mig-3g.20gb:gpu:1".
+When requesting replicated (shared) GPUs for a pod you may request more than one.  For example, `nvidia.com/sharedgpu: 2` will get mapped to a node that has two replica GPUs available.  If that node has two physical GPUs available (not hitting its max limit) then two physical GPUs will be available to the pod.  If the only available replicas are on the same physical GPU then the pod will only have one GPU available eventhough it requested two shared GPUs.  The plugin futher attempts to select the physical GPU that is the leasted shared to spread the load.  This results in no actual GPU sharing by pods until the node is oversubscribed.  See the [shared gpu tutorial](./SHARED_GPU_TUTORIAL.md) for more information.
 
 Please take a look in the following `values.yaml` file to see the full set of
 overridable parameters for the device plugin.

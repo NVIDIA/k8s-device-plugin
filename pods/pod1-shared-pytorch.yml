@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod1-shared-pytorch
+spec:
+  restartPolicy: OnFailure
+  containers:
+  - image: pytorch/pytorch
+    name: main
+    command:
+      - /bin/bash
+      - -c
+      - python -c "import requests, os; open('main.py', 'wb').write(requests.get(os.getenv('SRC_URL'), allow_redirects=True).content)" && cat main.py && python main.py
+    env:
+    - name: SRC_URL
+      value: https://raw.githubusercontent.com/pytorch/examples/master/mnist/main.py
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+        nvidia.com/sharedgpu: 1

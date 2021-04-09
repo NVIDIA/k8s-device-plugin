@@ -6,6 +6,12 @@ deviceListStrategy: envvar
 deviceIDStrategy: uuid
 nvidiaDriverRoot: "/"
 
+# This is used to specify renaming and replicas (for enabling sharing)
+# For example, to share regular gpus with 4 pods and to share mig-3g.20gb GPUs with 2 pods and rename to small.
+# resourceConfig: gpu:sharedgpu:4,mig-3g.20gb:small:2
+# The pod would then request a shared mig gpu by specifying a resource of "nvidia.com/small: 1"
+resourceConfig: ""
+
 nameOverride: ""
 fullnameOverride: ""
 selectorLabelsOverride: {}
