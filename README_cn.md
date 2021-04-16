@@ -1,12 +1,16 @@
 # vGPU device plugin for Kubernetes
 
-[![build status](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml/badge.svg)](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml)  [![docker pulls](https://img.shields.io/docker/pulls/4pdosc/k8s-device-plugin.svg)](https://hub.docker.com/r/4pdosc/k8s-device-plugin)  [![slack](https://img.shields.io/badge/Slack-Join%20Slack-blue)](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D)  [![discuss](https://img.shields.io/badge/Discuss-Ask%20Questions-blue)](https://github.com/4paradigm/k8s-device-plugin/discussions)
+[![build status](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml/badge.svg)](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml)
+[![docker pulls](https://img.shields.io/docker/pulls/4pdosc/k8s-device-plugin.svg)](https://hub.docker.com/r/4pdosc/k8s-device-plugin)
+[![slack](https://img.shields.io/badge/Slack-Join%20Slack-blue)](https://join.slack.com/t/k8s-device-plugin/shared_invite/zt-oi9zkr5c-LsMzNmNs7UYg6usc0OiWKw)
+[![discuss](https://img.shields.io/badge/Discuss-Ask%20Questions-blue)](https://github.com/4paradigm/k8s-device-plugin/discussions)
 
 [English version](README.md)|中文版
 
 ## 目录
 
 - [关于](#关于)
+- [使用场景](#使用场景)
 - [性能测试](#性能测试)
 - [功能](#功能)
 - [实验性功能](#实验性功能)
@@ -22,17 +26,23 @@
 
 ## 关于
 
-**vGPU device plugin** 基于NVIDIA官方插件([NVIDIA/k8s-device-plugin](https://github.com/NVIDIA/k8s-device-plugin))，在保留官方功能的基础上，实现了对物理GPU进行切分，并对显存和计算单元进行限制，从而模拟出多张小的vGPU卡。在k8s集群中，基于这些切分后的vGPU进行调度，使不同的容器可以安全的共享同一张物理GPU，提高GPU的利用率。此外，插件可以对显存做一定的超卖处理（使用到的显存可以大于物理上的显存），提高共享任务的数量，进一步提高GPU的利用率，可参考下面的性能测试报告。
+**vGPU device plugin** 基于NVIDIA官方插件([NVIDIA/k8s-device-plugin](https://github.com/NVIDIA/k8s-device-plugin))，在保留官方功能的基础上，实现了对物理GPU进行切分，并对显存和计算单元进行限制，从而模拟出多张小的vGPU卡。在k8s集群中，基于这些切分后的vGPU进行调度，使不同的容器可以安全的共享同一张物理GPU，提高GPU的利用率。此外，插件还可以对显存做虚拟化处理（使用到的显存可以超过物理上的显存），运行一些超大显存需求的任务，或提高共享的任务数，可参考[性能测试报告](#性能测试)。
+
+## 使用场景
+
+1. 显存、计算单元利用率低的情况，如在一张GPU卡上运行10个tf-serving。
+2. 需要大量小显卡的情况，如教学场景把一张GPU提供给多个学生使用、云平台提供小GPU实例。
+3. 物理显存不足的情况，可以开启虚拟显存，如大batch、大模型的训练。
 
 ## 性能测试
 
 在测试报告中，我们一共在下面五种场景都执行了ai-benchmark 测试脚本，并汇总最终结果：
 
-| 测试编号 |                    测试用例                    |
-| -------- | :--------------------------------------------: |
-| 1        |       k8s + nvidia官方k8s-device-plugin        |
-| 2        |    k8s + VGPU k8s-device-plugin，无显存超卖    |
-| 3        | k8s + VGPU k8s-device-plugin，高负载，显存超卖 |
+| 测试编号 |                      测试用例                      |
+| -------- | :------------------------------------------------: |
+| 1        |         k8s + nvidia官方k8s-device-plugin          |
+| 2        |      k8s + VGPU k8s-device-plugin，无虚拟显存      |
+| 3        | k8s + VGPU k8s-device-plugin，高负载，开启虚拟显存 |
 
 测试内容
 
@@ -55,7 +65,7 @@
 
 测试步骤：
 
-1. 安装nvidia-device-plugin，并配置相应的参数（虚拟比例，显存比例，若显存缩放比例>1则为超卖）
+1. 安装nvidia-device-plugin，并配置相应的参数
 2. 运行benchmark任务
 
 ```
@@ -73,16 +83,17 @@ $ kubectl logs [pod id]
 - 指定每张物理GPU切分的vGPU的数量
 - 限制vGPU的显存
 - 限制vGPU的计算单元
+- 对已有程序零改动
 
 ## 实验性功能
 
-- 显存超卖
+- 虚拟显存
 
   vGPU的显存总和可以超过GPU实际的显存，这时候超过的部分会放到内存里，对性能有一定的影响。
 
 ## 已知问题
 
-- 在显存超用时，如果某张物理GPU的显存已用满，而这张GPU上还有空余的vGPU，此时分配到这些vGPU上的任务会失败。
+- 开启虚拟显存时，如果某张物理GPU的显存已用满，而这张GPU上还有空余的vGPU，此时分配到这些vGPU上的任务会失败。
 - 目前仅支持计算任务，不支持视频编解码处理。
 
 ## 开发计划
@@ -146,7 +157,7 @@ $ wget https://raw.githubusercontent.com/4paradigm/k8s-device-plugin/master/nvid
 * `device-split-count:` 
   整数类型，预设值是2。NVIDIA装置的分割数。对于一个总共包含*N*张NVIDIA GPU的Kubernetes集群，如果我们将`device-split-count`参数配置为*K*，这个Kubernetes集群将有*K \* N*个可分配的vGPU资源。注意，我们不建议将NVIDIA 1080 ti/NVIDIA 2080 ti `device-split-count`参数配置超过5，将NVIDIA  T4配置超过7，将NVIDIA A100配置超过15。
 * `device-memory-scaling:` 
-  浮点数类型，预设值是1。NVIDIA装置显存使用比例，可以大于1（实验功能）。对于有*M​*显存大小的NVIDIA GPU，如果我们配置`device-memory-scaling`参数为*S*，在部署了我们装置插件的Kubenetes集群中，这张GPU分出的vGPU将总共包含 *S \* M*显存。每张vGPU的显存大小也受`device-split-count`参数影响。在先前的例子中，如果`device-split-count`参数配置为*K*，那每一张vGPU最后会取得 *S \* M / K* 大小的显存。
+  浮点数类型，预设值是1。NVIDIA装置显存使用比例，可以大于1（启用虚拟显存，实验功能）。对于有*M​*显存大小的NVIDIA GPU，如果我们配置`device-memory-scaling`参数为*S*，在部署了我们装置插件的Kubenetes集群中，这张GPU分出的vGPU将总共包含 *S \* M*显存。每张vGPU的显存大小也受`device-split-count`参数影响。在先前的例子中，如果`device-split-count`参数配置为*K*，那每一张vGPU最后会取得 *S \* M / K* 大小的显存。
 * `device-cores-scaling:` 
   浮点数类型，预设值是1。NVIDIA装置算力使用比例，可以大于1。如果`device-cores-scaling​`参数配置为*S​* `device-split-count`参数配置为*K*，那每一张vGPU对应的**一段时间内** sm 利用率平均上限为*S \* M / K*。属于同一张物理GPU上的所有vGPU sm利用率总和不超过1。
 
@@ -191,5 +202,5 @@ spec:
 ## 反馈和参与
 
 * bug、疑惑、修改欢迎提在 [Github Issues](https://github.com/4paradigm/k8s-device-plugin/issues/new)
-* 想了解更多或者有想法可以参与到[Discussions](https://github.com/4paradigm/k8s-device-plugin/discussions)和[slack](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D)交流
+* 想了解更多或者有想法可以参与到[Discussions](https://github.com/4paradigm/k8s-device-plugin/discussions)和[slack](https://join.slack.com/t/k8s-device-plugin/shared_invite/zt-oi9zkr5c-LsMzNmNs7UYg6usc0OiWKw)交流
 

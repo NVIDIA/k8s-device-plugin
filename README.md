@@ -1,6 +1,9 @@
 # vGPU device plugin for Kubernetes
 
-[![build status](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml/badge.svg)](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml)  [![docker pulls](https://img.shields.io/docker/pulls/4pdosc/k8s-device-plugin.svg)](https://hub.docker.com/r/4pdosc/k8s-device-plugin)  [![slack](https://img.shields.io/badge/Slack-Join%20Slack-blue)](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D)  [![discuss](https://img.shields.io/badge/Discuss-Ask%20Questions-blue)](https://github.com/4paradigm/k8s-device-plugin/discussions)
+[![build status](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml/badge.svg)](https://github.com/4paradigm/k8s-device-plugin/actions/workflows/build.yml)
+[![docker pulls](https://img.shields.io/docker/pulls/4pdosc/k8s-device-plugin.svg)](https://hub.docker.com/r/4pdosc/k8s-device-plugin)
+[![slack](https://img.shields.io/badge/Slack-Join%20Slack-blue)](https://join.slack.com/t/k8s-device-plugin/shared_invite/zt-oi9zkr5c-LsMzNmNs7UYg6usc0OiWKw)
+[![discuss](https://img.shields.io/badge/Discuss-Ask%20Questions-blue)](https://github.com/4paradigm/k8s-device-plugin/discussions)
 
 English version|[中文版](README_cn.md)
 
@@ -8,6 +11,7 @@ English version|[中文版](README_cn.md)
 ## Table of Contents
 
 - [About](#about)
+- [When to use](#when-to-use)
 - [Benchmarks](#Benchmarks)
 - [Features](#Features)
 - [Experimental Features](#Experimental-Features)
@@ -23,17 +27,23 @@ English version|[中文版](README_cn.md)
 
 ## About
 
-The **vGPU device plugin** is based on NVIDIA device plugin([NVIDIA/k8s-device-plugin](https://github.com/NVIDIA/k8s-device-plugin)), and on the basis of retaining the official features, it splits the physical GPU, and limits the memory and computing unit, thereby simulating multiple small vGPU cards. In the k8s cluster, scheduling is performed based on these splited vGPUs, so that different containers can safely share the same physical GPU and improve GPU utilization.In addition, the plug-in can oversell the global memory to a certain extent (the global memory used can be larger than the physical global memory), increase the number of shared tasks, and further improve the utilization of the GPU. You can refer to the benchmarks report below.
+The **vGPU device plugin** is based on NVIDIA device plugin([NVIDIA/k8s-device-plugin](https://github.com/NVIDIA/k8s-device-plugin)), and on the basis of retaining the official features, it splits the physical GPU, and limits the memory and computing unit, thereby simulating multiple small vGPU cards. In the k8s cluster, scheduling is performed based on these splited vGPUs, so that different containers can safely share the same physical GPU and improve GPU utilization. In addition, the plug-in can virtualize the device memory (the used device memory can exceed the physical device memory), run some tasks with large device memory requirements, or increase the number of shared tasks. You can refer to [the benchmarks report](#benchmarks).
+
+## When to use
+
+1. Low utilization of device memory and computing units, such as running 10 tf-servings on one GPU.
+2. Situations that require a large number of small GPUs, such as teaching scenarios where one GPU is provided for multiple students to use, and the cloud platform provides small GPU instances.
+3. In the case of insufficient physical device memory, virtual device memory can be turned on, such as training of large batches and large models.
 
 ## Benchmarks
 
 Three instances from ai-benchmark have been used to evaluate vGPU-device-plugin performance as follows
 
-| Test instance |                         description                          |
-| ------------- | :----------------------------------------------------------: |
-| 1             |                k8s + nvidia k8s-device-plugin                |
-| 2             | k8s + VGPU k8s-device-plugin，no GPU memory oversubscription |
-| 3             | k8s + VGPU k8s-device-plugin，with GPU memory oversubscription |
+| Test instance |                         description                         |
+| ------------- | :---------------------------------------------------------: |
+| 1             |               k8s + nvidia k8s-device-plugin                |
+| 2             | k8s + VGPU k8s-device-plugin，without virtual device memory |
+| 3             |  k8s + VGPU k8s-device-plugin，with virtual device memory   |
 
 Test Cases:
 
@@ -72,18 +82,19 @@ $ kubectl logs [pod id]
 ## Features
 
 - Specify the number of vGPUs divided by each physical GPU.
-- Limit vGPU's Global Memory.
+- Limit vGPU's Device Memory.
 - Limit vGPU's Streaming Multiprocessor.
+- Zero changes to existing programs
 
 ## Experimental Features
 
-- Global Memory overuse
+- Virtual Device Memory
 
-  The Global Memory of the vGPU can exceed the actual Global Memory of the GPU. At this time, the excess part will be put in the RAM, which will have a certain impact on the performance.
+  The device memory of the vGPU can exceed the physical device memory of the GPU. At this time, the excess part will be put in the RAM, which will have a certain impact on the performance.
 
 ## Known Issues
 
-- When the Global Memory is overused, if the Global Memory of a physical GPU is used up and there are vacant vGPUs on this GPU, the tasks assigned to these vGPUs will fail.
+- When virtual device memory is turned on, if the device memory of a physical GPU is used up and there are vacant vGPUs on this GPU, the tasks assigned to these vGPUs will fail.
 - Currently, only computing tasks are supported, and video codec processing is not supported.
 
 ## TODO
@@ -151,7 +162,7 @@ In this Daemonset file, you can see the container `nvidia-device-plugin-ctr` tak
 * `device-split-count:` 
   Integer type, by default: 2. The number for NVIDIA device split. For a Kubernetes with *N* NVIDIA GPUs, if we set `device-split-count` argument to *K​*, this Kubernetes with our device plugin will have *K \* N* allocatable vGPU resources. Notice that we suggest not to set device-split-count argument over 5 on NVIDIA 1080 ti/NVIDIA 2080 ti, over 7 on NVIDIA  T4, and over 15 on NVIDIA A100.
 * `device-memory-scaling:` 
-  Float type, by default: 1. The ratio for NVIDIA device memory scaling. For NVIDIA GPU with *M* memory, if we set `device-memory-scaling` argument to *S*, vGPUs splitted by this GPU will totaly get *S \* M* memory in Kubernetes with our device plugin. The memory of each vGPU is also affected by argument `device-split-count`. For previous example, if `device-split-count` argument is set to *K*, each vGPU finally get *S \* M / K* memory.
+  Float type, by default: 1. The ratio for NVIDIA device memory scaling, can be greater than 1 (enable virtual device memory, experimental feature). For NVIDIA GPU with *M* memory, if we set `device-memory-scaling` argument to *S*, vGPUs splitted by this GPU will totaly get *S \* M* memory in Kubernetes with our device plugin. The memory of each vGPU is also affected by argument `device-split-count`. For previous example, if `device-split-count` argument is set to *K*, each vGPU finally get *S \* M / K* memory.
 * `device-cores-scaling:` 
   Float type, by default: 1. The ratio for NVIDIA device cores scaling, can be greater than 1. If the `device-cores-scaling` parameter is configured as *S* and the `device-split-count` parameter is configured as *K*, then the average upper limit of sm utilization within **a period of time** corresponding to each vGPU is *S / K*. The sum of the utilization rates of all vGPU sm belonging to the same physical GPU does not exceed 1.
 
@@ -198,6 +209,6 @@ The above frameworks have passed the test.
 ## Issues and Contributing
 
 * You can report a bug, a doubt or modify by [filing a new issue](https://github.com/NVIDIA/k8s-device-plugin/issues/new)
-* If you want to know more or have ideas, you can participate in [Discussions](https://github.com/4paradigm/k8s-device-plugin/discussions) and [slack](https://k8s-device-plugin.slack.com/archives/D01S9K5Q04D) exchanges
+* If you want to know more or have ideas, you can participate in [Discussions](https://github.com/4paradigm/k8s-device-plugin/discussions) and [slack](https://join.slack.com/t/k8s-device-plugin/shared_invite/zt-oi9zkr5c-LsMzNmNs7UYg6usc0OiWKw) exchanges
 
 
