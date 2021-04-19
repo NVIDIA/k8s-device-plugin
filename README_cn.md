@@ -45,11 +45,11 @@
 | GPU Type           | Tesla V100                                             |
 | GPU Num            | 2                                                      |
 
-| 测试编号 |                      测试用例                      |
+| 测试名称 |                      测试用例                      |
 | -------- | :------------------------------------------------: |
-| 1        |         k8s + nvidia官方k8s-device-plugin          |
-| 2        |      k8s + VGPU k8s-device-plugin，无虚拟显存      |
-| 3        | k8s + VGPU k8s-device-plugin，高负载，开启虚拟显存 |
+| Nvidia-device-plugin        |         k8s + nvidia官方k8s-device-plugin          |
+| vGPU-device-plugin        |      k8s + VGPU k8s-device-plugin，无虚拟显存      |
+| vGPU-device-plugin(virtual device memory)  | k8s + VGPU k8s-device-plugin，高负载，开启虚拟显存 |
 
 测试内容
 
