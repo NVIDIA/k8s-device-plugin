@@ -43,7 +43,8 @@ Three instances from ai-benchmark have been used to evaluate vGPU-device-plugin 
 | ---------------- | :------------------------------------------------------: |
 | Kubernetes version | v1.12.9                                                |
 | Docker  version    | 18.09.1                                                |
-| GPU Type           | Tesla T4                                               |
+| GPU Type           | Tesla V100                                             |
+| GPU Num            | 2                                                      |
 
 | Test instance |                         description                         |
 | ------------- | :---------------------------------------------------------: |
