@@ -39,6 +39,12 @@ The **vGPU device plugin** is based on NVIDIA device plugin([NVIDIA/k8s-device-p
 
 Three instances from ai-benchmark have been used to evaluate vGPU-device-plugin performance as follows
 
+| Test Environment | description                                              |
+| ---------------- | :------------------------------------------------------: |
+| Kubernetes version | v1.12.9                                                |
+| Docker  version    | 18.09.1                                                |
+| GPU Type           | Tesla T4                                               |
+
 | Test instance |                         description                         |
 | ------------- | :---------------------------------------------------------: |
 | 1             |               k8s + nvidia k8s-device-plugin                |
