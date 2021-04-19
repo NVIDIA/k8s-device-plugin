@@ -48,9 +48,9 @@ Three instances from ai-benchmark have been used to evaluate vGPU-device-plugin 
 
 | Test instance |                         description                         |
 | ------------- | :---------------------------------------------------------: |
-| 1             |               k8s + nvidia k8s-device-plugin                |
-| 2             | k8s + VGPU k8s-device-plugin，without virtual device memory |
-| 3             |  k8s + VGPU k8s-device-plugin，with virtual device memory   |
+| nvidia-device-plugin      |               k8s + nvidia k8s-device-plugin                |
+| vGPU-device-plugin        | k8s + VGPU k8s-device-plugin，without virtual device memory |
+| vGPU-device-plugin(virtual device memory) |  k8s + VGPU k8s-device-plugin，with virtual device memory   |
 
 Test Cases:
 
