@@ -296,7 +296,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 			return nil, err
 		}
 
-		vdevices = m.vDevices;
+		vdevices = m.vDevices
 		response := pluginapi.ContainerAllocateResponse{}
 
 		uuids := UniqueDeviceIDs(vdevices)
