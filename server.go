@@ -246,6 +246,7 @@ func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.Device
 func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
 	response := &pluginapi.PreferredAllocationResponse{}
 	// get device
+	fmt.Errorf("into GetPreferredAllocation\n");
 	for _, req := range r.ContainerRequests {
 		availableVDev, err := VDevicesByIDs(m.vDevices, req.AvailableDeviceIDs)
 		if err != nil {
@@ -295,6 +296,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 			return nil, err
 		}
 
+		vdevices = m.vDevices;
 		response := pluginapi.ContainerAllocateResponse{}
 
 		uuids := UniqueDeviceIDs(vdevices)
