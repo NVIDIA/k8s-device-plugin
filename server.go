@@ -116,7 +116,7 @@ func (m *NvidiaDevicePlugin) cleanup() {
 	m.stop = nil
 }
 
-func getNextId(m *NvidiaDevicePlugin) int {
+func getNextID(m *NvidiaDevicePlugin) int {
 	t := m.allocid
 	m.allocid++
 	if m.allocid == len(m.vDevices) {
@@ -142,7 +142,7 @@ func getMaxRemaining(m *NvidiaDevicePlugin) string {
 }
 
 func addOccupancy(m *NvidiaDevicePlugin, vdev []*VDevice) error {
-	occupyid := getNextId(m)
+	occupyid := getNextID(m)
 	for _, val := range vdev {
 		m.vidoccupy[val.Device.ID] = occupyid
 	}
@@ -169,7 +169,7 @@ func printLogs(m *NvidiaDevicePlugin) {
 	fmt.Println("remaining=", m.remaining, ": occupancy=", m.vidoccupy)
 }
 
-func freeOccupyId(m *NvidiaDevicePlugin, id int) error {
+func freeOccupyID(m *NvidiaDevicePlugin, id int) error {
 	found := false
 	for idx, val := range m.vidoccupy {
 		if val == id {
@@ -190,7 +190,7 @@ func freeOccupyId(m *NvidiaDevicePlugin, id int) error {
 func freeOccupy(m *NvidiaDevicePlugin, vdev []*VDevice) error {
 	for _, val := range vdev {
 		if m.vidoccupy[val.Device.ID] != -1 {
-			freeOccupyId(m, m.vidoccupy[val.Device.ID])
+			freeOccupyID(m, m.vidoccupy[val.Device.ID])
 		} else {
 			fmt.Println("Is -1 skipping")
 		}
