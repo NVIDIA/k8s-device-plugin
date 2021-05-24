@@ -125,11 +125,20 @@ func getNextID(m *NvidiaDevicePlugin) int {
 	return t
 }
 
-func getMaxRemaining(m *NvidiaDevicePlugin) string {
+func instrset(st string, stringset []string) bool {
+	for _, val := range stringset {
+		if st == val {
+			return true
+		}
+	}
+	return false
+}
+
+func getMaxRemaining(m *NvidiaDevicePlugin, sset []string) string {
 	maxr := 0
 	pos := ""
 	for idx, val := range m.remaining {
-		if val > maxr && val > 0 {
+		if val > maxr && val > 0 && !instrset(pos, sset) {
 			pos = idx
 			maxr = val
 		}
@@ -153,7 +162,7 @@ func allocateAndGet(m *NvidiaDevicePlugin, count int) []string {
 	resp := []string{}
 	fmt.Println("into allocateAndGet,count=", count)
 	for i := 0; i < count; i++ {
-		tmp := getMaxRemaining(m)
+		tmp := getMaxRemaining(m, resp)
 		if tmp != "" {
 			resp = append(resp, tmp)
 		} else {
@@ -176,7 +185,7 @@ func freeOccupyID(m *NvidiaDevicePlugin, id int) error {
 			m.vidoccupy[idx] = -1
 			vdx, _ := VDevicesByIDs(m.vDevices, []string{idx})
 			m.remaining[UniqueDeviceIDs(vdx)[0]]++
-			fmt.Println("Freeed", idx)
+			fmt.Println("Freeed", idx, "vdx:", UniqueDeviceIDs(vdx), "+1")
 			found = true
 		}
 	}
