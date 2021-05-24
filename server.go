@@ -343,7 +343,11 @@ func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *plug
 
 	response := &pluginapi.PreferredAllocationResponse{}
 	// get device
+<<<<<<< HEAD
 	fmt.Println("GetPreferredAllocation")
+=======
+	fmt.Errorf("into GetPreferredAllocation\n");
+>>>>>>> e10e7143c8d85c8f29b102e040e3d4678034f968
 	for _, req := range r.ContainerRequests {
 		availableVDev, err := VDevicesByIDs(m.vDevices, req.AvailableDeviceIDs)
 		if err != nil {
@@ -408,6 +412,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 			return nil, err
 		}
 
+		vdevices = m.vDevices
 		response := pluginapi.ContainerAllocateResponse{}
 
 		uuids := allocateAndGet(m, len(req.DevicesIDs))
