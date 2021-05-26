@@ -36,6 +36,8 @@ var nvidiaDriverRootFlag string
 var deviceSplitCountFlag uint
 var deviceMemoryScalingFlag float64
 var deviceCoresScalingFlag float64
+var enableLegacyPreferredFlag bool
+var verboseFlag int
 
 var version string // This should be set at build time to indicate the actual version
 
@@ -109,6 +111,20 @@ func main() {
 			Usage:       "the ratio for NVIDIA device cores scaling)",
 			Destination: &deviceCoresScalingFlag,
 			EnvVars:     []string{"DEVICE_CORES_SCALING"},
+		},
+		&cli.BoolFlag{
+			Name:        "enable-legacy-preferred",
+			Value:       false,
+			Usage:       "enable when kubelet does not support preferred allocation",
+			Destination: &enableLegacyPreferredFlag,
+			EnvVars:     []string{"ENABLE_LEGACY_PREFERRED"},
+		},
+		&cli.IntFlag{
+			Name:        "verbose",
+			Value:       0,
+			Usage:       "log verbose level",
+			Destination: &verboseFlag,
+			EnvVars:     []string{"VERBOSE"},
 		},
 	}
 

@@ -60,15 +60,12 @@ type NvidiaDevicePlugin struct {
 	allocatePolicy   gpuallocator.Policy
 	socket           string
 
-	server        *grpc.Server
-	cachedDevices []*Device
-	health        chan *Device
-	stop          chan interface{}
-	vDevices      []*VDevice
-	vidmap        map[string]int
-	vidoccupy     map[string]int
-	remaining     map[string]int
-	allocid       int
+	server            *grpc.Server
+	cachedDevices     []*Device
+	health            chan *Device
+	stop              chan interface{}
+	vDevices          []*VDevice
+	vDeviceController *VDeviceController
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
@@ -82,129 +79,41 @@ func NewNvidiaDevicePlugin(resourceName string, resourceManager ResourceManager,
 
 		// These will be reinitialized every
 		// time the plugin server is restarted.
-		cachedDevices: nil,
-		server:        nil,
-		health:        nil,
-		stop:          nil,
-		vidmap:        make(map[string]int),
-		vidoccupy:     make(map[string]int),
-		remaining:     make(map[string]int),
-		allocid:       0,
+		cachedDevices:     nil,
+		server:            nil,
+		health:            nil,
+		stop:              nil,
+		vDeviceController: nil,
 	}
 }
 
 func (m *NvidiaDevicePlugin) initialize() {
 	m.cachedDevices = m.Devices()
 	m.vDevices = Device2VDevice(m.cachedDevices)
-	for i, val := range m.vDevices {
-		m.vidmap[val.Device.ID] = i
-		m.vidoccupy[val.Device.ID] = -1
-		m.remaining[UniqueDeviceIDs([]*VDevice{val})[0]]++
+	if enableLegacyPreferredFlag && m.allocatePolicy != nil {
+		deviceIDs := make([]string, len(m.vDevices))
+		for i, v := range m.vDevices {
+			deviceIDs[i] = v.ID
+		}
+		m.vDeviceController = newVDeviceController(deviceIDs)
+		m.vDeviceController.initialize()
 	}
 	m.server = grpc.NewServer([]grpc.ServerOption{}...)
 	m.health = make(chan *Device)
 	m.stop = make(chan interface{})
-	m.allocid = 0
 }
 
 func (m *NvidiaDevicePlugin) cleanup() {
+	if m.vDeviceController != nil {
+		m.vDeviceController.cleanup()
+		m.vDeviceController = nil
+	}
 	close(m.stop)
 	m.vDevices = nil
 	m.cachedDevices = nil
 	m.server = nil
 	m.health = nil
 	m.stop = nil
-}
-
-func getNextID(m *NvidiaDevicePlugin) int {
-	t := m.allocid
-	m.allocid++
-	if m.allocid == len(m.vDevices) {
-		m.allocid = 0
-	}
-	return t
-}
-
-func instrset(st string, stringset []string) bool {
-	for _, val := range stringset {
-		if st == val {
-			return true
-		}
-	}
-	return false
-}
-
-func getMaxRemaining(m *NvidiaDevicePlugin, sset []string) string {
-	maxr := 0
-	pos := ""
-	for idx, val := range m.remaining {
-		if val > maxr && val > 0 && !instrset(pos, sset) {
-			pos = idx
-			maxr = val
-		}
-	}
-	if maxr > 0 {
-		fmt.Println("reducing.... ", pos)
-		m.remaining[pos]--
-	}
-	return pos
-}
-
-func addOccupancy(m *NvidiaDevicePlugin, vdev []*VDevice) error {
-	occupyid := getNextID(m)
-	for _, val := range vdev {
-		m.vidoccupy[val.Device.ID] = occupyid
-	}
-	return nil
-}
-
-func allocateAndGet(m *NvidiaDevicePlugin, count int) []string {
-	resp := []string{}
-	fmt.Println("into allocateAndGet,count=", count)
-	for i := 0; i < count; i++ {
-		tmp := getMaxRemaining(m, resp)
-		if tmp != "" {
-			resp = append(resp, tmp)
-		} else {
-			printLogs(m)
-			panic(1)
-		}
-	}
-	return resp
-}
-
-func printLogs(m *NvidiaDevicePlugin) {
-	fmt.Println("AllocateAndGet error")
-	fmt.Println("remaining=", m.remaining, ": occupancy=", m.vidoccupy)
-}
-
-func freeOccupyID(m *NvidiaDevicePlugin, id int) error {
-	found := false
-	for idx, val := range m.vidoccupy {
-		if val == id {
-			m.vidoccupy[idx] = -1
-			vdx, _ := VDevicesByIDs(m.vDevices, []string{idx})
-			m.remaining[UniqueDeviceIDs(vdx)[0]]++
-			fmt.Println("Freeed", idx, "vdx:", UniqueDeviceIDs(vdx), "+1")
-			found = true
-		}
-	}
-	if !found {
-		printLogs(m)
-		panic(1)
-	}
-	return nil
-}
-
-func freeOccupy(m *NvidiaDevicePlugin, vdev []*VDevice) error {
-	for _, val := range vdev {
-		if m.vidoccupy[val.Device.ID] != -1 {
-			freeOccupyID(m, m.vidoccupy[val.Device.ID])
-		} else {
-			fmt.Println("Is -1 skipping")
-		}
-	}
-	return nil
 }
 
 // Start starts the gRPC server, registers the device plugin with the Kubelet,
@@ -311,7 +220,7 @@ func (m *NvidiaDevicePlugin) Register() error {
 		Endpoint:     path.Base(m.socket),
 		ResourceName: m.resourceName,
 		Options: &pluginapi.DevicePluginOptions{
-			GetPreferredAllocationAvailable: m.allocatePolicy != nil,
+			GetPreferredAllocationAvailable: m.allocatePolicy != nil && m.vDeviceController == nil,
 		},
 	}
 
@@ -388,30 +297,44 @@ func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *plug
 		}
 
 		response.ContainerResponses = append(response.ContainerResponses, resp)
+		if verboseFlag > 5 {
+			log.Printf("Debug: preferred allocation %d: [%s] -> [%s]\n",
+				req.AllocationSize,
+				strings.Join(req.AvailableDeviceIDs, ","),
+				strings.Join(deviceIds, ","))
+		}
 	}
 	//return nil, fmt.Errorf("Not implemented")
 	return response, nil
 }
 
-func checkstatus(m *NvidiaDevicePlugin) {
-	fmt.Println("Allocate:Checking status:vdevices=", m.vDevices, "remaining=", m.remaining, "occupancy=", m.vidoccupy)
-}
-
 // Allocate which return list of devices.
 func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	responses := pluginapi.AllocateResponse{}
-	checkstatus(m)
 	for _, req := range reqs.ContainerRequests {
-		vdevices, err := VDevicesByIDs(m.vDevices, req.DevicesIDs)
-		if err != nil {
-			return nil, err
-		}
-		freeOccupy(m, vdevices)
-	}
+		reqDeviceIDs := req.DevicesIDs
 
-	for _, req := range reqs.ContainerRequests {
-		fmt.Println("req__=", req.DevicesIDs)
-		vdevices, err := VDevicesByIDs(m.vDevices, req.DevicesIDs)
+		if m.vDeviceController != nil {
+			// fix kubelet shutdown after Allocate
+			m.vDeviceController.releaseByRequest(req.DevicesIDs)
+
+			preferReq := pluginapi.PreferredAllocationRequest{}
+			preferReq.ContainerRequests = make([]*pluginapi.ContainerPreferredAllocationRequest, 1)
+			preferReq.ContainerRequests[0] = &pluginapi.ContainerPreferredAllocationRequest{
+				AllocationSize: int32(len(reqDeviceIDs)),
+				AvailableDeviceIDs: m.vDeviceController.available(),
+			}
+			preferResp, err := m.GetPreferredAllocation(ctx, &preferReq)
+			if err != nil {
+				return nil, err
+			}
+			if int32(len(preferResp.ContainerResponses[0].DeviceIDs)) == preferReq.ContainerRequests[0].AllocationSize {
+				reqDeviceIDs = preferResp.ContainerResponses[0].DeviceIDs
+			}
+			m.vDeviceController.acquire(req.DevicesIDs, reqDeviceIDs)
+		}
+
+		vdevices, err := VDevicesByIDs(m.vDevices, reqDeviceIDs)
 		if err != nil {
 			return nil, err
 		}
@@ -419,10 +342,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 		vdevices = m.vDevices
 		response := pluginapi.ContainerAllocateResponse{}
 
-		uuids := allocateAndGet(m, len(req.DevicesIDs))
-		addOccupancy(m, vdevices)
-
-		//uuids := UniqueDeviceIDs(vdevices)
+		uuids := UniqueDeviceIDs(vdevices)
 		deviceIDs := m.deviceIDsFromUUIDs(uuids)
 
 		if deviceListStrategyFlag == DeviceListStrategyEnvvar {
@@ -436,6 +356,12 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 			response.Devices = m.apiDeviceSpecs(nvidiaDriverRootFlag, uuids)
 		}
 
+		if m.vDeviceController != nil {
+			response.Annotations = make(map[string]string)
+			response.Annotations[annRequest] = strings.Join(req.DevicesIDs, annSep)
+			response.Annotations[annUsing] = strings.Join(reqDeviceIDs, annSep)
+			m.vDeviceController.acquire(req.DevicesIDs, reqDeviceIDs)
+		}
 		var mapEnvs []string
 		for i, vd := range vdevices {
 			limitKey := fmt.Sprintf("CUDA_DEVICE_MEMORY_LIMIT_%v", i)
@@ -454,6 +380,11 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 			&pluginapi.Mount{ContainerPath: "/etc/ld.so.preload",
 				HostPath: "/usr/local/vgpu/ld.so.preload", ReadOnly: true})
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
+
+		if verboseFlag > 5 {
+			log.Printf("Debug: allocate request %v, response %v\n",
+				reqDeviceIDs, reqDeviceIDs)
+		}
 	}
 
 	return &responses, nil
