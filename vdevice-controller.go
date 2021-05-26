@@ -24,6 +24,7 @@ const (
 	annSep     = ","
 )
 
+// VDeviceController vdevice id manager
 type VDeviceController struct {
 	nodeName string
 	mux      sync.Mutex
@@ -31,6 +32,7 @@ type VDeviceController struct {
 	idMap    map[string]string
 }
 
+// newVDeviceController new VDeviceController
 func newVDeviceController(deviceIDs []string) *VDeviceController {
 	m := &VDeviceController{
 		nodeName: "",
@@ -43,6 +45,7 @@ func newVDeviceController(deviceIDs []string) *VDeviceController {
 	return m
 }
 
+// onAddPod add pod callback func
 func (m *VDeviceController) onAddPod(pod *v1.Pod) {
 	requestStr := pod.Annotations[annRequest]
 	usingStr := pod.Annotations[annUsing]
@@ -57,6 +60,7 @@ func (m *VDeviceController) onAddPod(pod *v1.Pod) {
 	m.acquire(request, using)
 }
 
+// onUpdatePod update pod callback func
 func (m *VDeviceController) onUpdatePod(oldPod, newPod *v1.Pod) {
 	oldRequestStr := oldPod.Annotations[annRequest]
 	oldUsingStr := oldPod.Annotations[annUsing]
@@ -76,6 +80,7 @@ func (m *VDeviceController) onUpdatePod(oldPod, newPod *v1.Pod) {
 	m.acquire(newRequest, newUsing)
 }
 
+// onDeletePod delete pod callback func
 func (m *VDeviceController) onDeletePod(pod *v1.Pod) {
 	usingStr := pod.Annotations[annUsing]
 	if usingStr == "" {
@@ -88,6 +93,7 @@ func (m *VDeviceController) onDeletePod(pod *v1.Pod) {
 	m.release(usingIDs)
 }
 
+// initialize initialize vdevice manager
 func (m *VDeviceController) initialize() {
 	m.nodeName = os.Getenv("NODE_NAME")
 	if m.nodeName == "" {
@@ -150,10 +156,12 @@ func (m *VDeviceController) initialize() {
 	informerFactory.WaitForCacheSync(m.stopCh)
 }
 
+// cleanup finalize vdevice manager
 func (m *VDeviceController) cleanup() {
 	close(m.stopCh)
 }
 
+// available get available device ids
 func (m *VDeviceController) available() []string {
 	m.mux.Lock()
 	defer m.mux.Unlock()
@@ -166,6 +174,7 @@ func (m *VDeviceController) available() []string {
 	return ids
 }
 
+// acquire acquire device ids
 func (m *VDeviceController) acquire(request, using []string) {
 	m.mux.Lock()
 	defer m.mux.Unlock()
@@ -177,12 +186,13 @@ func (m *VDeviceController) acquire(request, using []string) {
 		if i < len(request) {
 			m.idMap[v] = request[i]
 		} else {
-			log.Printf("Error: %s mismatched\n")
+			log.Printf("Error: %s mismatched\n", v)
 			m.idMap[v] = "mismatched"
 		}
 	}
 }
 
+// release release device  ids
 func (m *VDeviceController) release(using []string) {
 	m.mux.Lock()
 	defer m.mux.Unlock()
@@ -195,6 +205,7 @@ func (m *VDeviceController) release(using []string) {
 	}
 }
 
+// releaseByRequest release device ids by request ids
 func (m *VDeviceController) releaseByRequest(request []string) {
 	m.mux.Lock()
 	defer m.mux.Unlock()
