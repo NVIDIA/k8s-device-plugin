@@ -281,6 +281,9 @@ func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *plug
 		}
 
 		allocated := m.allocatePolicy.Allocate(available, required, int(req.AllocationSize))
+		if len(allocated) == 0 && len(available) >= int(req.AllocationSize) {
+			allocated = available[0:req.AllocationSize]
+		}
 
 		var deviceIds []string
 		for _, device := range allocated {
@@ -318,11 +321,15 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 			// fix kubelet shutdown after Allocate
 			m.vDeviceController.releaseByRequest(req.DevicesIDs)
 
+			availableIds := m.vDeviceController.available()
+			if len(availableIds) < len(req.DevicesIDs) {
+				return nil, fmt.Errorf("no enough devices")
+			}
 			preferReq := pluginapi.PreferredAllocationRequest{}
 			preferReq.ContainerRequests = make([]*pluginapi.ContainerPreferredAllocationRequest, 1)
 			preferReq.ContainerRequests[0] = &pluginapi.ContainerPreferredAllocationRequest{
-				AllocationSize: int32(len(reqDeviceIDs)),
-				AvailableDeviceIDs: m.vDeviceController.available(),
+				AllocationSize:     int32(len(reqDeviceIDs)),
+				AvailableDeviceIDs: availableIds,
 			}
 			preferResp, err := m.GetPreferredAllocation(ctx, &preferReq)
 			if err != nil {
@@ -330,6 +337,9 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 			}
 			if int32(len(preferResp.ContainerResponses[0].DeviceIDs)) == preferReq.ContainerRequests[0].AllocationSize {
 				reqDeviceIDs = preferResp.ContainerResponses[0].DeviceIDs
+			} else {
+				reqDeviceIDs = availableIds[0:len(req.DevicesIDs)]
+				log.Printf("Warn: get preferred failed")
 			}
 			m.vDeviceController.acquire(req.DevicesIDs, reqDeviceIDs)
 		}
@@ -339,7 +349,6 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 			return nil, err
 		}
 
-		vdevices = m.vDevices
 		response := pluginapi.ContainerAllocateResponse{}
 
 		uuids := UniqueDeviceIDs(vdevices)
