@@ -38,4 +38,5 @@ require (
 	k8s.io/apimachinery v0.19.1
 	k8s.io/client-go v0.19.1
 	k8s.io/kubelet v0.0.0
+	k8s.io/kubernetes v1.18.2
 )

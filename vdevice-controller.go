@@ -1,7 +1,9 @@
 package main
 
 import (
-	"k8s.io/client-go/tools/cache"
+	"k8s.io/apimachinery/pkg/labels"
+	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
+	"k8s.io/kubernetes/pkg/kubelet/cm/devicemanager/checkpoint"
 	"log"
 	"os"
 	"path/filepath"
@@ -14,8 +16,10 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubernetes/pkg/kubelet/checkpointmanager"
 )
 
 const (
@@ -23,6 +27,7 @@ const (
 	annUsing   = "4paradigm.com/vgpu-using"
 	annSep     = ","
 )
+const kubeletDeviceManagerCheckpoint = "kubelet_internal_checkpoint"
 
 // VDeviceController vdevice id manager
 type VDeviceController struct {
@@ -30,6 +35,9 @@ type VDeviceController struct {
 	mux      sync.Mutex
 	stopCh   chan struct{}
 	idMap    map[string]string
+
+	podLister         listerscorev1.PodLister
+	checkpointManager checkpointmanager.CheckpointManager
 }
 
 // newVDeviceController new VDeviceController
@@ -42,7 +50,64 @@ func newVDeviceController(deviceIDs []string) *VDeviceController {
 	for _, v := range deviceIDs {
 		m.idMap[v] = ""
 	}
+	var err error
+	m.checkpointManager, err = checkpointmanager.NewCheckpointManager(pluginapi.DevicePluginPath)
+	check(err)
 	return m
+}
+
+// updateFromCheckpoint update devices from kubelet device checkpoint
+func (m *VDeviceController) updateFromCheckpoint() error {
+	registeredDevs := make(map[string][]string)
+	devEntries := make([]checkpoint.PodDevicesEntry, 0)
+	cp := checkpoint.New(devEntries, registeredDevs)
+	err := m.checkpointManager.GetCheckpoint(kubeletDeviceManagerCheckpoint, cp)
+	if err != nil {
+		log.Printf("Error: read checkpoint error, %v\n", err)
+		return err
+	}
+	pods, err := m.podLister.Pods("").List(labels.Everything())
+	podDevices, _ := cp.GetData()
+	for _, pde := range podDevices {
+		if pde.ResourceName != "nvidia.com/gpu" {
+			continue
+		}
+		allocResp := &pluginapi.ContainerAllocateResponse{}
+		err = allocResp.Unmarshal(pde.AllocResp)
+		if err != nil {
+			log.Printf("Error: unmarshal container allocate response failed\n")
+			continue
+		}
+		requestStr := allocResp.Annotations[annRequest]
+		usingStr := allocResp.Annotations[annUsing]
+		if requestStr == "" && usingStr == "" {
+			continue
+		}
+		request := strings.Split(requestStr, annSep)
+		using := strings.Split(usingStr, annSep)
+		var pod *v1.Pod = nil
+		for _, p := range pods {
+			if string(p.UID) == pde.PodUID {
+				pod = p
+				break
+			}
+		}
+		//pod, err := m.podLister.Pods("").Get(pde.PodUID)
+		if pod != nil && (pod.Status.Phase == v1.PodPending || pod.Status.Phase == v1.PodRunning) {
+			m.acquire(request, using)
+		} else {
+			if verboseFlag > 5 {
+				if pod == nil {
+					log.Printf("Debug: pod %v not found\n", pde.PodUID)
+				} else {
+					log.Printf("Debug: pod %v status %v\n", pde.PodUID, pod.Status.Phase)
+				}
+				log.Printf("Debug: release from checkpoint: %v\n", using)
+			}
+			m.release(using)
+		}
+	}
+	return nil
 }
 
 // onAddPod add pod callback func
@@ -122,35 +187,36 @@ func (m *VDeviceController) initialize() {
 	)
 
 	podInformer := informerFactory.Core().V1().Pods()
-	informer := podInformer.Informer()
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			if pod, ok := obj.(*v1.Pod); ok {
-				m.onAddPod(pod)
-			} else {
-				log.Println("Unknown add pod")
-			}
-		},
-		UpdateFunc: func(oldObj, newObj interface{}) {
-			oldPod, ok := oldObj.(*v1.Pod)
-			if !ok {
-				log.Println("Unknown update old pod")
-			}
-			newPod, ok := newObj.(*v1.Pod)
-			if !ok {
-				log.Println("Unknown update new pod")
-			}
-			m.onUpdatePod(oldPod, newPod)
-		},
-		DeleteFunc: func(obj interface{}) {
-			if pod, ok := obj.(*v1.Pod); ok {
-				m.onDeletePod(pod)
-			} else {
-				log.Println("Unknown delete pod")
-			}
-		},
-	},
-	)
+	m.podLister = podInformer.Lister()
+	//informer := podInformer.Informer()
+	//informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	//	AddFunc: func(obj interface{}) {
+	//		if pod, ok := obj.(*v1.Pod); ok {
+	//			m.onAddPod(pod)
+	//		} else {
+	//			log.Println("Unknown add pod")
+	//		}
+	//	},
+	//	UpdateFunc: func(oldObj, newObj interface{}) {
+	//		oldPod, ok := oldObj.(*v1.Pod)
+	//		if !ok {
+	//			log.Println("Unknown update old pod")
+	//		}
+	//		newPod, ok := newObj.(*v1.Pod)
+	//		if !ok {
+	//			log.Println("Unknown update new pod")
+	//		}
+	//		m.onUpdatePod(oldPod, newPod)
+	//	},
+	//	DeleteFunc: func(obj interface{}) {
+	//		if pod, ok := obj.(*v1.Pod); ok {
+	//			m.onDeletePod(pod)
+	//		} else {
+	//			log.Println("Unknown delete pod")
+	//		}
+	//	},
+	//},
+	//)
 	m.stopCh = make(chan struct{})
 	informerFactory.Start(m.stopCh)
 	informerFactory.WaitForCacheSync(m.stopCh)

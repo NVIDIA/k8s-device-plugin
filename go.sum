@@ -515,6 +515,7 @@ github.com/sourcegraph/go-diff v0.5.1/go.mod h1:j2dHj3m8aZgQO8lMTcTnBcXkRRRqi34c
 github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
 github.com/spf13/afero v1.1.0/go.mod h1:j4pytiNVoe2o6bmDsKpLACNPDBIoEAkihy7loJ1B0CQ=
 github.com/spf13/afero v1.1.2/go.mod h1:j4pytiNVoe2o6bmDsKpLACNPDBIoEAkihy7loJ1B0CQ=
+github.com/spf13/afero v1.2.2 h1:5jhuqJyZCZf2JRofRvN/nIFgIWNzPa3/Vz8mYylgbWc=
 github.com/spf13/afero v1.2.2/go.mod h1:9ZxEEn6pIJ8Rxe320qSDBk6AsU0r9pR7Q4OcevTdifk=
 github.com/spf13/cast v1.2.0/go.mod h1:r2rcYCSwa1IExKTDiTfzaxqT2FNHs8hODu4LnUfgKEg=
 github.com/spf13/cast v1.3.0/go.mod h1:Qx5cxh0v+4UWYiBimWS+eyWzqEqokIECu5etghLkUJE=
@@ -898,6 +899,7 @@ k8s.io/kube-scheduler v0.19.1/go.mod h1:+qKYLB1mEPl3YOA8qBRQIfuXjAyCrJWS4/5CuVPO
 k8s.io/kubectl v0.19.1/go.mod h1:jZM7qucrDpQu05OAoSJk0yRRHRZNydya40dILYh8ODc=
 k8s.io/kubelet v0.19.1 h1:pwlk19yEt/Sd8tOcSmSm/+j4EE/un5JbvrQJ2ZO2IzE=
 k8s.io/kubelet v0.19.1/go.mod h1:FJBxOTBiFjE3KM+0gdPpZeiaKX8lrsb6fTlyBGqPWgs=
+k8s.io/kubernetes v1.18.2 h1:37sJPq6p+gx5hEHQSwCWXIiXDc9AajzV1A5UrswnDq0=
 k8s.io/kubernetes v1.18.2/go.mod h1:z8xjOOO1Ljz+TaHpOxVGC7cxtF32TesIamoQ+BZrVS0=
 k8s.io/legacy-cloud-providers v0.19.1/go.mod h1:nRA/55EMk1/bcMWSACjPcCWVx33ZJCR3nFllTqFQHVE=
 k8s.io/metrics v0.19.1/go.mod h1:O/ONCgXDITtJuMveKEDwZSfiqHOiMZTWmyLe/p1BoAA=

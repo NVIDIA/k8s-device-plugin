@@ -54,6 +54,9 @@ github.com/modern-go/reflect2
 github.com/russross/blackfriday/v2
 # github.com/shurcooL/sanitized_anchor_name v1.0.0
 github.com/shurcooL/sanitized_anchor_name
+# github.com/spf13/afero v1.2.2
+github.com/spf13/afero
+github.com/spf13/afero/mem
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
 # github.com/urfave/cli/v2 v2.2.0
@@ -423,6 +426,15 @@ k8s.io/klog/v2
 # k8s.io/kubelet v0.0.0 => k8s.io/kubelet v0.19.1
 ## explicit
 k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1
+# k8s.io/kubernetes v1.18.2
+## explicit
+k8s.io/kubernetes/pkg/kubelet/checkpointmanager
+k8s.io/kubernetes/pkg/kubelet/checkpointmanager/checksum
+k8s.io/kubernetes/pkg/kubelet/checkpointmanager/errors
+k8s.io/kubernetes/pkg/kubelet/cm/devicemanager/checkpoint
+k8s.io/kubernetes/pkg/kubelet/util/store
+k8s.io/kubernetes/pkg/util/filesystem
+k8s.io/kubernetes/pkg/util/hash
 # k8s.io/utils v0.0.0-20200729134348-d5654de09c73
 k8s.io/utils/buffer
 k8s.io/utils/integer

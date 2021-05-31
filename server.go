@@ -314,6 +314,12 @@ func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *plug
 // Allocate which return list of devices.
 func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	responses := pluginapi.AllocateResponse{}
+	if m.vDeviceController != nil {
+		// release devices from kubelet checkpoint
+		if err := m.vDeviceController.updateFromCheckpoint(); err != nil {
+			return nil, err
+		}
+	}
 	for _, req := range reqs.ContainerRequests {
 		reqDeviceIDs := req.DevicesIDs
 
@@ -392,7 +398,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 
 		if verboseFlag > 5 {
 			log.Printf("Debug: allocate request %v, response %v\n",
-				reqDeviceIDs, reqDeviceIDs)
+				req.DevicesIDs, reqDeviceIDs)
 		}
 	}
 
