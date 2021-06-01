@@ -200,22 +200,23 @@ spec:
 ## 测试
 
 - TensorFlow 1.14.0/2.4.1
-- torch1.1.0
+- torch1.1.0-1.8.0
 - mxnet 1.4.0
 - mindspore 1.1.1
+- xgboost 1.0-1.4
 
 以上框架均通过测试。
 
 ## 日志
 
-启动日志：添加环境变量
+启动日志：在使用vGPU功能的pod中添加环境变量
 ```
 LIBCUDA_LOG_LEVEL=5
 ```
 
 隔离日志：
 ```
-cat xxx | grep libvgpu.so
+kubectl logs xxx | grep libvgpu.so
 ```
 
 ## 反馈和参与

@@ -207,22 +207,23 @@ You can now execute `nvidia-smi` command in the container and see the difference
 ## Tests
 
 - TensorFlow 1.14.0/2.4.1
-- torch 1.1.0
+- torch 1.1.0-1.8.0
 - mxnet 1.4.0
 - mindspore 1.1.1
+- xgboost 1.0-1.4
 
 The above frameworks have passed the test.
 
 ## Logging
 
-Enable logging：add environment variable
+Enable logging：add environment variable in pod using vGPU utility
 ```
 LIBCUDA_LOG_LEVEL=5
 ```
 
 Get vGPU log：
 ```
-cat xxx | grep libvgpu.so
+kubectl logs xxx | grep libvgpu.so
 ```
 
 ## Issues and Contributing
