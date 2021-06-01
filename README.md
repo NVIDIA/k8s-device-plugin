@@ -213,6 +213,18 @@ You can now execute `nvidia-smi` command in the container and see the difference
 
 The above frameworks have passed the test.
 
+## Logging
+
+Enable logging：add environment variable
+```
+LIBCUDA_LOG_LEVEL=5
+```
+
+Get vGPU log：
+```
+cat xxx | grep libvgpu.so
+```
+
 ## Issues and Contributing
 
 * You can report a bug, a doubt or modify by [filing a new issue](https://github.com/NVIDIA/k8s-device-plugin/issues/new)
