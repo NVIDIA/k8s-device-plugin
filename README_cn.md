@@ -214,7 +214,7 @@ spec:
 LIBCUDA_LOG_LEVEL=5
 ```
 
-隔离日志：
+获取vGPU相关的日志：
 ```
 kubectl logs xxx | grep libvgpu.so
 ```
