@@ -172,6 +172,7 @@ In this Daemonset file, you can see the container `nvidia-device-plugin-ctr` tak
   Float type, by default: 1. The ratio for NVIDIA device memory scaling, can be greater than 1 (enable virtual device memory, experimental feature). For NVIDIA GPU with *M* memory, if we set `device-memory-scaling` argument to *S*, vGPUs splitted by this GPU will totaly get *S \* M* memory in Kubernetes with our device plugin. The memory of each vGPU is also affected by argument `device-split-count`. For previous example, if `device-split-count` argument is set to *K*, each vGPU finally get *S \* M / K* memory.
 * `device-cores-scaling:` 
   Float type, by default: 1. The ratio for NVIDIA device cores scaling, can be greater than 1. If the `device-cores-scaling` parameter is configured as *S* and the `device-split-count` parameter is configured as *K*, then the average upper limit of sm utilization within **a period of time** corresponding to each vGPU is *S / K*. The sum of the utilization rates of all vGPU sm belonging to the same physical GPU does not exceed 1.
+* `enable-legacy-preferred:` Boolean type, by default: false. For kublet (<1.19) that does not support PreferredAllocation, you can set it to true. It is better to choose a preferred device. When it is turned on, this plugin needs to have read permission to pod, please refer to legacy-preferred-nvidia-device-plugin.yml . For kubelet >= 1.9, it is recommended turn off it.
 
 After configure those optional arguments, you can enable the vGPU support by following command:
 
