@@ -206,6 +206,18 @@ spec:
 
 以上框架均通过测试。
 
+## 日志
+
+启动日志：添加环境变量
+```
+LIBCUDA_LOG_LEVEL=5
+```
+
+隔离日志：
+```
+cat xxx | grep libvgpu.so
+```
+
 ## 反馈和参与
 
 * bug、疑惑、修改欢迎提在 [Github Issues](https://github.com/4paradigm/k8s-device-plugin/issues/new)
