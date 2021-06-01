@@ -167,6 +167,7 @@ $ wget https://raw.githubusercontent.com/4paradigm/k8s-device-plugin/master/nvid
   浮点数类型，预设值是1。NVIDIA装置显存使用比例，可以大于1（启用虚拟显存，实验功能）。对于有*M​*显存大小的NVIDIA GPU，如果我们配置`device-memory-scaling`参数为*S*，在部署了我们装置插件的Kubenetes集群中，这张GPU分出的vGPU将总共包含 *S \* M*显存。每张vGPU的显存大小也受`device-split-count`参数影响。在先前的例子中，如果`device-split-count`参数配置为*K*，那每一张vGPU最后会取得 *S \* M / K* 大小的显存。
 * `device-cores-scaling:` 
   浮点数类型，预设值是1。NVIDIA装置算力使用比例，可以大于1。如果`device-cores-scaling​`参数配置为*S​* `device-split-count`参数配置为*K*，那每一张vGPU对应的**一段时间内** sm 利用率平均上限为*S  / K*。属于同一张物理GPU上的所有vGPU sm利用率总和不超过1。
+* `enable-legacy-preferred:` 布尔类型，预设值是false。对于不支持 PreferredAllocation 的kublet（<1.19）可以设置为true，更好的选择合适的device，开启时，本插件需要有对pod的读取权限，可参看 legacy-preferred-nvidia-device-plugin.yml。对于 kubelet >= 1.9 时，建议关闭。
 
 完成这些可选参数的配置后，你能透过下面命令开启vGPU的支持：
 
