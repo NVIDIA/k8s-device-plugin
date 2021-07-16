@@ -31,7 +31,13 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	v1 "k8s.io/api/core/v1"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
+
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 // Constants to represent the various device list strategies
@@ -313,6 +319,48 @@ func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *plug
 
 // Allocate which return list of devices.
 func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
+	monitorMode := os.Getenv("VGPU_MONITOR_MODE")
+	targetpod := v1.Pod{}
+	if len(monitorMode) > 0 {
+		config, err := rest.InClusterConfig()
+		if err != nil {
+			panic(err.Error())
+		}
+		clientset, err := kubernetes.NewForConfig(config)
+		if err != nil {
+			panic(err.Error())
+		}
+		pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			panic(err.Error())
+		}
+		fmt.Println("[Allocate]")
+		for _, cursor := range pods.Items {
+			//fmt.Println("pod name", cursor.Name)
+			if cursor.Status.Phase == v1.PodPending {
+				match := true
+				minus := 0
+				for ctridx, ctr := range cursor.Spec.Containers {
+					nvcount, ok := ctr.Resources.Limits["nvidia.com/gpu"]
+					if !ok {
+						minus++
+						continue
+					}
+					reqv := reqs.ContainerRequests[ctridx-minus]
+					tmpstr := fmt.Sprint(len(reqv.DevicesIDs))
+					fmt.Println("pod", cursor.Name, "ctr", ctr.Name, "requires gpu", tmpstr, "nvcount=", nvcount.String())
+					if !nvcount.Equal(resource.MustParse(tmpstr)) {
+						match = false
+						break
+					}
+				}
+				if match {
+					fmt.Println("pod matched name=", cursor.Name)
+					targetpod = cursor
+				}
+			}
+		}
+	}
 	responses := pluginapi.AllocateResponse{}
 	if m.vDeviceController != nil {
 		// release devices from kubelet checkpoint
@@ -320,7 +368,22 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 			return nil, err
 		}
 	}
-	for _, req := range reqs.ContainerRequests {
+	addnum := 0
+	for reqidx, req := range reqs.ContainerRequests {
+		ctrname := ""
+		if len(monitorMode) > 0 {
+			for {
+				ctrs := targetpod.Spec.Containers[reqidx+addnum]
+				_, ok := ctrs.Resources.Limits["nvidia.com/gpu"]
+				if !ok {
+					addnum++
+					continue
+				} else {
+					ctrname = ctrs.Name
+					break
+				}
+			}
+		}
 		reqDeviceIDs := req.DevicesIDs
 
 		if m.vDeviceController != nil {
@@ -385,15 +448,29 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 		}
 		response.Envs["CUDA_DEVICE_SM_LIMIT"] = strconv.Itoa(int(100 * deviceCoresScalingFlag / float64(deviceSplitCountFlag)))
 		response.Envs["NVIDIA_DEVICE_MAP"] = strings.Join(mapEnvs, " ")
-		response.Envs["CUDA_DEVICE_MEMORY_SHARED_CACHE"] = fmt.Sprintf("/tmp/%v.cache", uuid.NewString())
+		if len(monitorMode) > 0 {
+			timestr := targetpod.Name + "_" + ctrname
+			os.MkdirAll("/usr/local/vgpu/shared/"+timestr, os.ModePerm)
+			response.Mounts = append(response.Mounts,
+				&pluginapi.Mount{ContainerPath: "/" + timestr,
+					HostPath: "/usr/local/vgpu/shared/" + timestr, ReadOnly: false})
+			fmt.Println("shared_path=", timestr)
+			response.Envs["CUDA_DEVICE_MEMORY_SHARED_CACHE"] = fmt.Sprintf("/"+timestr+"/%v.cache", uuid.NewString())
+		} else {
+			response.Envs["CUDA_DEVICE_MEMORY_SHARED_CACHE"] = fmt.Sprintf("/tmp/%v.cache", uuid.NewString())
+		}
 		if deviceMemoryScalingFlag > 1 {
 			response.Envs["CUDA_OVERSUBSCRIBE"] = "true"
 		}
+		//response.Annotations = make(map[string]string)
+		//response.Annotations["CUDA-DEVICE-MEMORY-SHARED-CACHE"] = timestr
 		response.Mounts = append(response.Mounts,
 			&pluginapi.Mount{ContainerPath: "/usr/local/vgpu/libvgpu.so",
 				HostPath: "/usr/local/vgpu/libvgpu.so", ReadOnly: true},
 			&pluginapi.Mount{ContainerPath: "/etc/ld.so.preload",
-				HostPath: "/usr/local/vgpu/ld.so.preload", ReadOnly: true})
+				HostPath: "/usr/local/vgpu/ld.so.preload", ReadOnly: true},
+			&pluginapi.Mount{ContainerPath: "/usr/local/vgpu/pciinfo.vgpu",
+				HostPath: os.Getenv("PCIBUSFILE"), ReadOnly: true})
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
 
 		if verboseFlag > 5 {

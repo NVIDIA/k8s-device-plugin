@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ \
         ca-certificates \
         wget && \
-    rm -rf /var/lib/apt/lists/*
+        rm -rf /var/lib/apt/lists/*
 
 ARG GOLANG_VERSION=1.15.8
 RUN : "${GOLANG_VERSION:?ERROR: Build argument GOLANG_VERSION needs to be set and non-empty.}"
@@ -40,6 +40,12 @@ RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' &
 ARG CUDA_IMAGE=cuda
 FROM nvcr.io/nvidia/${CUDA_IMAGE}:11.2.1-base-ubuntu20.04
 
+RUN apt-get update; apt-get install -y --no-install-recommends \
+        g++ \
+        ca-certificates \
+        wget \
+        pciutils
+        
 ENV NVIDIA_DISABLE_REQUIRE="true"
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=utility

@@ -18,13 +18,17 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"os/exec"
+	"strings"
+	"syscall"
+
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	"github.com/fsnotify/fsnotify"
 	cli "github.com/urfave/cli/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
-	"log"
-	"os"
-	"syscall"
 )
 
 var migStrategyFlag string
@@ -157,6 +161,28 @@ func validateFlags(c *cli.Context) error {
 }
 
 func start(c *cli.Context) error {
+	log.Println("Loading PciInfo")
+	cmd := exec.Command("lspci")
+	out, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+	pcibusfile := os.Getenv("PCIBUSFILE")
+	pcibusstr := ""
+	for idx, val := range strings.Split(string(out), "\n") {
+		fmt.Println(idx, "=", val)
+		if len(val) > 1 {
+			pcibusid := strings.Split(val, " ")[0]
+			if strings.Contains(val, "NVIDIA") {
+				fmt.Println("found", pcibusid)
+				pcibusstr = pcibusstr + pcibusid + "\n"
+			}
+		}
+	}
+	fmt.Println("pcibusstr=", pcibusstr)
+	if len(pcibusfile) > 0 {
+		ioutil.WriteFile(pcibusfile, []byte(pcibusstr), 0644)
+	}
 	log.Println("Loading NVML")
 	if err := nvml.Init(); err != nil {
 		log.SetOutput(os.Stderr)

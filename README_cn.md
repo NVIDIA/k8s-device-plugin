@@ -98,6 +98,10 @@ $ kubectl logs [pod id]
 
   vGPU的显存总和可以超过GPU实际的显存，这时候超过的部分会放到内存里，对性能有一定的影响。
 
+## 产品限制
+
+- 分配到节点上任务所需要的vGPU数量，不能大于节点实际GPU数量
+
 ## 已知问题
 
 - 开启虚拟显存时，如果某张物理GPU的显存已用满，而这张GPU上还有空余的vGPU，此时分配到这些vGPU上的任务会失败。
@@ -144,6 +148,7 @@ $ sudo systemctl restart docker
             "runtimeArgs": []
         }
     }
+    "default-shm-size": "2G"
 }
 ```
 
@@ -200,11 +205,12 @@ spec:
 
 ## 测试
 
-- TensorFlow 1.14.0/2.4.1
+- TensorFlow 1.14.0-1.15.0/2.2.0-2.6.2
 - torch1.1.0-1.8.0
 - mxnet 1.4.0
 - mindspore 1.1.1
 - xgboost 1.0-1.4
+- nccl 2.4.8-2.9.9
 
 以上框架均通过测试。
 

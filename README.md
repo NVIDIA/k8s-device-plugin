@@ -93,6 +93,10 @@ $ kubectl logs [pod id]
 - Limit vGPU's Streaming Multiprocessor.
 - Zero changes to existing programs
 
+## Limitaions
+
+- The VGPUs assigned to this node can't exceed the number of physical GPU card, otherwise task could fail
+
 ## Experimental Features
 
 - Virtual Device Memory
@@ -101,7 +105,7 @@ $ kubectl logs [pod id]
 
 ## Known Issues
 
-- When virtual device memory is turned on, if the device memory of a physical GPU is used up and there are vacant vGPUs on this GPU, the tasks assigned to these vGPUs will fail.
+- When virtual device memory is turned on, if the device memory of a physical GPU is used up and there are vacant vGPUs on this GPU, the tasks assigned to these vGPUs may fail.
 - Currently, only computing tasks are supported, and video codec processing is not supported.
 
 ## TODO
@@ -148,6 +152,7 @@ We will be editing the docker daemon config file which is usually present at `/e
             "runtimeArgs": []
         }
     }
+    "default-shm-size": "2G"
 }
 ```
 
@@ -207,11 +212,12 @@ You can now execute `nvidia-smi` command in the container and see the difference
 
 ## Tests
 
-- TensorFlow 1.14.0/2.4.1
+- TensorFlow 1.14.0-1.15.0/2.2.0-2.6.2
 - torch 1.1.0-1.8.0
 - mxnet 1.4.0
 - mindspore 1.1.1
 - xgboost 1.0-1.4
+- nccl 2.4.8-2.9.9
 
 The above frameworks have passed the test.
 
