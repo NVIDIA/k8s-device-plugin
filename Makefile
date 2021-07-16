@@ -20,8 +20,8 @@
 
 DOCKER   ?= docker
 ifeq ($(IMAGE),)
-#REGISTRY ?= 4pdosc
-REGISTRY ?= m7-ieg-pico-test01:5000
+REGISTRY ?= 4pdosc
+#REGISTRY ?= m7-ieg-pico-test01:5000
 IMAGE := $(REGISTRY)/k8s-device-plugin-test
 endif
 VERSION  ?= v0.9.0
