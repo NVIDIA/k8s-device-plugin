@@ -57,6 +57,13 @@ spec:
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: nvidia-device-plugin-ctr
+        env:
+          - name: GFD_MIG_STRATEGY
+            value: "{{ .Values.migStrategy }}"
+        {{- if ne .Values.migStrategy "none" }}
+          - name: NVIDIA_MIG_MONITOR_DEVICES
+            value: all
+        {{- end }}
         args:
         - "--mig-strategy={{ .Values.migStrategy }}"
         - "--pass-device-specs={{ .Values.compatWithCPUManager }}"
@@ -72,7 +79,12 @@ spec:
         {{- else }}
           allowPrivilegeEscalation: false
           capabilities:
+          {{- if and (ne .Values.migStrategy "none") (eq (len .Values.securityContext) 0) }}
+            add:
+              - SYS_ADMIN
+          {{- else}}
             drop: ["ALL"]
+          {{- end }}
         {{- end }}
         volumeMounts:
           - name: device-plugin
