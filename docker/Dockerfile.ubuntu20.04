@@ -22,8 +22,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 ARG GOLANG_VERSION=1.15.8
+ARG GOLANG_ARCH=amd64
 RUN : "${GOLANG_VERSION:?ERROR: Build argument GOLANG_VERSION needs to be set and non-empty.}"
-RUN wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz \
+RUN wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${GOLANG_ARCH}.tar.gz \
     | tar -C /usr/local -xz
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
