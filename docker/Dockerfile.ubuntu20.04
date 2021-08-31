@@ -13,29 +13,9 @@
 # limitations under the License.
 
 ARG CUDA_IMAGE=cuda
-FROM nvcr.io/nvidia/${CUDA_IMAGE}:11.2.1-base-ubuntu20.04 as build
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        g++ \
-        ca-certificates \
-        wget && \
-    rm -rf /var/lib/apt/lists/*
-
+ARG CUDA_VERSION=11.2.1
 ARG GOLANG_VERSION=1.15.8
-RUN : "${GOLANG_VERSION:?ERROR: Build argument GOLANG_VERSION needs to be set and non-empty.}"
-RUN set -eux; \
-    \
-    arch="$(uname -m)"; \
-    case "${arch##*-}" in \
-        x86_64 | amd64) ARCH='amd64' ;; \
-        ppc64el | ppc64le) ARCH='ppc64le' ;; \
-        aarch64) ARCH='arm64' ;; \
-        *) echo "unsupported architecture" ; exit 1 ;; \
-    esac; \
-    wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${ARCH}.tar.gz \
-    | tar -C /usr/local -xz
-ENV GOPATH /go
-ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
+FROM golang:${GOLANG_VERSION} as build
 
 WORKDIR /build
 COPY . .
@@ -45,8 +25,7 @@ RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' &
     go build -ldflags="-s -w -X 'main.Version=${PLUGIN_VERSION}'" -v -o /build/nvidia-device-plugin
 
 
-ARG CUDA_IMAGE=cuda
-FROM nvcr.io/nvidia/${CUDA_IMAGE}:11.2.1-base-ubuntu20.04
+FROM nvcr.io/nvidia/${CUDA_IMAGE}:${CUDA_VERSION}-base-ubuntu20.04
 
 ENV NVIDIA_DISABLE_REQUIRE="true"
 ENV NVIDIA_VISIBLE_DEVICES=all
