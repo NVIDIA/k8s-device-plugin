@@ -1,7 +1,31 @@
+# Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+default:
+  image: docker:stable
+  services:
+    - name: docker:stable-dind
+      command: ["--experimental"]
+
 stages:
-    - tests
-    - build
-    - release
+  - image
+  - lint
+  - go-checks
+  - go-build
+  - unit-tests
+  - build
+  - release
 
 .tests-setup: &tests-setup
   image: golang:1.14.4
@@ -18,57 +42,74 @@ stages:
     - ln -s ${CI_PROJECT_DIR} ${GOPATH}/src/${PROJECT_GOPATH}
 
 .build-and-release-setup: &build-and-release-setup
-    image: docker:stable
-    services:
-        - docker:stable-dind
-
     before_script:
         - apk add make
 
-# Run a series of sanity-check tests over the code
-lint:
-  <<: *tests-setup
-  stage: tests
-  script:
-    - go get -u golang.org/x/lint/golint
-    - go mod vendor
-    - golint -set_exit_status ${PROJECT_GOPATH}
+.dev-image:
+  variables:
+    BUILDIMAGE: "${CI_REGISTRY_IMAGE}/device-plugin-build:${CI_COMMIT_SHORT_SHA}"
 
-vet:
-  <<: *tests-setup
-  stage: tests
+build-dev-image:
+  extends:
+    - .dev-image
+  stage: image
   script:
-    - go vet ${PROJECT_GOPATH}
+    - apk --no-cache add make bash
+    - make .build-image
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    - make .push-build-image
 
-unit_test:
-  <<: *tests-setup
-  stage: tests
-  script:
-    - go test ${PROJECT_GOPATH}
+.requires-build-image:
+  image: "${CI_REGISTRY_IMAGE}/device-plugin-build:${CI_COMMIT_SHORT_SHA}"
+
+.go-check:
+  extends:
+    - .requires-build-image
+  stage: go-checks
 
 fmt:
-  <<: *tests-setup
-  stage: tests
+  extends:
+    - .go-check
   script:
-    - res=$(gofmt -l *.go)
-    - echo "$res"
-    - test -z "$res"
+    - make assert-fmt
+
+vet:
+  extends:
+    - .go-check
+  script:
+    - make vet
+
+go-lint:
+  extends:
+    - .go-check
+  script:
+    - make lint
 
 ineffassign:
-  <<: *tests-setup
-  stage: tests
+  extends:
+    - .go-check
   script:
-    - go get -u github.com/gordonklaus/ineffassign
-    - go mod vendor
-    - ineffassign *.go
+    - make ineffassign
 
 misspell:
-  <<: *tests-setup
-  stage: tests
+  extends:
+    - .go-check
   script:
-    - go get -u github.com/client9/misspell/cmd/misspell
-    - go mod vendor
-    - misspell *.go
+    - make misspell
+
+go-build:
+  extends:
+    - .requires-build-image
+  stage: go-build
+  script:
+    - make build
+
+unit-tests:
+  extends:
+    - .requires-build-image
+  stage: unit-tests
+  script:
+    - make coverage
 
 # Build pushes to the local gitlab registry
 build:device-plugin:
