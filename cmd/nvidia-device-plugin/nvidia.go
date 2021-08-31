@@ -154,7 +154,7 @@ func buildDevice(d *nvml.Device, paths []string, index string) *Device {
 	if d.CPUAffinity != nil {
 		dev.Topology = &pluginapi.TopologyInfo{
 			Nodes: []*pluginapi.NUMANode{
-				&pluginapi.NUMANode{
+				{
 					ID: int64(*(d.CPUAffinity)),
 				},
 			},
