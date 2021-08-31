@@ -26,6 +26,7 @@ endif
 VERSION  ?= v0.9.0
 
 GOLANG_VERSION ?= 1.15.8
+CUDA_VERSION ?= 11.2.1
 
 ##### Public rules #####
 
@@ -58,7 +59,9 @@ build-%: DISTRIBUTION = $(*)
 $(BUILD_TARGETS): build-%:
 	$(DOCKER) build --pull \
 		--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
+		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
 		--build-arg PLUGIN_VERSION=$(VERSION) \
+		--build-arg BASE_DIST=$(DISTRIBUTION) \
 		--tag $(IMAGE):$(VERSION)-$(DISTRIBUTION) \
 		--file docker/Dockerfile.$(DISTRIBUTION) \
 			.
