@@ -63,5 +63,5 @@ $(BUILD_TARGETS): build-%:
 		--build-arg PLUGIN_VERSION=$(VERSION) \
 		--build-arg BASE_DIST=$(DISTRIBUTION) \
 		--tag $(IMAGE):$(VERSION)-$(DISTRIBUTION) \
-		--file docker/Dockerfile.$(DISTRIBUTION) \
+		--file docker/Dockerfile \
 			.
