@@ -19,6 +19,7 @@
 ##### Global variables #####
 
 DOCKER   ?= docker
+BUILDX   ?= buildx
 ifeq ($(IMAGE),)
 REGISTRY ?= nvcr.io/nvidia
 IMAGE := $(REGISTRY)/k8s-device-plugin
@@ -33,7 +34,6 @@ CUDA_VERSION ?= 11.4.1
 DEFAULT_DISTRIBUTION := ubuntu20.04
 DISTRIBUTIONS = $(DEFAULT_DISTRIBUTION) ubi8
 
-
 BUILD_TARGETS := $(patsubst %,build-%,$(DISTRIBUTIONS))
 PUSH_TARGETS := $(patsubst %,push-%,$(DISTRIBUTIONS))
 
@@ -41,7 +41,13 @@ PUSH_TARGETS := $(patsubst %,push-%,$(DISTRIBUTIONS))
 
 all: $(BUILD_TARGETS)
 
+IMAGE_TAG ?= $(IMAGE):$(VERSION)-$(DISTRIBUTION)
+OUT_IMAGE ?= $(IMAGE)
+OUT_VERSION ?= $(VERSION)
+OUT_IMAGE_TAG ?= $(OUT_IMAGE):$(OUT_VERSION)-$(DISTRIBUTION)
+
 push: $(PUSH_TARGETS)
+push-%: DISTRIBUTION = $(*)
 $(PUSH_TARGETS): push-%:
 	$(DOCKER) push "$(IMAGE):$(VERSION)-$(*)"
 
@@ -62,12 +68,47 @@ $(BUILD_TARGETS): build-%:
 		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
 		--build-arg PLUGIN_VERSION=$(VERSION) \
 		--build-arg BASE_DIST=$(DISTRIBUTION) \
-		--tag $(IMAGE):$(VERSION)-$(DISTRIBUTION) \
+		--tag $(IMAGE_TAG) \
 		--file docker/Dockerfile \
 			.
 
-# Define local and dockerized golang targets
+# Add multi-arch-builds using docker buildx
+BUILD_MULTI_ARCH_TARGETS := $(patsubst %,build-multi-arch-%,$(DISTRIBUTIONS))
+PUSH_MULTI_ARCH_TARGETS := $(patsubst %,push-multi-arch-%,$(DISTRIBUTIONS))
+RELEASE_MULTI_ARCH_TARGETS := $(patsubst %,release-multi-arch-%,$(DISTRIBUTIONS))
 
+MULTI_ARCH_TARGETS := $(BUILD_MULTI_ARCH_TARGETS) $(PUSH_MULTI_ARCH_TARGETS) $(RELEASE_MULTI_ARCH_TARGETS)
+.PHONY: $(MULTI_ARCH_TARGETS)
+
+BUILD_PLATFORM_OPTIONS := --platform=linux/amd64,linux/arm64
+BUILD_PULL_OPTIONS := --pull
+PUSH_ON_BUILD := false
+
+build-multi-arch-%: DISTRIBUTION = $(*)
+$(BUILD_MULTI_ARCH_TARGETS): build-multi-arch-%:
+	$(DOCKER) $(BUILDX) build \
+		$(BUILD_PLATFORM_OPTIONS) \
+		$(BUILD_PULL_OPTIONS) \
+		$(CACHE_OPTIONS) \
+		--output=type=image,push=$(PUSH_ON_BUILD) \
+		--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
+		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
+		--build-arg PLUGIN_VERSION=$(VERSION) \
+		--build-arg BASE_DIST=$(DISTRIBUTION) \
+		--tag $(OUT_IMAGE_TAG) \
+		--file docker/Dockerfile \
+			.
+
+push-multi-arch-%: PUSH_ON_BUILD := true
+$(PUSH_MULTI_ARCH_TARGETS): push-multi-arch-%: build-multi-arch-%
+
+release-multi-arch-%: DISTRIBUTION = $(*)
+$(RELEASE_MULTI_ARCH_TARGETS): release-multi-arch-%:
+	$(DOCKER) $(BUILDX) imagetools create \
+		-t $(OUT_IMAGE_TAG) \
+		$(IMAGE_TAG)
+
+# Define local and dockerized golang targets
 MODULE := github.com/NVIDIA/k8s-device-plugin
 
 BUILDIMAGE_TAG ?= golang$(GOLANG_VERSION)
