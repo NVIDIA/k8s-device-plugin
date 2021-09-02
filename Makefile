@@ -84,6 +84,9 @@ BUILD_PLATFORM_OPTIONS := --platform=linux/amd64,linux/arm64
 BUILD_PULL_OPTIONS := --pull
 PUSH_ON_BUILD := false
 
+# The build-multi-arch target uses docker buildx to produce a multi-arch image.
+# This forms the basis of the push-, and release-mulit-arch builds, with each
+# of these setting the output and cache options.
 build-multi-arch-%: DISTRIBUTION = $(*)
 $(BUILD_MULTI_ARCH_TARGETS): build-multi-arch-%:
 	$(DOCKER) $(BUILDX) build \
@@ -103,7 +106,7 @@ push-multi-arch-%: CACHE_OPTIONS = --cache-to=$(OUT_IMAGE_TAG)-cache
 push-multi-arch-%: PUSH_ON_BUILD := true
 $(PUSH_MULTI_ARCH_TARGETS): push-multi-arch-%: build-multi-arch-%
 
-release-multi-arch-%: CACHE_OPTIONS = --cache-from=$(IMAGE_TAG)-cache
+release-multi-arch-%: CACHE_OPTIONS = --cache-from=$(IMAGE_TAG)-cache --cache-to=type=local,dest=ype=tar,dest=.dummycache-$(VERSION)-$(*)
 release-multi-arch-%: PUSH_ON_BUILD := true
 release-multi-arch-%: DISTRIBUTION = $(*)
 $(RELEASE_MULTI_ARCH_TARGETS): release-multi-arch-%: build-multi-arch-%
