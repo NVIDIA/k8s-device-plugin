@@ -143,7 +143,6 @@ build:device-plugin:ubuntu20.04:
 .release:
   variables:
     DOCKER_CACHE_FROM: docker-build-cache
-    DOCKER_CACHE_TO: .dummy-cache
   stage: release
   before_script:
     # We ensure that the OUT_VERSION is set

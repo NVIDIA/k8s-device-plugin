@@ -47,11 +47,11 @@ OUT_VERSION ?= $(VERSION)
 OUT_IMAGE_TAG ?= $(OUT_IMAGE):$(OUT_VERSION)-$(DISTRIBUTION)
 
 ifneq ($(DOCKER_CACHE_TO),)
-CACHE_TO_OPTIONS := --cache-to=type=local,dest=$(DOCKER_CACHE_TO)
+CACHE_TO_OPTIONS = --cache-to=type=local,dest=$(DOCKER_CACHE_TO),mode=max
 endif
 
 ifneq ($(DOCKER_CACHE_FROM),)
-CACHE_FROM_OPTIONS := --cache-from=type=local,src=$(DOCKER_CACHE_FROM)
+CACHE_FROM_OPTIONS = --cache-from=type=local,src=$(DOCKER_CACHE_FROM)
 endif
 
 CACHE_OPTIONS := $(CACHE_FROM_OPTIONS) $(CACHE_TO_OPTIONS)
@@ -115,6 +115,7 @@ $(BUILD_MULTI_ARCH_TARGETS): build-multi-arch-%:
 push-multi-arch-%: PUSH_ON_BUILD := true
 $(PUSH_MULTI_ARCH_TARGETS): push-multi-arch-%: build-multi-arch-%
 
+release-multi-arch-%: BUILD_PULL_OPTIONS :=
 release-multi-arch-%: PUSH_ON_BUILD := true
 release-multi-arch-%: DISTRIBUTION = $(*)
 $(RELEASE_MULTI_ARCH_TARGETS): release-multi-arch-%: build-multi-arch-%
