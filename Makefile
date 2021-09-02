@@ -99,14 +99,14 @@ $(BUILD_MULTI_ARCH_TARGETS): build-multi-arch-%:
 		--file docker/Dockerfile \
 			.
 
+push-multi-arch-%: CACHE_OPTIONS = --cache-to=$(OUT_IMAGE_TAG)-cache
 push-multi-arch-%: PUSH_ON_BUILD := true
 $(PUSH_MULTI_ARCH_TARGETS): push-multi-arch-%: build-multi-arch-%
 
+release-multi-arch-%: CACHE_OPTIONS = --cache-from=$(IMAGE_TAG)-cache
+release-multi-arch-%: PUSH_ON_BUILD := true
 release-multi-arch-%: DISTRIBUTION = $(*)
-$(RELEASE_MULTI_ARCH_TARGETS): release-multi-arch-%:
-	$(DOCKER) $(BUILDX) imagetools create \
-		-t $(OUT_IMAGE_TAG) \
-		$(IMAGE_TAG)
+$(RELEASE_MULTI_ARCH_TARGETS): release-multi-arch-%: build-multi-arch-%
 
 # Define local and dockerized golang targets
 MODULE := github.com/NVIDIA/k8s-device-plugin
