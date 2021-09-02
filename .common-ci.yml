@@ -110,6 +110,7 @@ unit-tests:
   variables:
     REGISTRY: "${CI_REGISTRY_IMAGE}"
     VERSION: "${CI_COMMIT_SHORT_SHA}"
+    DOCKER_CACHE_TO: docker-build-cache
   before_script:
     - !reference [.buildx-setup, before_script]
 
@@ -120,6 +121,12 @@ unit-tests:
 
   script:
     - make push-multi-arch-${DIST}
+
+  artifacts:
+    when: always
+    paths:
+      - docker-build-cache/
+    expire_in: 3 hours
 
 .dist:ubuntu20.04:
   variables:
@@ -134,6 +141,9 @@ build:device-plugin:ubuntu20.04:
 # This is extended with the version to be deployed (e.g. the SHA or TAG) and the
 # target os.
 .release:
+  variables:
+    DOCKER_CACHE_FROM: docker-build-cache
+    DOCKER_CACHE_TO: .dummy-cache
   stage: release
   before_script:
     # We ensure that the OUT_VERSION is set
