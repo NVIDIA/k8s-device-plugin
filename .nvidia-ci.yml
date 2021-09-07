@@ -28,6 +28,7 @@ default:
     - cnt
     - container-dev
     - os/linux
+    - updated-runnner
 
 variables:
   DOCKER_DRIVER: overlay2
