@@ -46,7 +46,7 @@ variables:
     VERSION: "${CI_COMMIT_SHORT_SHA}"
     # Define both OUT_IMAGE and OUT_IMAGE_TAG to allow for these to be used when scanning the
     # "local" (tagged) image
-    OUT_IMAGE_TAG: "${CI_COMMIT_SHORT_SHA}-${TARGET}"
+    OUT_IMAGE_TAG: "${CI_COMMIT_SHORT_SHA}-${DIST}"
     OUT_IMAGE: "${IMAGE_NAME}"
   except:
     variables:
@@ -57,8 +57,8 @@ variables:
     - apk add --no-cache python3 python3-dev py3-pip py3-wheel libmagic
     - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
     # TODO: We should specify the architecture here and scan all architectures
-    - docker pull "${CI_REGISTRY_IMAGE}/${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}-${TARGET}"
-    - docker tag "${CI_REGISTRY_IMAGE}/${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}-${TARGET}" "${OUT_IMAGE}:${OUT_IMAGE_TAG}"
+    - docker pull "${CI_REGISTRY_IMAGE}/${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}-${DIST}"
+    - docker tag "${CI_REGISTRY_IMAGE}/${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}-${DIST}" "${OUT_IMAGE}:${OUT_IMAGE_TAG}"
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab-master.nvidia.com/sectooling/scanning/contamer.git
     - pip3 install -r contamer/requirements.txt
   script:
