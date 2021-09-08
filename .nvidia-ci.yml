@@ -23,12 +23,12 @@ include:
 
 default:
   tags:
-    - type/docker
-    - docker/privileged
     - cnt
     - container-dev
+    - docker/multi-arch
+    - docker/privileged
     - os/linux
-    - updated-runnner
+    - type/docker
 
 variables:
   DOCKER_DRIVER: overlay2
