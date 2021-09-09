@@ -20,9 +20,9 @@
 
 DOCKER   ?= docker
 BUILDX   ?= buildx
-ifeq ($(IMAGE),)
+ifeq ($(IMAGE_NAME),)
 REGISTRY ?= nvcr.io/nvidia
-IMAGE := $(REGISTRY)/k8s-device-plugin
+IMAGE_NAME := $(REGISTRY)/k8s-device-plugin
 endif
 VERSION  ?= v0.9.0
 
@@ -41,10 +41,14 @@ PUSH_TARGETS := $(patsubst %,push-%,$(DISTRIBUTIONS))
 
 all: $(BUILD_TARGETS)
 
-IMAGE_TAG ?= $(IMAGE):$(VERSION)-$(DISTRIBUTION)
-OUT_IMAGE ?= $(IMAGE)
-OUT_VERSION ?= $(VERSION)
-OUT_IMAGE_TAG ?= $(OUT_IMAGE):$(OUT_VERSION)-$(DISTRIBUTION)
+IMAGE_VERSION := $(VERSION)
+
+IMAGE_TAG ?= $(IMAGE_VERSION)-$(IMAGE_DISTRIBUTION)
+IMAGE ?= $(IMAGE_NAME):$(IMAGE_TAG)
+OUT_IMAGE_NAME ?= $(IMAGE_NAME)
+OUT_IMAGE_VERSION ?= $(IMAGE_VERSION)
+OUT_IMAGE_TAG ?= $(OUT_IMAGE_VERSION)-$(IMAGE_DISTRIBUTION)
+OUT_IMAGE ?= $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ifneq ($(DOCKER_CACHE_TO),)
 CACHE_TO_OPTIONS = --cache-to=type=local,dest=$(DOCKER_CACHE_TO),mode=max
@@ -57,28 +61,28 @@ endif
 CACHE_OPTIONS := $(CACHE_FROM_OPTIONS) $(CACHE_TO_OPTIONS)
 
 push: $(PUSH_TARGETS)
-push-%: DISTRIBUTION = $(*)
+push-%: IMAGE_DISTRIBUTION = $(*)
 $(PUSH_TARGETS): push-%:
-	$(DOCKER) push "$(IMAGE):$(VERSION)-$(*)"
+	$(DOCKER) push "$(IMAGE_NAME):$(IMAGE_VERSION)-$(*)"
 
 push-short:
-	$(DOCKER) tag "$(IMAGE):$(VERSION)-$(DEFAULT_DISTRIBUTION)" "$(IMAGE):$(VERSION)"
-	$(DOCKER) push "$(IMAGE):$(VERSION)"
+	$(DOCKER) tag "$(IMAGE_NAME):$(IMAGE_VERSION)-$(DEFAULT_DISTRIBUTION)" "$(IMAGE_NAME):$(IMAGE_VERSION)"
+	$(DOCKER) push "$(IMAGE_NAME):$(IMAGE_VERSION)"
 
 push-latest:
-	$(DOCKER) tag "$(IMAGE):$(VERSION)-$(DEFAULT_DISTRIBUTION)" "$(IMAGE):latest"
-	$(DOCKER) push "$(IMAGE):latest"
+	$(DOCKER) tag "$(IMAGE_NAME):$(IMAGE_VERSION)-$(DEFAULT_DISTRIBUTION)" "$(IMAGE_NAME):latest"
+	$(DOCKER) push "$(IMAGE_NAME):latest"
 
 $(DISTRIBUTIONS): %: build-%
 
-build-%: DISTRIBUTION = $(*)
+build-%: IMAGE_DISTRIBUTION = $(*)
 $(BUILD_TARGETS): build-%:
 	$(DOCKER) build --pull \
 		--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
 		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
 		--build-arg PLUGIN_VERSION=$(VERSION) \
-		--build-arg BASE_DIST=$(DISTRIBUTION) \
-		--tag $(IMAGE_TAG) \
+		--build-arg BASE_DIST=$(IMAGE_DISTRIBUTION) \
+		--tag $(IMAGE) \
 		--file docker/Dockerfile \
 			.
 
@@ -97,7 +101,7 @@ PUSH_ON_BUILD := false
 # The build-multi-arch target uses docker buildx to produce a multi-arch image.
 # This forms the basis of the push-, and release-mulit-arch builds, with each
 # of these setting the output and cache options.
-build-multi-arch-%: DISTRIBUTION = $(*)
+build-multi-arch-%: IMAGE_DISTRIBUTION = $(*)
 $(BUILD_MULTI_ARCH_TARGETS): build-multi-arch-%:
 	$(DOCKER) $(BUILDX) build \
 		$(BUILD_PLATFORM_OPTIONS) \
@@ -106,9 +110,9 @@ $(BUILD_MULTI_ARCH_TARGETS): build-multi-arch-%:
 		--output=type=image,push=$(PUSH_ON_BUILD) \
 		--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
 		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
-		--build-arg PLUGIN_VERSION=$(VERSION) \
-		--build-arg BASE_DIST=$(DISTRIBUTION) \
-		--tag $(OUT_IMAGE_TAG) \
+		--build-arg PLUGIN_VERSION=$(IMAGE_VERSION) \
+		--build-arg BASE_DIST=$(IMAGE_DISTRIBUTION) \
+		--tag $(OUT_IMAGE) \
 		--file docker/Dockerfile \
 			.
 
@@ -117,14 +121,14 @@ $(PUSH_MULTI_ARCH_TARGETS): push-multi-arch-%: build-multi-arch-%
 
 release-multi-arch-%: BUILD_PULL_OPTIONS :=
 release-multi-arch-%: PUSH_ON_BUILD := true
-release-multi-arch-%: DISTRIBUTION = $(*)
+release-multi-arch-%: IMAGE_DISTRIBUTION = $(*)
 $(RELEASE_MULTI_ARCH_TARGETS): release-multi-arch-%: build-multi-arch-%
 
 # Define local and dockerized golang targets
 MODULE := github.com/NVIDIA/k8s-device-plugin
 
 BUILDIMAGE_TAG ?= golang$(GOLANG_VERSION)
-BUILDIMAGE ?= $(IMAGE)-build:$(BUILDIMAGE_TAG)
+BUILDIMAGE ?= $(IMAGE_NAME)-build:$(BUILDIMAGE_TAG)
 
 CHECK_TARGETS := assert-fmt vet lint ineffassign misspell
 MAKE_TARGETS := fmt build check coverage $(CHECK_TARGETS)

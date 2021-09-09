@@ -42,12 +42,10 @@ variables:
 .scan:
   stage: scan
   variables:
-    REGISTRY: "${CI_REGISTRY_IMAGE}"
-    VERSION: "${CI_COMMIT_SHORT_SHA}"
+    IMAGE: "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}-${DIST}"
     # Define both OUT_IMAGE and OUT_IMAGE_TAG to allow for these to be used when scanning the
     # "local" (tagged) image
-    OUT_IMAGE_TAG: "${CI_COMMIT_SHORT_SHA}-${DIST}"
-    OUT_IMAGE: "${IMAGE_NAME}"
+    OUT_IMAGE: "k8s-device-plugin:${CI_COMMIT_SHORT_SHA}-${DIST}"
   except:
     variables:
     - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
@@ -57,13 +55,13 @@ variables:
     - apk add --no-cache python3 python3-dev py3-pip py3-wheel libmagic
     - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
     # TODO: We should specify the architecture here and scan all architectures
-    - docker pull "${CI_REGISTRY_IMAGE}/${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}-${DIST}"
-    - docker tag "${CI_REGISTRY_IMAGE}/${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}-${DIST}" "${OUT_IMAGE}:${OUT_IMAGE_TAG}"
+    - docker pull "${IMAGE}"
+    - docker tag "${IMAGE}" "${OUT_IMAGE}"
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab-master.nvidia.com/sectooling/scanning/contamer.git
     - pip3 install -r contamer/requirements.txt
   script:
     - cd contamer
-    - python3 contamer.py -ls --fail-on-non-os ${CONTAMER_SUPPRESS_VULNS:+--suppress-vulns ${CONTAMER_SUPPRESS_VULNS}} -- "${OUT_IMAGE}:${OUT_IMAGE_TAG}"
+    - python3 contamer.py -ls --fail-on-non-os ${CONTAMER_SUPPRESS_VULNS:+--suppress-vulns ${CONTAMER_SUPPRESS_VULNS}} -- "${OUT_IMAGE}"
 
 scan:device-plugin:ubuntu20.04:
   extends:
@@ -78,7 +76,8 @@ scan:device-plugin:ubuntu20.04:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
     OUT_REGISTRY: "${NGC_REGISTRY}"
-    OUT_IMAGE: "${NGC_REGISTRY_IMAGE}"
+
+    OUT_IMAGE_NAME: "${NGC_REGISTRY_IMAGE}"
 
     DOCKER: "docker echo"
 
@@ -89,7 +88,8 @@ scan:device-plugin:ubuntu20.04:
     OUT_REGISTRY_USER: "${REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${REGISTRY_TOKEN}"
     OUT_REGISTRY: "${DOCKERHUB_REGISTRY}"
-    OUT_IMAGE: "${DOCKERHUB_REGISTRY_IMAGE}"
+
+    OUT_IMAGE_NAME: "${DOCKERHUB_REGISTRY_IMAGE}"
 
     DOCKER: "docker echo"
 
