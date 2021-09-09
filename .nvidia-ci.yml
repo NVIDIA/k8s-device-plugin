@@ -43,9 +43,8 @@ variables:
   stage: scan
   variables:
     IMAGE: "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}-${DIST}"
-    # Define both OUT_IMAGE and OUT_IMAGE_TAG to allow for these to be used when scanning the
-    # "local" (tagged) image
-    OUT_IMAGE: "k8s-device-plugin:${CI_COMMIT_SHORT_SHA}-${DIST}"
+    # SCAN_IMAGE must be a local image
+    SCAN_IMAGE: "k8s-device-plugin:${CI_COMMIT_SHORT_SHA}-${DIST}"
   except:
     variables:
     - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
@@ -56,12 +55,12 @@ variables:
     - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
     # TODO: We should specify the architecture here and scan all architectures
     - docker pull "${IMAGE}"
-    - docker tag "${IMAGE}" "${OUT_IMAGE}"
+    - docker tag "${IMAGE}" "${SCAN_IMAGE}"
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab-master.nvidia.com/sectooling/scanning/contamer.git
     - pip3 install -r contamer/requirements.txt
   script:
     - cd contamer
-    - python3 contamer.py -ls --fail-on-non-os ${CONTAMER_SUPPRESS_VULNS:+--suppress-vulns ${CONTAMER_SUPPRESS_VULNS}} -- "${OUT_IMAGE}"
+    - python3 contamer.py -ls --fail-on-non-os ${CONTAMER_SUPPRESS_VULNS:+--suppress-vulns ${CONTAMER_SUPPRESS_VULNS}} -- "${SCAN_IMAGE}"
 
 scan:device-plugin:ubuntu20.04:
   extends:
