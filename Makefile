@@ -69,10 +69,6 @@ push-short:
 	$(DOCKER) tag "$(IMAGE_NAME):$(IMAGE_VERSION)-$(DEFAULT_DISTRIBUTION)" "$(IMAGE_NAME):$(IMAGE_VERSION)"
 	$(DOCKER) push "$(IMAGE_NAME):$(IMAGE_VERSION)"
 
-push-latest:
-	$(DOCKER) tag "$(IMAGE_NAME):$(IMAGE_VERSION)-$(DEFAULT_DISTRIBUTION)" "$(IMAGE_NAME):latest"
-	$(DOCKER) push "$(IMAGE_NAME):latest"
-
 $(DISTRIBUTIONS): %: build-%
 
 build-%: IMAGE_DISTRIBUTION = $(*)
