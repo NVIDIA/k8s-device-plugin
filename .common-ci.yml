@@ -111,7 +111,7 @@ unit-tests:
   stage: build
   variables:
     VERSION: "${CI_COMMIT_SHORT_SHA}"
-    DOCKER_CACHE_TO: docker-build-cache
+    BUILDX_CACHE_TO: docker-build-cache
   before_script:
     - !reference [.buildx-setup, before_script]
 
@@ -146,7 +146,7 @@ build:device-plugin:ubuntu20.04:
     # Define the source image for the release
     VERSION: "${CI_COMMIT_SHORT_SHA}"
 
-    DOCKER_CACHE_FROM: docker-build-cache
+    BUILDX_CACHE_FROM: docker-build-cache
   stage: release
   before_script:
     # We ensure that the OUT_IMAGE_VERSION is set

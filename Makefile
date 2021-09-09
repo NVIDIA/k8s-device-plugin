@@ -50,15 +50,15 @@ OUT_IMAGE_VERSION ?= $(IMAGE_VERSION)
 OUT_IMAGE_TAG ?= $(OUT_IMAGE_VERSION)-$(IMAGE_DISTRIBUTION)
 OUT_IMAGE ?= $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
-ifneq ($(DOCKER_CACHE_TO),)
-CACHE_TO_OPTIONS = --cache-to=type=local,dest=$(DOCKER_CACHE_TO),mode=max
+ifneq ($(BUILDX_CACHE_TO),)
+CACHE_TO_OPTIONS = --cache-to=type=local,dest=$(BUILDX_CACHE_TO),mode=max
 endif
 
-ifneq ($(DOCKER_CACHE_FROM),)
-CACHE_FROM_OPTIONS = --cache-from=type=local,src=$(DOCKER_CACHE_FROM)
+ifneq ($(BUILDX_CACHE_FROM),)
+CACHE_FROM_OPTIONS = --cache-from=type=local,src=$(BUILDX_CACHE_FROM)
 endif
 
-CACHE_OPTIONS := $(CACHE_FROM_OPTIONS) $(CACHE_TO_OPTIONS)
+BUILDX_CACHE_OPTIONS := $(CACHE_FROM_OPTIONS) $(CACHE_TO_OPTIONS)
 
 push: $(PUSH_TARGETS)
 push-%: IMAGE_DISTRIBUTION = $(*)
@@ -94,9 +94,9 @@ RELEASE_MULTI_ARCH_TARGETS := $(patsubst %,release-multi-arch-%,$(DISTRIBUTIONS)
 MULTI_ARCH_TARGETS := $(BUILD_MULTI_ARCH_TARGETS) $(PUSH_MULTI_ARCH_TARGETS) $(RELEASE_MULTI_ARCH_TARGETS)
 .PHONY: $(MULTI_ARCH_TARGETS)
 
-BUILD_PLATFORM_OPTIONS := --platform=linux/amd64,linux/arm64
-BUILD_PULL_OPTIONS := --pull
-PUSH_ON_BUILD := false
+BUILDX_PLATFORM_OPTIONS := --platform=linux/amd64,linux/arm64
+BUILDX_PULL_OPTIONS := --pull
+BUILDX_PUSH_ON_BUILD := false
 
 # The build-multi-arch target uses docker buildx to produce a multi-arch image.
 # This forms the basis of the push-, and release-mulit-arch builds, with each
@@ -104,10 +104,10 @@ PUSH_ON_BUILD := false
 build-multi-arch-%: IMAGE_DISTRIBUTION = $(*)
 $(BUILD_MULTI_ARCH_TARGETS): build-multi-arch-%:
 	$(DOCKER) $(BUILDX) build \
-		$(BUILD_PLATFORM_OPTIONS) \
-		$(BUILD_PULL_OPTIONS) \
-		$(CACHE_OPTIONS) \
-		--output=type=image,push=$(PUSH_ON_BUILD) \
+		$(BUILDX_PLATFORM_OPTIONS) \
+		$(BUILDX_PULL_OPTIONS) \
+		$(BUILDX_CACHE_OPTIONS) \
+		--output=type=image,push=$(BUILDX_PUSH_ON_BUILD) \
 		--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
 		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
 		--build-arg PLUGIN_VERSION=$(IMAGE_VERSION) \
@@ -116,11 +116,11 @@ $(BUILD_MULTI_ARCH_TARGETS): build-multi-arch-%:
 		--file docker/Dockerfile \
 			.
 
-push-multi-arch-%: PUSH_ON_BUILD := true
+push-multi-arch-%: BUILDX_PUSH_ON_BUILD := true
 $(PUSH_MULTI_ARCH_TARGETS): push-multi-arch-%: build-multi-arch-%
 
-release-multi-arch-%: BUILD_PULL_OPTIONS :=
-release-multi-arch-%: PUSH_ON_BUILD := true
+release-multi-arch-%: BUILDX_PULL_OPTIONS :=
+release-multi-arch-%: BUILDX_PUSH_ON_BUILD := true
 release-multi-arch-%: IMAGE_DISTRIBUTION = $(*)
 $(RELEASE_MULTI_ARCH_TARGETS): release-multi-arch-%: build-multi-arch-%
 
