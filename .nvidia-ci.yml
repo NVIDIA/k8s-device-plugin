@@ -35,7 +35,7 @@ variables:
   DOCKER_TLS_CERTDIR: "/certs"
   # Release "devel"-tagged images off the master branch
   RELEASE_DEVEL_BRANCH: "master"
-  RELEASE_DEVEL_TAG: "devel"
+  DEVEL_RELEASE_IMAGE_VERSION: "devel"
 
 # The .scan step forms the base of the image scan operation performed before releasing
 # images.

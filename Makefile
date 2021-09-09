@@ -47,8 +47,8 @@ IMAGE_TAG ?= $(IMAGE_VERSION)-$(IMAGE_DISTRIBUTION)
 IMAGE ?= $(IMAGE_NAME):$(IMAGE_TAG)
 OUT_IMAGE_NAME ?= $(IMAGE_NAME)
 OUT_IMAGE_VERSION ?= $(IMAGE_VERSION)
-OUT_IMAGE_TAG ?= $(OUT_IMAGE_VERSION)-$(IMAGE_DISTRIBUTION)
-OUT_IMAGE ?= $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
+OUT_IMAGE_TAG = $(OUT_IMAGE_VERSION)-$(IMAGE_DISTRIBUTION)
+OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ifneq ($(BUILDX_CACHE_TO),)
 CACHE_TO_OPTIONS = --cache-to=type=local,dest=$(BUILDX_CACHE_TO),mode=max
@@ -99,7 +99,7 @@ BUILDX_PULL_OPTIONS := --pull
 BUILDX_PUSH_ON_BUILD := false
 
 # The build-multi-arch target uses docker buildx to produce a multi-arch image.
-# This forms the basis of the push-, and release-mulit-arch builds, with each
+# This forms the basis of the push-, and release-multi-arch builds, with each
 # of these setting the output and cache options.
 build-multi-arch-%: IMAGE_DISTRIBUTION = $(*)
 $(BUILD_MULTI_ARCH_TARGETS): build-multi-arch-%:
@@ -123,6 +123,20 @@ release-multi-arch-%: BUILDX_PULL_OPTIONS :=
 release-multi-arch-%: BUILDX_PUSH_ON_BUILD := true
 release-multi-arch-%: IMAGE_DISTRIBUTION = $(*)
 $(RELEASE_MULTI_ARCH_TARGETS): release-multi-arch-%: build-multi-arch-%
+
+# For the default release target, we also push a short tag equal to the version.
+# We skip this for the development release
+DEVEL_RELEASE_IMAGE_VERSION ?= devel
+ifneq ($(strip $(OUT_IMAGE_VERSION)),$(DEVEL_RELEASE_IMAGE_VERSION))
+release-multi-arch-$(DEFAULT_PUSH_TARGET): release-multi-arch-with-version-tag
+endif
+.PHONY: release-multi-arch-with-version-tag
+
+# We require that the build be completed first
+release-multi-arch-with-version-tag: | build-multi-arch-$(DEFAULT_PUSH_TARGET)
+	$(DOCKER) $(BUILDX) imagetools create \
+		--tag "$(OUT_IMAGE):$(OUT_IMAGE_VERSION)-$(DEFAULT_PUSH_TARGET)" \
+		"$(OUT_IMAGE):$(OUT_IMAGE_VERSION)"
 
 # Define local and dockerized golang targets
 MODULE := github.com/NVIDIA/k8s-device-plugin
