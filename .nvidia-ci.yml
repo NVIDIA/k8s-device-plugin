@@ -18,140 +18,86 @@
 ## DOCKERHUB_REGISTRY_IMAGE
 ##
 
+include:
+  - .common-ci.yml
+
 default:
-  image: docker:stable
-  services:
-    - docker:stable-dind
   tags:
-    - type/docker
-    - docker/privileged
     - cnt
     - container-dev
+    - docker/multi-arch
+    - docker/privileged
     - os/linux
+    - type/docker
 
 variables:
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "/certs"
+  # Release "devel"-tagged images off the master branch
+  RELEASE_DEVEL_BRANCH: "master"
+  DEVEL_RELEASE_IMAGE_VERSION: "devel"
 
-stages:
-  - build
-  - test
-  - scan
-  - deploy
-  - release
-
-.builddep_setup: &builddep_setup
-  - apk add --no-cache bash findutils libmagic curl make git
-
-.testdep_setup: &testdep_setup
-  - apk add --no-cache bash make perl
-
-.python_setup: &python_setup
-  - apk add --no-cache python3 python3-dev py3-pip py3-wheel
-
-.dockerlogin_setup: &dockerlogin_setup
-  - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-
-# tags pulled images with $CI_PROJECT_NAME to work-around issue with contamer's support for local scans.
-.pull_images: &pull_images
-  - docker pull ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}-ubuntu16.04
-  - docker pull ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}-centos7
-  - docker pull ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}-ubi8
-  - docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}-ubuntu16.04 ${CI_PROJECT_NAME}:${CI_COMMIT_SHA}-ubuntu16.04
-  - docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}-centos7 ${CI_PROJECT_NAME}:${CI_COMMIT_SHA}-centos7
-  - docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}-ubi8 ${CI_PROJECT_NAME}:${CI_COMMIT_SHA}-ubi8
-
-.ngc_release_login: &ngc_release_login
-  - 'docker login -u "${NGC_REGISTRY_USER}" -p "${NGC_REGISTRY_TOKEN}" "${NGC_REGISTRY}"'
-
-.dockerhub_login: &dockerhub_login
-  - 'docker login -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}"'
-
-.build_action: &build_action
-  - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" all
-  - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" push
-
-.test_action: &test_action
-  - "true"
-
-.deploy_action: &deploy_action
-  - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" push-short
-  - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_SHA}" push-latest
-
-# contamer does not support local scans on images that contain a port number
-.scan_action: &scan_action
-  - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab-master.nvidia.com/sectooling/scanning/contamer.git
-  - cd contamer
-  - pip3 install -r requirements.txt
-  - python3 contamer.py -ls --fail-on-non-os ${CONTAMER_SUPPRESS_VULNS:+--suppress-vulns ${CONTAMER_SUPPRESS_VULNS}} -- ${CI_PROJECT_NAME}:${CI_COMMIT_SHA}-ubuntu16.04
-  - python3 contamer.py -ls --fail-on-non-os ${CONTAMER_SUPPRESS_VULNS:+--suppress-vulns ${CONTAMER_SUPPRESS_VULNS}} -- ${CI_PROJECT_NAME}:${CI_COMMIT_SHA}-centos7
-  - python3 contamer.py -ls --fail-on-non-os ${CONTAMER_SUPPRESS_VULNS:+--suppress-vulns ${CONTAMER_SUPPRESS_VULNS}} -- ${CI_PROJECT_NAME}:${CI_COMMIT_SHA}-ubi8
-
-.release_action: &release_action
-  - make IMAGE="${NGC_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" all
-  - make IMAGE="${NGC_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push
-  - make IMAGE="${NGC_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push-short
-  - make IMAGE="${NGC_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push-latest
-
-.dockerhub_release_action: &dockerhub_release_action
-  - make IMAGE="${DOCKERHUB_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" all
-  - make IMAGE="${DOCKERHUB_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push
-  - make IMAGE="${DOCKERHUB_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push-short
-  - make IMAGE="${DOCKERHUB_REGISTRY_IMAGE}" VERSION="${CI_COMMIT_TAG}" push-latest
-
-build:
-  stage: build
-  script:
-    - *builddep_setup
-    - *dockerlogin_setup
-    - *build_action
-
-test:
-  stage: test
-  except:
-    variables:
-    - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]tests?\]/i
-    - $SKIP_TESTS
-  script:
-    - *testdep_setup
-    - *test_action
-
-scan:
+# The .scan step forms the base of the image scan operation performed before releasing
+# images.
+.scan:
   stage: scan
+  variables:
+    IMAGE: "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}-${DIST}"
+    # SCAN_IMAGE must be a local image
+    SCAN_IMAGE: "k8s-device-plugin:${CI_COMMIT_SHORT_SHA}-${DIST}"
   except:
     variables:
     - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
     - $SKIP_SCANS
+  before_script:
+    - apk add --no-cache git
+    - apk add --no-cache python3 python3-dev py3-pip py3-wheel libmagic
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    # TODO: We should specify the architecture here and scan all architectures
+    - docker pull "${IMAGE}"
+    - docker tag "${IMAGE}" "${SCAN_IMAGE}"
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab-master.nvidia.com/sectooling/scanning/contamer.git
+    - pip3 install -r contamer/requirements.txt
   script:
-    - *builddep_setup
-    - *python_setup
-    - *dockerlogin_setup
-    - *pull_images
-    - *scan_action
+    - cd contamer
+    - python3 contamer.py -ls --fail-on-non-os ${CONTAMER_SUPPRESS_VULNS:+--suppress-vulns ${CONTAMER_SUPPRESS_VULNS}} -- "${SCAN_IMAGE}"
 
-deploy:
-  stage: deploy
-  script:
-    - *builddep_setup
-    - *dockerlogin_setup
-    - *pull_images
-    - *deploy_action
+scan:device-plugin:ubuntu20.04:
+  extends:
+    - .scan
+    - .dist:ubuntu20.04
 
-release:ngc:
-  stage: release
-  only:
-    - tags
-  script:
-    - 'echo Commit Tag: $CI_COMMIT_TAG ; [[ -n "$CI_COMMIT_TAG" ]] || exit 1'
-    - *builddep_setup
-    - *ngc_release_login
-    - *release_action
+# Define the external release steps for NGC and Dockerhub
+.release:ngc:
+  extends:
+    - .release:external
+  variables:
+    OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
+    OUT_REGISTRY: "${NGC_REGISTRY}"
 
-release:dockerhub:
-  stage: release
-  only:
-    - tags
-  script:
-    - *builddep_setup
-    - *dockerhub_login
-    - *dockerhub_release_action
+    OUT_IMAGE_NAME: "${NGC_REGISTRY_IMAGE}"
+
+    DOCKER: "docker echo"
+
+.release:dockerhub:
+  extends:
+    - .release:external
+  variables:
+    OUT_REGISTRY_USER: "${REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${REGISTRY_TOKEN}"
+    OUT_REGISTRY: "${DOCKERHUB_REGISTRY}"
+
+    OUT_IMAGE_NAME: "${DOCKERHUB_REGISTRY_IMAGE}"
+
+    DOCKER: "docker echo"
+
+release:ngc:device-plugin:ubuntu20.04:
+  extends:
+    - .release:ngc
+    - .dist:ubuntu20.04
+
+release:dockerhub:device-plugin:ubuntu20.04:
+  extends:
+    - .release:dockerhub
+    - .dist:ubuntu20.04
