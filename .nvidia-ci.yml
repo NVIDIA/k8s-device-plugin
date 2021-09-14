@@ -36,6 +36,8 @@ variables:
   # Release "devel"-tagged images off the master branch
   RELEASE_DEVEL_BRANCH: "master"
   DEVEL_RELEASE_IMAGE_VERSION: "devel"
+  # On the multi-arch builder we don't need the qemu setup.
+  SKIP_QEMU_SETUP: "1"
 
 # The .scan step forms the base of the image scan operation performed before releasing
 # images.
@@ -78,8 +80,6 @@ scan:device-plugin:ubuntu20.04:
 
     OUT_IMAGE_NAME: "${NGC_REGISTRY_IMAGE}"
 
-    DOCKER: "docker echo"
-
 .release:dockerhub:
   extends:
     - .release:external
@@ -89,8 +89,6 @@ scan:device-plugin:ubuntu20.04:
     OUT_REGISTRY: "${DOCKERHUB_REGISTRY}"
 
     OUT_IMAGE_NAME: "${DOCKERHUB_REGISTRY_IMAGE}"
-
-    DOCKER: "docker echo"
 
 release:ngc:device-plugin:ubuntu20.04:
   extends:
