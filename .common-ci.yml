@@ -103,7 +103,7 @@ unit-tests:
 
     -  docker buildx create --use
 
-    -  docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+    -  '[[ -n "${SKIP_QEMU_SETUP}" ]] || docker run --rm --privileged multiarch/qemu-user-static --reset -p yes'
 
 # The .build step forms the base of the image builds with each variant
 # defined as a build-${VARIANT} step.
