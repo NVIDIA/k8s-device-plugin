@@ -78,8 +78,6 @@ scan:device-plugin:ubuntu20.04:
 
     OUT_IMAGE_NAME: "${NGC_REGISTRY_IMAGE}"
 
-    DOCKER: "docker echo"
-
 .release:dockerhub:
   extends:
     - .release:external
@@ -89,8 +87,6 @@ scan:device-plugin:ubuntu20.04:
     OUT_REGISTRY: "${DOCKERHUB_REGISTRY}"
 
     OUT_IMAGE_NAME: "${DOCKERHUB_REGISTRY_IMAGE}"
-
-    DOCKER: "docker echo"
 
 release:ngc:device-plugin:ubuntu20.04:
   extends:
