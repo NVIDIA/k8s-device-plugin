@@ -69,6 +69,11 @@ scan:device-plugin:ubuntu20.04:
     - .scan
     - .dist:ubuntu20.04
 
+scan:device-plugin:ubi8:
+  extends:
+    - .scan
+    - .dist:ubi8
+
 # Define the external release steps for NGC and Dockerhub
 .release:ngc:
   extends:
@@ -99,3 +104,13 @@ release:dockerhub:device-plugin:ubuntu20.04:
   extends:
     - .release:dockerhub
     - .dist:ubuntu20.04
+
+release:ngc:device-plugin:ubi8:
+  extends:
+    - .release:ngc
+    - .dist:ubi8
+
+release:dockerhub:device-plugin:ubi8:
+  extends:
+    - .release:dockerhub
+    - .dist:ubi8

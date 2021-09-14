@@ -133,10 +133,19 @@ unit-tests:
   variables:
     DIST: ubuntu20.04
 
+.dist:ubi8:
+  variables:
+    DIST: ubi8
+
 build:device-plugin:ubuntu20.04:
   extends:
     - .build
     - .dist:ubuntu20.04
+
+build:device-plugin:ubi8:
+  extends:
+    - .build
+    - .dist:ubi8
 
 # .release forms the base of the deployment jobs which push images to the CI registry.
 # This is extended with the version to be deployed (e.g. the SHA or TAG) and the
@@ -192,3 +201,8 @@ release:staging:device-plugin:ubuntu20.04:
   extends:
     - .release:staging
     - .dist:ubuntu20.04
+
+release:staging:device-plugin:ubi8:
+  extends:
+    - .release:staging
+    - .dist:ubi8
