@@ -127,7 +127,7 @@ unit-tests:
     when: always
     paths:
       - docker-build-cache/
-    expire_in: 3 hours
+    expire_in: 1 day
 
 .dist:ubuntu20.04:
   variables:
