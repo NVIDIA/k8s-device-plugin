@@ -101,7 +101,7 @@ unit-tests:
     -  curl -sSLo ~/.docker/cli-plugins/docker-buildx "https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64"
     -  chmod a+x ~/.docker/cli-plugins/docker-buildx
 
-    -  docker buildx create --use --platform=linux/amd64,linux/arm64 --name k8s-device-plugin-build
+    -  docker buildx create --use --platform=linux/amd64,linux/arm64 --name k8s-device-plugin-build-${DIST}
 
     -  '[[ -n "${SKIP_QEMU_SETUP}" ]] || docker run --rm --privileged multiarch/qemu-user-static --reset -p yes'
 
