@@ -28,14 +28,17 @@ import (
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
-var migStrategyFlag string
-var failOnInitErrorFlag bool
-var passDeviceSpecsFlag bool
-var deviceListStrategyFlag string
-var deviceIDStrategyFlag string
-var nvidiaDriverRootFlag string
+var (
+	migStrategyFlag        string
+	failOnInitErrorFlag    bool
+	passDeviceSpecsFlag    bool
+	deviceListStrategyFlag string
+	deviceIDStrategyFlag   string
+	nvidiaDriverRootFlag   string
+	ignoreXIDSliceFlag     []int64
 
-var version string // This should be set at build time to indicate the actual version
+	version string // This should be set at build time to indicate the actual version
+)
 
 func main() {
 	c := cli.NewApp()
@@ -86,6 +89,16 @@ func main() {
 			Destination: &nvidiaDriverRootFlag,
 			EnvVars:     []string{"NVIDIA_DRIVER_ROOT"},
 		},
+		&cli.Int64SliceFlag{
+			Name:    "ignore-xid",
+			Value:   cli.NewInt64Slice(31, 43, 45),
+			Usage:   "ignore these XIDs from affecting healthcheck as they are not hardware errors",
+			EnvVars: []string{"IGNORE_XID"},
+		},
+	}
+	c.Action = func(ctx *cli.Context) error {
+		ignoreXIDSliceFlag = ctx.Int64Slice("ignore-xid")
+		return nil
 	}
 
 	err := c.Run(os.Args)

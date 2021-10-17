@@ -202,11 +202,12 @@ func checkHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *D
 			continue
 		}
 
-		// FIXME: formalize the full list and document it.
-		// http://docs.nvidia.com/deploy/xid-errors/index.html#topic_4
-		// Application errors: the GPU should still be healthy
-		if e.Edata == 31 || e.Edata == 43 || e.Edata == 45 {
-			continue
+		// allowing the end user to supply which XIDs to ignore as application error as
+		// http://docs.nvidia.com/deploy/xid-errors/index.html#topic_4 is not alway kept up to date
+		for _, v := range ignoreXIDSliceFlag {
+			if e.Edata == uint64(v) {
+				continue
+			}
 		}
 
 		if e.UUID == nil || len(*e.UUID) == 0 {
