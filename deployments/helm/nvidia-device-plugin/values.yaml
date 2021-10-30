@@ -10,6 +10,9 @@ nameOverride: ""
 fullnameOverride: ""
 selectorLabelsOverride: {}
 
+# labels to add, but not override.
+additionalLabels: {}
+
 namespace: kube-system
 
 imagePullSecrets: []

@@ -49,6 +49,9 @@ Template labels
 {{- define "nvidia-device-plugin.templateLabels" -}}
 app.kubernetes.io/name: {{ include "nvidia-device-plugin.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if .Values.additionalLabels }}
+{{ toYaml .Values.additionalLabels }}
+{{- end }}
 {{- if .Values.selectorLabelsOverride }}
 {{ toYaml .Values.selectorLabelsOverride }}
 {{- end }}
