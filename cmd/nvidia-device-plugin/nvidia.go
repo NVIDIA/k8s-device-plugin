@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
@@ -28,6 +29,10 @@ import (
 )
 
 const (
+	// envDisableHealthChecks defines the environment variable that is checked to determine whether healthchecks
+	// should be disabled. If this envvar is set to "all" or contains the string "xids", healthchecks are
+	// disabled entirely. If set, the envvar is treated as a comma-separated list of Xids to ignore. Note that
+	// this is in addition to the Application errors that are already ignored.
 	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
 	allHealthChecks        = "xids"
 )
@@ -188,6 +193,10 @@ func checkHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *D
 		skippedXids[id] = true
 	}
 
+	for _, additionalXid := range getAdditionalXids(disableHealthChecks) {
+		skippedXids[additionalXid] = true
+	}
+
 	eventSet := nvml.NewEventSet()
 	defer nvml.DeleteEventSet(eventSet)
 
@@ -247,4 +256,29 @@ func checkHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *D
 			}
 		}
 	}
+}
+
+// getAdditionalXids returns a list of additional Xids to skip from the specified string.
+// The input is treaded as a comma-separated string and all valid uint64 values are considered as Xid values. Invalid values
+// are ignored.
+func getAdditionalXids(input string) []uint64 {
+	if input == "" {
+		return nil
+	}
+
+	var additionalXids []uint64
+	for _, additionalXid := range strings.Split(input, ",") {
+		trimmed := strings.TrimSpace(additionalXid)
+		if trimmed == "" {
+			continue
+		}
+		xid, err := strconv.ParseUint(trimmed, 10, 64)
+		if err != nil {
+			log.Printf("Ignoring malformed Xid value %v: %v", trimmed, err)
+			continue
+		}
+		additionalXids = append(additionalXids, xid)
+	}
+
+	return additionalXids
 }
