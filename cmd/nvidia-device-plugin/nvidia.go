@@ -176,6 +176,7 @@ func checkHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *D
 	// http://docs.nvidia.com/deploy/xid-errors/index.html#topic_4
 	// Application errors: the GPU should still be healthy
 	applicationErrorXids := []uint64{
+		13, // Graphics Engine Exception
 		31, // GPU memory page fault
 		43, // GPU stopped processing
 		45, // Preemptive cleanup, due to previous errors
