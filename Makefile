@@ -141,7 +141,7 @@ BUILDIMAGE_TAG ?= golang$(GOLANG_VERSION)
 BUILDIMAGE ?= $(IMAGE_NAME)-build:$(BUILDIMAGE_TAG)
 
 CHECK_TARGETS := assert-fmt vet lint ineffassign misspell
-MAKE_TARGETS := fmt build check coverage $(CHECK_TARGETS)
+MAKE_TARGETS := fmt build test check coverage $(CHECK_TARGETS)
 DOCKER_TARGETS := $(patsubst %,docker-%, $(MAKE_TARGETS))
 .PHONY: $(MAKE_TARGETS) $(DOCKER_TARGETS)
 
@@ -217,9 +217,10 @@ build:
 	go build $(MODULE)/...
 
 COVERAGE_FILE := coverage.out
-unit-test: build
+unit-test: test
+test: build
 	go test -v -coverprofile=$(COVERAGE_FILE) $(MODULE)/...
 
-coverage: unit-test
+coverage: test
 	cat $(COVERAGE_FILE) | grep -v "_mock.go" > $(COVERAGE_FILE).no-mocks
 	go tool cover -func=$(COVERAGE_FILE).no-mocks
