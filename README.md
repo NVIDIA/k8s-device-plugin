@@ -275,7 +275,7 @@ Using the default values for the flags:
 ```shell
 $ helm install \
     --generate-name \
-    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.9.0.tgz
+    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.9.0.tgz
 ```
 
 Enabling compatibility with the `CPUManager` and running with a request for
@@ -286,7 +286,7 @@ $ helm install \
     --set compatWithCPUManager=true \
     --set resources.requests.cpu=100m \
     --set resources.limits.memory=512Mi \
-    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.9.0.tgz
+    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.9.0.tgz
 ```
 
 Use the legacy Daemonset API (only available on Kubernetes < `v1.16`):
@@ -294,7 +294,7 @@ Use the legacy Daemonset API (only available on Kubernetes < `v1.16`):
 $ helm install \
     --generate-name \
     --set legacyDaemonsetAPI=true \
-    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.9.0.tgz
+    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.9.0.tgz
 ```
 
 Enabling compatibility with the `CPUManager` and the `mixed` `migStrategy`
@@ -303,7 +303,7 @@ $ helm install \
     --generate-name \
     --set compatWithCPUManager=true \
     --set migStrategy=mixed \
-    https://nvidia.github.com/k8s-device-plugin/stable/nvidia-device-plugin-0.9.0.tgz
+    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.9.0.tgz
 ```
 
 ## Building and Running Locally
