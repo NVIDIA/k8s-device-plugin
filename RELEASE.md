@@ -5,7 +5,27 @@ The device plugin consists in two artifacts:
 - The Device Plugin helm chart
 
 Publishing the container is automated through gitlab-ci and only requires one to tag the commit and push it to gitlab.
-Publishing the helm chart is currently manual, and we should move to an automated process ASAP
+
+## Releasing the Helm charts
+A set of make targets are provided to release the Helm charts to GitHub pages. In order to release a new version, run:
+```bash
+make release-helm
+```
+This also checks whether the version being released has already been released and whether the Helm charts are being released from the correct tag.
+
+The target:
+```bash
+make prepare-helm
+```
+(which is used by the `release-helm` target) prepares the commit in the
+`releases/helm-v0.9.0` folder but does not push the changes to GitHub.
+This can be useful for further testing or checking the changes before pushing these to GitHub.
+
+Running:
+```bash
+git -C releases/helm-v0.9.0 push github gh-pages
+```
+will push the changes there to GitHub.
 
 # Release Process Checklist
 - [ ] Update the README changelog

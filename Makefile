@@ -17,6 +17,7 @@
 .DEFAULT_GOAL := all
 
 ##### Global variables #####
+PWD := $(shell pwd)
 
 DOCKER   ?= docker
 BUILDX   ?= buildx
@@ -224,3 +225,89 @@ test: build
 coverage: test
 	cat $(COVERAGE_FILE) | grep -v "_mock.go" > $(COVERAGE_FILE).no-mocks
 	go tool cover -func=$(COVERAGE_FILE).no-mocks
+
+.PHONY: helm-package
+
+# Generate the helm package.
+HELM_IMAGE = alpine/helm:3.5.2
+
+HELM_PACKAGE_VERSION = $(patsubst v%,%, $(VERSION))
+HELM_PACKAGE_DESTINATION ?= .
+HELM_PACKAGE_NAME = nvidia-device-plugin-$(HELM_PACKAGE_VERSION).tgz
+helm-package:
+	$(DOCKER) run \
+		--rm \
+		-e GOCACHE=/tmp/.cache \
+		-v $(PWD):$(PWD) \
+		-w $(PWD) \
+		--user $$(id -u):$$(id -g) \
+		$(HELM_IMAGE) \
+			package \
+			--destination=$(HELM_PACKAGE_DESTINATION) \
+				./deployments/helm/nvidia-device-plugin
+
+# The following targets help to release the helm charts associtated with a release.
+# This is done by clreating a local clone of the repository, adding the helm
+# package to gh-pages branch, and pushing these changes to github.
+
+HELM_REPO_PATH = releases/helm-$(VERSION)/
+
+.PHONY: prepare-helm release-helm
+
+# Release the helm charts.
+# The changes commited to the HELM_REPO_PATH in the prepare-helm target are
+# pushed to the `gh-pages` branch on the github remove
+release-helm: prepare-helm .check-tag .check-version
+	git -C $(HELM_REPO_PATH) push github gh-pages
+
+# Release the helm charts.
+# This adds the helm package and the updated files from the build-helm-index
+# target and adds them to git.
+prepare-helm: .build-helm-index
+	git -C $(HELM_REPO_PATH) add -u
+	git -C $(HELM_REPO_PATH) add stable/$(HELM_PACKAGE_NAME)
+	git -C $(HELM_REPO_PATH) commit -s -m "Add the $(HELM_PACKAGE_NAME) helm package under stable"
+	@echo "Performing a dry-run push"
+	git -C $(HELM_REPO_PATH) push --dry-run github gh-pages
+
+# Update the helm index.yaml file in the HELM_REPO_PATH
+.build-helm-index: $(HELM_REPO_PATH) .helm-package
+	cd $(HELM_REPO_PATH); ./build-index.sh
+
+# Ensure that we're on a tag associated with the target version
+.check-tag:
+	if [ "$$(git tag --points-at HEAD)" != "$(VERSION)" ]; then \
+		echo "ERROR: Helm chart should be released off tag '$(VERSION)'"; \
+		exit 1; \
+	fi
+
+# Ensure that the specified version of the charts has not yet been committed
+.check-version: $(HELM_REPO_PATH)
+	git -C $(HELM_REPO_PATH) log | if [ ! -z $$(grep -o $(HELM_PACKAGE_NAME)) ]; then \
+		echo "ERROR: $(HELM_PACKAGE_NAME) already committed"; \
+		exit 1; \
+	fi
+
+.PHONY: .helm-package
+# This dummy target sets the HELM_PACKAGE_DESTINATION for release and
+# ensures that the HELM_REPO_PATH has been created correctly.
+.helm-package: HELM_PACKAGE_DESTINATION = $(HELM_REPO_PATH)/stable
+.helm-package: helm-package | $(HELM_REPO_PATH) .check-version
+
+# Create the HELM_REPO_PATH by performing a local clone of this git repo, adding the
+# github remote, and checking out the gh-pages branch.
+GH_REPO_PULL_URL ?= https://github.com/NVIDIA/k8s-device-plugin.git
+GH_REPO_PUSH_URL ?= git@github.com:NVIDIA/k8s-device-plugin.git
+
+$(HELM_REPO_PATH): .prepare-helm-repo
+.prepare-helm-repo: .remove-helm-repo
+	git clone --local $$(pwd) $(HELM_REPO_PATH)
+	git -C $(HELM_REPO_PATH) remote add github $(GH_REPO_PULL_URL)
+	git -C $(HELM_REPO_PATH) remote set-url --push github $(GH_REPO_PUSH_URL)
+	git -C $(HELM_REPO_PATH) fetch github gh-pages
+	git -C $(HELM_REPO_PATH) checkout gh-pages
+
+# A utility target to remove the generated HELM_REPO_PATH
+.remove-helm-repo:
+	rm -rf $(HELM_REPO_PATH)
+
