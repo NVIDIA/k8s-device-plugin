@@ -124,15 +124,15 @@ $(RELEASE_MULTI_ARCH_TARGETS): release-multi-arch-%: build-multi-arch-%
 # We skip this for the development release
 DEVEL_RELEASE_IMAGE_VERSION ?= devel
 ifneq ($(strip $(OUT_IMAGE_VERSION)),$(DEVEL_RELEASE_IMAGE_VERSION))
-release-multi-arch-$(DEFAULT_PUSH_TARGET): release-multi-arch-with-version-tag
+release-multi-arch-$(DEFAULT_DISTRIBUTION): release-multi-arch-with-version-tag
 endif
 .PHONY: release-multi-arch-with-version-tag
 
 # We require that the build be completed first
-release-multi-arch-with-version-tag: | build-multi-arch-$(DEFAULT_PUSH_TARGET)
+release-multi-arch-with-version-tag: | build-multi-arch-$(DEFAULT_DISTRIBUTION)
 	$(DOCKER) $(BUILDX) imagetools create \
-		--tag "$(OUT_IMAGE):$(OUT_IMAGE_VERSION)-$(DEFAULT_PUSH_TARGET)" \
-		"$(OUT_IMAGE):$(OUT_IMAGE_VERSION)"
+		--tag "$(OUT_IMAGE_NAME):$(OUT_IMAGE_VERSION)" \
+		$(OUT_IMAGE_NAME):$(OUT_IMAGE_VERSION)-$(DEFAULT_DISTRIBUTION)
 
 # Define local and dockerized golang targets
 MODULE := github.com/NVIDIA/k8s-device-plugin
