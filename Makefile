@@ -27,7 +27,7 @@ endif
 VERSION  ?= v0.10.0
 
 GOLANG_VERSION ?= 1.15.8
-CUDA_VERSION ?= 11.4.1
+CUDA_VERSION ?= 11.4.2
 
 ##### Public rules #####
 
