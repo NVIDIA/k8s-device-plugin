@@ -30,7 +30,7 @@ FROM nvcr.io/nvidia/${CUDA_IMAGE}:${CUDA_VERSION}-base-${BASE_DIST}
 
 ENV NVIDIA_DISABLE_REQUIRE="true"
 ENV NVIDIA_VISIBLE_DEVICES=all
-ENV NVIDIA_DRIVER_CAPABILITIES=utility
+ENV NVIDIA_DRIVER_CAPABILITIES=utility,compute
 
 LABEL io.k8s.display-name="NVIDIA Device Plugin"
 LABEL name="NVIDIA Device Plugin"
