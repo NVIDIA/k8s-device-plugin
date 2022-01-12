@@ -147,6 +147,8 @@ a number of customizable values. The most commonly overridden ones are:
       [uuid | index] (default "uuid")
   nvidiaDriverRoot:
       the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')
+  runtimeClassName:
+      the runtimeClassName to use, for use with clusters that have multiple runtimes. (typical value is 'nvidia')
 ```
 
 When set to true, the `failOnInitError` flag fails the plugin if an error is
