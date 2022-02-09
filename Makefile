@@ -24,10 +24,8 @@ ifeq ($(IMAGE_NAME),)
 REGISTRY ?= nvcr.io/nvidia
 IMAGE_NAME := $(REGISTRY)/k8s-device-plugin
 endif
-VERSION  ?= v0.10.0
 
-GOLANG_VERSION ?= 1.15.8
-CUDA_VERSION ?= 11.4.2
+include $(CURDIR)/versions.mk
 
 ##### Public rules #####
 
