@@ -1,25 +1,19 @@
----
-##
-## Variables that control the CI artifacts (private registry, for scanning and testing):
-## CI_REGISTRY
-## CI_REGISTRY_IMAGE
-## CI_REGISTRY_USER
-## CI_REGISTRY_PASSWORD
-##
-## Variables that control where NGC release artifacts go:
-## NGC_REGISTRY
-## NGC_REGISTRY_IMAGE
-## NGC_REGISTRY_USER
-## NGC_REGISTRY_TOKEN
-##
-## Variables that control where Docker Hub release artifacts go:
-## REGISTRY_TOKEN
-## REGISTRY_USER
-## DOCKERHUB_REGISTRY_IMAGE
-##
+# Copyright (c) 2021-2022, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 include:
-  - .common-ci.yml
+  - local: '.common-ci.yml'
 
 default:
   tags:
@@ -38,29 +32,68 @@ variables:
   DEVEL_RELEASE_IMAGE_VERSION: "devel"
   # On the multi-arch builder we don't need the qemu setup.
   SKIP_QEMU_SETUP: "1"
+  # Define the public staging registry
+  STAGING_REGISTRY: registry.gitlab.com/nvidia/cloud-native/device-plugin/staging
+  STAGING_VERSION: ${CI_COMMIT_SHORT_SHA}
+
+.image-pull:
+  stage: image-build
+  variables:
+    IN_REGISTRY: "${STAGING_REGISTRY}"
+    IN_IMAGE_NAME: k8s-device-plugin
+    IN_VERSION: "${STAGING_VERSION}"
+    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
+    OUT_REGISTRY: "${CI_REGISTRY}"
+    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/k8s-device-plugin"
+  # We delay the job start to allow the public pipeline to generate the required images.
+  when: delayed
+  start_in: 30 minutes
+  timeout: 30 minutes
+  retry:
+    max: 2
+    when:
+      - job_execution_timeout
+      - stuck_or_timeout_failure
+  before_script:
+    - !reference [.regctl-setup, before_script]
+    - apk add --no-cache make bash
+    - >
+      regctl manifest get ${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION}-${DIST} --list > /dev/null && echo "${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION}-${DIST}" || ( echo "${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION}-${DIST} does not exist" && sleep infinity )
+  script:
+    - regctl registry login "${OUT_REGISTRY}" -u "${OUT_REGISTRY_USER}" -p "${OUT_REGISTRY_TOKEN}"
+    - make -f deployments/container/Makefile IMAGE=${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION}-${DIST} OUT_IMAGE=${OUT_IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}-${DIST} push-${DIST}
+
+image-ubi8:
+  extends:
+    - .image-pull
+    - .dist-ubi8
+
+image-ubuntu20.04:
+  extends:
+    - .image-pull
+    - .dist-ubuntu20.04
+
+# We skip the integration tests for the internal CI:
+.integration:
+  stage: test
+  before_script:
+    - echo "Skipped in internal CI"
+  script:
+    - echo "Skipped in internal CI"
 
 # The .scan step forms the base of the image scan operation performed before releasing
 # images.
 .scan:
+  extends:
+    - .scan-base
   stage: scan
   image: "${PULSE_IMAGE}"
-  variables:
-    IMAGE: "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}-${DIST}"
-    IMAGE_ARCHIVE: "k8s-device-plugin.tar"
-  except:
-    variables:
-    - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
-    - $SKIP_SCANS
-  before_script:
-    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-    # TODO: We should specify the architecture here and scan all architectures
-    - docker pull "${IMAGE}"
-    - docker save "${IMAGE}" -o "${IMAGE_ARCHIVE}"
+  script:
     - AuthHeader=$(echo -n $SSA_CLIENT_ID:$SSA_CLIENT_SECRET | base64 -w0)
     - >
       export SSA_TOKEN=$(curl --request POST --header "Authorization: Basic $AuthHeader" --header "Content-Type: application/x-www-form-urlencoded" ${SSA_ISSUER_URL} | jq ".access_token" |  tr -d '"')
     - if [ -z "$SSA_TOKEN" ]; then exit 1; else echo "SSA_TOKEN set!"; fi
-  script:
     - pulse-cli -n $NSPECT_ID --ssa $SSA_TOKEN scan -i $IMAGE_ARCHIVE -p $CONTAINER_POLICY -o
   artifacts:
     when: always
@@ -72,17 +105,7 @@ variables:
       - vulns.json
       - policy_evaluation.json
 
-scan:device-plugin:ubuntu20.04:
-  extends:
-    - .scan
-    - .dist:ubuntu20.04
-
-scan:device-plugin:ubi8:
-  extends:
-    - .scan
-    - .dist:ubi8
-
-# Define the external release steps for NGC and Dockerhub
+# Define external release helpers
 .release:ngc:
   extends:
     - .release:external
@@ -90,8 +113,10 @@ scan:device-plugin:ubi8:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
     OUT_REGISTRY: "${NGC_REGISTRY}"
-
     OUT_IMAGE_NAME: "${NGC_REGISTRY_IMAGE}"
+    # Disable release for now:
+    DOCKER: echo
+    REGCTL: echo
 
 .release:dockerhub:
   extends:
@@ -100,25 +125,30 @@ scan:device-plugin:ubi8:
     OUT_REGISTRY_USER: "${REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${REGISTRY_TOKEN}"
     OUT_REGISTRY: "${DOCKERHUB_REGISTRY}"
+    OUT_IMAGE_NAME: "${REGISTRY_IMAGE}"
+    # Disable release for now:
+    DOCKER: echo
+    REGCTL: echo
 
-    OUT_IMAGE_NAME: "${DOCKERHUB_REGISTRY_IMAGE}"
-
-release:ngc:device-plugin:ubuntu20.04:
+# Define the external release targets
+# Release to NGC
+release:ngc-ubuntu20.04:
   extends:
     - .release:ngc
-    - .dist:ubuntu20.04
+    - .dist-ubuntu20.04
 
-release:dockerhub:device-plugin:ubuntu20.04:
-  extends:
-    - .release:dockerhub
-    - .dist:ubuntu20.04
-
-release:ngc:device-plugin:ubi8:
+release:ngc-ubi8:
   extends:
     - .release:ngc
-    - .dist:ubi8
+    - .dist-ubi8
 
-release:dockerhub:device-plugin:ubi8:
+# Release to Dockerhub
+release:dockerhub-ubuntu20.04:
   extends:
     - .release:dockerhub
-    - .dist:ubi8
+    - .dist-ubuntu20.04
+
+release:dockerhub-ubi8:
+  extends:
+    - .release:dockerhub
+    - .dist-ubi8

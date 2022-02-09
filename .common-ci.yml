@@ -1,4 +1,4 @@
-# Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2021-2022, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 default:
   image: docker:stable
   services:
@@ -19,9 +18,9 @@ default:
       command: ["--experimental"]
 
 variables:
-  RELEASE_IMAGE_NAME: "k8s-device-plugin"
-  IMAGE_NAME: ${CI_REGISTRY_IMAGE}
+  GIT_SUBMODULE_STRATEGY: recursive
   BUILDIMAGE: "${CI_REGISTRY_IMAGE}/build:${CI_COMMIT_SHORT_SHA}"
+  BUILD_MULTI_ARCH_IMAGES: "true"
 
 stages:
   - image
@@ -29,70 +28,22 @@ stages:
   - go-checks
   - go-build
   - unit-tests
-  - build
+  - package-build
+  - image-build
+  - test
   - scan
   - release
 
-build-dev-image:
-  stage: image
-  script:
-    - apk --no-cache add make bash
-    - make .build-image
-    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-    - make .push-build-image
+# The .dist- dummy steps set the DIST variable for the targeted distribution.
+.dist-ubi8:
+  variables:
+    DIST: "ubi8"
 
-.requires-build-image:
-  image: "${BUILDIMAGE}"
+.dist-ubuntu20.04:
+  variables:
+    DIST: "ubuntu20.04"
 
-.go-check:
-  extends:
-    - .requires-build-image
-  stage: go-checks
-
-fmt:
-  extends:
-    - .go-check
-  script:
-    - make assert-fmt
-
-vet:
-  extends:
-    - .go-check
-  script:
-    - make vet
-
-go-lint:
-  extends:
-    - .go-check
-  script:
-    - make lint
-
-ineffassign:
-  extends:
-    - .go-check
-  script:
-    - make ineffassign
-
-misspell:
-  extends:
-    - .go-check
-  script:
-    - make misspell
-
-go-build:
-  extends:
-    - .requires-build-image
-  stage: go-build
-  script:
-    - make build
-
-unit-tests:
-  extends:
-    - .requires-build-image
-  stage: unit-tests
-  script:
-    - make coverage
-
+# Make buildx available as a docker CLI plugin
 .buildx-setup:
   before_script:
     -  export BUILDX_VERSION=v0.6.3
@@ -101,74 +52,90 @@ unit-tests:
     -  curl -sSLo ~/.docker/cli-plugins/docker-buildx "https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64"
     -  chmod a+x ~/.docker/cli-plugins/docker-buildx
 
-    -  docker buildx create --use --platform=linux/amd64,linux/arm64 --name k8s-device-plugin-build-${DIST}
+    -  docker buildx create --use --platform=linux/amd64,linux/arm64
 
     -  '[[ -n "${SKIP_QEMU_SETUP}" ]] || docker run --rm --privileged multiarch/qemu-user-static --reset -p yes'
 
-# The .build step forms the base of the image builds with each variant
-# defined as a build-${VARIANT} step.
-.build:
-  stage: build
+# The .scan step forms the base of the image scan operation performed before releasing
+# images. We implement a .scan-base job here to allow for the variable checks to be
+# exercised before internal releases.
+.scan-base:
+  stage: scan
   variables:
-    VERSION: "${CI_COMMIT_SHORT_SHA}"
-    BUILDX_CACHE_TO: docker-build-cache
+    IMAGE: "${CI_REGISTRY_IMAGE}/k8s-device-plugin:${CI_COMMIT_SHORT_SHA}-${DIST}"
+    IMAGE_ARCHIVE: "k8s-device-plugin.tar"
+  except:
+    variables:
+      - $SKIP_SCANS && $SKIP_SCANS == "yes"
   before_script:
-    - !reference [.buildx-setup, before_script]
-
-    - apk add --no-cache make bash
-
-    - 'echo "Logging in to CI registry ${CI_REGISTRY}"'
     - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-
+    # TODO: We should specify the architecture here and scan all architectures
+    - docker pull "${IMAGE}"
+    - docker save "${IMAGE}" -o "${IMAGE_ARCHIVE}"
   script:
-    - make push-multi-arch-${DIST}
+    - >
+      echo "Skipping scan of ${IMAGE}"
 
-  artifacts:
-    when: always
-    paths:
-      - docker-build-cache/
-    expire_in: 1 day
-
-.dist:ubuntu20.04:
-  variables:
-    DIST: ubuntu20.04
-
-.dist:ubi8:
-  variables:
-    DIST: ubi8
-
-build:device-plugin:ubuntu20.04:
+.scan:
   extends:
-    - .build
-    - .dist:ubuntu20.04
+    - .scan-base
 
-build:device-plugin:ubi8:
+# Define the scan targets
+scan-ubuntu20.04:
   extends:
-    - .build
-    - .dist:ubi8
+    - .scan
+    - .dist-ubuntu20.04
+  needs:
+    - image-ubuntu20.04
+
+scan-ubi8:
+  extends:
+    - .scan
+    - .dist-ubi8
+  needs:
+    - image-ubi8
+
+# Download the regctl binary for use in the release steps
+.regctl-setup:
+  before_script:
+    - export REGCTL_VERSION=v0.3.10
+    - apk add --no-cache curl
+    - mkdir -p bin
+    - curl -sSLo bin/regctl https://github.com/regclient/regclient/releases/download/${REGCTL_VERSION}/regctl-linux-amd64
+    - chmod a+x bin/regctl
+    - export PATH=$(pwd)/bin:${PATH}
 
 # .release forms the base of the deployment jobs which push images to the CI registry.
 # This is extended with the version to be deployed (e.g. the SHA or TAG) and the
 # target os.
 .release:
+  stage: release
   variables:
     # Define the source image for the release
+    IMAGE_NAME: "${CI_REGISTRY_IMAGE}/k8s-device-plugin"
     VERSION: "${CI_COMMIT_SHORT_SHA}"
-
-    BUILDX_CACHE_FROM: docker-build-cache
-  stage: release
+    # OUT_IMAGE_VERSION is overridden for external releases
+    OUT_IMAGE_VERSION: "${CI_COMMIT_SHORT_SHA}"
   before_script:
+    - !reference [.regctl-setup, before_script]
+
     # We ensure that the OUT_IMAGE_VERSION is set
     - 'echo Version: ${OUT_IMAGE_VERSION} ; [[ -n "${OUT_IMAGE_VERSION}" ]] || exit 1'
 
-    - !reference [.buildx-setup, before_script]
-
+    # In the case where we are deploying a different version to the CI_COMMIT_SHA, we
+    # need to tag the image.
+    # Note: a leading 'v' is stripped from the version if present
     - apk add --no-cache make bash
   script:
-    - 'echo "Logging in to output registry ${OUT_REGISTRY}"'
-    - 'docker login -u "${OUT_REGISTRY_USER}" -p "${OUT_REGISTRY_TOKEN}" "${OUT_REGISTRY}"'
+    # Log in to the "output" registry, tag the image and push the image
+    - 'echo "Logging in to CI registry ${CI_REGISTRY}"'
+    - regctl registry login "${CI_REGISTRY}" -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}"
+    - '[ ${CI_REGISTRY} = ${OUT_REGISTRY} ] || echo "Logging in to output registry ${OUT_REGISTRY}"'
+    - '[ ${CI_REGISTRY} = ${OUT_REGISTRY} ] || regctl registry login "${OUT_REGISTRY}" -u "${OUT_REGISTRY_USER}" -p "${OUT_REGISTRY_TOKEN}"'
 
-    - make release-multi-arch-${DIST}
+    # Since OUT_IMAGE_NAME and OUT_IMAGE_VERSION are set, this will push the CI image to the
+    # Target
+    - make -f deployments/container/Makefile push-${DIST}
 
 # Define a staging release step that pushes an image to an internal "staging" repository
 # This is triggered for all pipelines (i.e. not only tags) to test the pipeline steps
@@ -177,15 +144,13 @@ build:device-plugin:ubi8:
   extends:
     - .release
   variables:
-    # Define the output registry
     OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
     OUT_REGISTRY: "${CI_REGISTRY}"
+    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/k8s-device-plugin"
 
-    # Define the output image directly
-    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/${RELEASE_IMAGE_NAME}"
-    OUT_IMAGE_VERSION: "${CI_COMMIT_SHORT_SHA}"
-
+# Define an external release step that pushes an image to an external repository.
+# This includes a devlopment image off master.
 .release:external:
   extends:
     - .release
@@ -197,12 +162,16 @@ build:device-plugin:ubi8:
       variables:
         OUT_IMAGE_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
 
-release:staging:device-plugin:ubuntu20.04:
+release:staging-ubi8:
   extends:
     - .release:staging
-    - .dist:ubuntu20.04
+    - .dist-ubi8
+  needs:
+    - image-ubi8
 
-release:staging:device-plugin:ubi8:
+release:staging-ubuntu20.04:
   extends:
     - .release:staging
-    - .dist:ubi8
+    - .dist-ubuntu20.04
+  needs:
+    - image-ubuntu20.04
