@@ -21,9 +21,9 @@ FROM golang:${GOLANG_VERSION} as build
 WORKDIR /build
 COPY . .
 
-ARG PLUGIN_VERSION="N/A"
+ARG VERSION="N/A"
 RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' && \
-    go build -ldflags="-s -w -X 'main.Version=${PLUGIN_VERSION}'" -v ./cmd/nvidia-device-plugin
+    go build -ldflags="-s -w -X 'main.Version=${VERSION}'" -v ./cmd/nvidia-device-plugin
 
 
 FROM nvcr.io/nvidia/${CUDA_IMAGE}:${CUDA_VERSION}-base-${BASE_DIST}
@@ -35,8 +35,8 @@ ENV NVIDIA_DRIVER_CAPABILITIES=utility
 LABEL io.k8s.display-name="NVIDIA Device Plugin"
 LABEL name="NVIDIA Device Plugin"
 LABEL vendor="NVIDIA"
-ARG PLUGIN_VERSION="N/A"
-LABEL version=${PLUGIN_VERSION}
+ARG VERSION="N/A"
+LABEL version=${VERSION}
 LABEL release="N/A"
 LABEL summary="NVIDIA device plugin for Kubernetes"
 LABEL description="See summary"

@@ -13,126 +13,22 @@
 # limitations under the License.
 
 
-.PHONY: all build builder test
+.PHONY: all build test
 .DEFAULT_GOAL := all
 
 ##### Global variables #####
 
 DOCKER   ?= docker
-BUILDX   ?= buildx
 ifeq ($(IMAGE_NAME),)
 REGISTRY ?= nvcr.io/nvidia
 IMAGE_NAME := $(REGISTRY)/k8s-device-plugin
 endif
-VERSION  ?= v0.10.0
 
-GOLANG_VERSION ?= 1.15.8
-CUDA_VERSION ?= 11.4.2
+include $(CURDIR)/versions.mk
 
 ##### Public rules #####
 
-DEFAULT_DISTRIBUTION := ubuntu20.04
-DISTRIBUTIONS = $(DEFAULT_DISTRIBUTION) ubi8
-
-BUILD_TARGETS := $(patsubst %,build-%,$(DISTRIBUTIONS))
-PUSH_TARGETS := $(patsubst %,push-%,$(DISTRIBUTIONS))
-
-.PHONY: $(DISTRIBUTIONS) $(BUILD_TARGETS) $(PUSH_TARGETS)
-
-all: $(BUILD_TARGETS)
-
-IMAGE_VERSION := $(VERSION)
-
-IMAGE_TAG ?= $(IMAGE_VERSION)-$(IMAGE_DISTRIBUTION)
-IMAGE ?= $(IMAGE_NAME):$(IMAGE_TAG)
-OUT_IMAGE_NAME ?= $(IMAGE_NAME)
-OUT_IMAGE_VERSION ?= $(IMAGE_VERSION)
-OUT_IMAGE_TAG = $(OUT_IMAGE_VERSION)-$(IMAGE_DISTRIBUTION)
-OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
-
-ifneq ($(BUILDX_CACHE_TO),)
-CACHE_TO_OPTIONS = --cache-to=type=local,dest=$(BUILDX_CACHE_TO),mode=max
-endif
-
-ifneq ($(BUILDX_CACHE_FROM),)
-CACHE_FROM_OPTIONS = --cache-from=type=local,src=$(BUILDX_CACHE_FROM)
-endif
-
-BUILDX_CACHE_OPTIONS := $(CACHE_FROM_OPTIONS) $(CACHE_TO_OPTIONS)
-
-push: $(PUSH_TARGETS)
-push-%: IMAGE_DISTRIBUTION = $(*)
-$(PUSH_TARGETS): push-%:
-	$(DOCKER) push "$(IMAGE_NAME):$(IMAGE_VERSION)-$(*)"
-
-push-short:
-	$(DOCKER) tag "$(IMAGE_NAME):$(IMAGE_VERSION)-$(DEFAULT_DISTRIBUTION)" "$(IMAGE_NAME):$(IMAGE_VERSION)"
-	$(DOCKER) push "$(IMAGE_NAME):$(IMAGE_VERSION)"
-
-$(DISTRIBUTIONS): %: build-%
-
-build-%: IMAGE_DISTRIBUTION = $(*)
-$(BUILD_TARGETS): build-%:
-	$(DOCKER) build --pull \
-		--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
-		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
-		--build-arg PLUGIN_VERSION=$(VERSION) \
-		--build-arg BASE_DIST=$(IMAGE_DISTRIBUTION) \
-		--tag $(IMAGE) \
-		--file docker/Dockerfile \
-			.
-
-# Add multi-arch-builds using docker buildx
-BUILD_MULTI_ARCH_TARGETS := $(patsubst %,build-multi-arch-%,$(DISTRIBUTIONS))
-PUSH_MULTI_ARCH_TARGETS := $(patsubst %,push-multi-arch-%,$(DISTRIBUTIONS))
-RELEASE_MULTI_ARCH_TARGETS := $(patsubst %,release-multi-arch-%,$(DISTRIBUTIONS))
-
-MULTI_ARCH_TARGETS := $(BUILD_MULTI_ARCH_TARGETS) $(PUSH_MULTI_ARCH_TARGETS) $(RELEASE_MULTI_ARCH_TARGETS)
-.PHONY: $(MULTI_ARCH_TARGETS)
-
-BUILDX_PLATFORM_OPTIONS := --platform=linux/amd64,linux/arm64
-BUILDX_PULL_OPTIONS := --pull
-BUILDX_PUSH_ON_BUILD := false
-
-# The build-multi-arch target uses docker buildx to produce a multi-arch image.
-# This forms the basis of the push-, and release-multi-arch builds, with each
-# of these setting the output and cache options.
-build-multi-arch-%: IMAGE_DISTRIBUTION = $(*)
-$(BUILD_MULTI_ARCH_TARGETS): build-multi-arch-%:
-	$(DOCKER) $(BUILDX) build \
-		$(BUILDX_PLATFORM_OPTIONS) \
-		$(BUILDX_PULL_OPTIONS) \
-		$(BUILDX_CACHE_OPTIONS) \
-		--output=type=image,push=$(BUILDX_PUSH_ON_BUILD) \
-		--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
-		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
-		--build-arg PLUGIN_VERSION=$(IMAGE_VERSION) \
-		--build-arg BASE_DIST=$(IMAGE_DISTRIBUTION) \
-		--tag $(OUT_IMAGE) \
-		--file docker/Dockerfile \
-			.
-
-push-multi-arch-%: BUILDX_PUSH_ON_BUILD := true
-$(PUSH_MULTI_ARCH_TARGETS): push-multi-arch-%: build-multi-arch-%
-
-release-multi-arch-%: BUILDX_PULL_OPTIONS :=
-release-multi-arch-%: BUILDX_PUSH_ON_BUILD := true
-release-multi-arch-%: IMAGE_DISTRIBUTION = $(*)
-$(RELEASE_MULTI_ARCH_TARGETS): release-multi-arch-%: build-multi-arch-%
-
-# For the default release target, we also push a short tag equal to the version.
-# We skip this for the development release
-DEVEL_RELEASE_IMAGE_VERSION ?= devel
-ifneq ($(strip $(OUT_IMAGE_VERSION)),$(DEVEL_RELEASE_IMAGE_VERSION))
-release-multi-arch-$(DEFAULT_DISTRIBUTION): release-multi-arch-with-version-tag
-endif
-.PHONY: release-multi-arch-with-version-tag
-
-# We require that the build be completed first
-release-multi-arch-with-version-tag: | build-multi-arch-$(DEFAULT_DISTRIBUTION)
-	$(DOCKER) $(BUILDX) imagetools create \
-		--tag "$(OUT_IMAGE_NAME):$(OUT_IMAGE_VERSION)" \
-		$(OUT_IMAGE_NAME):$(OUT_IMAGE_VERSION)-$(DEFAULT_DISTRIBUTION)
+all: $(MAKE_TARGETS)
 
 # Define local and dockerized golang targets
 MODULE := github.com/NVIDIA/k8s-device-plugin
