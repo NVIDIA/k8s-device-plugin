@@ -43,6 +43,15 @@ stages:
   variables:
     DIST: "ubuntu20.04"
 
+# Define the platform targets
+.platform-amd64:
+  variables:
+    PLATFORM: linux/amd64
+
+.platform-arm64:
+  variables:
+    PLATFORM: linux/arm64
+
 # Make buildx available as a docker CLI plugin
 .buildx-setup:
   before_script:
@@ -69,8 +78,7 @@ stages:
       - $SKIP_SCANS && $SKIP_SCANS == "yes"
   before_script:
     - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-    # TODO: We should specify the architecture here and scan all architectures
-    - docker pull "${IMAGE}"
+    - docker pull --platform="${PLATFORM}" "${IMAGE}"
     - docker save "${IMAGE}" -o "${IMAGE_ARCHIVE}"
   script:
     - >
@@ -81,19 +89,39 @@ stages:
     - .scan-base
 
 # Define the scan targets
-scan-ubuntu20.04:
+scan-ubuntu20.04-amd64:
   extends:
     - .scan
     - .dist-ubuntu20.04
+    - .platform-amd64
   needs:
     - image-ubuntu20.04
 
-scan-ubi8:
+scan-ubuntu20.04-arm64:
+  extends:
+    - .scan
+    - .dist-ubuntu20.04
+    - .platform-arm64
+  needs:
+    - image-ubuntu20.04
+    - scan-ubuntu20.04-amd64
+
+scan-ubi8-amd64:
   extends:
     - .scan
     - .dist-ubi8
+    - .platform-amd64
   needs:
     - image-ubi8
+
+scan-ubi8-arm64:
+  extends:
+    - .scan
+    - .dist-ubi8
+    - .platform-arm64
+  needs:
+    - image-ubi8
+    - scan-ubi8-amd64
 
 # Download the regctl binary for use in the release steps
 .regctl-setup:
