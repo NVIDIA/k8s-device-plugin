@@ -114,9 +114,6 @@ image-ubuntu20.04:
     OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
     OUT_REGISTRY: "${NGC_REGISTRY}"
     OUT_IMAGE_NAME: "${NGC_REGISTRY_IMAGE}"
-    # Disable release for now:
-    DOCKER: echo
-    REGCTL: echo
 
 .release:dockerhub:
   extends:
@@ -126,9 +123,6 @@ image-ubuntu20.04:
     OUT_REGISTRY_TOKEN: "${REGISTRY_TOKEN}"
     OUT_REGISTRY: "${DOCKERHUB_REGISTRY}"
     OUT_IMAGE_NAME: "${REGISTRY_IMAGE}"
-    # Disable release for now:
-    DOCKER: echo
-    REGCTL: echo
 
 # Define the external release targets
 # Release to NGC
