@@ -39,8 +39,8 @@ OUT_IMAGE_TAG = $(OUT_IMAGE_VERSION)-$(DIST)
 OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ##### Public rules #####
-DEFAULT_DISTRIBUTION := ubuntu20.04
-DISTRIBUTIONS = $(DEFAULT_DISTRIBUTION) ubi8
+DEFAULT_PUSH_TARGET := ubuntu20.04
+DISTRIBUTIONS = $(DEFAULT_PUSH_TARGET) ubi8
 
 BUILD_TARGETS := $(patsubst %,build-%,$(DISTRIBUTIONS))
 PUSH_TARGETS := $(patsubst %,push-%,$(DISTRIBUTIONS))
@@ -57,7 +57,11 @@ endif
 # For the default push target we also push a short tag equal to the version.
 # We skip this for the development release
 DEVEL_RELEASE_IMAGE_VERSION ?= devel
-ifneq ($(strip $(VERSION)),$(DEVEL_RELEASE_IMAGE_VERSION))
+PUSH_MULTIPLE_TAGS ?= true
+ifeq ($(strip $(OUT_IMAGE_VERSION)),$(DEVEL_RELEASE_IMAGE_VERSION))
+PUSH_MULTIPLE_TAGS = false
+endif
+ifeq ($(PUSH_MULTIPLE_TAGS),true)
 push-$(DEFAULT_PUSH_TARGET): push-short
 endif
 
