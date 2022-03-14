@@ -45,4 +45,11 @@ COPY ./LICENSE ./licenses/LICENSE
 
 COPY --from=build /build/nvidia-device-plugin /usr/bin/nvidia-device-plugin
 
+# Install / upgrade packages here that are required to resolve CVEs
+ARG CVE_UPDATES
+RUN if [ -n "${CVE_UPDATES}" ]; then \
+        yum update -y ${CVE_UPDATES} && \
+        rm -rf /var/cache/yum/*; \
+    fi
+
 ENTRYPOINT ["nvidia-device-plugin"]
