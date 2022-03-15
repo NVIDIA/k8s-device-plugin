@@ -43,7 +43,7 @@ stages:
 .dist-ubuntu20.04:
   variables:
     DIST: "ubuntu20.04"
-    CVE_UPDATES: "libsasl2-2"
+    CVE_UPDATES: "libsasl2-2 libsasl2-modules-db"
 
 # Define the platform targets
 .platform-amd64:
