@@ -1,4 +1,4 @@
-# Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2021-2022, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -69,7 +69,6 @@ push-%: DIST = $(*)
 push-short: DIST = $(DEFAULT_PUSH_TARGET)
 
 build-%: DIST = $(*)
-build-%: DOCKERFILE_SUFFIX = all
 build-%: DOCKERFILE = $(CURDIR)/deployments/container/Dockerfile.$(DOCKERFILE_SUFFIX)
 
 # Use a generic build target to build the relevant images
@@ -83,7 +82,10 @@ $(BUILD_TARGETS): build-%:
 		--build-arg CUDA_VERSION="$(CUDA_VERSION)" \
 		--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
 		--build-arg VERSION="$(VERSION)" \
+		--build-arg CVE_UPDATES="$(CVE_UPDATES)" \
 		-f $(DOCKERFILE) \
 		$(CURDIR)
 
+build-ubuntu%: DOCKERFILE_SUFFIX := ubuntu
 
+build-ubi8: DOCKERFILE_SUFFIX := ubi8

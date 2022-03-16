@@ -38,10 +38,12 @@ stages:
 .dist-ubi8:
   variables:
     DIST: "ubi8"
+    CVE_UPDATES: "cyrus-sasl-lib"
 
 .dist-ubuntu20.04:
   variables:
     DIST: "ubuntu20.04"
+    CVE_UPDATES: "libsasl2-2 libsasl2-modules-db"
 
 # Define the platform targets
 .platform-amd64:
