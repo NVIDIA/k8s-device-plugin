@@ -48,7 +48,9 @@ spec:
       containers:
       - image: nvcr.io/nvidia/k8s-device-plugin:v0.11.0
         name: nvidia-device-plugin-ctr
-        args: ["--fail-on-init-error=false"]
+        env:
+          - name: FAIL_ON_INIT_ERROR
+            value: "false"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
