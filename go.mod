@@ -35,4 +35,5 @@ require (
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	google.golang.org/grpc v1.29.0
 	k8s.io/kubelet v0.0.0
+	sigs.k8s.io/yaml v1.2.0
 )
