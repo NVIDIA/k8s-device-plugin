@@ -31,7 +31,7 @@ require (
 	github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201222072828-352eb4c503a7
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/stretchr/testify v1.5.1
-	github.com/urfave/cli/v2 v2.2.0
+	github.com/urfave/cli/v2 v2.4.0
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	google.golang.org/grpc v1.29.0
 	k8s.io/kubelet v0.0.0
