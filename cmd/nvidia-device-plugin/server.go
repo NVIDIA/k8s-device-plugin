@@ -53,6 +53,7 @@ const (
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
 	ResourceManager
+	config           Config
 	resourceName     string
 	deviceListEnvvar string
 	allocatePolicy   gpuallocator.Policy
@@ -65,7 +66,7 @@ type NvidiaDevicePlugin struct {
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(resourceName string, resourceManager ResourceManager, deviceListEnvvar string, allocatePolicy gpuallocator.Policy, socket string) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(config *Config, resourceName string, resourceManager ResourceManager, deviceListEnvvar string, allocatePolicy gpuallocator.Policy, socket string) *NvidiaDevicePlugin {
 	return &NvidiaDevicePlugin{
 		ResourceManager:  resourceManager,
 		resourceName:     resourceName,
@@ -282,15 +283,15 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 		uuids := req.DevicesIDs
 		deviceIDs := m.deviceIDsFromUUIDs(uuids)
 
-		if deviceListStrategyFlag == DeviceListStrategyEnvvar {
+		if m.config.Flags.DeviceListStrategy == DeviceListStrategyEnvvar {
 			response.Envs = m.apiEnvs(m.deviceListEnvvar, deviceIDs)
 		}
-		if deviceListStrategyFlag == DeviceListStrategyVolumeMounts {
+		if m.config.Flags.DeviceListStrategy == DeviceListStrategyVolumeMounts {
 			response.Envs = m.apiEnvs(m.deviceListEnvvar, []string{deviceListAsVolumeMountsContainerPathRoot})
 			response.Mounts = m.apiMounts(deviceIDs)
 		}
-		if passDeviceSpecsFlag {
-			response.Devices = m.apiDeviceSpecs(nvidiaDriverRootFlag, uuids)
+		if m.config.Flags.PassDeviceSpecs {
+			response.Devices = m.apiDeviceSpecs(m.config.Flags.NvidiaDriverRoot, uuids)
 		}
 
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
@@ -330,12 +331,12 @@ func (m *NvidiaDevicePlugin) deviceExists(id string) bool {
 }
 
 func (m *NvidiaDevicePlugin) deviceIDsFromUUIDs(uuids []string) []string {
-	if deviceIDStrategyFlag == DeviceIDStrategyUUID {
+	if m.config.Flags.DeviceIDStrategy == DeviceIDStrategyUUID {
 		return uuids
 	}
 
 	var deviceIDs []string
-	if deviceIDStrategyFlag == DeviceIDStrategyIndex {
+	if m.config.Flags.DeviceIDStrategy == DeviceIDStrategyIndex {
 		for _, d := range m.cachedDevices {
 			for _, id := range uuids {
 				if d.ID == id {
