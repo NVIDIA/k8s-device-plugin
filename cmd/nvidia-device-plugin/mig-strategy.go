@@ -42,26 +42,27 @@ type MigStrategy interface {
 }
 
 // NewMigStrategy returns a reference to a given MigStrategy based on the 'strategy' passed in
-func NewMigStrategy(strategy string) (MigStrategy, error) {
-	switch strategy {
+func NewMigStrategy(config *Config) (MigStrategy, error) {
+	switch config.Flags.MigStrategy {
 	case MigStrategyNone:
-		return &migStrategyNone{}, nil
+		return &migStrategyNone{config}, nil
 	case MigStrategySingle:
-		return &migStrategySingle{}, nil
+		return &migStrategySingle{config}, nil
 	case MigStrategyMixed:
-		return &migStrategyMixed{}, nil
+		return &migStrategyMixed{config}, nil
 	}
-	return nil, fmt.Errorf("Unknown strategy: %v", strategy)
+	return nil, fmt.Errorf("Unknown strategy: %v", config.Flags.MigStrategy)
 }
 
-type migStrategyNone struct{}
-type migStrategySingle struct{}
-type migStrategyMixed struct{}
+type migStrategyNone struct{ config *Config }
+type migStrategySingle struct{ config *Config }
+type migStrategyMixed struct{ config *Config }
 
 // migStrategyNone
 func (s *migStrategyNone) GetPlugins() []*NvidiaDevicePlugin {
 	return []*NvidiaDevicePlugin{
 		NewNvidiaDevicePlugin(
+			s.config,
 			"nvidia.com/gpu",
 			NewGpuDeviceManager(false), // Enumerate device even if MIG enabled
 			"NVIDIA_VISIBLE_DEVICES",
@@ -85,7 +86,7 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 
 	// If no MIG devices are available fallback to "none" strategy
 	if len(migEnabledDevices) == 0 {
-		none, _ := NewMigStrategy(MigStrategyNone)
+		none, _ := NewMigStrategy(s.config)
 		log.Printf("No MIG devices found. Falling back to mig.strategy=%v", none)
 		return none.GetPlugins()
 	}
@@ -126,6 +127,7 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 
 	return []*NvidiaDevicePlugin{
 		NewNvidiaDevicePlugin(
+			s.config,
 			"nvidia.com/gpu",
 			NewMigDeviceManager(s, "gpu"),
 			"NVIDIA_VISIBLE_DEVICES",
@@ -187,6 +189,7 @@ func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
 
 	plugins := []*NvidiaDevicePlugin{
 		NewNvidiaDevicePlugin(
+			s.config,
 			"nvidia.com/gpu",
 			NewGpuDeviceManager(true),
 			"NVIDIA_VISIBLE_DEVICES",
@@ -196,6 +199,7 @@ func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
 
 	for resource := range resources {
 		plugin := NewNvidiaDevicePlugin(
+			s.config,
 			"nvidia.com/"+resource,
 			NewMigDeviceManager(s, resource),
 			"NVIDIA_VISIBLE_DEVICES",

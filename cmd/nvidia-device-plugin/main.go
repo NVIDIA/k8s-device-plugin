@@ -17,6 +17,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -25,66 +26,90 @@ import (
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	"github.com/fsnotify/fsnotify"
 	cli "github.com/urfave/cli/v2"
+	altsrc "github.com/urfave/cli/v2/altsrc"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
-
-var migStrategyFlag string
-var failOnInitErrorFlag bool
-var passDeviceSpecsFlag bool
-var deviceListStrategyFlag string
-var deviceIDStrategyFlag string
-var nvidiaDriverRootFlag string
 
 var version string // This should be set at build time to indicate the actual version
 
 func main() {
+	var flags CommandLineFlags
+	var config Config
+	var configFile string
+
 	c := cli.NewApp()
 	c.Version = version
-	c.Before = validateFlags
-	c.Action = start
+	c.Before = func(ctx *cli.Context) error {
+		cfg, err := setup(ctx, c.Flags)
+		if err == nil {
+			config = *cfg
+		}
+		return err
+	}
+	c.Action = func(ctx *cli.Context) error {
+		return start(ctx, &config)
+	}
 
 	c.Flags = []cli.Flag{
+		altsrc.NewStringFlag(
+			&cli.StringFlag{
+				Name:        "mig-strategy",
+				Value:       "none",
+				Usage:       "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
+				Destination: &flags.MigStrategy,
+				EnvVars:     []string{"MIG_STRATEGY"},
+			},
+		),
+		altsrc.NewBoolFlag(
+			&cli.BoolFlag{
+				Name:        "fail-on-init-error",
+				Value:       true,
+				Usage:       "fail the plugin if an error is encountered during initialization, otherwise block indefinitely",
+				Destination: &flags.FailOnInitError,
+				EnvVars:     []string{"FAIL_ON_INIT_ERROR"},
+			},
+		),
+		altsrc.NewBoolFlag(
+			&cli.BoolFlag{
+				Name:        "pass-device-specs",
+				Value:       false,
+				Usage:       "pass the list of DeviceSpecs to the kubelet on Allocate()",
+				Destination: &flags.PassDeviceSpecs,
+				EnvVars:     []string{"PASS_DEVICE_SPECS"},
+			},
+		),
+		altsrc.NewStringFlag(
+			&cli.StringFlag{
+				Name:        "device-list-strategy",
+				Value:       "envvar",
+				Usage:       "the desired strategy for passing the device list to the underlying runtime:\n\t\t[envvar | volume-mounts]",
+				Destination: &flags.DeviceListStrategy,
+				EnvVars:     []string{"DEVICE_LIST_STRATEGY"},
+			},
+		),
+		altsrc.NewStringFlag(
+			&cli.StringFlag{
+				Name:        "device-id-strategy",
+				Value:       "uuid",
+				Usage:       "the desired strategy for passing device IDs to the underlying runtime:\n\t\t[uuid | index]",
+				Destination: &flags.DeviceIDStrategy,
+				EnvVars:     []string{"DEVICE_ID_STRATEGY"},
+			},
+		),
+		altsrc.NewStringFlag(
+			&cli.StringFlag{
+				Name:        "nvidia-driver-root",
+				Value:       "/",
+				Usage:       "the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')",
+				Destination: &flags.NvidiaDriverRoot,
+				EnvVars:     []string{"NVIDIA_DRIVER_ROOT"},
+			},
+		),
 		&cli.StringFlag{
-			Name:        "mig-strategy",
-			Value:       "none",
-			Usage:       "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
-			Destination: &migStrategyFlag,
-			EnvVars:     []string{"MIG_STRATEGY"},
-		},
-		&cli.BoolFlag{
-			Name:        "fail-on-init-error",
-			Value:       true,
-			Usage:       "fail the plugin if an error is encountered during initialization, otherwise block indefinitely",
-			Destination: &failOnInitErrorFlag,
-			EnvVars:     []string{"FAIL_ON_INIT_ERROR"},
-		},
-		&cli.BoolFlag{
-			Name:        "pass-device-specs",
-			Value:       false,
-			Usage:       "pass the list of DeviceSpecs to the kubelet on Allocate()",
-			Destination: &passDeviceSpecsFlag,
-			EnvVars:     []string{"PASS_DEVICE_SPECS"},
-		},
-		&cli.StringFlag{
-			Name:        "device-list-strategy",
-			Value:       "envvar",
-			Usage:       "the desired strategy for passing the device list to the underlying runtime:\n\t\t[envvar | volume-mounts]",
-			Destination: &deviceListStrategyFlag,
-			EnvVars:     []string{"DEVICE_LIST_STRATEGY"},
-		},
-		&cli.StringFlag{
-			Name:        "device-id-strategy",
-			Value:       "uuid",
-			Usage:       "the desired strategy for passing device IDs to the underlying runtime:\n\t\t[uuid | index]",
-			Destination: &deviceIDStrategyFlag,
-			EnvVars:     []string{"DEVICE_ID_STRATEGY"},
-		},
-		&cli.StringFlag{
-			Name:        "nvidia-driver-root",
-			Value:       "/",
-			Usage:       "the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')",
-			Destination: &nvidiaDriverRootFlag,
-			EnvVars:     []string{"NVIDIA_DRIVER_ROOT"},
+			Name:        "config-file",
+			Usage:       "the path to a config file as an alternative to command line options or environment variables",
+			Destination: &configFile,
+			EnvVars:     []string{"CONFIG_FILE"},
 		},
 	}
 
@@ -96,18 +121,36 @@ func main() {
 	}
 }
 
-func validateFlags(c *cli.Context) error {
-	if deviceListStrategyFlag != DeviceListStrategyEnvvar && deviceListStrategyFlag != DeviceListStrategyVolumeMounts {
-		return fmt.Errorf("invalid --device-list-strategy option: %v", deviceListStrategyFlag)
+func validateFlags(config *Config) error {
+	if config.Flags.DeviceListStrategy != DeviceListStrategyEnvvar && config.Flags.DeviceListStrategy != DeviceListStrategyVolumeMounts {
+		return fmt.Errorf("invalid --device-list-strategy option: %v", config.Flags.DeviceListStrategy)
 	}
 
-	if deviceIDStrategyFlag != DeviceIDStrategyUUID && deviceIDStrategyFlag != DeviceIDStrategyIndex {
-		return fmt.Errorf("invalid --device-id-strategy option: %v", deviceIDStrategyFlag)
+	if config.Flags.DeviceIDStrategy != DeviceIDStrategyUUID && config.Flags.DeviceIDStrategy != DeviceIDStrategyIndex {
+		return fmt.Errorf("invalid --device-id-strategy option: %v", config.Flags.DeviceIDStrategy)
 	}
 	return nil
 }
 
-func start(c *cli.Context) error {
+func setup(c *cli.Context, flags []cli.Flag) (*Config, error) {
+	config, err := NewConfig(c, flags)
+	if err != nil {
+		return nil, fmt.Errorf("unable to finalize config: %v", err)
+	}
+	err = validateFlags(config)
+	if err != nil {
+		return nil, fmt.Errorf("unable to validate flags: %v", err)
+	}
+	return config, nil
+}
+
+func start(c *cli.Context, config *Config) error {
+	configJSON, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config to JSON: %v", err)
+	}
+	log.Printf("\nRunning with config:\n%v", string(configJSON))
+
 	log.Println("Loading NVML")
 	if err := nvml.Init(); err != nil {
 		log.SetOutput(os.Stderr)
@@ -116,7 +159,7 @@ func start(c *cli.Context) error {
 		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
 		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
 		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
-		if failOnInitErrorFlag {
+		if config.Flags.FailOnInitError {
 			return fmt.Errorf("failed to initialize NVML: %v", err)
 		}
 		select {}
@@ -142,7 +185,7 @@ restart:
 	}
 
 	log.Println("Retreiving plugins.")
-	migStrategy, err := NewMigStrategy(migStrategyFlag)
+	migStrategy, err := NewMigStrategy(config)
 	if err != nil {
 		return fmt.Errorf("error creating MIG strategy: %v", err)
 	}
