@@ -17,6 +17,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -144,6 +145,12 @@ func setup(c *cli.Context, flags []cli.Flag) (*Config, error) {
 }
 
 func start(c *cli.Context, config *Config) error {
+	configJSON, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config to JSON: %v", err)
+	}
+	log.Printf("\nRunning with config:\n%v", string(configJSON))
+
 	log.Println("Loading NVML")
 	if err := nvml.Init(); err != nil {
 		log.SetOutput(os.Stderr)
