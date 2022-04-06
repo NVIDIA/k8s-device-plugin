@@ -22,6 +22,7 @@ import (
 
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
+	config "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
@@ -42,7 +43,7 @@ type MigStrategy interface {
 }
 
 // NewMigStrategy returns a reference to a given MigStrategy based on the 'strategy' passed in
-func NewMigStrategy(config *Config) (MigStrategy, error) {
+func NewMigStrategy(config *config.Config) (MigStrategy, error) {
 	switch config.Flags.MigStrategy {
 	case MigStrategyNone:
 		return &migStrategyNone{config}, nil
@@ -54,9 +55,9 @@ func NewMigStrategy(config *Config) (MigStrategy, error) {
 	return nil, fmt.Errorf("Unknown strategy: %v", config.Flags.MigStrategy)
 }
 
-type migStrategyNone struct{ config *Config }
-type migStrategySingle struct{ config *Config }
-type migStrategyMixed struct{ config *Config }
+type migStrategyNone struct{ config *config.Config }
+type migStrategySingle struct{ config *config.Config }
+type migStrategyMixed struct{ config *config.Config }
 
 // migStrategyNone
 func (s *migStrategyNone) GetPlugins() []*NvidiaDevicePlugin {

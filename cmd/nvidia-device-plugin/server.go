@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
+	config "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
@@ -53,7 +54,7 @@ const (
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
 	ResourceManager
-	config           Config
+	config           config.Config
 	resourceName     string
 	deviceListEnvvar string
 	allocatePolicy   gpuallocator.Policy
@@ -66,7 +67,7 @@ type NvidiaDevicePlugin struct {
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(config *Config, resourceName string, resourceManager ResourceManager, deviceListEnvvar string, allocatePolicy gpuallocator.Policy, socket string) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(config *config.Config, resourceName string, resourceManager ResourceManager, deviceListEnvvar string, allocatePolicy gpuallocator.Policy, socket string) *NvidiaDevicePlugin {
 	return &NvidiaDevicePlugin{
 		ResourceManager:  resourceManager,
 		resourceName:     resourceName,
