@@ -23,7 +23,6 @@ import (
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	config "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
-	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
 // Constants representing the various MIG strategies
@@ -64,11 +63,10 @@ func (s *migStrategyNone) GetPlugins() []*NvidiaDevicePlugin {
 	return []*NvidiaDevicePlugin{
 		NewNvidiaDevicePlugin(
 			s.config,
-			"nvidia.com/gpu",
+			"gpu",
 			NewGpuDeviceManager(false), // Enumerate device even if MIG enabled
 			"NVIDIA_VISIBLE_DEVICES",
-			gpuallocator.NewBestEffortPolicy(),
-			pluginapi.DevicePluginPath+"nvidia-gpu.sock"),
+			gpuallocator.NewBestEffortPolicy()),
 	}
 }
 
@@ -129,11 +127,10 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 	return []*NvidiaDevicePlugin{
 		NewNvidiaDevicePlugin(
 			s.config,
-			"nvidia.com/gpu",
+			"gpu",
 			NewMigDeviceManager(s, "gpu"),
 			"NVIDIA_VISIBLE_DEVICES",
-			gpuallocator.Policy(nil),
-			pluginapi.DevicePluginPath+"nvidia-gpu.sock"),
+			gpuallocator.Policy(nil)),
 	}
 }
 
@@ -191,21 +188,19 @@ func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
 	plugins := []*NvidiaDevicePlugin{
 		NewNvidiaDevicePlugin(
 			s.config,
-			"nvidia.com/gpu",
+			"gpu",
 			NewGpuDeviceManager(true),
 			"NVIDIA_VISIBLE_DEVICES",
-			gpuallocator.NewBestEffortPolicy(),
-			pluginapi.DevicePluginPath+"nvidia-gpu.sock"),
+			gpuallocator.NewBestEffortPolicy()),
 	}
 
 	for resource := range resources {
 		plugin := NewNvidiaDevicePlugin(
 			s.config,
-			"nvidia.com/"+resource,
+			resource,
 			NewMigDeviceManager(s, resource),
 			"NVIDIA_VISIBLE_DEVICES",
-			gpuallocator.Policy(nil),
-			pluginapi.DevicePluginPath+"nvidia-"+resource+".sock")
+			gpuallocator.Policy(nil))
 		plugins = append(plugins, plugin)
 	}
 

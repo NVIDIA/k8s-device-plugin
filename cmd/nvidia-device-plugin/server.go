@@ -49,6 +49,7 @@ const (
 const (
 	deviceListAsVolumeMountsHostPath          = "/dev/null"
 	deviceListAsVolumeMountsContainerPathRoot = "/var/run/nvidia-container-devices"
+	resourceNamePrefix = "nvidia.com/"
 )
 
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
@@ -67,14 +68,14 @@ type NvidiaDevicePlugin struct {
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(config *config.Config, resourceName string, resourceManager ResourceManager, deviceListEnvvar string, allocatePolicy gpuallocator.Policy, socket string) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(config *config.Config, resourceName string, resourceManager ResourceManager, deviceListEnvvar string, allocatePolicy gpuallocator.Policy) *NvidiaDevicePlugin {
 	return &NvidiaDevicePlugin{
 		ResourceManager:  resourceManager,
 		config:           config,
-		resourceName:     resourceName,
+		resourceName:     resourceNamePrefix + resourceName,
 		deviceListEnvvar: deviceListEnvvar,
 		allocatePolicy:   allocatePolicy,
-		socket:           socket,
+		socket:           pluginapi.DevicePluginPath+"nvidia-"+resourceName+".sock",
 
 		// These will be reinitialized every
 		// time the plugin server is restarted.
