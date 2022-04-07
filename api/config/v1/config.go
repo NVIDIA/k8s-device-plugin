@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package main
+package v1
 
 import (
 	"fmt"
@@ -27,8 +27,8 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// ConfigVersion indicates the version of the 'Config' struct used to hold configuration information.
-const ConfigVersion = "v1"
+// Version indicates the version of the 'Config' struct used to hold configuration information.
+const Version = "v1"
 
 // Config is a versioned struct used to hold configuration information.
 type Config struct {
@@ -86,7 +86,7 @@ func parseConfigFrom(reader io.Reader) (*Config, error) {
 		return nil, fmt.Errorf("missing version field")
 	}
 
-	if config.Version != ConfigVersion {
+	if config.Version != Version {
 		return nil, fmt.Errorf("unknown version: %v", config.Version)
 	}
 
@@ -110,7 +110,7 @@ func NewCommandLineFlags(c *cli.Context) *CommandLineFlags {
 // (1) command line, (2) environment variable, (3) config file.
 func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 	config := &Config{
-		Version: ConfigVersion,
+		Version: Version,
 		Flags:   Flags{NewCommandLineFlags(c)},
 	}
 

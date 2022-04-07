@@ -24,6 +24,7 @@ import (
 	"syscall"
 
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
+	config "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/fsnotify/fsnotify"
 	cli "github.com/urfave/cli/v2"
 	altsrc "github.com/urfave/cli/v2/altsrc"
@@ -33,8 +34,8 @@ import (
 var version string // This should be set at build time to indicate the actual version
 
 func main() {
-	var flags CommandLineFlags
-	var config Config
+	var flags config.CommandLineFlags
+	var config config.Config
 	var configFile string
 
 	c := cli.NewApp()
@@ -121,7 +122,7 @@ func main() {
 	}
 }
 
-func validateFlags(config *Config) error {
+func validateFlags(config *config.Config) error {
 	if config.Flags.DeviceListStrategy != DeviceListStrategyEnvvar && config.Flags.DeviceListStrategy != DeviceListStrategyVolumeMounts {
 		return fmt.Errorf("invalid --device-list-strategy option: %v", config.Flags.DeviceListStrategy)
 	}
@@ -132,8 +133,8 @@ func validateFlags(config *Config) error {
 	return nil
 }
 
-func setup(c *cli.Context, flags []cli.Flag) (*Config, error) {
-	config, err := NewConfig(c, flags)
+func setup(c *cli.Context, flags []cli.Flag) (*config.Config, error) {
+	config, err := config.NewConfig(c, flags)
 	if err != nil {
 		return nil, fmt.Errorf("unable to finalize config: %v", err)
 	}
@@ -144,7 +145,7 @@ func setup(c *cli.Context, flags []cli.Flag) (*Config, error) {
 	return config, nil
 }
 
-func start(c *cli.Context, config *Config) error {
+func start(c *cli.Context, config *config.Config) error {
 	configJSON, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal config to JSON: %v", err)
