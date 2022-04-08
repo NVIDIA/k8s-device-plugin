@@ -22,18 +22,10 @@ spec:
     type: RollingUpdate
   template:
     metadata:
-      # This annotation is deprecated. Kept here for backward compatibility
-      # See https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
-      annotations:
-        scheduler.alpha.kubernetes.io/critical-pod: ""
       labels:
         name: nvidia-device-plugin-ds
     spec:
       tolerations:
-      # This toleration is deprecated. Kept here for backward compatibility
-      # See https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
-      - key: CriticalAddonsOnly
-        operator: Exists
       - key: nvidia.com/gpu
         operator: Exists
         effect: NoSchedule
