@@ -117,6 +117,11 @@ func (devices *MIGCapableDevices) GetAllMigDevices() ([]*nvml.Device, error) {
 	return migs, nil
 }
 
+// GetMigDevicePartsByUUID returns the parent GPU UUID and GI and CI ids of the MIG device.
+func GetMigDevicePartsByUUID(uuid string) (string, uint, uint, error) {
+	return nvml.ParseMigDeviceUUID(uuid)
+}
+
 // GetMigCapabilityDevicePaths returns a mapping of MIG capability path to device node path
 func GetMigCapabilityDevicePaths() (map[string]string, error) {
 	// Open nvcapsMigMinorsPath for walking.
@@ -184,26 +189,26 @@ func GetMigCapabilityDevicePaths() (map[string]string, error) {
 }
 
 // GetMigDeviceNodePaths returns a list of device node paths associated with a MIG device
-func GetMigDeviceNodePaths(parent *nvml.Device, mig *nvml.Device) ([]string, error) {
+func GetMigDeviceNodePaths(uuid string) ([]string, error) {
 	capDevicePaths, err := GetMigCapabilityDevicePaths()
 	if err != nil {
 		return nil, fmt.Errorf("error getting MIG capability device paths: %v", err)
+	}
+
+	parentUUID, gi, ci, err := nvml.ParseMigDeviceUUID(uuid)
+	if err != nil {
+		return nil, fmt.Errorf("error separating MIG device into its constituent parts: %v", err)
+	}
+
+	parent, err := nvml.NewDeviceLiteByUUID(parentUUID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting parent for MIG device with UUID '%v': %v", uuid, err)
 	}
 
 	var gpu int
 	_, err = fmt.Sscanf(parent.Path, "/dev/nvidia%d", &gpu)
 	if err != nil {
 		return nil, fmt.Errorf("error getting GPU minor: %v", err)
-	}
-
-	gi, err := mig.GetGPUInstanceId()
-	if err != nil {
-		return nil, fmt.Errorf("error getting MIG GPU instance ID: %v", err)
-	}
-
-	ci, err := mig.GetComputeInstanceId()
-	if err != nil {
-		return nil, fmt.Errorf("error getting MIG compute instance ID: %v", err)
 	}
 
 	giCapPath := fmt.Sprintf(nvidiaCapabilitiesPath+"/gpu%d/mig/gi%d/access", gpu, gi)

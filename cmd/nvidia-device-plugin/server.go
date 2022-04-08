@@ -27,7 +27,8 @@ import (
 	"time"
 
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
-	config "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
@@ -49,33 +50,34 @@ const (
 const (
 	deviceListAsVolumeMountsHostPath          = "/dev/null"
 	deviceListAsVolumeMountsContainerPathRoot = "/var/run/nvidia-container-devices"
-	resourceNamePrefix = "nvidia.com/"
 )
 
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
-	ResourceManager
-	config           *config.Config
+	rm.ResourceManager
+	config           *spec.Config
 	resourceName     string
 	deviceListEnvvar string
 	allocatePolicy   gpuallocator.Policy
 	socket           string
 
 	server        *grpc.Server
-	cachedDevices []*Device
-	health        chan *Device
+	cachedDevices []*rm.Device
+	health        chan *rm.Device
 	stop          chan interface{}
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(config *config.Config, resourceName string, resourceManager ResourceManager, deviceListEnvvar string, allocatePolicy gpuallocator.Policy) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, allocatePolicy gpuallocator.Policy) *NvidiaDevicePlugin {
+	_, name := spec.SplitResourceName(resourceManager.Resource())
+
 	return &NvidiaDevicePlugin{
 		ResourceManager:  resourceManager,
 		config:           config,
-		resourceName:     resourceNamePrefix + resourceName,
-		deviceListEnvvar: deviceListEnvvar,
+		resourceName:     resourceManager.Resource(),
+		deviceListEnvvar: "NVIDIA_VISIBLE_DEVICES",
 		allocatePolicy:   allocatePolicy,
-		socket:           pluginapi.DevicePluginPath+"nvidia-"+resourceName+".sock",
+		socket:           pluginapi.DevicePluginPath + "nvidia-" + name + ".sock",
 
 		// These will be reinitialized every
 		// time the plugin server is restarted.
@@ -89,7 +91,7 @@ func NewNvidiaDevicePlugin(config *config.Config, resourceName string, resourceM
 func (m *NvidiaDevicePlugin) initialize() {
 	m.cachedDevices = m.Devices()
 	m.server = grpc.NewServer([]grpc.ServerOption{}...)
-	m.health = make(chan *Device)
+	m.health = make(chan *rm.Device)
 	m.stop = make(chan interface{})
 }
 
