@@ -23,6 +23,7 @@ import (
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	config "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	mig "github.com/NVIDIA/k8s-device-plugin/internal/mig"
 )
 
 // Constants representing the various MIG strategies
@@ -76,7 +77,7 @@ func (s *migStrategyNone) MatchesResource(mig *nvml.Device, resource string) boo
 
 // migStrategySingle
 func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
-	devices := NewMIGCapableDevices()
+	devices := mig.NewMIGCapableDevices()
 
 	migEnabledDevices, err := devices.GetDevicesWithMigEnabled()
 	if err != nil {
@@ -165,7 +166,7 @@ func (s *migStrategySingle) MatchesResource(mig *nvml.Device, resource string) b
 
 // migStrategyMixed
 func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
-	devices := NewMIGCapableDevices()
+	devices := mig.NewMIGCapableDevices()
 
 	if err := devices.AssertAllMigEnabledDevicesAreValid(); err != nil {
 		panic(fmt.Errorf("At least one device with migEnabled=true was not configured correctly: %v", err))

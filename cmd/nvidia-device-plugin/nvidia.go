@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
+	"github.com/NVIDIA/k8s-device-plugin/internal/mig"
 
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
@@ -122,18 +123,18 @@ func (m *MigDeviceManager) Devices() []*Device {
 			continue
 		}
 
-		migs, err := d.GetMigDevices()
+		migDevices, err := d.GetMigDevices()
 		check(err)
 
-		for j, mig := range migs {
-			if !m.strategy.MatchesResource(mig, m.resource) {
+		for j, migDevice := range migDevices {
+			if !m.strategy.MatchesResource(migDevice, m.resource) {
 				continue
 			}
 
-			paths, err := GetMigDeviceNodePaths(d, mig)
+			paths, err := mig.GetMigDeviceNodePaths(d, migDevice)
 			check(err)
 
-			devs = append(devs, buildDevice(mig, paths, fmt.Sprintf("%v:%v", i, j)))
+			devs = append(devs, buildDevice(migDevice, paths, fmt.Sprintf("%v:%v", i, j)))
 		}
 	}
 

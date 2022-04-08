@@ -1,6 +1,6 @@
-// Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2021 - 2022, NVIDIA CORPORATION. All rights reserved.
 
-package main
+package mig
 
 import (
 	"bufio"
