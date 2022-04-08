@@ -56,13 +56,19 @@ spec:
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: nvidia-device-plugin-ctr
-        args:
-        - "--mig-strategy={{ .Values.migStrategy }}"
-        - "--pass-device-specs={{ .Values.compatWithCPUManager }}"
-        - "--fail-on-init-error={{ .Values.failOnInitError }}"
-        - "--device-list-strategy={{ .Values.deviceListStrategy }}"
-        - "--device-id-strategy={{ .Values.deviceIDStrategy }}"
-        - "--nvidia-driver-root={{ .Values.nvidiaDriverRoot }}"
+        env:
+          - name: MIG_STRATEGY
+            value: "{{ .Values.migStrategy }}"
+          - name: FAIL_ON_INIT_ERROR
+            value: "{{ .Values.failOnInitError }}"
+          - name: PASS_DEVICE_SPECS
+            value: "{{ .Values.compatWithCPUManager }}"
+          - name: DEVICE_LIST_STRATEGY
+            value: "{{ .Values.deviceListStrategy }}"
+          - name: DEVICE_ID_STRATEGY
+            value: "{{ .Values.deviceIDStrategy }}"
+          - name: NVIDIA_DRIVER_ROOT
+            value: "{{ .Values.nvidiaDriverRoot }}"
         securityContext:
         {{- if ne (len .Values.securityContext) 0 }}
           {{- toYaml .Values.securityContext | nindent 10 }}
