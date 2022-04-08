@@ -32,23 +32,38 @@ const Version = "v1"
 
 // Config is a versioned struct used to hold configuration information.
 type Config struct {
-	Version string `json:"version"         yaml:"version"`
-	Flags   Flags  `json:"flags,omitempty" yaml:"flags"`
+	Version   string     `json:"version"             yaml:"version"`
+	Flags     Flags      `json:"flags,omitempty"     yaml:"flags,omitempty"`
+	Resources []Resource `json:"resources,omitempty" yaml:"resources,omitempty"`
 }
 
-// CommandLineFlags holds the list of command line flags used to configure the device plugin.
-type CommandLineFlags struct {
-	MigStrategy        string `json:"migStrategy"        yaml:"migStrategy"`
-	FailOnInitError    bool   `json:"failOnInitError"    yaml:"failOnInitError"`
-	PassDeviceSpecs    bool   `json:"passDeviceSpecs"    yaml:"passDeviceSpecs"`
-	DeviceListStrategy string `json:"deviceListStrategy" yaml:"deviceListStrategy"`
-	DeviceIDStrategy   string `json:"deviceIDStrategy"   yaml:"deviceIDStrategy"`
-	NvidiaDriverRoot   string `json:"nvidiaDriverRoot"   yaml:"nvidiaDriverRoot"`
-}
+// NewConfig builds out a Config struct from a config file (or command line flags).
+// The data stored in the config will be populated in order of precedence from
+// (1) command line, (2) environment variable, (3) config file.
+func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
+	config := &Config{
+		Version: Version,
+		Flags:   Flags{NewCommandLineFlags(c)},
+	}
 
-// Flags holds the full list of flags used to configure the device plugin.
-type Flags struct {
-	*CommandLineFlags
+	configFile := c.String("config-file")
+	if configFile == "" {
+		return config, nil
+	}
+
+	config, err := parseConfig(configFile)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse config file: %v", err)
+	}
+
+	commandLineFlagsInputSource := altsrc.NewMapInputSource(configFile, config.Flags.ToMap())
+	err = altsrc.ApplyInputSourceValues(c, commandLineFlagsInputSource, flags)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load command line flags from config: %v", err)
+	}
+	config.Flags.CommandLineFlags = NewCommandLineFlags(c)
+
+	return config, nil
 }
 
 // parseConfig parses a config file as either YAML of JSON and unmarshals it into a Config struct.
@@ -91,54 +106,4 @@ func parseConfigFrom(reader io.Reader) (*Config, error) {
 	}
 
 	return &config, nil
-}
-
-// NewCommandLineFlags builds out a CommandLineFlags struct from the flags in cli.Context.
-func NewCommandLineFlags(c *cli.Context) *CommandLineFlags {
-	return &CommandLineFlags{
-		MigStrategy:        c.String("mig-strategy"),
-		FailOnInitError:    c.Bool("fail-on-init-error"),
-		PassDeviceSpecs:    c.Bool("pass-device-specs"),
-		DeviceListStrategy: c.String("device-list-strategy"),
-		DeviceIDStrategy:   c.String("device-id-strategy"),
-		NvidiaDriverRoot:   c.String("nvidia-driver-root"),
-	}
-}
-
-// NewConfig builds out a Config struct from a config file (or command line flags).
-// The data stored in the config will be populated in order of precedence from
-// (1) command line, (2) environment variable, (3) config file.
-func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
-	config := &Config{
-		Version: Version,
-		Flags:   Flags{NewCommandLineFlags(c)},
-	}
-
-	configFile := c.String("config-file")
-	if configFile == "" {
-		return config, nil
-	}
-
-	config, err := parseConfig(configFile)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse config file: %v", err)
-	}
-
-	commandLineFlagsFromConfig := map[interface{}]interface{}{
-		"mig-strategy":         config.Flags.MigStrategy,
-		"fail-on-init-error":   config.Flags.FailOnInitError,
-		"pass-device-specs":    config.Flags.PassDeviceSpecs,
-		"device-list-strategy": config.Flags.DeviceListStrategy,
-		"device-id-strategy":   config.Flags.DeviceIDStrategy,
-		"nvidia-driver-root":   config.Flags.NvidiaDriverRoot,
-	}
-	commandLineFlagsInputSource := altsrc.NewMapInputSource(configFile, commandLineFlagsFromConfig)
-
-	err = altsrc.ApplyInputSourceValues(c, commandLineFlagsInputSource, flags)
-	if err != nil {
-		return nil, fmt.Errorf("unable to load command line flags from config: %v", err)
-	}
-	config.Flags.CommandLineFlags = NewCommandLineFlags(c)
-
-	return config, nil
 }
