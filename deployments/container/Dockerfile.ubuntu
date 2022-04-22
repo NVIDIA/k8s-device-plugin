@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG GOLANG_VERSION=1.15.8
+ARG GOLANG_VERSION=1.17.9
 ARG CUDA_IMAGE=cuda
 ARG CUDA_VERSION=11.6.0
 ARG BASE_DIST=ubuntu20.04
