@@ -18,8 +18,6 @@ package v1
 
 import (
 	"fmt"
-	"io"
-	"io/ioutil"
 	"os"
 
 	cli "github.com/urfave/cli/v2"
@@ -54,13 +52,12 @@ type Flags struct {
 
 // parseConfig parses a config file as either YAML of JSON and unmarshals it into a Config struct.
 func parseConfig(configFile string) (*Config, error) {
-	reader, err := os.Open(configFile)
+	configYaml, err := os.ReadFile(configFile)
 	if err != nil {
 		return nil, fmt.Errorf("error opening config file: %v", err)
 	}
-	defer reader.Close()
 
-	config, err := parseConfigFrom(reader)
+	config, err := parseConfigFrom(configYaml)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing config file: %v", err)
 	}
@@ -68,14 +65,8 @@ func parseConfig(configFile string) (*Config, error) {
 	return config, nil
 }
 
-func parseConfigFrom(reader io.Reader) (*Config, error) {
+func parseConfigFrom(configYaml []byte) (*Config, error) {
 	var err error
-	var configYaml []byte
-
-	configYaml, err = ioutil.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("read error: %v", err)
-	}
 
 	var config Config
 	err = yaml.Unmarshal(configYaml, &config)
