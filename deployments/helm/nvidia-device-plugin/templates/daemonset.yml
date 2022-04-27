@@ -24,6 +24,10 @@ metadata:
   labels:
     {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
 spec:
+  {{- if .Values.hostNetwork }}
+  hostNetwork: {{ .Values.hostNetwork }}
+  dnsPolicy: ClusterFirstWithHostNet
+  {{- end }}
   {{- if not .Values.legacyDaemonsetAPI }}
   selector:
     matchLabels:
