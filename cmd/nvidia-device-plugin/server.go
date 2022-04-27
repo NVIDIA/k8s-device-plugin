@@ -54,7 +54,7 @@ const (
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
 	ResourceManager
-	config           config.Config
+	config           *config.Config
 	resourceName     string
 	deviceListEnvvar string
 	allocatePolicy   gpuallocator.Policy
@@ -70,6 +70,7 @@ type NvidiaDevicePlugin struct {
 func NewNvidiaDevicePlugin(config *config.Config, resourceName string, resourceManager ResourceManager, deviceListEnvvar string, allocatePolicy gpuallocator.Policy, socket string) *NvidiaDevicePlugin {
 	return &NvidiaDevicePlugin{
 		ResourceManager:  resourceManager,
+		config:           config,
 		resourceName:     resourceName,
 		deviceListEnvvar: deviceListEnvvar,
 		allocatePolicy:   allocatePolicy,
