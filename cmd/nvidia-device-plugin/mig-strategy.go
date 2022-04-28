@@ -62,9 +62,9 @@ func (s *migStrategyNone) GetPlugins() []*NvidiaDevicePlugin {
 
 // migStrategySingle
 func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
-	devices := mig.NewMIGCapableDevices()
+	info := mig.NewDeviceInfo()
 
-	migEnabledDevices, err := devices.GetDevicesWithMigEnabled()
+	migEnabledDevices, err := info.GetDevicesWithMigEnabled()
 	if err != nil {
 		panic(fmt.Errorf("Unabled to retrieve list of MIG-enabled devices: %v", err))
 	}
@@ -76,7 +76,7 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 		return none.GetPlugins()
 	}
 
-	migDisabledDevices, err := devices.GetDevicesWithMigDisabled()
+	migDisabledDevices, err := info.GetDevicesWithMigDisabled()
 	if err != nil {
 		panic(fmt.Errorf("Unabled to retrieve list of non-MIG-enabled devices: %v", err))
 	}
@@ -84,7 +84,7 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 		panic(fmt.Errorf("For mig.strategy=single all devices on the node must all be configured with the same migEnabled value"))
 	}
 
-	if err := devices.AssertAllMigEnabledDevicesAreValid(); err != nil {
+	if err := info.AssertAllMigEnabledDevicesAreValid(); err != nil {
 		panic(fmt.Errorf("At least one device with migEnabled=true was not configured correctly: %v", err))
 	}
 
@@ -106,9 +106,9 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 
 // migStrategyMixed
 func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
-	devices := mig.NewMIGCapableDevices()
+	info := mig.NewDeviceInfo()
 
-	if err := devices.AssertAllMigEnabledDevicesAreValid(); err != nil {
+	if err := info.AssertAllMigEnabledDevicesAreValid(); err != nil {
 		panic(fmt.Errorf("At least one device with migEnabled=true was not configured correctly: %v", err))
 	}
 
