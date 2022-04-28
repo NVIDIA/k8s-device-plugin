@@ -21,16 +21,9 @@ import (
 	"log"
 
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
-	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
-	config "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
-	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
-)
-
-// Constants representing the various MIG strategies
-const (
-	MigStrategyNone   = "none"
-	MigStrategySingle = "single"
-	MigStrategyMixed  = "mixed"
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/mig"
+	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 )
 
 // MigStrategyResourceSet holds a set of resource names for a given MIG strategy
@@ -39,46 +32,37 @@ type MigStrategyResourceSet map[string]struct{}
 // MigStrategy provides an interface for building the set of plugins required to implement a given MIG strategy
 type MigStrategy interface {
 	GetPlugins() []*NvidiaDevicePlugin
-	MatchesResource(mig *nvml.Device, resource string) bool
 }
 
 // NewMigStrategy returns a reference to a given MigStrategy based on the 'strategy' passed in
-func NewMigStrategy(config *config.Config) (MigStrategy, error) {
+func NewMigStrategy(config *spec.Config) (MigStrategy, error) {
 	switch config.Flags.MigStrategy {
-	case MigStrategyNone:
+	case spec.MigStrategyNone:
 		return &migStrategyNone{config}, nil
-	case MigStrategySingle:
+	case spec.MigStrategySingle:
 		return &migStrategySingle{config}, nil
-	case MigStrategyMixed:
+	case spec.MigStrategyMixed:
 		return &migStrategyMixed{config}, nil
 	}
 	return nil, fmt.Errorf("Unknown strategy: %v", config.Flags.MigStrategy)
 }
 
-type migStrategyNone struct{ config *config.Config }
-type migStrategySingle struct{ config *config.Config }
-type migStrategyMixed struct{ config *config.Config }
+type migStrategyNone struct{ config *spec.Config }
+type migStrategySingle struct{ config *spec.Config }
+type migStrategyMixed struct{ config *spec.Config }
 
 // migStrategyNone
 func (s *migStrategyNone) GetPlugins() []*NvidiaDevicePlugin {
-	return []*NvidiaDevicePlugin{
-		NewNvidiaDevicePlugin(
-			s.config,
-			"nvidia.com/gpu",
-			NewGpuDeviceManager(false), // Enumerate device even if MIG enabled
-			"NVIDIA_VISIBLE_DEVICES",
-			gpuallocator.NewBestEffortPolicy(),
-			pluginapi.DevicePluginPath+"nvidia-gpu.sock"),
+	rms, err := rm.NewResourceManagers(s.config)
+	if err != nil {
+		panic(fmt.Errorf("Unable to load resource managers to manage plugin devices: %v", err))
 	}
-}
-
-func (s *migStrategyNone) MatchesResource(mig *nvml.Device, resource string) bool {
-	panic("Should never be called")
+	return getPlugins(s.config, rms)
 }
 
 // migStrategySingle
 func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
-	devices := NewMIGCapableDevices()
+	devices := mig.NewMIGCapableDevices()
 
 	migEnabledDevices, err := devices.GetDevicesWithMigEnabled()
 	if err != nil {
@@ -104,139 +88,48 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 		panic(fmt.Errorf("At least one device with migEnabled=true was not configured correctly: %v", err))
 	}
 
-	resources := make(MigStrategyResourceSet)
-
-	migs, err := devices.GetAllMigDevices()
+	rms, err := rm.NewResourceManagers(s.config)
 	if err != nil {
-		panic(fmt.Errorf("Unable to retrieve list of MIG devices: %v", err))
-	}
-	for _, mig := range migs {
-		r := s.getResourceName(mig)
-		if !s.validMigDevice(mig) {
-			panic("Unsupported MIG device found: " + r)
-		}
-		resources[r] = struct{}{}
+		panic(fmt.Errorf("Unable to load resource managers to manage plugin devices: %v", err))
 	}
 
-	if len(resources) == 0 {
+	if len(rms) == 0 {
 		panic("No MIG devices present on node")
 	}
 
-	if len(resources) != 1 {
+	if len(rms) != 1 {
 		panic("More than one MIG device type present on node")
 	}
 
-	return []*NvidiaDevicePlugin{
-		NewNvidiaDevicePlugin(
-			s.config,
-			"nvidia.com/gpu",
-			NewMigDeviceManager(s, "gpu"),
-			"NVIDIA_VISIBLE_DEVICES",
-			gpuallocator.Policy(nil),
-			pluginapi.DevicePluginPath+"nvidia-gpu.sock"),
-	}
-}
-
-func (s *migStrategySingle) validMigDevice(mig *nvml.Device) bool {
-	attr, err := mig.GetAttributes()
-	check(err)
-
-	return attr.GpuInstanceSliceCount == attr.ComputeInstanceSliceCount
-}
-
-func (s *migStrategySingle) getResourceName(mig *nvml.Device) string {
-	attr, err := mig.GetAttributes()
-	check(err)
-
-	g := attr.GpuInstanceSliceCount
-	c := attr.ComputeInstanceSliceCount
-	gb := ((attr.MemorySizeMB + 1024 - 1) / 1024)
-
-	var r string
-	if g == c {
-		r = fmt.Sprintf("mig-%dg.%dgb", g, gb)
-	} else {
-		r = fmt.Sprintf("mig-%dc.%dg.%dgb", c, g, gb)
-	}
-
-	return r
-}
-
-func (s *migStrategySingle) MatchesResource(mig *nvml.Device, resource string) bool {
-	return true
+	return getPlugins(s.config, rms)
 }
 
 // migStrategyMixed
 func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
-	devices := NewMIGCapableDevices()
+	devices := mig.NewMIGCapableDevices()
 
 	if err := devices.AssertAllMigEnabledDevicesAreValid(); err != nil {
 		panic(fmt.Errorf("At least one device with migEnabled=true was not configured correctly: %v", err))
 	}
 
-	resources := make(MigStrategyResourceSet)
-	migs, err := devices.GetAllMigDevices()
+	rms, err := rm.NewResourceManagers(s.config)
 	if err != nil {
-		panic(fmt.Errorf("Unable to retrieve list of MIG devices: %v", err))
+		panic(fmt.Errorf("Unable to load resource managers to manage plugin devices: %v", err))
 	}
-	for _, mig := range migs {
-		r := s.getResourceName(mig)
-		if !s.validMigDevice(mig) {
-			log.Printf("Skipping unsupported MIG device: %v", r)
-			continue
+
+	return getPlugins(s.config, rms)
+}
+
+// getPlugins generates the plugins from all ResourceManagers
+func getPlugins(config *spec.Config, rms []rm.ResourceManager) []*NvidiaDevicePlugin {
+	var plugins []*NvidiaDevicePlugin
+	for _, r := range rms {
+		allocationPolicy := gpuallocator.Policy(nil)
+		if !rm.DeviceSlice(r.Devices()).ContainsMigDevices() {
+			allocationPolicy = gpuallocator.NewBestEffortPolicy()
 		}
-		resources[r] = struct{}{}
-	}
-
-	plugins := []*NvidiaDevicePlugin{
-		NewNvidiaDevicePlugin(
-			s.config,
-			"nvidia.com/gpu",
-			NewGpuDeviceManager(true),
-			"NVIDIA_VISIBLE_DEVICES",
-			gpuallocator.NewBestEffortPolicy(),
-			pluginapi.DevicePluginPath+"nvidia-gpu.sock"),
-	}
-
-	for resource := range resources {
-		plugin := NewNvidiaDevicePlugin(
-			s.config,
-			"nvidia.com/"+resource,
-			NewMigDeviceManager(s, resource),
-			"NVIDIA_VISIBLE_DEVICES",
-			gpuallocator.Policy(nil),
-			pluginapi.DevicePluginPath+"nvidia-"+resource+".sock")
+		plugin := NewNvidiaDevicePlugin(config, r, allocationPolicy)
 		plugins = append(plugins, plugin)
 	}
-
 	return plugins
-}
-
-func (s *migStrategyMixed) validMigDevice(mig *nvml.Device) bool {
-	attr, err := mig.GetAttributes()
-	check(err)
-
-	return attr.GpuInstanceSliceCount == attr.ComputeInstanceSliceCount
-}
-
-func (s *migStrategyMixed) getResourceName(mig *nvml.Device) string {
-	attr, err := mig.GetAttributes()
-	check(err)
-
-	g := attr.GpuInstanceSliceCount
-	c := attr.ComputeInstanceSliceCount
-	gb := ((attr.MemorySizeMB + 1024 - 1) / 1024)
-
-	var r string
-	if g == c {
-		r = fmt.Sprintf("mig-%dg.%dgb", g, gb)
-	} else {
-		r = fmt.Sprintf("mig-%dc.%dg.%dgb", c, g, gb)
-	}
-
-	return r
-}
-
-func (s *migStrategyMixed) MatchesResource(mig *nvml.Device, resource string) bool {
-	return s.getResourceName(mig) == resource
 }
