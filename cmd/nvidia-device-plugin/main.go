@@ -70,12 +70,21 @@ func main() {
 				EnvVars:     []string{"FAIL_ON_INIT_ERROR"},
 			},
 		),
+		altsrc.NewStringFlag(
+			&cli.StringFlag{
+				Name:        "nvidia-driver-root",
+				Value:       "/",
+				Usage:       "the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')",
+				Destination: &flags.NvidiaDriverRoot,
+				EnvVars:     []string{"NVIDIA_DRIVER_ROOT"},
+			},
+		),
 		altsrc.NewBoolFlag(
 			&cli.BoolFlag{
 				Name:        "pass-device-specs",
 				Value:       false,
 				Usage:       "pass the list of DeviceSpecs to the kubelet on Allocate()",
-				Destination: &flags.PassDeviceSpecs,
+				Destination: &flags.Plugin.PassDeviceSpecs,
 				EnvVars:     []string{"PASS_DEVICE_SPECS"},
 			},
 		),
@@ -84,7 +93,7 @@ func main() {
 				Name:        "device-list-strategy",
 				Value:       "envvar",
 				Usage:       "the desired strategy for passing the device list to the underlying runtime:\n\t\t[envvar | volume-mounts]",
-				Destination: &flags.DeviceListStrategy,
+				Destination: &flags.Plugin.DeviceListStrategy,
 				EnvVars:     []string{"DEVICE_LIST_STRATEGY"},
 			},
 		),
@@ -93,17 +102,8 @@ func main() {
 				Name:        "device-id-strategy",
 				Value:       "uuid",
 				Usage:       "the desired strategy for passing device IDs to the underlying runtime:\n\t\t[uuid | index]",
-				Destination: &flags.DeviceIDStrategy,
+				Destination: &flags.Plugin.DeviceIDStrategy,
 				EnvVars:     []string{"DEVICE_ID_STRATEGY"},
-			},
-		),
-		altsrc.NewStringFlag(
-			&cli.StringFlag{
-				Name:        "nvidia-driver-root",
-				Value:       "/",
-				Usage:       "the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')",
-				Destination: &flags.NvidiaDriverRoot,
-				EnvVars:     []string{"NVIDIA_DRIVER_ROOT"},
 			},
 		),
 		&cli.StringFlag{
@@ -123,12 +123,12 @@ func main() {
 }
 
 func validateFlags(config *config.Config) error {
-	if config.Flags.DeviceListStrategy != DeviceListStrategyEnvvar && config.Flags.DeviceListStrategy != DeviceListStrategyVolumeMounts {
-		return fmt.Errorf("invalid --device-list-strategy option: %v", config.Flags.DeviceListStrategy)
+	if config.Flags.Plugin.DeviceListStrategy != DeviceListStrategyEnvvar && config.Flags.Plugin.DeviceListStrategy != DeviceListStrategyVolumeMounts {
+		return fmt.Errorf("invalid --device-list-strategy option: %v", config.Flags.Plugin.DeviceListStrategy)
 	}
 
-	if config.Flags.DeviceIDStrategy != DeviceIDStrategyUUID && config.Flags.DeviceIDStrategy != DeviceIDStrategyIndex {
-		return fmt.Errorf("invalid --device-id-strategy option: %v", config.Flags.DeviceIDStrategy)
+	if config.Flags.Plugin.DeviceIDStrategy != DeviceIDStrategyUUID && config.Flags.Plugin.DeviceIDStrategy != DeviceIDStrategyIndex {
+		return fmt.Errorf("invalid --device-id-strategy option: %v", config.Flags.Plugin.DeviceIDStrategy)
 	}
 	return nil
 }
