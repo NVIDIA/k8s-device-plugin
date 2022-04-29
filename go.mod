@@ -32,6 +32,7 @@ require (
 	github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201222072828-352eb4c503a7
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/google/uuid v1.1.1
 	github.com/stretchr/testify v1.5.1
 	github.com/urfave/cli/v2 v2.4.0
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974
