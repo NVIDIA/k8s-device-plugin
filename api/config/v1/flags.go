@@ -24,7 +24,7 @@ import (
 
 // Flags holds the full list of flags used to configure the device plugin and GFD.
 type Flags struct {
-	*CommandLineFlags
+	CommandLineFlags
 }
 
 // CommandLineFlags holds the list of command line flags used to configure the device plugin and GFD.
@@ -52,8 +52,8 @@ type GFDCommandLineFlags struct {
 }
 
 // NewCommandLineFlags builds out a CommandLineFlags struct from the flags in cli.Context.
-func NewCommandLineFlags(c *cli.Context) *CommandLineFlags {
-	return &CommandLineFlags{
+func NewCommandLineFlags(c *cli.Context) CommandLineFlags {
+	return CommandLineFlags{
 		MigStrategy:      c.String("mig-strategy"),
 		FailOnInitError:  c.Bool("fail-on-init-error"),
 		NvidiaDriverRoot: c.String("nvidia-driver-root"),

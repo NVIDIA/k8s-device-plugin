@@ -18,5 +18,5 @@ package v1
 
 // Sharing encapsulates the set of sharing strategies that are supported.
 type Sharing struct {
-	TimeSlicing *TimeSlicing `json:"timeSlicing,omitempty" yaml:"timeSlicing,omitempty"`
+	TimeSlicing TimeSlicing `json:"timeSlicing,omitempty" yaml:"timeSlicing,omitempty"`
 }
