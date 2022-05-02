@@ -67,7 +67,7 @@ func buildDeviceMap(config *spec.Config) (map[string][]*Device, error) {
 		return nil, fmt.Errorf("error building GPU device mapi: %v", err)
 	}
 
-	if config.Flags.MigStrategy == spec.MigStrategyNone {
+	if config.Sharing.Mig.Strategy == spec.MigStrategyNone {
 		return devices, nil
 	}
 
@@ -90,7 +90,7 @@ func buildGPUDeviceMap(config *spec.Config, devices map[string][]*Device) error 
 		if err != nil {
 			return fmt.Errorf("error checking if MIG is enabled on GPU with index '%v': %v", i, err)
 		}
-		if migEnabled && config.Flags.MigStrategy != spec.MigStrategyNone {
+		if migEnabled && config.Sharing.Mig.Strategy != spec.MigStrategyNone {
 			return nil
 		}
 		for _, resource := range config.Resources.GPUs {
@@ -125,7 +125,7 @@ func buildMigDeviceMap(config *spec.Config, devices map[string][]*Device) error 
 				return setMigDeviceMapEntry(i, j, mig, &resource, devices)
 			}
 		}
-		resource := defaultMigResource(migProfile, config.Flags.MigStrategy)
+		resource := defaultMigResource(migProfile, config.Sharing.Mig.Strategy)
 		return setMigDeviceMapEntry(i, j, mig, resource, devices)
 	})
 }

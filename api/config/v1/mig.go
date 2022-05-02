@@ -16,8 +16,9 @@
 
 package v1
 
-// Sharing encapsulates the set of sharing strategies that are supported.
-type Sharing struct {
-	Mig         MigPartitioning `json:"mig,omitempty"         yaml:"mig,omitempty"`
-	TimeSlicing TimeSlicing     `json:"timeSlicing,omitempty" yaml:"timeSlicing,omitempty"`
+// MigPartitioning defines the way MIG partitioning is done on the node.
+// TODO: For now this just defines the strategy or a pre-partitioned set of devices.
+//       In the future it will direct the partitioning itself.
+type MigPartitioning struct {
+	Strategy string `json:"strategy,omitempty" yaml:"strategy,omitempty"`
 }
