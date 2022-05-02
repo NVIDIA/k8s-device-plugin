@@ -251,34 +251,46 @@ func TestUnmarshalReplicaResource(t *testing.T) {
 		},
 		{
 			input: `{
+				"name": "valid",
+			}`,
+			err: true,
+		},
+		{
+			input: `{
+				"name": "valid",
 				"devices": "all",
 			}`,
 			err: true,
 		},
 		{
 			input: `{
+				"name": "valid",
 				"devices": "all",
-				"rename": "valid",
+				"rename": "valid-shared",
 			}`,
 			err: true,
 		},
 		{
 			input: `{
+				"name": "valid",
 				"devices": "all",
 				"replicas": 2
 			}`,
 			output: ReplicaResource{
+				Name:     ResourceName("valid"),
 				Devices:  ReplicaDevices{All: true},
 				Replicas: 2,
 			},
 		},
 		{
 			input: `{
+				"name": "valid",
 				"devices": "all",
 				"replicas": 2,
 				"rename": "valid"
 			}`,
 			output: ReplicaResource{
+				Name:     ResourceName("valid"),
 				Devices:  ReplicaDevices{All: true},
 				Replicas: 2,
 				Rename:   "valid",
@@ -286,38 +298,53 @@ func TestUnmarshalReplicaResource(t *testing.T) {
 		},
 		{
 			input: `{
+				"name": "valid",
 				"replicas": -1,
 			}`,
 			err: true,
 		},
 		{
 			input: `{
+				"name": "valid",
 				"replicas": 0,
 			}`,
 			err: true,
 		},
 		{
 			input: `{
+				"name": "valid",
 				"replicas": 2
 			}`,
 			output: ReplicaResource{
+				Name:     ResourceName("valid"),
 				Devices:  ReplicaDevices{All: true},
 				Replicas: 2,
 			},
 		},
 		{
 			input: `{
+				"name": "valid",
 				"replicas": 2,
-				"rename": "valid"
+				"rename": "valid-shared"
 			}`,
 			output: ReplicaResource{
+				Name:     ResourceName("valid"),
 				Devices:  ReplicaDevices{All: true},
 				Replicas: 2,
-				Rename:   "valid",
+				Rename:   "valid-shared",
 			},
 		},
 		{
 			input: `{
+				"name": "$invalid$",
+				"replicas": 2,
+				"rename": "valid-shared"
+			}`,
+			err: true,
+		},
+		{
+			input: `{
+				"name": "valid",
 				"replicas": 2,
 				"rename": "$invalid$"
 			}`,
@@ -362,23 +389,25 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 		{
 			input: `{
 				"strategy": "",
-				"resources": {}
+				"resources": []
 			}`,
 			err: true,
 		},
 		{
 			input: `{
 				"strategy": "",
-				"resources": {
-					"valid": {
+				"resources": [
+					{
+						"name": "valid",
 						"replicas": 2
 					}
-				}
+				]
 			}`,
 			output: TimeSlicing{
 				Strategy: UnspecifiedTimeSlicingStrategy,
-				Resources: map[string]ReplicaResource{
-					"valid": {
+				Resources: []ReplicaResource{
+					{
+						Name:     "valid",
 						Devices:  ReplicaDevices{All: true},
 						Replicas: 2,
 					},
@@ -387,16 +416,18 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 		},
 		{
 			input: `{
-				"resources": {
-					"valid": {
+				"resources": [
+					{
+						"name": "valid",
 						"replicas": 2
 					}
-				}
+				]
 			}`,
 			output: TimeSlicing{
 				Strategy: UnspecifiedTimeSlicingStrategy,
-				Resources: map[string]ReplicaResource{
-					"valid": {
+				Resources: []ReplicaResource{
+					{
+						Name:     "valid",
 						Devices:  ReplicaDevices{All: true},
 						Replicas: 2,
 					},
@@ -405,23 +436,27 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 		},
 		{
 			input: `{
-				"resources": {
-					"valid1": {
+				"resources": [
+					{
+						"name": "valid1",
 						"replicas": 2
 					},
-					"valid2": {
+					{
+						"name": "valid2",
 						"replicas": 2
 					}
-				}
+				]
 			}`,
 			output: TimeSlicing{
 				Strategy: UnspecifiedTimeSlicingStrategy,
-				Resources: map[string]ReplicaResource{
-					"valid1": {
+				Resources: []ReplicaResource{
+					{
+						Name:     "valid1",
 						Devices:  ReplicaDevices{All: true},
 						Replicas: 2,
 					},
-					"valid2": {
+					{
+						Name:     "valid2",
 						Devices:  ReplicaDevices{All: true},
 						Replicas: 2,
 					},
@@ -431,21 +466,23 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 		{
 			input: `{
 				"strategy": "bogus",
-				"resources": {
-					"valid": {
+				"resources": [
+					{
+						"name": "valid",
 						"replicas": 2
 					}
-				}
+				]
 			}`,
 			err: true,
 		},
 		{
 			input: `{
-				"resources": {
-					"$invalid$": {
+				"resources": [
+					{
+						"name": "$invalid$",
 						"replicas": 2
 					}
-				}
+				]
 			}`,
 			err: true,
 		},
