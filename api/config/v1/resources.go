@@ -25,21 +25,19 @@ import (
 	k8s "k8s.io/apimachinery/pkg/api/validation"
 )
 
-const (
-	productName    = "productName"
-	migProfileName = "migProfileName"
-	resourceName   = "resourceName"
-)
+// ResourcePattern is used to match a resource name to a specific pattern
+type ResourcePattern string
 
-// DeviceSelector is used to pair a selected device to a resource name
-type DeviceSelector string
-
-// Resource pairs a device selector with a resource name.
-// Only one of ProductName or MigProfileName should ever be set for a given resource.
+// Resource pairs a pattern matcher with a resource name.
 type Resource struct {
-	ProductName    DeviceSelector `json:"productName,omitempty"    yaml:"productName,omitempty"`
-	MigProfileName DeviceSelector `json:"migProfileName,omitempty" yaml:"migProfileName,omitempty"`
-	ResourceName   string         `json:"resourceName"             yaml:"resourceName"`
+	Pattern ResourcePattern `json:"pattern" yaml:"pattern"`
+	Name    string          `json:"name"    yaml:"name"`
+}
+
+// Resources lists full GPUs and MIG devices separately.
+type Resources struct {
+	GPUs []Resource `json:"gpus" yaml:"gpus"`
+	MIGs []Resource `json:"mig"  yaml:"mig"`
 }
 
 // AddResourceNamePrefix builds a resource name from a prefix and a name
@@ -65,55 +63,33 @@ func (r *Resource) UnmarshalJSON(b []byte) error {
 	}
 
 	// Verify correct fields set in the resource JSON
-	_, resourceNameExists := res[resourceName]
-	_, productNameExists := res[productName]
-	_, migProfileNameExists := res[migProfileName]
-
-	if !resourceNameExists {
-		return fmt.Errorf("resources must have a '%v' field set", resourceName)
+	if _, exists := res["pattern"]; !exists {
+		return fmt.Errorf("resources must have a 'pattern' field set")
 	}
-	if !productNameExists && !migProfileNameExists {
-		return fmt.Errorf("resources must have a '%v' or '%v' field set", productName, migProfileName)
-	}
-	if len(res) != 2 {
-		return fmt.Errorf("resources should have exactly two fields set")
+	if _, exists := res["name"]; !exists {
+		return fmt.Errorf("resources must have a 'name' field set")
 	}
 
-	// Set r.ResourceName from the resource JSON
-	prefixedResourceName := AddResourceNamePrefix(res[resourceName])
+	// Set r.Pattern from the resource JSON
+	r.Pattern = ResourcePattern(res["pattern"])
+
+	// Set r.Name from the resource JSON
+	prefixedResourceName := AddResourceNamePrefix(res["name"])
 	if len(prefixedResourceName) > MaxResourceNameLength {
 		return fmt.Errorf("fully-qualified resource name must be %v characters or less: %v", MaxResourceNameLength, prefixedResourceName)
 	}
-	invalid := k8s.NameIsDNSSubdomain(res[resourceName], false)
+	invalid := k8s.NameIsDNSSubdomain(res["name"], false)
 	if len(invalid) != 0 {
-		return fmt.Errorf("incorrect format for resource name '%v': %v", res[resourceName], invalid)
+		return fmt.Errorf("incorrect format for resource name '%v': %v", res["name"], invalid)
 	}
-	r.ResourceName = res[resourceName]
-
-	// Set one of r.ProductName or r.MigProfileName from the resource map
-	if productNameExists {
-		r.ProductName = DeviceSelector(res[productName])
-	}
-	if migProfileNameExists {
-		r.MigProfileName = DeviceSelector(res[migProfileName])
-	}
+	r.Name = res["name"]
 
 	return nil
 }
 
-// IsGPUResource indicates if the resource pairs a full GPU to a resource name
-func (r *Resource) IsGPUResource() bool {
-	return r.ProductName != ""
-}
-
-// IsMigResource indicates if the resource pairs a MIG device to a resource name
-func (r *Resource) IsMigResource() bool {
-	return r.MigProfileName != ""
-}
-
-// Matches checks if the provided string matches the DeviceSelector or not.
-func (d DeviceSelector) Matches(s string) bool {
-	result, _ := regexp.MatchString(wildCardToRegexp(string(d)), s)
+// Matches checks if the provided string matches the ResourcePattern or not.
+func (p ResourcePattern) Matches(s string) bool {
+	result, _ := regexp.MatchString(wildCardToRegexp(string(p)), s)
 	return result
 }
 
