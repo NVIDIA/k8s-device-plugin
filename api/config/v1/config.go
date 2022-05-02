@@ -32,10 +32,10 @@ const Version = "v1"
 
 // Config is a versioned struct used to hold configuration information.
 type Config struct {
-	Version     string       `json:"version"                yaml:"version"`
-	Flags       Flags        `json:"flags,omitempty"        yaml:"flags,omitempty"`
-	Resources   *Resources   `json:"resources,omitempty"    yaml:"resources,omitempty"`
-	TimeSlicing *TimeSlicing `json:"time-slicing,omitempty" yaml:"time-slicing,omitempty"`
+	Version   string     `json:"version"             yaml:"version"`
+	Flags     Flags      `json:"flags,omitempty"     yaml:"flags,omitempty"`
+	Resources *Resources `json:"resources,omitempty" yaml:"resources,omitempty"`
+	Sharing   *Sharing   `json:"sharing,omitempty"   yaml:"sharing,omitempty"`
 }
 
 // NewConfig builds out a Config struct from a config file (or command line flags).

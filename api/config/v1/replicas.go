@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	k8s "k8s.io/apimachinery/pkg/api/validation"
 )
 
 // These constants define the possible strategies for striping through GPUs when time-slicing them.
@@ -34,17 +33,18 @@ const (
 	//PackedTimeSlicingStrategy     = "packed"
 )
 
-// TimeSlicing defines the set of replicas to be made for time-slicing available resources.
+// TimeSlicing defines the set of replicas to be made for timeSlicing available resources.
 type TimeSlicing struct {
-	Strategy  string                     `json:"strategy,omitempty" yaml:"strategy,omitempty"`
-	Resources map[string]ReplicaResource `json:"resources"          yaml:"resources"`
+	Strategy  string            `json:"strategy,omitempty" yaml:"strategy,omitempty"`
+	Resources []ReplicaResource `json:"resources"          yaml:"resources"`
 }
 
 // ReplicaResource represents a resource to be replicated.
 type ReplicaResource struct {
+	Name     ResourceName   `json:"name"             yaml:"name"`
+	Rename   ResourceName   `json:"rename,omitempty" yaml:"rename,omitempty"`
 	Devices  ReplicaDevices `json:"devices"          yaml:"devices,flow"`
 	Replicas int            `json:"replicas"         yaml:"replicas"`
-	Rename   string         `json:"rename,omitempty" yaml:"rename,omitempty"`
 }
 
 // ReplicaDevices encapsulates the set of devices that should be replicated for a given resource.
@@ -153,30 +153,13 @@ func (s *TimeSlicing) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("no resources specified")
 	}
 
-	rawResources := make(map[string]json.RawMessage)
-	err = json.Unmarshal(resources, &rawResources)
+	err = json.Unmarshal(resources, &s.Resources)
 	if err != nil {
 		return err
 	}
 
-	if len(rawResources) == 0 {
+	if len(s.Resources) == 0 {
 		return fmt.Errorf("no resources specified")
-	}
-
-	s.Resources = make(map[string]ReplicaResource)
-	for name, resource := range rawResources {
-		invalid := k8s.NameIsDNSSubdomain(name, false)
-		if len(invalid) != 0 {
-			return fmt.Errorf("incorrect format for time-sliced resource name '%v'", name)
-		}
-
-		var rr ReplicaResource
-		err = json.Unmarshal(resource, &rr)
-		if err != nil {
-			return err
-		}
-
-		s.Resources[name] = rr
 	}
 
 	return nil
@@ -188,6 +171,21 @@ func (s *ReplicaResource) UnmarshalJSON(b []byte) error {
 	err := json.Unmarshal(b, &rr)
 	if err != nil {
 		return err
+	}
+
+	name, exists := rr["name"]
+	if !exists {
+		return fmt.Errorf("no resource name specified")
+	}
+
+	err = json.Unmarshal(name, &s.Name)
+	if err != nil {
+		return err
+	}
+
+	err = s.Name.AssertValid()
+	if err != nil {
+		return fmt.Errorf("incorrect format for time-sliced resource name '%v'", name)
 	}
 
 	devices, exists := rr["devices"]
@@ -224,8 +222,8 @@ func (s *ReplicaResource) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	invalid := k8s.NameIsDNSSubdomain(s.Rename, false)
-	if len(invalid) != 0 {
+	err = s.Rename.AssertValid()
+	if err != nil {
 		return fmt.Errorf("incorrect format for renamed resource '%v'", s.Rename)
 	}
 

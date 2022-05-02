@@ -56,7 +56,7 @@ const (
 type NvidiaDevicePlugin struct {
 	rm.ResourceManager
 	config           *spec.Config
-	resourceName     string
+	resourceName     spec.ResourceName
 	deviceListEnvvar string
 	allocatePolicy   gpuallocator.Policy
 	socket           string
@@ -69,7 +69,7 @@ type NvidiaDevicePlugin struct {
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
 func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, allocatePolicy gpuallocator.Policy) *NvidiaDevicePlugin {
-	_, name := spec.SplitResourceName(resourceManager.Resource())
+	_, name := resourceManager.Resource().Split()
 
 	return &NvidiaDevicePlugin{
 		ResourceManager:  resourceManager,
@@ -205,7 +205,7 @@ func (m *NvidiaDevicePlugin) Register() error {
 	reqt := &pluginapi.RegisterRequest{
 		Version:      pluginapi.Version,
 		Endpoint:     path.Base(m.socket),
-		ResourceName: m.resourceName,
+		ResourceName: string(m.resourceName),
 		Options: &pluginapi.DevicePluginOptions{
 			GetPreferredAllocationAvailable: (m.allocatePolicy != nil),
 		},
