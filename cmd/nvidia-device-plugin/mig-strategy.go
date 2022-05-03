@@ -36,7 +36,7 @@ type MigStrategy interface {
 
 // NewMigStrategy returns a reference to a given MigStrategy based on the 'strategy' passed in
 func NewMigStrategy(config *spec.Config) (MigStrategy, error) {
-	switch config.Flags.MigStrategy {
+	switch config.Sharing.Mig.Strategy {
 	case spec.MigStrategyNone:
 		return &migStrategyNone{config}, nil
 	case spec.MigStrategySingle:
@@ -44,7 +44,7 @@ func NewMigStrategy(config *spec.Config) (MigStrategy, error) {
 	case spec.MigStrategyMixed:
 		return &migStrategyMixed{config}, nil
 	}
-	return nil, fmt.Errorf("Unknown strategy: %v", config.Flags.MigStrategy)
+	return nil, fmt.Errorf("Unknown strategy: %v", config.Sharing.Mig.Strategy)
 }
 
 type migStrategyNone struct{ config *spec.Config }

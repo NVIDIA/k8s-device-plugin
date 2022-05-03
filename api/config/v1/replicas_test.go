@@ -23,7 +23,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestReplicaDeviceRef(t *testing.T) {
+func NoErrorNewResourceName(n string) ResourceName {
+	rn, _ := NewResourceName(n)
+	return rn
+}
+
+func TestReplicatedDeviceRef(t *testing.T) {
 	testCases := []struct {
 		input    string
 		expected string
@@ -54,47 +59,47 @@ func TestReplicaDeviceRef(t *testing.T) {
 		t.Run(fmt.Sprintf("test case %d", i), func(t *testing.T) {
 			switch tc.expected {
 			case "gpuIndex":
-				require.True(t, ReplicaDeviceRef(tc.input).IsGPUIndex())
-				require.False(t, ReplicaDeviceRef(tc.input).IsMigIndex())
-				require.False(t, ReplicaDeviceRef(tc.input).IsUUID())
+				require.True(t, ReplicatedDeviceRef(tc.input).IsGPUIndex())
+				require.False(t, ReplicatedDeviceRef(tc.input).IsMigIndex())
+				require.False(t, ReplicatedDeviceRef(tc.input).IsUUID())
 			case "migIndex":
-				require.False(t, ReplicaDeviceRef(tc.input).IsGPUIndex())
-				require.True(t, ReplicaDeviceRef(tc.input).IsMigIndex())
-				require.False(t, ReplicaDeviceRef(tc.input).IsUUID())
+				require.False(t, ReplicatedDeviceRef(tc.input).IsGPUIndex())
+				require.True(t, ReplicatedDeviceRef(tc.input).IsMigIndex())
+				require.False(t, ReplicatedDeviceRef(tc.input).IsUUID())
 			case "uuid":
-				require.False(t, ReplicaDeviceRef(tc.input).IsGPUIndex())
-				require.False(t, ReplicaDeviceRef(tc.input).IsMigIndex())
-				require.True(t, ReplicaDeviceRef(tc.input).IsUUID())
+				require.False(t, ReplicatedDeviceRef(tc.input).IsGPUIndex())
+				require.False(t, ReplicatedDeviceRef(tc.input).IsMigIndex())
+				require.True(t, ReplicatedDeviceRef(tc.input).IsUUID())
 			}
 		})
 	}
 }
 
-func TestMarshalReplicaDevices(t *testing.T) {
+func TestMarshalReplicatedDevices(t *testing.T) {
 	testCases := []struct {
-		input  ReplicaDevices
+		input  ReplicatedDevices
 		output string
 		err    bool
 	}{
 		{
-			input: ReplicaDevices{},
+			input: ReplicatedDevices{},
 			err:   true,
 		},
 		{
-			input: ReplicaDevices{
+			input: ReplicatedDevices{
 				All: true,
 			},
 			output: `"all"`,
 		},
 		{
-			input: ReplicaDevices{
+			input: ReplicatedDevices{
 				Count: 2,
 			},
 			output: `2`,
 		},
 		{
-			input: ReplicaDevices{
-				List: []ReplicaDeviceRef{"0", "0:0", "GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"},
+			input: ReplicatedDevices{
+				List: []ReplicatedDeviceRef{"0", "0:0", "GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"},
 			},
 			output: `["0", "0:0", "GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"]`,
 		},
@@ -113,10 +118,10 @@ func TestMarshalReplicaDevices(t *testing.T) {
 	}
 }
 
-func TestUnmarshalReplicaDevices(t *testing.T) {
+func TestUnmarshalReplicatedDevices(t *testing.T) {
 	testCases := []struct {
 		input  string
-		output ReplicaDevices
+		output ReplicatedDevices
 		err    bool
 	}{
 		{
@@ -161,69 +166,69 @@ func TestUnmarshalReplicaDevices(t *testing.T) {
 		},
 		{
 			input: `"all"`,
-			output: ReplicaDevices{
+			output: ReplicatedDevices{
 				All: true,
 			},
 		},
 		{
 			input: `2`,
-			output: ReplicaDevices{
+			output: ReplicatedDevices{
 				Count: 2,
 			},
 		},
 		{
 			input: `[0]`,
-			output: ReplicaDevices{
-				List: []ReplicaDeviceRef{"0"},
+			output: ReplicatedDevices{
+				List: []ReplicatedDeviceRef{"0"},
 			},
 		},
 		{
 			input: `["0"]`,
-			output: ReplicaDevices{
-				List: []ReplicaDeviceRef{"0"},
+			output: ReplicatedDevices{
+				List: []ReplicatedDeviceRef{"0"},
 			},
 		},
 		{
 			input: `["0:0"]`,
-			output: ReplicaDevices{
-				List: []ReplicaDeviceRef{"0:0"},
+			output: ReplicatedDevices{
+				List: []ReplicatedDeviceRef{"0:0"},
 			},
 		},
 		{
 			input: `["GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"]`,
-			output: ReplicaDevices{
-				List: []ReplicaDeviceRef{"GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"},
+			output: ReplicatedDevices{
+				List: []ReplicatedDeviceRef{"GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"},
 			},
 		},
 		{
 			input: `["MIG-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"]`,
-			output: ReplicaDevices{
-				List: []ReplicaDeviceRef{"MIG-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"},
+			output: ReplicatedDevices{
+				List: []ReplicatedDeviceRef{"MIG-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"},
 			},
 		},
 		{
 			input: `["MIG-GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c/0/0"]`,
-			output: ReplicaDevices{
-				List: []ReplicaDeviceRef{"MIG-GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c/0/0"},
+			output: ReplicatedDevices{
+				List: []ReplicatedDeviceRef{"MIG-GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c/0/0"},
 			},
 		},
 		{
 			input: `[0, "0:0", "GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"]`,
-			output: ReplicaDevices{
-				List: []ReplicaDeviceRef{"0", "0:0", "GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"},
+			output: ReplicatedDevices{
+				List: []ReplicatedDeviceRef{"0", "0:0", "GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"},
 			},
 		},
 		{
 			input: `["0", "0:0", "GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"]`,
-			output: ReplicaDevices{
-				List: []ReplicaDeviceRef{"0", "0:0", "GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"},
+			output: ReplicatedDevices{
+				List: []ReplicatedDeviceRef{"0", "0:0", "GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"},
 			},
 		},
 	}
 
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("test case %d", i), func(t *testing.T) {
-			var output ReplicaDevices
+			var output ReplicatedDevices
 			err := output.UnmarshalJSON([]byte(tc.input))
 			if tc.err {
 				require.Error(t, err)
@@ -235,10 +240,10 @@ func TestUnmarshalReplicaDevices(t *testing.T) {
 	}
 }
 
-func TestUnmarshalReplicaResource(t *testing.T) {
+func TestUnmarshalReplicatedResource(t *testing.T) {
 	testCases := []struct {
 		input  string
-		output ReplicaResource
+		output ReplicatedResource
 		err    bool
 	}{
 		{
@@ -251,73 +256,100 @@ func TestUnmarshalReplicaResource(t *testing.T) {
 		},
 		{
 			input: `{
+				"name": "valid",
+			}`,
+			err: true,
+		},
+		{
+			input: `{
+				"name": "valid",
 				"devices": "all",
 			}`,
 			err: true,
 		},
 		{
 			input: `{
+				"name": "valid",
 				"devices": "all",
-				"rename": "valid",
+				"rename": "valid-shared",
 			}`,
 			err: true,
 		},
 		{
 			input: `{
+				"name": "valid",
 				"devices": "all",
 				"replicas": 2
 			}`,
-			output: ReplicaResource{
-				Devices:  ReplicaDevices{All: true},
+			output: ReplicatedResource{
+				Name:     NoErrorNewResourceName("valid"),
+				Devices:  ReplicatedDevices{All: true},
 				Replicas: 2,
 			},
 		},
 		{
 			input: `{
+				"name": "valid",
 				"devices": "all",
 				"replicas": 2,
-				"rename": "valid"
+				"rename": "valid-shared"
 			}`,
-			output: ReplicaResource{
-				Devices:  ReplicaDevices{All: true},
+			output: ReplicatedResource{
+				Name:     NoErrorNewResourceName("valid"),
+				Devices:  ReplicatedDevices{All: true},
 				Replicas: 2,
-				Rename:   "valid",
+				Rename:   NoErrorNewResourceName("valid-shared"),
 			},
 		},
 		{
 			input: `{
+				"name": "valid",
 				"replicas": -1,
 			}`,
 			err: true,
 		},
 		{
 			input: `{
+				"name": "valid",
 				"replicas": 0,
 			}`,
 			err: true,
 		},
 		{
 			input: `{
+				"name": "valid",
 				"replicas": 2
 			}`,
-			output: ReplicaResource{
-				Devices:  ReplicaDevices{All: true},
+			output: ReplicatedResource{
+				Name:     NoErrorNewResourceName("valid"),
+				Devices:  ReplicatedDevices{All: true},
 				Replicas: 2,
 			},
 		},
 		{
 			input: `{
+				"name": "valid",
 				"replicas": 2,
-				"rename": "valid"
+				"rename": "valid-shared"
 			}`,
-			output: ReplicaResource{
-				Devices:  ReplicaDevices{All: true},
+			output: ReplicatedResource{
+				Name:     NoErrorNewResourceName("valid"),
+				Devices:  ReplicatedDevices{All: true},
 				Replicas: 2,
-				Rename:   "valid",
+				Rename:   NoErrorNewResourceName("valid-shared"),
 			},
 		},
 		{
 			input: `{
+				"name": "$invalid$",
+				"replicas": 2,
+				"rename": "valid-shared"
+			}`,
+			err: true,
+		},
+		{
+			input: `{
+				"name": "valid",
 				"replicas": 2,
 				"rename": "$invalid$"
 			}`,
@@ -327,7 +359,7 @@ func TestUnmarshalReplicaResource(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("test case %d", i), func(t *testing.T) {
-			var output ReplicaResource
+			var output ReplicatedResource
 			err := output.UnmarshalJSON([]byte(tc.input))
 			if tc.err {
 				require.Error(t, err)
@@ -362,24 +394,26 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 		{
 			input: `{
 				"strategy": "",
-				"resources": {}
+				"resources": []
 			}`,
 			err: true,
 		},
 		{
 			input: `{
 				"strategy": "",
-				"resources": {
-					"valid": {
+				"resources": [
+					{
+						"name": "valid",
 						"replicas": 2
 					}
-				}
+				]
 			}`,
 			output: TimeSlicing{
 				Strategy: UnspecifiedTimeSlicingStrategy,
-				Resources: map[string]ReplicaResource{
-					"valid": {
-						Devices:  ReplicaDevices{All: true},
+				Resources: []ReplicatedResource{
+					{
+						Name:     NoErrorNewResourceName("valid"),
+						Devices:  ReplicatedDevices{All: true},
 						Replicas: 2,
 					},
 				},
@@ -387,17 +421,19 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 		},
 		{
 			input: `{
-				"resources": {
-					"valid": {
+				"resources": [
+					{
+						"name": "valid",
 						"replicas": 2
 					}
-				}
+				]
 			}`,
 			output: TimeSlicing{
 				Strategy: UnspecifiedTimeSlicingStrategy,
-				Resources: map[string]ReplicaResource{
-					"valid": {
-						Devices:  ReplicaDevices{All: true},
+				Resources: []ReplicatedResource{
+					{
+						Name:     NoErrorNewResourceName("valid"),
+						Devices:  ReplicatedDevices{All: true},
 						Replicas: 2,
 					},
 				},
@@ -405,24 +441,28 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 		},
 		{
 			input: `{
-				"resources": {
-					"valid1": {
+				"resources": [
+					{
+						"name": "valid1",
 						"replicas": 2
 					},
-					"valid2": {
+					{
+						"name": "valid2",
 						"replicas": 2
 					}
-				}
+				]
 			}`,
 			output: TimeSlicing{
 				Strategy: UnspecifiedTimeSlicingStrategy,
-				Resources: map[string]ReplicaResource{
-					"valid1": {
-						Devices:  ReplicaDevices{All: true},
+				Resources: []ReplicatedResource{
+					{
+						Name:     NoErrorNewResourceName("valid1"),
+						Devices:  ReplicatedDevices{All: true},
 						Replicas: 2,
 					},
-					"valid2": {
-						Devices:  ReplicaDevices{All: true},
+					{
+						Name:     NoErrorNewResourceName("valid2"),
+						Devices:  ReplicatedDevices{All: true},
 						Replicas: 2,
 					},
 				},
@@ -431,21 +471,23 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 		{
 			input: `{
 				"strategy": "bogus",
-				"resources": {
-					"valid": {
+				"resources": [
+					{
+						"name": "valid",
 						"replicas": 2
 					}
-				}
+				]
 			}`,
 			err: true,
 		},
 		{
 			input: `{
-				"resources": {
-					"$invalid$": {
+				"resources": [
+					{
+						"name": "$invalid$",
 						"replicas": 2
 					}
-				}
+				]
 			}`,
 			err: true,
 		},

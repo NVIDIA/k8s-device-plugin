@@ -24,12 +24,28 @@ import (
 
 // Flags holds the full list of flags used to configure the device plugin and GFD.
 type Flags struct {
-	*CommandLineFlags
+	CommandLineFlags
+}
+
+// indirectCommandLineFlags holds the list of command line flags set outside the Flags struct in the config file.
+// These flags are cached here, for the purpose of command line parsing, but should only ever be accessed from their proper location in the config file.
+type indirectCommandLineFlags struct {
+	MigStrategy string `json:"-" yaml:"-"`
+}
+
+// SyncFromConfig pulls in the indirectCommandLineFlags from their proper settings in the config.
+func (f *indirectCommandLineFlags) SyncFromConfig(config *Config) {
+	f.MigStrategy = config.Sharing.Mig.Strategy
+}
+
+// SyncToConfig flushes the values set in the indirectCommandLineFlags to their proper settings in the config.
+func (f *indirectCommandLineFlags) SyncToConfig(config *Config) {
+	config.Sharing.Mig.Strategy = f.MigStrategy
 }
 
 // CommandLineFlags holds the list of command line flags used to configure the device plugin and GFD.
 type CommandLineFlags struct {
-	MigStrategy      string                 `json:"migStrategy"      yaml:"migStrategy"`
+	indirectCommandLineFlags
 	FailOnInitError  bool                   `json:"failOnInitError"  yaml:"failOnInitError"`
 	NvidiaDriverRoot string                 `json:"nvidiaDriverRoot" yaml:"nvidiaDriverRoot"`
 	Plugin           PluginCommandLineFlags `json:"plugin"           yaml:"plugin"`
@@ -52,11 +68,13 @@ type GFDCommandLineFlags struct {
 }
 
 // NewCommandLineFlags builds out a CommandLineFlags struct from the flags in cli.Context.
-func NewCommandLineFlags(c *cli.Context) *CommandLineFlags {
-	return &CommandLineFlags{
-		MigStrategy:      c.String("mig-strategy"),
+func NewCommandLineFlags(c *cli.Context) CommandLineFlags {
+	return CommandLineFlags{
 		FailOnInitError:  c.Bool("fail-on-init-error"),
 		NvidiaDriverRoot: c.String("nvidia-driver-root"),
+		indirectCommandLineFlags: indirectCommandLineFlags{
+			MigStrategy: c.String("mig-strategy"),
+		},
 		Plugin: PluginCommandLineFlags{
 			PassDeviceSpecs:    c.Bool("pass-device-specs"),
 			DeviceListStrategy: c.String("device-list-strategy"),

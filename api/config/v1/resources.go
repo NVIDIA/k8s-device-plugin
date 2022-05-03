@@ -28,10 +28,13 @@ import (
 // ResourcePattern is used to match a resource name to a specific pattern
 type ResourcePattern string
 
+// ResourceName represents a valid resource name in Kubernetes
+type ResourceName string
+
 // Resource pairs a pattern matcher with a resource name.
 type Resource struct {
 	Pattern ResourcePattern `json:"pattern" yaml:"pattern"`
-	Name    string          `json:"name"    yaml:"name"`
+	Name    ResourceName    `json:"name"    yaml:"name"`
 }
 
 // Resources lists full GPUs and MIG devices separately.
@@ -40,49 +43,80 @@ type Resources struct {
 	MIGs []Resource `json:"mig"  yaml:"mig"`
 }
 
-// AddResourceNamePrefix builds a resource name from a prefix and a name
-func AddResourceNamePrefix(name string) string {
-	return ResourceNamePrefix + "/" + name
+// NewResourceName builds a resource name from the standard prefix and a name.
+// An error is returned if the format is incorrect.
+func NewResourceName(n string) (ResourceName, error) {
+	if !strings.HasPrefix(n, ResourceNamePrefix+"/") {
+		n = ResourceNamePrefix + "/" + n
+	}
+
+	if len(n) > MaxResourceNameLength {
+		return "", fmt.Errorf("fully-qualified resource name must be %v characters or less: %v", MaxResourceNameLength, n)
+	}
+
+	_, name := ResourceName(n).Split()
+	invalid := k8s.NameIsDNSSubdomain(name, false)
+	if len(invalid) != 0 {
+		return "", fmt.Errorf("incorrect format for resource name '%v': %v", n, invalid)
+	}
+
+	return ResourceName(n), nil
 }
 
-// SplitResourceName splits a full resource name into prefix and name
-func SplitResourceName(name string) (string, string) {
-	split := strings.SplitN(name, "/", 2)
+// Split splits a full resource name into prefix and name
+func (r ResourceName) Split() (string, string) {
+	split := strings.SplitN(string(r), "/", 2)
 	if len(split) != 2 {
-		return "", name
+		return "", string(r)
 	}
 	return split[0], split[1]
 }
 
 // UnmarshalJSON unmarshals raw bytes into a 'Resource' struct.
 func (r *Resource) UnmarshalJSON(b []byte) error {
-	res := make(map[string]string)
+	res := make(map[string]json.RawMessage)
 	err := json.Unmarshal(b, &res)
 	if err != nil {
 		return err
 	}
 
-	// Verify correct fields set in the resource JSON
-	if _, exists := res["pattern"]; !exists {
+	// Verify both fields set in the resource JSON
+	pattern, patternExists := res["pattern"]
+	name, nameExists := res["name"]
+	if !patternExists {
 		return fmt.Errorf("resources must have a 'pattern' field set")
 	}
-	if _, exists := res["name"]; !exists {
+	if !nameExists {
 		return fmt.Errorf("resources must have a 'name' field set")
 	}
 
 	// Set r.Pattern from the resource JSON
-	r.Pattern = ResourcePattern(res["pattern"])
+	err = json.Unmarshal(pattern, &r.Pattern)
+	if err != nil {
+		return err
+	}
 
 	// Set r.Name from the resource JSON
-	prefixedResourceName := AddResourceNamePrefix(res["name"])
-	if len(prefixedResourceName) > MaxResourceNameLength {
-		return fmt.Errorf("fully-qualified resource name must be %v characters or less: %v", MaxResourceNameLength, prefixedResourceName)
+	err = json.Unmarshal(name, &r.Name)
+	if err != nil {
+		return err
 	}
-	invalid := k8s.NameIsDNSSubdomain(res["name"], false)
-	if len(invalid) != 0 {
-		return fmt.Errorf("incorrect format for resource name '%v': %v", res["name"], invalid)
+
+	return nil
+}
+
+// UnmarshalJSON unmarshals raw bytes into a 'ResourceName' type.
+func (r *ResourceName) UnmarshalJSON(b []byte) error {
+	var raw string
+	err := json.Unmarshal(b, &raw)
+	if err != nil {
+		return err
 	}
-	r.Name = res["name"]
+
+	*r, err = NewResourceName(raw)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -28,13 +28,13 @@ var _ ResourceManager = (*resourceManager)(nil)
 // resourceManager implements the ResourceManager interface
 type resourceManager struct {
 	config   *spec.Config
-	resource string
+	resource spec.ResourceName
 	devices  []*Device
 }
 
 // ResourceManager provides an interface for listing a set of Devices and checking health on them
 type ResourceManager interface {
-	Resource() string
+	Resource() spec.ResourceName
 	Devices() []*Device
 	CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device) error
 }
@@ -53,7 +53,7 @@ func NewResourceManagers(config *spec.Config) ([]ResourceManager, error) {
 	for resourceName, devices := range deviceMap {
 		r := &resourceManager{
 			config:   config,
-			resource: spec.AddResourceNamePrefix(resourceName),
+			resource: resourceName,
 			devices:  devices,
 		}
 		if len(r.Devices()) != 0 {
@@ -65,7 +65,7 @@ func NewResourceManagers(config *spec.Config) ([]ResourceManager, error) {
 }
 
 // Resource gets the resource name associated with the ResourceManager
-func (r *resourceManager) Resource() string {
+func (r *resourceManager) Resource() spec.ResourceName {
 	return r.resource
 }
 

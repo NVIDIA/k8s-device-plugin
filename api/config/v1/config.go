@@ -32,10 +32,10 @@ const Version = "v1"
 
 // Config is a versioned struct used to hold configuration information.
 type Config struct {
-	Version     string       `json:"version"                yaml:"version"`
-	Flags       Flags        `json:"flags,omitempty"        yaml:"flags,omitempty"`
-	Resources   *Resources   `json:"resources,omitempty"    yaml:"resources,omitempty"`
-	TimeSlicing *TimeSlicing `json:"time-slicing,omitempty" yaml:"time-slicing,omitempty"`
+	Version   string    `json:"version"             yaml:"version"`
+	Flags     Flags     `json:"flags,omitempty"     yaml:"flags,omitempty"`
+	Resources Resources `json:"resources,omitempty" yaml:"resources,omitempty"`
+	Sharing   Sharing   `json:"sharing,omitempty"   yaml:"sharing,omitempty"`
 }
 
 // NewConfig builds out a Config struct from a config file (or command line flags).
@@ -46,6 +46,7 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 		Version: Version,
 		Flags:   Flags{NewCommandLineFlags(c)},
 	}
+	config.Flags.indirectCommandLineFlags.SyncToConfig(config)
 
 	configFile := c.String("config-file")
 	if configFile == "" {
@@ -63,6 +64,7 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 		return nil, fmt.Errorf("unable to load command line flags from config: %v", err)
 	}
 	config.Flags.CommandLineFlags = NewCommandLineFlags(c)
+	config.Flags.indirectCommandLineFlags.SyncToConfig(config)
 
 	return config, nil
 }
@@ -105,6 +107,8 @@ func parseConfigFrom(reader io.Reader) (*Config, error) {
 	if config.Version != Version {
 		return nil, fmt.Errorf("unknown version: %v", config.Version)
 	}
+
+	config.Flags.indirectCommandLineFlags.SyncFromConfig(&config)
 
 	return &config, nil
 }

@@ -59,15 +59,15 @@ func (d Device) IsMigDevice() bool {
 }
 
 // buildDeviceMap builds a map of resource names to devices
-func buildDeviceMap(config *spec.Config) (map[string][]*Device, error) {
-	devices := make(map[string][]*Device)
+func buildDeviceMap(config *spec.Config) (map[spec.ResourceName][]*Device, error) {
+	devices := make(map[spec.ResourceName][]*Device)
 
 	err := buildGPUDeviceMap(config, devices)
 	if err != nil {
 		return nil, fmt.Errorf("error building GPU device mapi: %v", err)
 	}
 
-	if config.Flags.MigStrategy == spec.MigStrategyNone {
+	if config.Sharing.Mig.Strategy == spec.MigStrategyNone {
 		return devices, nil
 	}
 
@@ -80,7 +80,7 @@ func buildDeviceMap(config *spec.Config) (map[string][]*Device, error) {
 }
 
 // buildGPUDeviceMap builds a map of resource names to GPU devices
-func buildGPUDeviceMap(config *spec.Config, devices map[string][]*Device) error {
+func buildGPUDeviceMap(config *spec.Config, devices map[spec.ResourceName][]*Device) error {
 	return walkGPUDevices(func(i int, gpu nvml.Device) error {
 		name, ret := gpu.GetName()
 		if ret != nvml.SUCCESS {
@@ -90,7 +90,7 @@ func buildGPUDeviceMap(config *spec.Config, devices map[string][]*Device) error 
 		if err != nil {
 			return fmt.Errorf("error checking if MIG is enabled on GPU with index '%v': %v", i, err)
 		}
-		if migEnabled && config.Flags.MigStrategy != spec.MigStrategyNone {
+		if migEnabled && config.Sharing.Mig.Strategy != spec.MigStrategyNone {
 			return nil
 		}
 		for _, resource := range config.Resources.GPUs {
@@ -104,7 +104,7 @@ func buildGPUDeviceMap(config *spec.Config, devices map[string][]*Device) error 
 }
 
 // setMigDeviceMapEntry sets the deviceMap entry for a given GPU device
-func setGPUDeviceMapEntry(i int, gpu nvml.Device, resource *spec.Resource, devices map[string][]*Device) error {
+func setGPUDeviceMapEntry(i int, gpu nvml.Device, resource *spec.Resource, devices map[spec.ResourceName][]*Device) error {
 	dev, err := buildDevice(fmt.Sprintf("%v", i), gpu)
 	if err != nil {
 		return fmt.Errorf("error building GPU Device: %v", err)
@@ -114,7 +114,7 @@ func setGPUDeviceMapEntry(i int, gpu nvml.Device, resource *spec.Resource, devic
 }
 
 // buildMigDeviceMap builds a map of resource names to MIG devices
-func buildMigDeviceMap(config *spec.Config, devices map[string][]*Device) error {
+func buildMigDeviceMap(config *spec.Config, devices map[spec.ResourceName][]*Device) error {
 	return walkMigDevices(func(i, j int, mig nvml.Device) error {
 		migProfile, err := nvmlDevice(mig).getMigProfile()
 		if err != nil {
@@ -125,13 +125,13 @@ func buildMigDeviceMap(config *spec.Config, devices map[string][]*Device) error 
 				return setMigDeviceMapEntry(i, j, mig, &resource, devices)
 			}
 		}
-		resource := defaultMigResource(migProfile, config.Flags.MigStrategy)
+		resource := defaultMigResource(migProfile, config.Sharing.Mig.Strategy)
 		return setMigDeviceMapEntry(i, j, mig, resource, devices)
 	})
 }
 
 // setMigDeviceMapEntry sets the deviceMap entry for a given MIG device
-func setMigDeviceMapEntry(i, j int, mig nvml.Device, resource *spec.Resource, devices map[string][]*Device) error {
+func setMigDeviceMapEntry(i, j int, mig nvml.Device, resource *spec.Resource, devices map[spec.ResourceName][]*Device) error {
 	dev, err := buildDevice(fmt.Sprintf("%v:%v", i, j), mig)
 	if err != nil {
 		return fmt.Errorf("error building Device from MIG device: %v", err)
@@ -185,9 +185,9 @@ func defaultGPUResource() *spec.Resource {
 
 // defaultMigResource returns a Resource pairing the provided 'migProfile' with the proper resourceName depending on the 'migStrategy'.
 func defaultMigResource(migProfile string, migStrategy string) *spec.Resource {
-	name := "gpu"
+	name := spec.ResourceName("gpu")
 	if migStrategy == spec.MigStrategyMixed {
-		name = "mig-" + migProfile
+		name = spec.ResourceName("mig-" + migProfile)
 	}
 	return &spec.Resource{
 		Pattern: spec.ResourcePattern(migProfile),
