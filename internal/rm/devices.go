@@ -43,6 +43,12 @@ type DeviceSlice []*Device
 // nvmlDevice wraps an nvml.Device with more functions.
 type nvmlDevice nvml.Device
 
+// AnnotatedID represents an ID with a replica number embedded in it.
+type AnnotatedID string
+
+// AnnotatedIDs can be used to treat a []string as a []AnnotatedID.
+type AnnotatedIDs []string
+
 // ContainsMigDevices checks if a DeviceSlice contains any MIG devices or not
 func (ds DeviceSlice) ContainsMigDevices() bool {
 	for _, d := range ds {
@@ -56,6 +62,36 @@ func (ds DeviceSlice) ContainsMigDevices() bool {
 // IsMigDevice returns checks whether d is a MIG device or not.
 func (d Device) IsMigDevice() bool {
 	return strings.Contains(d.Index, ":")
+}
+
+// NewAnnotatedID creates a new AnnotatedID from an ID and a replica number.
+func NewAnnotatedID(id string, replica int) AnnotatedID {
+	return AnnotatedID(fmt.Sprintf("%s::%d", id, replica))
+}
+
+// Split splits a AnnotatedID into its ID and replica number parts.
+func (r AnnotatedID) Split() (string, int) {
+	split := strings.SplitN(string(r), "::", 2)
+	if len(split) != 2 {
+		return string(r), 1
+	}
+	replica, _ := strconv.ParseInt(split[1], 10, 0)
+	return split[0], int(replica)
+}
+
+// GetID returns just the ID part of the replicated ID
+func (r AnnotatedID) GetID() string {
+	id, _ := r.Split()
+	return id
+}
+
+// GetIDs returns just the ID parts of the replicated IDs as a []string
+func (rs AnnotatedIDs) GetIDs() []string {
+	res := make([]string, len(rs))
+	for i, r := range rs {
+		res[i] = AnnotatedID(r).GetID()
+	}
+	return res
 }
 
 // buildDeviceMap builds a map of resource names to devices
@@ -105,7 +141,7 @@ func buildGPUDeviceMap(config *spec.Config, devices map[spec.ResourceName][]*Dev
 
 // setMigDeviceMapEntry sets the deviceMap entry for a given GPU device
 func setGPUDeviceMapEntry(i int, gpu nvml.Device, resource *spec.Resource, devices map[spec.ResourceName][]*Device) error {
-	dev, err := buildDevice(fmt.Sprintf("%v", i), gpu)
+	dev, err := buildDevice(fmt.Sprintf("%v", i), gpu, 1)
 	if err != nil {
 		return fmt.Errorf("error building GPU Device: %v", err)
 	}
@@ -132,7 +168,7 @@ func buildMigDeviceMap(config *spec.Config, devices map[spec.ResourceName][]*Dev
 
 // setMigDeviceMapEntry sets the deviceMap entry for a given MIG device
 func setMigDeviceMapEntry(i, j int, mig nvml.Device, resource *spec.Resource, devices map[spec.ResourceName][]*Device) error {
-	dev, err := buildDevice(fmt.Sprintf("%v:%v", i, j), mig)
+	dev, err := buildDevice(fmt.Sprintf("%v:%v", i, j), mig, 1)
 	if err != nil {
 		return fmt.Errorf("error building Device from MIG device: %v", err)
 	}
@@ -141,7 +177,7 @@ func setMigDeviceMapEntry(i, j int, mig nvml.Device, resource *spec.Resource, de
 }
 
 // buildDevice builds an rm.Device from an nvml.Device
-func buildDevice(index string, d nvml.Device) (*Device, error) {
+func buildDevice(index string, d nvml.Device, replica int) (*Device, error) {
 	uuid, ret := d.GetUUID()
 	if ret != nvml.SUCCESS {
 		return nil, fmt.Errorf("error getting UUID device: %v", nvml.ErrorString(ret))
@@ -158,7 +194,7 @@ func buildDevice(index string, d nvml.Device) (*Device, error) {
 	}
 
 	dev := Device{}
-	dev.ID = uuid
+	dev.ID = string(NewAnnotatedID(uuid, replica))
 	dev.Index = index
 	dev.Paths = paths
 	dev.Health = pluginapi.Healthy
