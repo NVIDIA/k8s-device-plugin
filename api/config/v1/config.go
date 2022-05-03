@@ -34,7 +34,7 @@ const Version = "v1"
 type Config struct {
 	Version     string       `json:"version"                yaml:"version"`
 	Flags       Flags        `json:"flags,omitempty"        yaml:"flags,omitempty"`
-	Resources   []Resource   `json:"resources,omitempty"    yaml:"resources,omitempty"`
+	Resources   *Resources   `json:"resources,omitempty"    yaml:"resources,omitempty"`
 	TimeSlicing *TimeSlicing `json:"time-slicing,omitempty" yaml:"time-slicing,omitempty"`
 }
 

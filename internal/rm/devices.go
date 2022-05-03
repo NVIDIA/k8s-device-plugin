@@ -93,11 +93,9 @@ func buildGPUDeviceMap(config *spec.Config, devices map[string][]*Device) error 
 		if migEnabled && config.Flags.MigStrategy != spec.MigStrategyNone {
 			return nil
 		}
-		for _, resource := range config.Resources {
-			if resource.IsGPUResource() {
-				if resource.ProductName.Matches(name) {
-					return setGPUDeviceMapEntry(i, gpu, &resource, devices)
-				}
+		for _, resource := range config.Resources.GPUs {
+			if resource.Pattern.Matches(name) {
+				return setGPUDeviceMapEntry(i, gpu, &resource, devices)
 			}
 		}
 		resource := defaultGPUResource()
@@ -109,9 +107,9 @@ func buildGPUDeviceMap(config *spec.Config, devices map[string][]*Device) error 
 func setGPUDeviceMapEntry(i int, gpu nvml.Device, resource *spec.Resource, devices map[string][]*Device) error {
 	dev, err := buildDevice(fmt.Sprintf("%v", i), gpu)
 	if err != nil {
-		return fmt.Errorf("error building Device from MIG device: %v", err)
+		return fmt.Errorf("error building GPU Device: %v", err)
 	}
-	devices[resource.ResourceName] = append(devices[resource.ResourceName], dev)
+	devices[resource.Name] = append(devices[resource.Name], dev)
 	return nil
 }
 
@@ -122,11 +120,9 @@ func buildMigDeviceMap(config *spec.Config, devices map[string][]*Device) error 
 		if err != nil {
 			return fmt.Errorf("error getting MIG profile for MIG device at index '(%v, %v)': %v", i, j, err)
 		}
-		for _, resource := range config.Resources {
-			if resource.IsMigResource() {
-				if resource.MigProfileName.Matches(migProfile) {
-					return setMigDeviceMapEntry(i, j, mig, &resource, devices)
-				}
+		for _, resource := range config.Resources.MIGs {
+			if resource.Pattern.Matches(migProfile) {
+				return setMigDeviceMapEntry(i, j, mig, &resource, devices)
 			}
 		}
 		resource := defaultMigResource(migProfile, config.Flags.MigStrategy)
@@ -140,7 +136,7 @@ func setMigDeviceMapEntry(i, j int, mig nvml.Device, resource *spec.Resource, de
 	if err != nil {
 		return fmt.Errorf("error building Device from MIG device: %v", err)
 	}
-	devices[resource.ResourceName] = append(devices[resource.ResourceName], dev)
+	devices[resource.Name] = append(devices[resource.Name], dev)
 	return nil
 }
 
@@ -182,20 +178,20 @@ func buildDevice(index string, d nvml.Device) (*Device, error) {
 // defaultGPUResource returns a Resource matching all GPUs with resource name 'gpu'.
 func defaultGPUResource() *spec.Resource {
 	return &spec.Resource{
-		ProductName:  spec.DeviceSelector("*"),
-		ResourceName: "gpu",
+		Pattern: spec.ResourcePattern("*"),
+		Name:    "gpu",
 	}
 }
 
 // defaultMigResource returns a Resource pairing the provided 'migProfile' with the proper resourceName depending on the 'migStrategy'.
 func defaultMigResource(migProfile string, migStrategy string) *spec.Resource {
-	resourceName := "gpu"
+	name := "gpu"
 	if migStrategy == spec.MigStrategyMixed {
-		resourceName = "mig-" + migProfile
+		name = "mig-" + migProfile
 	}
 	return &spec.Resource{
-		MigProfileName: spec.DeviceSelector(migProfile),
-		ResourceName:   resourceName,
+		Pattern: spec.ResourcePattern(migProfile),
+		Name:    name,
 	}
 }
 
