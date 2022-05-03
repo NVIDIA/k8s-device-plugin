@@ -53,7 +53,7 @@ func NewResourceManagers(config *spec.Config) ([]ResourceManager, error) {
 	for resourceName, devices := range deviceMap {
 		r := &resourceManager{
 			config:   config,
-			resource: spec.ResourceName(resourceName).AddPrefix(),
+			resource: resourceName,
 			devices:  devices,
 		}
 		if len(r.Devices()) != 0 {

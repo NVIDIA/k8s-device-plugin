@@ -59,8 +59,8 @@ func (d Device) IsMigDevice() bool {
 }
 
 // buildDeviceMap builds a map of resource names to devices
-func buildDeviceMap(config *spec.Config) (map[string][]*Device, error) {
-	devices := make(map[string][]*Device)
+func buildDeviceMap(config *spec.Config) (map[spec.ResourceName][]*Device, error) {
+	devices := make(map[spec.ResourceName][]*Device)
 
 	err := buildGPUDeviceMap(config, devices)
 	if err != nil {
@@ -80,7 +80,7 @@ func buildDeviceMap(config *spec.Config) (map[string][]*Device, error) {
 }
 
 // buildGPUDeviceMap builds a map of resource names to GPU devices
-func buildGPUDeviceMap(config *spec.Config, devices map[string][]*Device) error {
+func buildGPUDeviceMap(config *spec.Config, devices map[spec.ResourceName][]*Device) error {
 	return walkGPUDevices(func(i int, gpu nvml.Device) error {
 		name, ret := gpu.GetName()
 		if ret != nvml.SUCCESS {
@@ -104,17 +104,17 @@ func buildGPUDeviceMap(config *spec.Config, devices map[string][]*Device) error 
 }
 
 // setMigDeviceMapEntry sets the deviceMap entry for a given GPU device
-func setGPUDeviceMapEntry(i int, gpu nvml.Device, resource *spec.Resource, devices map[string][]*Device) error {
+func setGPUDeviceMapEntry(i int, gpu nvml.Device, resource *spec.Resource, devices map[spec.ResourceName][]*Device) error {
 	dev, err := buildDevice(fmt.Sprintf("%v", i), gpu)
 	if err != nil {
 		return fmt.Errorf("error building GPU Device: %v", err)
 	}
-	devices[string(resource.Name)] = append(devices[string(resource.Name)], dev)
+	devices[resource.Name] = append(devices[resource.Name], dev)
 	return nil
 }
 
 // buildMigDeviceMap builds a map of resource names to MIG devices
-func buildMigDeviceMap(config *spec.Config, devices map[string][]*Device) error {
+func buildMigDeviceMap(config *spec.Config, devices map[spec.ResourceName][]*Device) error {
 	return walkMigDevices(func(i, j int, mig nvml.Device) error {
 		migProfile, err := nvmlDevice(mig).getMigProfile()
 		if err != nil {
@@ -131,12 +131,12 @@ func buildMigDeviceMap(config *spec.Config, devices map[string][]*Device) error 
 }
 
 // setMigDeviceMapEntry sets the deviceMap entry for a given MIG device
-func setMigDeviceMapEntry(i, j int, mig nvml.Device, resource *spec.Resource, devices map[string][]*Device) error {
+func setMigDeviceMapEntry(i, j int, mig nvml.Device, resource *spec.Resource, devices map[spec.ResourceName][]*Device) error {
 	dev, err := buildDevice(fmt.Sprintf("%v:%v", i, j), mig)
 	if err != nil {
 		return fmt.Errorf("error building Device from MIG device: %v", err)
 	}
-	devices[string(resource.Name)] = append(devices[string(resource.Name)], dev)
+	devices[resource.Name] = append(devices[resource.Name], dev)
 	return nil
 }
 

@@ -23,6 +23,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func NoErrorNewResourceName(n string) ResourceName {
+	rn, _ := NewResourceName(n)
+	return rn
+}
+
 func TestReplicaDeviceRef(t *testing.T) {
 	testCases := []struct {
 		input    string
@@ -277,7 +282,7 @@ func TestUnmarshalReplicaResource(t *testing.T) {
 				"replicas": 2
 			}`,
 			output: ReplicaResource{
-				Name:     ResourceName("valid"),
+				Name:     NoErrorNewResourceName("valid"),
 				Devices:  ReplicaDevices{All: true},
 				Replicas: 2,
 			},
@@ -287,13 +292,13 @@ func TestUnmarshalReplicaResource(t *testing.T) {
 				"name": "valid",
 				"devices": "all",
 				"replicas": 2,
-				"rename": "valid"
+				"rename": "valid-shared"
 			}`,
 			output: ReplicaResource{
-				Name:     ResourceName("valid"),
+				Name:     NoErrorNewResourceName("valid"),
 				Devices:  ReplicaDevices{All: true},
 				Replicas: 2,
-				Rename:   "valid",
+				Rename:   NoErrorNewResourceName("valid-shared"),
 			},
 		},
 		{
@@ -316,7 +321,7 @@ func TestUnmarshalReplicaResource(t *testing.T) {
 				"replicas": 2
 			}`,
 			output: ReplicaResource{
-				Name:     ResourceName("valid"),
+				Name:     NoErrorNewResourceName("valid"),
 				Devices:  ReplicaDevices{All: true},
 				Replicas: 2,
 			},
@@ -328,10 +333,10 @@ func TestUnmarshalReplicaResource(t *testing.T) {
 				"rename": "valid-shared"
 			}`,
 			output: ReplicaResource{
-				Name:     ResourceName("valid"),
+				Name:     NoErrorNewResourceName("valid"),
 				Devices:  ReplicaDevices{All: true},
 				Replicas: 2,
-				Rename:   "valid-shared",
+				Rename:   NoErrorNewResourceName("valid-shared"),
 			},
 		},
 		{
@@ -407,7 +412,7 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 				Strategy: UnspecifiedTimeSlicingStrategy,
 				Resources: []ReplicaResource{
 					{
-						Name:     "valid",
+						Name:     NoErrorNewResourceName("valid"),
 						Devices:  ReplicaDevices{All: true},
 						Replicas: 2,
 					},
@@ -427,7 +432,7 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 				Strategy: UnspecifiedTimeSlicingStrategy,
 				Resources: []ReplicaResource{
 					{
-						Name:     "valid",
+						Name:     NoErrorNewResourceName("valid"),
 						Devices:  ReplicaDevices{All: true},
 						Replicas: 2,
 					},
@@ -451,12 +456,12 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 				Strategy: UnspecifiedTimeSlicingStrategy,
 				Resources: []ReplicaResource{
 					{
-						Name:     "valid1",
+						Name:     NoErrorNewResourceName("valid1"),
 						Devices:  ReplicaDevices{All: true},
 						Replicas: 2,
 					},
 					{
-						Name:     "valid2",
+						Name:     NoErrorNewResourceName("valid2"),
 						Devices:  ReplicaDevices{All: true},
 						Replicas: 2,
 					},

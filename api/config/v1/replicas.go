@@ -183,11 +183,6 @@ func (s *ReplicaResource) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	err = s.Name.AssertValid()
-	if err != nil {
-		return fmt.Errorf("incorrect format for time-sliced resource name '%v'", name)
-	}
-
 	devices, exists := rr["devices"]
 	if !exists {
 		devices = []byte(`"all"`)
@@ -220,11 +215,6 @@ func (s *ReplicaResource) UnmarshalJSON(b []byte) error {
 	err = json.Unmarshal(rename, &s.Rename)
 	if err != nil {
 		return err
-	}
-
-	err = s.Rename.AssertValid()
-	if err != nil {
-		return fmt.Errorf("incorrect format for renamed resource '%v'", s.Rename)
 	}
 
 	return nil
