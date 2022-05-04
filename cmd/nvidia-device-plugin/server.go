@@ -247,12 +247,12 @@ func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.Device
 func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
 	response := &pluginapi.PreferredAllocationResponse{}
 	for _, req := range r.ContainerRequests {
-		available, err := gpuallocator.NewDevicesFrom(req.AvailableDeviceIDs)
+		available, err := gpuallocator.NewDevicesFrom(rm.AnnotatedIDs(req.AvailableDeviceIDs).GetIDs())
 		if err != nil {
 			return nil, fmt.Errorf("Unable to retrieve list of available devices: %v", err)
 		}
 
-		required, err := gpuallocator.NewDevicesFrom(req.MustIncludeDeviceIDs)
+		required, err := gpuallocator.NewDevicesFrom(rm.AnnotatedIDs(req.MustIncludeDeviceIDs).GetIDs())
 		if err != nil {
 			return nil, fmt.Errorf("Unable to retrieve list of required devices: %v", err)
 		}
@@ -261,7 +261,11 @@ func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *plug
 
 		var deviceIds []string
 		for _, device := range allocated {
-			deviceIds = append(deviceIds, device.UUID)
+			for _, id := range req.AvailableDeviceIDs {
+				if device.UUID == rm.AnnotatedID(id).GetID() {
+					deviceIds = append(deviceIds, id)
+				}
+			}
 		}
 
 		resp := &pluginapi.ContainerPreferredAllocationResponse{
@@ -285,8 +289,8 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 
 		response := pluginapi.ContainerAllocateResponse{}
 
-		uuids := req.DevicesIDs
-		deviceIDs := m.deviceIDsFromUUIDs(uuids)
+		ids := req.DevicesIDs
+		deviceIDs := m.deviceIDsFromReplicatedDeviceIDs(ids)
 
 		if m.config.Flags.Plugin.DeviceListStrategy == DeviceListStrategyEnvvar {
 			response.Envs = m.apiEnvs(m.deviceListEnvvar, deviceIDs)
@@ -296,7 +300,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 			response.Mounts = m.apiMounts(deviceIDs)
 		}
 		if m.config.Flags.Plugin.PassDeviceSpecs {
-			response.Devices = m.apiDeviceSpecs(m.config.Flags.NvidiaDriverRoot, uuids)
+			response.Devices = m.apiDeviceSpecs(m.config.Flags.NvidiaDriverRoot, ids)
 		}
 
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
@@ -335,15 +339,16 @@ func (m *NvidiaDevicePlugin) deviceExists(id string) bool {
 	return false
 }
 
-func (m *NvidiaDevicePlugin) deviceIDsFromUUIDs(uuids []string) []string {
-	if m.config.Flags.Plugin.DeviceIDStrategy == DeviceIDStrategyUUID {
-		return uuids
-	}
-
+func (m *NvidiaDevicePlugin) deviceIDsFromReplicatedDeviceIDs(ids []string) []string {
 	var deviceIDs []string
+	if m.config.Flags.Plugin.DeviceIDStrategy == DeviceIDStrategyUUID {
+		for _, id := range ids {
+			deviceIDs = append(deviceIDs, rm.AnnotatedID(id).GetID())
+		}
+	}
 	if m.config.Flags.Plugin.DeviceIDStrategy == DeviceIDStrategyIndex {
 		for _, d := range m.cachedDevices {
-			for _, id := range uuids {
+			for _, id := range ids {
 				if d.ID == id {
 					deviceIDs = append(deviceIDs, d.Index)
 				}
@@ -381,7 +386,7 @@ func (m *NvidiaDevicePlugin) apiMounts(deviceIDs []string) []*pluginapi.Mount {
 	return mounts
 }
 
-func (m *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, uuids []string) []*pluginapi.DeviceSpec {
+func (m *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, ids []string) []*pluginapi.DeviceSpec {
 	var specs []*pluginapi.DeviceSpec
 
 	paths := []string{
@@ -403,7 +408,7 @@ func (m *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, uuids []string) [
 	}
 
 	for _, d := range m.cachedDevices {
-		for _, id := range uuids {
+		for _, id := range ids {
 			if d.ID == id {
 				for _, p := range d.Paths {
 					spec := &pluginapi.DeviceSpec{
