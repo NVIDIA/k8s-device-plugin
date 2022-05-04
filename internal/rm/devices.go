@@ -59,6 +59,68 @@ func (ds DeviceSlice) ContainsMigDevices() bool {
 	return false
 }
 
+// Contains checks if a DeviceSlice contains devices matching all ids.
+func (ds DeviceSlice) Contains(ids ...string) bool {
+	for _, id := range ids {
+		if !ds.contains(id) {
+			return false
+		}
+	}
+	return true
+}
+
+// contains checks if a DeviceSlice contains a device with a specific id.
+func (ds DeviceSlice) contains(id string) bool {
+	for _, d := range ds {
+		if d.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// Subset returns the subset of devices in the DeviceSlice matching the provided ids.
+// If any id in ids is not in the DeviceSlice, then the subset that did match will be returned.
+func (ds DeviceSlice) Subset(ids []string) DeviceSlice {
+	var res DeviceSlice
+	for _, id := range ids {
+		for _, d := range ds {
+			if d.ID == id {
+				res = append(res, d)
+				break
+			}
+		}
+	}
+	return res
+}
+
+// GetPluginDevices returns the plugin Devices from all devices in the DeviceSlice
+func (ds DeviceSlice) GetPluginDevices() []*pluginapi.Device {
+	var res []*pluginapi.Device
+	for _, d := range ds {
+		res = append(res, &d.Device)
+	}
+	return res
+}
+
+// GetIndices returns the Indices from all devices in the DeviceSlice
+func (ds DeviceSlice) GetIndices() []string {
+	var res []string
+	for _, d := range ds {
+		res = append(res, d.Index)
+	}
+	return res
+}
+
+// GetPaths returns the Paths from all devices in the DeviceSlice
+func (ds DeviceSlice) GetPaths() []string {
+	var res []string
+	for _, d := range ds {
+		res = append(res, d.Paths...)
+	}
+	return res
+}
+
 // IsMigDevice returns checks whether d is a MIG device or not.
 func (d Device) IsMigDevice() bool {
 	return strings.Contains(d.Index, ":")
