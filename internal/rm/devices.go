@@ -145,11 +145,20 @@ func (rs AnnotatedIDs) GetIDs() []string {
 
 // buildDeviceMap builds a map of resource names to devices
 func buildDeviceMap(config *spec.Config) (map[spec.ResourceName]Devices, error) {
+	devices, err := buildDeviceMapFromConfigResources(config)
+	if err != nil {
+		return nil, fmt.Errorf("error building device map from config.resources: %v", err)
+	}
+	return devices, nil
+}
+
+// buildDeviceMapFromConfigResources builds a map of resource names to devices from spec.Config.Resources
+func buildDeviceMapFromConfigResources(config *spec.Config) (map[spec.ResourceName]Devices, error) {
 	devices := make(map[spec.ResourceName]Devices)
 
 	err := buildGPUDeviceMap(config, devices)
 	if err != nil {
-		return nil, fmt.Errorf("error building GPU device mapi: %v", err)
+		return nil, fmt.Errorf("error building GPU device map: %v", err)
 	}
 
 	if config.Sharing.Mig.Strategy == spec.MigStrategyNone {
