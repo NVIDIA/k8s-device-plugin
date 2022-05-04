@@ -30,3 +30,9 @@ func (s int8Slice) String() string {
 	}
 	return string(b)
 }
+
+// uintPtr returns a *uint from a uint32
+func uintPtr(c uint32) *uint {
+	i := uint(c)
+	return &i
+}
