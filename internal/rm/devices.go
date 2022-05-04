@@ -37,8 +37,8 @@ type Device struct {
 	Index string
 }
 
-// DeviceSlice wraps a []*Device with some functions.
-type DeviceSlice []*Device
+// Devices wraps a map[string]*Device with some functions.
+type Devices map[string]*Device
 
 // nvmlDevice wraps an nvml.Device with more functions.
 type nvmlDevice nvml.Device
@@ -49,8 +49,8 @@ type AnnotatedID string
 // AnnotatedIDs can be used to treat a []string as a []AnnotatedID.
 type AnnotatedIDs []string
 
-// ContainsMigDevices checks if a DeviceSlice contains any MIG devices or not
-func (ds DeviceSlice) ContainsMigDevices() bool {
+// ContainsMigDevices checks if Devices contains any MIG devices or not
+func (ds Devices) ContainsMigDevices() bool {
 	for _, d := range ds {
 		if d.IsMigDevice() {
 			return true
@@ -59,43 +59,30 @@ func (ds DeviceSlice) ContainsMigDevices() bool {
 	return false
 }
 
-// Contains checks if a DeviceSlice contains devices matching all ids.
-func (ds DeviceSlice) Contains(ids ...string) bool {
+// Contains checks if Devices contains devices matching all ids.
+func (ds Devices) Contains(ids ...string) bool {
 	for _, id := range ids {
-		if !ds.contains(id) {
+		if _, exists := ds[id]; !exists {
 			return false
 		}
 	}
 	return true
 }
 
-// contains checks if a DeviceSlice contains a device with a specific id.
-func (ds DeviceSlice) contains(id string) bool {
-	for _, d := range ds {
-		if d.ID == id {
-			return true
-		}
-	}
-	return false
-}
-
-// Subset returns the subset of devices in the DeviceSlice matching the provided ids.
-// If any id in ids is not in the DeviceSlice, then the subset that did match will be returned.
-func (ds DeviceSlice) Subset(ids []string) DeviceSlice {
-	var res DeviceSlice
+// Subset returns the subset of devices in Devices matching the provided ids.
+// If any id in ids is not in Devices, then the subset that did match will be returned.
+func (ds Devices) Subset(ids []string) Devices {
+	res := make(Devices)
 	for _, id := range ids {
-		for _, d := range ds {
-			if d.ID == id {
-				res = append(res, d)
-				break
-			}
+		if d, exists := ds[id]; exists {
+			res[id] = d
 		}
 	}
 	return res
 }
 
-// GetPluginDevices returns the plugin Devices from all devices in the DeviceSlice
-func (ds DeviceSlice) GetPluginDevices() []*pluginapi.Device {
+// GetPluginDevices returns the plugin Devices from all devices in the Devices
+func (ds Devices) GetPluginDevices() []*pluginapi.Device {
 	var res []*pluginapi.Device
 	for _, d := range ds {
 		res = append(res, &d.Device)
@@ -103,8 +90,8 @@ func (ds DeviceSlice) GetPluginDevices() []*pluginapi.Device {
 	return res
 }
 
-// GetIndices returns the Indices from all devices in the DeviceSlice
-func (ds DeviceSlice) GetIndices() []string {
+// GetIndices returns the Indices from all devices in the Devices
+func (ds Devices) GetIndices() []string {
 	var res []string
 	for _, d := range ds {
 		res = append(res, d.Index)
@@ -112,8 +99,8 @@ func (ds DeviceSlice) GetIndices() []string {
 	return res
 }
 
-// GetPaths returns the Paths from all devices in the DeviceSlice
-func (ds DeviceSlice) GetPaths() []string {
+// GetPaths returns the Paths from all devices in the Devices
+func (ds Devices) GetPaths() []string {
 	var res []string
 	for _, d := range ds {
 		res = append(res, d.Paths...)
@@ -157,8 +144,8 @@ func (rs AnnotatedIDs) GetIDs() []string {
 }
 
 // buildDeviceMap builds a map of resource names to devices
-func buildDeviceMap(config *spec.Config) (map[spec.ResourceName][]*Device, error) {
-	devices := make(map[spec.ResourceName][]*Device)
+func buildDeviceMap(config *spec.Config) (map[spec.ResourceName]Devices, error) {
+	devices := make(map[spec.ResourceName]Devices)
 
 	err := buildGPUDeviceMap(config, devices)
 	if err != nil {
@@ -178,7 +165,7 @@ func buildDeviceMap(config *spec.Config) (map[spec.ResourceName][]*Device, error
 }
 
 // buildGPUDeviceMap builds a map of resource names to GPU devices
-func buildGPUDeviceMap(config *spec.Config, devices map[spec.ResourceName][]*Device) error {
+func buildGPUDeviceMap(config *spec.Config, devices map[spec.ResourceName]Devices) error {
 	return walkGPUDevices(func(i int, gpu nvml.Device) error {
 		name, ret := gpu.GetName()
 		if ret != nvml.SUCCESS {
@@ -202,17 +189,20 @@ func buildGPUDeviceMap(config *spec.Config, devices map[spec.ResourceName][]*Dev
 }
 
 // setMigDeviceMapEntry sets the deviceMap entry for a given GPU device
-func setGPUDeviceMapEntry(i int, gpu nvml.Device, resource *spec.Resource, devices map[spec.ResourceName][]*Device) error {
+func setGPUDeviceMapEntry(i int, gpu nvml.Device, resource *spec.Resource, devices map[spec.ResourceName]Devices) error {
 	dev, err := buildDevice(fmt.Sprintf("%v", i), gpu, 1)
 	if err != nil {
 		return fmt.Errorf("error building GPU Device: %v", err)
 	}
-	devices[resource.Name] = append(devices[resource.Name], dev)
+	if devices[resource.Name] == nil {
+		devices[resource.Name] = make(Devices)
+	}
+	devices[resource.Name][dev.ID] = dev
 	return nil
 }
 
 // buildMigDeviceMap builds a map of resource names to MIG devices
-func buildMigDeviceMap(config *spec.Config, devices map[spec.ResourceName][]*Device) error {
+func buildMigDeviceMap(config *spec.Config, devices map[spec.ResourceName]Devices) error {
 	return walkMigDevices(func(i, j int, mig nvml.Device) error {
 		migProfile, err := nvmlDevice(mig).getMigProfile()
 		if err != nil {
@@ -229,12 +219,15 @@ func buildMigDeviceMap(config *spec.Config, devices map[spec.ResourceName][]*Dev
 }
 
 // setMigDeviceMapEntry sets the deviceMap entry for a given MIG device
-func setMigDeviceMapEntry(i, j int, mig nvml.Device, resource *spec.Resource, devices map[spec.ResourceName][]*Device) error {
+func setMigDeviceMapEntry(i, j int, mig nvml.Device, resource *spec.Resource, devices map[spec.ResourceName]Devices) error {
 	dev, err := buildDevice(fmt.Sprintf("%v:%v", i, j), mig, 1)
 	if err != nil {
 		return fmt.Errorf("error building Device from MIG device: %v", err)
 	}
-	devices[resource.Name] = append(devices[resource.Name], dev)
+	if devices[resource.Name] == nil {
+		devices[resource.Name] = make(Devices)
+	}
+	devices[resource.Name][dev.ID] = dev
 	return nil
 }
 

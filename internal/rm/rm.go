@@ -29,14 +29,14 @@ var _ ResourceManager = (*resourceManager)(nil)
 type resourceManager struct {
 	config   *spec.Config
 	resource spec.ResourceName
-	devices  []*Device
+	devices  Devices
 }
 
 // ResourceManager provides an interface for listing a set of Devices and checking health on them
 type ResourceManager interface {
 	Resource() spec.ResourceName
-	Devices() []*Device
-	CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device) error
+	Devices() Devices
+	CheckHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error
 }
 
 // NewResourceManagers returns a []ResourceManager, one for each resource in 'config'.
@@ -70,11 +70,11 @@ func (r *resourceManager) Resource() spec.ResourceName {
 }
 
 // Resource gets the devices managed by the ResourceManager
-func (r *resourceManager) Devices() []*Device {
+func (r *resourceManager) Devices() Devices {
 	return r.devices
 }
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
-func (r *resourceManager) CheckHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device) error {
+func (r *resourceManager) CheckHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
 	return r.checkHealth(stop, devices, unhealthy)
 }

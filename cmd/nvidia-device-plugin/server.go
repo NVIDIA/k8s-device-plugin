@@ -62,7 +62,7 @@ type NvidiaDevicePlugin struct {
 	socket           string
 
 	server        *grpc.Server
-	cachedDevices rm.DeviceSlice
+	cachedDevices rm.Devices
 	health        chan *rm.Device
 	stop          chan interface{}
 }
