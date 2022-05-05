@@ -204,6 +204,14 @@ func setGPUDeviceMapEntry(i int, gpu nvml.Device, resource *spec.Resource, devic
 	return nil
 }
 
+// defaultGPUResource returns a Resource matching all GPUs with resource name 'gpu'.
+func defaultGPUResource() *spec.Resource {
+	return &spec.Resource{
+		Pattern: spec.ResourcePattern("*"),
+		Name:    "gpu",
+	}
+}
+
 // buildMigDeviceMap builds a map of resource names to MIG devices
 func buildMigDeviceMap(config *spec.Config, devices map[spec.ResourceName]Devices) error {
 	return walkMigDevices(func(i, j int, mig nvml.Device) error {
@@ -232,6 +240,18 @@ func setMigDeviceMapEntry(i, j int, mig nvml.Device, resource *spec.Resource, de
 	}
 	devices[resource.Name][dev.ID] = dev
 	return nil
+}
+
+// defaultMigResource returns a Resource pairing the provided 'migProfile' with the proper resourceName depending on the 'migStrategy'.
+func defaultMigResource(migProfile string, migStrategy string) *spec.Resource {
+	name := spec.ResourceName("gpu")
+	if migStrategy == spec.MigStrategyMixed {
+		name = spec.ResourceName("mig-" + migProfile)
+	}
+	return &spec.Resource{
+		Pattern: spec.ResourcePattern(migProfile),
+		Name:    name,
+	}
 }
 
 // buildDevice builds an rm.Device from an nvml.Device
@@ -267,24 +287,4 @@ func buildDevice(index string, d nvml.Device, replica int) (*Device, error) {
 	}
 
 	return &dev, nil
-}
-
-// defaultGPUResource returns a Resource matching all GPUs with resource name 'gpu'.
-func defaultGPUResource() *spec.Resource {
-	return &spec.Resource{
-		Pattern: spec.ResourcePattern("*"),
-		Name:    "gpu",
-	}
-}
-
-// defaultMigResource returns a Resource pairing the provided 'migProfile' with the proper resourceName depending on the 'migStrategy'.
-func defaultMigResource(migProfile string, migStrategy string) *spec.Resource {
-	name := spec.ResourceName("gpu")
-	if migStrategy == spec.MigStrategyMixed {
-		name = spec.ResourceName("mig-" + migProfile)
-	}
-	return &spec.Resource{
-		Pattern: spec.ResourcePattern(migProfile),
-		Name:    name,
-	}
 }
