@@ -156,6 +156,48 @@ func walkGPUDevices(f func(i int, d nvml.Device) error) error {
 	return nil
 }
 
+// walkMigProfiles walks all of the possible MIG profiles across all GPU devices reported by NVML
+func walkMigProfiles(f func(p string) error) error {
+	visited := make(map[string]bool)
+	return walkGPUDevices(func(i int, gpu nvml.Device) error {
+		capable, err := nvmlDevice(gpu).isMigCapable()
+		if err != nil {
+			return fmt.Errorf("error checking if GPU %v is MIG capable: %v", i, err)
+		}
+		if !capable {
+			return nil
+		}
+		for i := 0; i < nvml.GPU_INSTANCE_PROFILE_COUNT; i++ {
+			giProfileInfo, ret := gpu.GetGpuInstanceProfileInfo(i)
+			if ret == nvml.ERROR_NOT_SUPPORTED {
+				continue
+			}
+			if ret == nvml.ERROR_INVALID_ARGUMENT {
+				continue
+			}
+			if ret != nvml.SUCCESS {
+				return fmt.Errorf("error getting GPU instance profile info for '%v': %v", i, nvml.ErrorString(ret))
+			}
+
+			g := giProfileInfo.SliceCount
+			gb := ((giProfileInfo.MemorySizeMB + 1024 - 1) / 1024)
+			p := fmt.Sprintf("%dg.%dgb", g, gb)
+
+			if visited[p] {
+				continue
+			}
+
+			err := f(p)
+			if err != nil {
+				return err
+			}
+
+			visited[p] = true
+		}
+		return nil
+	})
+}
+
 // walkMigDevices walks all of the MIG devices across all GPU devices reported by NVML
 func walkMigDevices(f func(i, j int, d nvml.Device) error) error {
 	count, ret := nvml.DeviceGetCount()
