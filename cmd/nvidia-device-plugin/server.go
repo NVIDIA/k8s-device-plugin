@@ -62,7 +62,7 @@ type NvidiaDevicePlugin struct {
 	socket           string
 
 	server        *grpc.Server
-	cachedDevices []*rm.Device
+	cachedDevices rm.Devices
 	health        chan *rm.Device
 	stop          chan interface{}
 }
@@ -282,7 +282,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 	responses := pluginapi.AllocateResponse{}
 	for _, req := range reqs.ContainerRequests {
 		for _, id := range req.DevicesIDs {
-			if !m.deviceExists(id) {
+			if !m.cachedDevices.Contains(id) {
 				return nil, fmt.Errorf("invalid allocation request for '%s': unknown device: %s", m.resourceName, id)
 			}
 		}
@@ -290,7 +290,7 @@ func (m *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Alloc
 		response := pluginapi.ContainerAllocateResponse{}
 
 		ids := req.DevicesIDs
-		deviceIDs := m.deviceIDsFromReplicatedDeviceIDs(ids)
+		deviceIDs := m.deviceIDsFromAnnotatedDeviceIDs(ids)
 
 		if m.config.Flags.Plugin.DeviceListStrategy == DeviceListStrategyEnvvar {
 			response.Envs = m.apiEnvs(m.deviceListEnvvar, deviceIDs)
@@ -330,40 +330,19 @@ func (m *NvidiaDevicePlugin) dial(unixSocketPath string, timeout time.Duration) 
 	return c, nil
 }
 
-func (m *NvidiaDevicePlugin) deviceExists(id string) bool {
-	for _, d := range m.cachedDevices {
-		if d.ID == id {
-			return true
-		}
-	}
-	return false
-}
-
-func (m *NvidiaDevicePlugin) deviceIDsFromReplicatedDeviceIDs(ids []string) []string {
+func (m *NvidiaDevicePlugin) deviceIDsFromAnnotatedDeviceIDs(ids []string) []string {
 	var deviceIDs []string
 	if m.config.Flags.Plugin.DeviceIDStrategy == DeviceIDStrategyUUID {
-		for _, id := range ids {
-			deviceIDs = append(deviceIDs, rm.AnnotatedID(id).GetID())
-		}
+		deviceIDs = rm.AnnotatedIDs(ids).GetIDs()
 	}
 	if m.config.Flags.Plugin.DeviceIDStrategy == DeviceIDStrategyIndex {
-		for _, d := range m.cachedDevices {
-			for _, id := range ids {
-				if d.ID == id {
-					deviceIDs = append(deviceIDs, d.Index)
-				}
-			}
-		}
+		deviceIDs = m.cachedDevices.Subset(ids).GetIndices()
 	}
 	return deviceIDs
 }
 
 func (m *NvidiaDevicePlugin) apiDevices() []*pluginapi.Device {
-	var pdevs []*pluginapi.Device
-	for _, d := range m.cachedDevices {
-		pdevs = append(pdevs, &d.Device)
-	}
-	return pdevs
+	return m.cachedDevices.GetPluginDevices()
 }
 
 func (m *NvidiaDevicePlugin) apiEnvs(envvar string, deviceIDs []string) map[string]string {
@@ -407,19 +386,13 @@ func (m *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, ids []string) []*
 		}
 	}
 
-	for _, d := range m.cachedDevices {
-		for _, id := range ids {
-			if d.ID == id {
-				for _, p := range d.Paths {
-					spec := &pluginapi.DeviceSpec{
-						ContainerPath: p,
-						HostPath:      filepath.Join(driverRoot, p),
-						Permissions:   "rw",
-					}
-					specs = append(specs, spec)
-				}
-			}
+	for _, p := range m.cachedDevices.Subset(ids).GetPaths() {
+		spec := &pluginapi.DeviceSpec{
+			ContainerPath: p,
+			HostPath:      filepath.Join(driverRoot, p),
+			Permissions:   "rw",
 		}
+		specs = append(specs, spec)
 	}
 
 	return specs

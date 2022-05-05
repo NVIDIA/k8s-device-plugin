@@ -36,7 +36,7 @@ const (
 )
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
-func (r *resourceManager) checkHealth(stop <-chan interface{}, devices []*Device, unhealthy chan<- *Device) error {
+func (r *resourceManager) checkHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
 	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
 	if disableHealthChecks == "all" {
 		disableHealthChecks = allHealthChecks

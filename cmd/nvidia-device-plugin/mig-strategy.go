@@ -125,7 +125,7 @@ func getPlugins(config *spec.Config, rms []rm.ResourceManager) []*NvidiaDevicePl
 	var plugins []*NvidiaDevicePlugin
 	for _, r := range rms {
 		allocationPolicy := gpuallocator.Policy(nil)
-		if !rm.DeviceSlice(r.Devices()).ContainsMigDevices() {
+		if !r.Devices().ContainsMigDevices() {
 			allocationPolicy = gpuallocator.NewBestEffortPolicy()
 		}
 		plugin := NewNvidiaDevicePlugin(config, r, allocationPolicy)
