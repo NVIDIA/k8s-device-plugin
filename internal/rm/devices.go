@@ -63,14 +63,49 @@ func (ds Devices) Contains(ids ...string) bool {
 	return true
 }
 
+// GetByID returns a reference to the device matching the specified ID (nil otherwise).
+func (ds Devices) GetByID(id string) *Device {
+	return ds[id]
+}
+
+// GetByIndex returns a reference to the device matching the specified Index (nil otherwise).
+func (ds Devices) GetByIndex(index string) *Device {
+	for _, d := range ds {
+		if d.Index == index {
+			return d
+		}
+	}
+	return nil
+}
+
 // Subset returns the subset of devices in Devices matching the provided ids.
 // If any id in ids is not in Devices, then the subset that did match will be returned.
 func (ds Devices) Subset(ids []string) Devices {
 	res := make(Devices)
 	for _, id := range ids {
-		if d, exists := ds[id]; exists {
-			res[id] = d
+		if ds.Contains(id) {
+			res[id] = ds[id]
 		}
+	}
+	return res
+}
+
+// Difference returns the set of devices contained in ds but not in ods.
+func (ds Devices) Difference(ods Devices) Devices {
+	res := make(Devices)
+	for id := range ds {
+		if !ods.Contains(id) {
+			res[id] = ds[id]
+		}
+	}
+	return res
+}
+
+// GetIDs returns the ids from all devices in the Devices
+func (ds Devices) GetIDs() []string {
+	var res []string
+	for _, d := range ds {
+		res = append(res, d.ID)
 	}
 	return res
 }
@@ -143,6 +178,10 @@ func buildDeviceMap(config *spec.Config) (map[spec.ResourceName]Devices, error) 
 	if err != nil {
 		return nil, fmt.Errorf("error building device map from config.resources: %v", err)
 	}
+	devices, err = updateDeviceMapWithReplicas(config, devices)
+	if err != nil {
+		return nil, fmt.Errorf("error updating device map with replicas from config.sharing.timeSlicing.resources: %v", err)
+	}
 	return devices, nil
 }
 
@@ -193,7 +232,7 @@ func buildGPUDeviceMap(config *spec.Config, devices map[spec.ResourceName]Device
 
 // setMigDeviceMapEntry sets the deviceMap entry for a given GPU device
 func setGPUDeviceMapEntry(i int, gpu nvml.Device, resource *spec.Resource, devices map[spec.ResourceName]Devices) error {
-	dev, err := buildDevice(fmt.Sprintf("%v", i), gpu, 1)
+	dev, err := buildDevice(fmt.Sprintf("%v", i), gpu)
 	if err != nil {
 		return fmt.Errorf("error building GPU Device: %v", err)
 	}
@@ -231,7 +270,7 @@ func buildMigDeviceMap(config *spec.Config, devices map[spec.ResourceName]Device
 
 // setMigDeviceMapEntry sets the deviceMap entry for a given MIG device
 func setMigDeviceMapEntry(i, j int, mig nvml.Device, resource *spec.Resource, devices map[spec.ResourceName]Devices) error {
-	dev, err := buildDevice(fmt.Sprintf("%v:%v", i, j), mig, 1)
+	dev, err := buildDevice(fmt.Sprintf("%v:%v", i, j), mig)
 	if err != nil {
 		return fmt.Errorf("error building Device from MIG device: %v", err)
 	}
@@ -255,7 +294,7 @@ func defaultMigResource(migProfile string, migStrategy string) *spec.Resource {
 }
 
 // buildDevice builds an rm.Device from an nvml.Device
-func buildDevice(index string, d nvml.Device, replica int) (*Device, error) {
+func buildDevice(index string, d nvml.Device) (*Device, error) {
 	uuid, ret := d.GetUUID()
 	if ret != nvml.SUCCESS {
 		return nil, fmt.Errorf("error getting UUID device: %v", nvml.ErrorString(ret))
@@ -272,7 +311,7 @@ func buildDevice(index string, d nvml.Device, replica int) (*Device, error) {
 	}
 
 	dev := Device{}
-	dev.ID = string(NewAnnotatedID(uuid, replica))
+	dev.ID = uuid
 	dev.Index = index
 	dev.Paths = paths
 	dev.Health = pluginapi.Healthy
@@ -287,4 +326,102 @@ func buildDevice(index string, d nvml.Device, replica int) (*Device, error) {
 	}
 
 	return &dev, nil
+}
+
+// updateDeviceMapWithReplicas returns an updated map of resource names to devices with replica information from spec.Config.Sharing.TimeSlicing.Resources
+func updateDeviceMapWithReplicas(config *spec.Config, oDevices map[spec.ResourceName]Devices) (map[spec.ResourceName]Devices, error) {
+	devices := make(map[spec.ResourceName]Devices)
+
+	// Begin by walking config.Sharing.TimeSlicing.Resources and building a map of just the resource names.
+	names := make(map[spec.ResourceName]bool)
+	for _, r := range config.Sharing.TimeSlicing.Resources {
+		names[r.Name] = true
+	}
+
+	// Copy over all devices from oDevices without a resource reference in TimeSlicing.Resources.
+	for r, ds := range oDevices {
+		if !names[r] {
+			devices[r] = ds
+		}
+	}
+
+	// Walk TimeSlicing.Resources and update devices in the device map as appropriate.
+	for _, r := range config.Sharing.TimeSlicing.Resources {
+		// Skip any resources not matched in oDevices
+		if _, exists := oDevices[r.Name]; !exists {
+			continue
+		}
+
+		// Get the IDs of the devices we want to replicate from oDevices
+		ids, err := getIDsOfDevicesToReplicate(&r, oDevices[r.Name])
+		if err != nil {
+			return nil, fmt.Errorf("unable to get IDs of devices to replicate for '%v' resource: %v", r.Name, err)
+		}
+
+		// Add any devices we don't want replicated directly into the device map.
+		devices[r.Name] = make(Devices)
+		for _, d := range oDevices[r.Name].Difference(oDevices[r.Name].Subset(ids)) {
+			devices[r.Name][d.ID] = d
+		}
+
+		// Create replicated devices add them to the device map.
+		// Rename the resource for replicated devices as requested.
+		name := r.Name
+		if r.Rename != "" {
+			name = r.Rename
+		}
+		if devices[name] == nil {
+			devices[name] = make(Devices)
+		}
+		for _, id := range ids {
+			for i := 0; i < r.Replicas; i++ {
+				annotatedID := string(NewAnnotatedID(id, i))
+				replicatedDevice := *(oDevices[r.Name][id])
+				replicatedDevice.ID = annotatedID
+				devices[name][annotatedID] = &replicatedDevice
+			}
+		}
+	}
+
+	return devices, nil
+}
+
+// getIDsOfDevicesToReplicate returns a list of dervice IDs that we want to replicate.
+func getIDsOfDevicesToReplicate(r *spec.ReplicatedResource, devices Devices) ([]string, error) {
+	// If all devices for this resource type are to be replicated.
+	if r.Devices.All {
+		return devices.GetIDs(), nil
+	}
+
+	// If a specific number of devices for this resource type are to be replicated.
+	if r.Devices.Count > 0 {
+		if r.Devices.Count > len(devices) {
+			return nil, fmt.Errorf("requested %d devices to be replicated, but only %d devices available", r.Devices.Count, len(devices))
+		}
+		return devices.GetIDs()[:r.Devices.Count], nil
+	}
+
+	// If a specific set of devices for this resource type are to be replicated.
+	if len(r.Devices.List) > 0 {
+		var ids []string
+		for _, ref := range r.Devices.List {
+			if ref.IsUUID() {
+				d := devices.GetByID(string(ref))
+				if d == nil {
+					return nil, fmt.Errorf("no matching device with UUID: %v", ref)
+				}
+				ids = append(ids, d.ID)
+			}
+			if ref.IsGPUIndex() || ref.IsMigIndex() {
+				d := devices.GetByIndex(string(ref))
+				if d == nil {
+					return nil, fmt.Errorf("no matching device at index: %v", ref)
+				}
+				ids = append(ids, d.ID)
+			}
+		}
+		return ids, nil
+	}
+
+	return nil, fmt.Errorf("unexpected error")
 }
