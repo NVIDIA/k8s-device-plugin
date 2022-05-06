@@ -147,11 +147,20 @@ func NewAnnotatedID(id string, replica int) AnnotatedID {
 	return AnnotatedID(fmt.Sprintf("%s::%d", id, replica))
 }
 
+// HasAnnotations checks if an AnnotatedID has any annotations or not.
+func (r AnnotatedID) HasAnnotations() bool {
+	split := strings.SplitN(string(r), "::", 2)
+	if len(split) != 2 {
+		return false
+	}
+	return true
+}
+
 // Split splits a AnnotatedID into its ID and replica number parts.
 func (r AnnotatedID) Split() (string, int) {
 	split := strings.SplitN(string(r), "::", 2)
 	if len(split) != 2 {
-		return string(r), 1
+		return string(r), 0
 	}
 	replica, _ := strconv.ParseInt(split[1], 10, 0)
 	return split[0], int(replica)
@@ -163,7 +172,17 @@ func (r AnnotatedID) GetID() string {
 	return id
 }
 
-// GetIDs returns just the ID parts of the replicated IDs as a []string
+// AnyHasAnnotations checks if any ID has annotations or not.
+func (rs AnnotatedIDs) AnyHasAnnotations() bool {
+	for _, r := range rs {
+		if AnnotatedID(r).HasAnnotations() {
+			return true
+		}
+	}
+	return false
+}
+
+// GetIDs returns just the ID parts of the annotated IDs as a []string
 func (rs AnnotatedIDs) GetIDs() []string {
 	res := make([]string, len(rs))
 	for i, r := range rs {
