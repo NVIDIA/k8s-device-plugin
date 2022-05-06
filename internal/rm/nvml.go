@@ -214,6 +214,24 @@ func (d nvmlDevice) walkMigDevices(f func(i int, d nvml.Device) error) error {
 	return nil
 }
 
+// isMigCapable checks if a device is MIG capable or not
+func (d nvmlDevice) isMigCapable() (bool, error) {
+	err := nvmlLookupSymbol("nvmlDeviceGetMigMode")
+	if err != nil {
+		return false, nil
+	}
+
+	_, _, ret := nvml.Device(d).GetMigMode()
+	if ret == nvml.ERROR_NOT_SUPPORTED {
+		return false, nil
+	}
+	if ret != nvml.SUCCESS {
+		return false, fmt.Errorf("error getting MIG mode: %v", nvml.ErrorString(ret))
+	}
+
+	return true, nil
+}
+
 // isMigEnabled checks if MIG is enabled on the given GPU device
 func (d nvmlDevice) isMigEnabled() (bool, error) {
 	err := nvmlLookupSymbol("nvmlDeviceGetMigMode")
