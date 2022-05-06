@@ -247,34 +247,62 @@ func (m *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.Device
 func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
 	response := &pluginapi.PreferredAllocationResponse{}
 	for _, req := range r.ContainerRequests {
-		available, err := gpuallocator.NewDevicesFrom(rm.AnnotatedIDs(req.AvailableDeviceIDs).GetIDs())
+		devices, err := m.getPreferredAllocationDevices(req.AvailableDeviceIDs, req.MustIncludeDeviceIDs, int(req.AllocationSize))
 		if err != nil {
-			return nil, fmt.Errorf("Unable to retrieve list of available devices: %v", err)
-		}
-
-		required, err := gpuallocator.NewDevicesFrom(rm.AnnotatedIDs(req.MustIncludeDeviceIDs).GetIDs())
-		if err != nil {
-			return nil, fmt.Errorf("Unable to retrieve list of required devices: %v", err)
-		}
-
-		allocated := m.allocatePolicy.Allocate(available, required, int(req.AllocationSize))
-
-		var deviceIds []string
-		for _, device := range allocated {
-			for _, id := range req.AvailableDeviceIDs {
-				if device.UUID == rm.AnnotatedID(id).GetID() {
-					deviceIds = append(deviceIds, id)
-				}
-			}
+			return nil, fmt.Errorf("error getting list of preferred allocation devices: %v", err)
 		}
 
 		resp := &pluginapi.ContainerPreferredAllocationResponse{
-			DeviceIDs: deviceIds,
+			DeviceIDs: devices,
 		}
 
 		response.ContainerResponses = append(response.ContainerResponses, resp)
 	}
 	return response, nil
+}
+
+func (m *NvidiaDevicePlugin) getPreferredAllocationDevices(available, required []string, size int) ([]string, error) {
+	var devices []string
+
+	// If none of the available device IDs has attributes (i.e. is replicated),
+	// then use the gpuallocator to get the preferred set of allocated devices.
+	if !rm.AnnotatedIDs(available).AnyHasAnnotations() {
+		available, err := gpuallocator.NewDevicesFrom(available)
+		if err != nil {
+			return nil, fmt.Errorf("unable to retrieve list of available devices: %v", err)
+		}
+
+		required, err := gpuallocator.NewDevicesFrom(required)
+		if err != nil {
+			return nil, fmt.Errorf("unable to retrieve list of required devices: %v", err)
+		}
+
+		allocated := m.allocatePolicy.Allocate(available, required, size)
+
+		for _, device := range allocated {
+			devices = append(devices, device.UUID)
+		}
+
+		return devices, nil
+	}
+
+	// Otherwise just return a list of arbitrary
+	// devices, being sure to include any required ones.
+	requiredSet := make(map[string]bool)
+	for _, r := range required {
+		requiredSet[r] = true
+	}
+	devices = append([]string{}, required...)
+	for _, a := range available {
+		if !requiredSet[a] {
+			devices = append(devices, a)
+		}
+	}
+	if len(devices) < size {
+		return nil, fmt.Errorf("not enough available devices to satisfy allocation")
+	}
+
+	return devices[:size], nil
 }
 
 // Allocate which return list of devices.

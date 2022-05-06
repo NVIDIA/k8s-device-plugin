@@ -63,6 +63,19 @@ func NewResourceName(n string) (ResourceName, error) {
 	return ResourceName(n), nil
 }
 
+// NewResource builds a resource from a name and pattern
+func NewResource(pattern, name string) (*Resource, error) {
+	resourceName, err := NewResourceName(name)
+	if err != nil {
+		return nil, fmt.Errorf("invalid resource name: %v", err)
+	}
+	r := &Resource{
+		Pattern: ResourcePattern(pattern),
+		Name:    resourceName,
+	}
+	return r, nil
+}
+
 // Split splits a full resource name into prefix and name
 func (r ResourceName) Split() (string, string) {
 	split := strings.SplitN(string(r), "/", 2)
@@ -118,6 +131,26 @@ func (r *ResourceName) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
+	return nil
+}
+
+// AddGPUResource adds a GPU resource to the list of GPU resources.
+func (r *Resources) AddGPUResource(pattern, name string) error {
+	resource, err := NewResource(pattern, name)
+	if err != nil {
+		return err
+	}
+	r.GPUs = append(r.GPUs, *resource)
+	return nil
+}
+
+// AddMIGResource adds a MIG resource to the list of MIG resources.
+func (r *Resources) AddMIGResource(pattern, name string) error {
+	resource, err := NewResource(pattern, name)
+	if err != nil {
+		return err
+	}
+	r.MIGs = append(r.MIGs, *resource)
 	return nil
 }
 

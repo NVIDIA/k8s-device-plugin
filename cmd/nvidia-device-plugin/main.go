@@ -25,6 +25,7 @@ import (
 
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	config "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/fsnotify/fsnotify"
 	cli "github.com/urfave/cli/v2"
 	altsrc "github.com/urfave/cli/v2/altsrc"
@@ -146,12 +147,6 @@ func setup(c *cli.Context, flags []cli.Flag) (*config.Config, error) {
 }
 
 func start(c *cli.Context, config *config.Config) error {
-	configJSON, err := json.MarshalIndent(config, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal config to JSON: %v", err)
-	}
-	log.Printf("\nRunning with config:\n%v", string(configJSON))
-
 	log.Println("Loading NVML")
 	if err := nvml.Init(); err != nil {
 		log.SetOutput(os.Stderr)
@@ -184,6 +179,18 @@ restart:
 	for _, p := range plugins {
 		p.Stop()
 	}
+
+	log.Println("Updating config with default resource matching patterns")
+	err = rm.AddDefaultResourcesToConfig(config)
+	if err != nil {
+		return fmt.Errorf("unable to add default resources to config: %v", err)
+	}
+
+	configJSON, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config to JSON: %v", err)
+	}
+	log.Printf("\nRunning with config:\n%v", string(configJSON))
 
 	log.Println("Retreiving plugins.")
 	migStrategy, err := NewMigStrategy(config)

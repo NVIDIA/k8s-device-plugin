@@ -17,15 +17,12 @@
 package rm
 
 import (
-	"bytes"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
-	"github.com/NVIDIA/k8s-device-plugin/internal/mig"
 
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
@@ -39,9 +36,6 @@ type Device struct {
 
 // Devices wraps a map[string]*Device with some functions.
 type Devices map[string]*Device
-
-// nvmlDevice wraps an nvml.Device with more functions.
-type nvmlDevice nvml.Device
 
 // AnnotatedID represents an ID with a replica number embedded in it.
 type AnnotatedID string
@@ -69,14 +63,49 @@ func (ds Devices) Contains(ids ...string) bool {
 	return true
 }
 
+// GetByID returns a reference to the device matching the specified ID (nil otherwise).
+func (ds Devices) GetByID(id string) *Device {
+	return ds[id]
+}
+
+// GetByIndex returns a reference to the device matching the specified Index (nil otherwise).
+func (ds Devices) GetByIndex(index string) *Device {
+	for _, d := range ds {
+		if d.Index == index {
+			return d
+		}
+	}
+	return nil
+}
+
 // Subset returns the subset of devices in Devices matching the provided ids.
 // If any id in ids is not in Devices, then the subset that did match will be returned.
 func (ds Devices) Subset(ids []string) Devices {
 	res := make(Devices)
 	for _, id := range ids {
-		if d, exists := ds[id]; exists {
-			res[id] = d
+		if ds.Contains(id) {
+			res[id] = ds[id]
 		}
+	}
+	return res
+}
+
+// Difference returns the set of devices contained in ds but not in ods.
+func (ds Devices) Difference(ods Devices) Devices {
+	res := make(Devices)
+	for id := range ds {
+		if !ods.Contains(id) {
+			res[id] = ds[id]
+		}
+	}
+	return res
+}
+
+// GetIDs returns the ids from all devices in the Devices
+func (ds Devices) GetIDs() []string {
+	var res []string
+	for _, d := range ds {
+		res = append(res, d.ID)
 	}
 	return res
 }
@@ -118,11 +147,20 @@ func NewAnnotatedID(id string, replica int) AnnotatedID {
 	return AnnotatedID(fmt.Sprintf("%s::%d", id, replica))
 }
 
+// HasAnnotations checks if an AnnotatedID has any annotations or not.
+func (r AnnotatedID) HasAnnotations() bool {
+	split := strings.SplitN(string(r), "::", 2)
+	if len(split) != 2 {
+		return false
+	}
+	return true
+}
+
 // Split splits a AnnotatedID into its ID and replica number parts.
 func (r AnnotatedID) Split() (string, int) {
 	split := strings.SplitN(string(r), "::", 2)
 	if len(split) != 2 {
-		return string(r), 1
+		return string(r), 0
 	}
 	replica, _ := strconv.ParseInt(split[1], 10, 0)
 	return split[0], int(replica)
@@ -134,7 +172,17 @@ func (r AnnotatedID) GetID() string {
 	return id
 }
 
-// GetIDs returns just the ID parts of the replicated IDs as a []string
+// AnyHasAnnotations checks if any ID has annotations or not.
+func (rs AnnotatedIDs) AnyHasAnnotations() bool {
+	for _, r := range rs {
+		if AnnotatedID(r).HasAnnotations() {
+			return true
+		}
+	}
+	return false
+}
+
+// GetIDs returns just the ID parts of the annotated IDs as a []string
 func (rs AnnotatedIDs) GetIDs() []string {
 	res := make([]string, len(rs))
 	for i, r := range rs {
@@ -145,11 +193,24 @@ func (rs AnnotatedIDs) GetIDs() []string {
 
 // buildDeviceMap builds a map of resource names to devices
 func buildDeviceMap(config *spec.Config) (map[spec.ResourceName]Devices, error) {
+	devices, err := buildDeviceMapFromConfigResources(config)
+	if err != nil {
+		return nil, fmt.Errorf("error building device map from config.resources: %v", err)
+	}
+	devices, err = updateDeviceMapWithReplicas(config, devices)
+	if err != nil {
+		return nil, fmt.Errorf("error updating device map with replicas from config.sharing.timeSlicing.resources: %v", err)
+	}
+	return devices, nil
+}
+
+// buildDeviceMapFromConfigResources builds a map of resource names to devices from spec.Config.Resources
+func buildDeviceMapFromConfigResources(config *spec.Config) (map[spec.ResourceName]Devices, error) {
 	devices := make(map[spec.ResourceName]Devices)
 
 	err := buildGPUDeviceMap(config, devices)
 	if err != nil {
-		return nil, fmt.Errorf("error building GPU device mapi: %v", err)
+		return nil, fmt.Errorf("error building GPU device map: %v", err)
 	}
 
 	if config.Sharing.Mig.Strategy == spec.MigStrategyNone {
@@ -183,14 +244,13 @@ func buildGPUDeviceMap(config *spec.Config, devices map[spec.ResourceName]Device
 				return setGPUDeviceMapEntry(i, gpu, &resource, devices)
 			}
 		}
-		resource := defaultGPUResource()
-		return setGPUDeviceMapEntry(i, gpu, resource, devices)
+		return fmt.Errorf("GPU name '%v' does not match any resource patterns", name)
 	})
 }
 
 // setMigDeviceMapEntry sets the deviceMap entry for a given GPU device
 func setGPUDeviceMapEntry(i int, gpu nvml.Device, resource *spec.Resource, devices map[spec.ResourceName]Devices) error {
-	dev, err := buildDevice(fmt.Sprintf("%v", i), gpu, 1)
+	dev, err := buildDevice(fmt.Sprintf("%v", i), gpu)
 	if err != nil {
 		return fmt.Errorf("error building GPU Device: %v", err)
 	}
@@ -213,14 +273,13 @@ func buildMigDeviceMap(config *spec.Config, devices map[spec.ResourceName]Device
 				return setMigDeviceMapEntry(i, j, mig, &resource, devices)
 			}
 		}
-		resource := defaultMigResource(migProfile, config.Sharing.Mig.Strategy)
-		return setMigDeviceMapEntry(i, j, mig, resource, devices)
+		return fmt.Errorf("MIG profile '%v' does not match any resource patterns", migProfile)
 	})
 }
 
 // setMigDeviceMapEntry sets the deviceMap entry for a given MIG device
 func setMigDeviceMapEntry(i, j int, mig nvml.Device, resource *spec.Resource, devices map[spec.ResourceName]Devices) error {
-	dev, err := buildDevice(fmt.Sprintf("%v:%v", i, j), mig, 1)
+	dev, err := buildDevice(fmt.Sprintf("%v:%v", i, j), mig)
 	if err != nil {
 		return fmt.Errorf("error building Device from MIG device: %v", err)
 	}
@@ -232,7 +291,7 @@ func setMigDeviceMapEntry(i, j int, mig nvml.Device, resource *spec.Resource, de
 }
 
 // buildDevice builds an rm.Device from an nvml.Device
-func buildDevice(index string, d nvml.Device, replica int) (*Device, error) {
+func buildDevice(index string, d nvml.Device) (*Device, error) {
 	uuid, ret := d.GetUUID()
 	if ret != nvml.SUCCESS {
 		return nil, fmt.Errorf("error getting UUID device: %v", nvml.ErrorString(ret))
@@ -249,7 +308,7 @@ func buildDevice(index string, d nvml.Device, replica int) (*Device, error) {
 	}
 
 	dev := Device{}
-	dev.ID = string(NewAnnotatedID(uuid, replica))
+	dev.ID = uuid
 	dev.Index = index
 	dev.Paths = paths
 	dev.Health = pluginapi.Healthy
@@ -266,230 +325,100 @@ func buildDevice(index string, d nvml.Device, replica int) (*Device, error) {
 	return &dev, nil
 }
 
-// defaultGPUResource returns a Resource matching all GPUs with resource name 'gpu'.
-func defaultGPUResource() *spec.Resource {
-	return &spec.Resource{
-		Pattern: spec.ResourcePattern("*"),
-		Name:    "gpu",
-	}
-}
+// updateDeviceMapWithReplicas returns an updated map of resource names to devices with replica information from spec.Config.Sharing.TimeSlicing.Resources
+func updateDeviceMapWithReplicas(config *spec.Config, oDevices map[spec.ResourceName]Devices) (map[spec.ResourceName]Devices, error) {
+	devices := make(map[spec.ResourceName]Devices)
 
-// defaultMigResource returns a Resource pairing the provided 'migProfile' with the proper resourceName depending on the 'migStrategy'.
-func defaultMigResource(migProfile string, migStrategy string) *spec.Resource {
-	name := spec.ResourceName("gpu")
-	if migStrategy == spec.MigStrategyMixed {
-		name = spec.ResourceName("mig-" + migProfile)
-	}
-	return &spec.Resource{
-		Pattern: spec.ResourcePattern(migProfile),
-		Name:    name,
-	}
-}
-
-// walkGPUDevices walks all of the GPU devices reported by NVML
-func walkGPUDevices(f func(i int, d nvml.Device) error) error {
-	count, ret := nvml.DeviceGetCount()
-	if ret != nvml.SUCCESS {
-		return fmt.Errorf("error getting device count: %v", nvml.ErrorString(ret))
+	// Begin by walking config.Sharing.TimeSlicing.Resources and building a map of just the resource names.
+	names := make(map[spec.ResourceName]bool)
+	for _, r := range config.Sharing.TimeSlicing.Resources {
+		names[r.Name] = true
 	}
 
-	for i := 0; i < count; i++ {
-		device, ret := nvml.DeviceGetHandleByIndex(i)
-		if ret != nvml.SUCCESS {
-			return fmt.Errorf("error getting device handle for index '%v': %v", i, nvml.ErrorString(ret))
-		}
-		err := f(i, device)
-		if err != nil {
-			return err
+	// Copy over all devices from oDevices without a resource reference in TimeSlicing.Resources.
+	for r, ds := range oDevices {
+		if !names[r] {
+			devices[r] = ds
 		}
 	}
-	return nil
-}
 
-// walkMigDevices walks all of the MIG devices across all GPU devices reported by NVML
-func walkMigDevices(f func(i, j int, d nvml.Device) error) error {
-	count, ret := nvml.DeviceGetCount()
-	if ret != nvml.SUCCESS {
-		return fmt.Errorf("error getting GPU device count: %v", nvml.ErrorString(ret))
-	}
-
-	for i := 0; i < count; i++ {
-		device, ret := nvml.DeviceGetHandleByIndex(i)
-		if ret != nvml.SUCCESS {
-			return fmt.Errorf("error getting device handle for GPU with index '%v': %v", i, nvml.ErrorString(ret))
-		}
-
-		migEnabled, err := nvmlDevice(device).isMigEnabled()
-		if err != nil {
-			return fmt.Errorf("error checking if MIG is enabled on GPU with index '%v': %v", i, err)
-		}
-
-		if !migEnabled {
+	// Walk TimeSlicing.Resources and update devices in the device map as appropriate.
+	for _, r := range config.Sharing.TimeSlicing.Resources {
+		// Skip any resources not matched in oDevices
+		if _, exists := oDevices[r.Name]; !exists {
 			continue
 		}
 
-		err = nvmlDevice(device).walkMigDevices(func(j int, device nvml.Device) error {
-			return f(i, j, device)
-		})
+		// Get the IDs of the devices we want to replicate from oDevices
+		ids, err := getIDsOfDevicesToReplicate(&r, oDevices[r.Name])
 		if err != nil {
-			return fmt.Errorf("error walking MIG devices on GPU with index '%v': %v", i, err)
+			return nil, fmt.Errorf("unable to get IDs of devices to replicate for '%v' resource: %v", r.Name, err)
+		}
+
+		// Add any devices we don't want replicated directly into the device map.
+		devices[r.Name] = make(Devices)
+		for _, d := range oDevices[r.Name].Difference(oDevices[r.Name].Subset(ids)) {
+			devices[r.Name][d.ID] = d
+		}
+
+		// Create replicated devices add them to the device map.
+		// Rename the resource for replicated devices as requested.
+		name := r.Name
+		if r.Rename != "" {
+			name = r.Rename
+		}
+		if devices[name] == nil {
+			devices[name] = make(Devices)
+		}
+		for _, id := range ids {
+			for i := 0; i < r.Replicas; i++ {
+				annotatedID := string(NewAnnotatedID(id, i))
+				replicatedDevice := *(oDevices[r.Name][id])
+				replicatedDevice.ID = annotatedID
+				devices[name][annotatedID] = &replicatedDevice
+			}
 		}
 	}
-	return nil
+
+	return devices, nil
 }
 
-// walkMigDevices walks all of the MIG devices on a specific GPU device reported by NVML
-func (d nvmlDevice) walkMigDevices(f func(i int, d nvml.Device) error) error {
-	count, ret := nvml.Device(d).GetMaxMigDeviceCount()
-	if ret != nvml.SUCCESS {
-		return fmt.Errorf("error getting max MIG device count: %v", nvml.ErrorString(ret))
+// getIDsOfDevicesToReplicate returns a list of dervice IDs that we want to replicate.
+func getIDsOfDevicesToReplicate(r *spec.ReplicatedResource, devices Devices) ([]string, error) {
+	// If all devices for this resource type are to be replicated.
+	if r.Devices.All {
+		return devices.GetIDs(), nil
 	}
 
-	for i := 0; i < count; i++ {
-		device, ret := nvml.Device(d).GetMigDeviceHandleByIndex(i)
-		if ret == nvml.ERROR_NOT_FOUND {
-			continue
+	// If a specific number of devices for this resource type are to be replicated.
+	if r.Devices.Count > 0 {
+		if r.Devices.Count > len(devices) {
+			return nil, fmt.Errorf("requested %d devices to be replicated, but only %d devices available", r.Devices.Count, len(devices))
 		}
-		if ret == nvml.ERROR_INVALID_ARGUMENT {
-			continue
+		return devices.GetIDs()[:r.Devices.Count], nil
+	}
+
+	// If a specific set of devices for this resource type are to be replicated.
+	if len(r.Devices.List) > 0 {
+		var ids []string
+		for _, ref := range r.Devices.List {
+			if ref.IsUUID() {
+				d := devices.GetByID(string(ref))
+				if d == nil {
+					return nil, fmt.Errorf("no matching device with UUID: %v", ref)
+				}
+				ids = append(ids, d.ID)
+			}
+			if ref.IsGPUIndex() || ref.IsMigIndex() {
+				d := devices.GetByIndex(string(ref))
+				if d == nil {
+					return nil, fmt.Errorf("no matching device at index: %v", ref)
+				}
+				ids = append(ids, d.ID)
+			}
 		}
-		if ret != nvml.SUCCESS {
-			return fmt.Errorf("error getting MIG device handle at index '%v': %v", i, nvml.ErrorString(ret))
-		}
-		err := f(i, device)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// isMigEnabled checks if MIG is enabled on the given GPU device
-func (d nvmlDevice) isMigEnabled() (bool, error) {
-	err := nvmlLookupSymbol("nvmlDeviceGetMigMode")
-	if err != nil {
-		return false, nil
+		return ids, nil
 	}
 
-	mode, _, ret := nvml.Device(d).GetMigMode()
-	if ret == nvml.ERROR_NOT_SUPPORTED {
-		return false, nil
-	}
-	if ret != nvml.SUCCESS {
-		return false, fmt.Errorf("error getting MIG mode: %v", nvml.ErrorString(ret))
-	}
-
-	return (mode == nvml.DEVICE_MIG_ENABLE), nil
-}
-
-// isMigDevice checks if the given NVMl device is a MIG device (as opposed to a GPU device)
-func (d nvmlDevice) isMigDevice() (bool, error) {
-	err := nvmlLookupSymbol("nvmlDeviceIsMigDeviceHandle")
-	if err != nil {
-		return false, nil
-	}
-	isMig, ret := nvml.Device(d).IsMigDeviceHandle()
-	if ret != nvml.SUCCESS {
-		return false, fmt.Errorf("%v", nvml.ErrorString(ret))
-	}
-	return isMig, nil
-}
-
-// getMigProfile gets the MIG profile name associated with the given MIG device
-func (d nvmlDevice) getMigProfile() (string, error) {
-	isMig, err := d.isMigDevice()
-	if err != nil {
-		return "", fmt.Errorf("error checking if device is a MIG device: %v", err)
-	}
-	if !isMig {
-		return "", fmt.Errorf("device handle is not a MIG device")
-	}
-
-	attr, ret := nvml.Device(d).GetAttributes()
-	if ret != nvml.SUCCESS {
-		return "", fmt.Errorf("error getting MIG device attributes: %v", nvml.ErrorString(ret))
-	}
-
-	g := attr.GpuInstanceSliceCount
-	c := attr.ComputeInstanceSliceCount
-	gb := ((attr.MemorySizeMB + 1024 - 1) / 1024)
-
-	var p string
-	if g == c {
-		p = fmt.Sprintf("%dg.%dgb", g, gb)
-	} else {
-		p = fmt.Sprintf("%dc.%dg.%dgb", c, g, gb)
-	}
-
-	return p, nil
-}
-
-// getPaths returns the set of Paths associated with the given device (MIG or GPU)
-func (d nvmlDevice) getPaths() ([]string, error) {
-	isMig, err := d.isMigDevice()
-	if err != nil {
-		return nil, fmt.Errorf("error checking if device is a MIG device: %v", err)
-	}
-
-	if !isMig {
-		minor, ret := nvml.Device(d).GetMinorNumber()
-		if ret != nvml.SUCCESS {
-			return nil, fmt.Errorf("error getting GPU device minor number: %v", nvml.ErrorString(ret))
-		}
-		return []string{fmt.Sprintf("/dev/nvidia%d", minor)}, nil
-	}
-
-	uuid, ret := nvml.Device(d).GetUUID()
-	if ret != nvml.SUCCESS {
-		return nil, fmt.Errorf("error getting UUID of MIG device: %v", nvml.ErrorString(ret))
-	}
-
-	paths, err := mig.GetMigDeviceNodePaths(uuid)
-	if err != nil {
-		return nil, fmt.Errorf("error getting MIG device paths: %v", err)
-	}
-
-	return paths, nil
-}
-
-// getNumaNode returns the NUMA node associated with the given device (MIG or GPU)
-func (d nvmlDevice) getNumaNode() (*int, error) {
-	isMig, err := d.isMigDevice()
-	if err != nil {
-		return nil, fmt.Errorf("error checking if device is a MIG device: %v", err)
-	}
-
-	if isMig {
-		parent, ret := nvml.Device(d).GetDeviceHandleFromMigDeviceHandle()
-		if ret != nvml.SUCCESS {
-			return nil, fmt.Errorf("error getting parent GPU device from MIG device: %v", nvml.ErrorString(ret))
-		}
-		d = nvmlDevice(parent)
-	}
-
-	info, ret := nvml.Device(d).GetPciInfo()
-	if ret != nvml.SUCCESS {
-		return nil, fmt.Errorf("error getting PCI Bus Info of device: %v", nvml.ErrorString(ret))
-	}
-
-	// Discard leading zeros.
-	busID := strings.ToLower(strings.TrimPrefix(int8Slice(info.BusId[:]).String(), "0000"))
-
-	b, err := os.ReadFile(fmt.Sprintf("/sys/bus/pci/devices/%s/numa_node", busID))
-	if err != nil {
-		// Report nil if NUMA support isn't enabled
-		return nil, nil
-	}
-
-	node, err := strconv.ParseInt(string(bytes.TrimSpace(b)), 10, 8)
-	if err != nil {
-		return nil, fmt.Errorf("eror parsing value for NUMA node: %v", err)
-	}
-
-	if node < 0 {
-		return nil, nil
-	}
-
-	n := int(node)
-	return &n, nil
+	return nil, fmt.Errorf("unexpected error")
 }
