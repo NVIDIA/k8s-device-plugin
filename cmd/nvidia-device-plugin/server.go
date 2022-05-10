@@ -55,7 +55,7 @@ const (
 
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
-	rm.ResourceManager
+	rm               rm.ResourceManager
 	config           *spec.Config
 	resourceName     spec.ResourceName
 	deviceListEnvvar string
@@ -73,7 +73,7 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 	_, name := resourceManager.Resource().Split()
 
 	return &NvidiaDevicePlugin{
-		ResourceManager:  resourceManager,
+		rm:               resourceManager,
 		config:           config,
 		resourceName:     resourceManager.Resource(),
 		deviceListEnvvar: "NVIDIA_VISIBLE_DEVICES",
@@ -104,6 +104,11 @@ func (plugin *NvidiaDevicePlugin) cleanup() {
 	plugin.stop = nil
 }
 
+// Devices returns the full set of devices associated with the plugin.
+func (plugin *NvidiaDevicePlugin) Devices() rm.Devices {
+	return plugin.cachedDevices
+}
+
 // Start starts the gRPC server, registers the device plugin with the Kubelet,
 // and starts the device healthchecks.
 func (plugin *NvidiaDevicePlugin) Start() error {
@@ -125,7 +130,7 @@ func (plugin *NvidiaDevicePlugin) Start() error {
 	}
 	log.Printf("Registered device plugin for '%s' with Kubelet", plugin.resourceName)
 
-	go plugin.CheckHealth(plugin.stop, plugin.cachedDevices, plugin.health)
+	go plugin.rm.CheckHealth(plugin.stop, plugin.cachedDevices, plugin.health)
 
 	return nil
 }
