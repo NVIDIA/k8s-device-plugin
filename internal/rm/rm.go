@@ -36,7 +36,7 @@ type resourceManager struct {
 type ResourceManager interface {
 	Resource() spec.ResourceName
 	Devices() Devices
-	CheckHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error
+	CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error
 }
 
 // NewResourceManagers returns a []ResourceManager, one for each resource in 'config'.
@@ -75,8 +75,8 @@ func (r *resourceManager) Devices() Devices {
 }
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
-func (r *resourceManager) CheckHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
-	return r.checkHealth(stop, devices, unhealthy)
+func (r *resourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
+	return r.checkHealth(stop, r.devices, unhealthy)
 }
 
 // AddDefaultResourcesToConfig adds default resource matching rules to config.Resources

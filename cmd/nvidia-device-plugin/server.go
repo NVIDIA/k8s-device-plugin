@@ -124,7 +124,7 @@ func (plugin *NvidiaDevicePlugin) Start() error {
 	}
 	log.Printf("Registered device plugin for '%s' with Kubelet", plugin.rm.Resource())
 
-	go plugin.rm.CheckHealth(plugin.stop, plugin.rm.Devices(), plugin.health)
+	go plugin.rm.CheckHealth(plugin.stop, plugin.health)
 
 	return nil
 }
