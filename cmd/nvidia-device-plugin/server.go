@@ -62,7 +62,6 @@ type NvidiaDevicePlugin struct {
 	socket           string
 
 	server        *grpc.Server
-	cachedDevices rm.Devices
 	health        chan *rm.Device
 	stop          chan interface{}
 }
@@ -80,7 +79,6 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 
 		// These will be reinitialized every
 		// time the plugin server is restarted.
-		cachedDevices: nil,
 		server:        nil,
 		health:        nil,
 		stop:          nil,
@@ -88,7 +86,6 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 }
 
 func (plugin *NvidiaDevicePlugin) initialize() {
-	plugin.cachedDevices = plugin.Devices()
 	plugin.server = grpc.NewServer([]grpc.ServerOption{}...)
 	plugin.health = make(chan *rm.Device)
 	plugin.stop = make(chan interface{})
@@ -96,7 +93,6 @@ func (plugin *NvidiaDevicePlugin) initialize() {
 
 func (plugin *NvidiaDevicePlugin) cleanup() {
 	close(plugin.stop)
-	plugin.cachedDevices = nil
 	plugin.server = nil
 	plugin.health = nil
 	plugin.stop = nil
@@ -104,7 +100,7 @@ func (plugin *NvidiaDevicePlugin) cleanup() {
 
 // Devices returns the full set of devices associated with the plugin.
 func (plugin *NvidiaDevicePlugin) Devices() rm.Devices {
-	return plugin.cachedDevices
+	return plugin.rm.Devices()
 }
 
 // Start starts the gRPC server, registers the device plugin with the Kubelet,
@@ -128,7 +124,7 @@ func (plugin *NvidiaDevicePlugin) Start() error {
 	}
 	log.Printf("Registered device plugin for '%s' with Kubelet", plugin.rm.Resource())
 
-	go plugin.rm.CheckHealth(plugin.stop, plugin.cachedDevices, plugin.health)
+	go plugin.rm.CheckHealth(plugin.stop, plugin.rm.Devices(), plugin.health)
 
 	return nil
 }
@@ -319,7 +315,7 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.
 	responses := pluginapi.AllocateResponse{}
 	for _, req := range reqs.ContainerRequests {
 		for _, id := range req.DevicesIDs {
-			if !plugin.cachedDevices.Contains(id) {
+			if !plugin.rm.Devices().Contains(id) {
 				return nil, fmt.Errorf("invalid allocation request for '%s': unknown device: %s", plugin.rm.Resource(), id)
 			}
 		}
@@ -373,13 +369,13 @@ func (plugin *NvidiaDevicePlugin) deviceIDsFromAnnotatedDeviceIDs(ids []string) 
 		deviceIDs = rm.AnnotatedIDs(ids).GetIDs()
 	}
 	if plugin.config.Flags.Plugin.DeviceIDStrategy == DeviceIDStrategyIndex {
-		deviceIDs = plugin.cachedDevices.Subset(ids).GetIndices()
+		deviceIDs = plugin.rm.Devices().Subset(ids).GetIndices()
 	}
 	return deviceIDs
 }
 
 func (plugin *NvidiaDevicePlugin) apiDevices() []*pluginapi.Device {
-	return plugin.cachedDevices.GetPluginDevices()
+	return plugin.rm.Devices().GetPluginDevices()
 }
 
 func (plugin *NvidiaDevicePlugin) apiEnvs(envvar string, deviceIDs []string) map[string]string {
@@ -423,7 +419,7 @@ func (plugin *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, ids []string
 		}
 	}
 
-	for _, p := range plugin.cachedDevices.Subset(ids).GetPaths() {
+	for _, p := range plugin.rm.Devices().Subset(ids).GetPaths() {
 		spec := &pluginapi.DeviceSpec{
 			ContainerPath: p,
 			HostPath:      filepath.Join(driverRoot, p),
