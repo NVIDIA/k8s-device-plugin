@@ -25,18 +25,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// These constants define the possible strategies for striping through GPUs when time-slicing them.
-const (
-	UnspecifiedTimeSlicingStrategy = ""
-	// TODO: Add support for additional strategies below
-	//RoundRobinTimeSlicingStrategy = "round-robin"
-	//PackedTimeSlicingStrategy     = "packed"
-)
-
 // TimeSlicing defines the set of replicas to be made for timeSlicing available resources.
 type TimeSlicing struct {
-	Strategy  string               `json:"strategy,omitempty" yaml:"strategy,omitempty"`
-	Resources []ReplicatedResource `json:"resources"          yaml:"resources"`
+	Strategy  string               `json:"strategy,omitempty"  yaml:"strategy,omitempty"`
+	Resources []ReplicatedResource `json:"resources,omitempty" yaml:"resources,omitempty"`
 }
 
 // ReplicatedResource represents a resource to be replicated.
@@ -134,7 +126,7 @@ func (s *TimeSlicing) UnmarshalJSON(b []byte) error {
 
 	strategy, exists := ts["strategy"]
 	if !exists {
-		strategy = []byte(fmt.Sprintf(`"%s"`, UnspecifiedTimeSlicingStrategy))
+		strategy = []byte(fmt.Sprintf(`"%s"`, TimeSlicingStrategyPacked))
 	}
 
 	err = json.Unmarshal(strategy, &s.Strategy)
@@ -143,7 +135,7 @@ func (s *TimeSlicing) UnmarshalJSON(b []byte) error {
 	}
 
 	switch s.Strategy {
-	case UnspecifiedTimeSlicingStrategy:
+	case TimeSlicingStrategyPacked:
 	default:
 		return fmt.Errorf("unknown time-slicing strategy: %v", s.Strategy)
 	}

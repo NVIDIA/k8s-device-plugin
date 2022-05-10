@@ -28,3 +28,9 @@ const (
 	MigStrategySingle = "single"
 	MigStrategyMixed  = "mixed"
 )
+
+// Constants representing the various Time-Slicing strategies
+const (
+	TimeSlicingStrategyPacked = "packed"
+	//RoundRobinTimeSlicingStrategy = "round-robin"
+)

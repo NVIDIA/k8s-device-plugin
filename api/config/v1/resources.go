@@ -39,8 +39,8 @@ type Resource struct {
 
 // Resources lists full GPUs and MIG devices separately.
 type Resources struct {
-	GPUs []Resource `json:"gpus" yaml:"gpus"`
-	MIGs []Resource `json:"mig"  yaml:"mig"`
+	GPUs []Resource `json:"gpus"           yaml:"gpus"`
+	MIGs []Resource `json:"mig,omitempty"  yaml:"mig,omitempty"`
 }
 
 // NewResourceName builds a resource name from the standard prefix and a name.
