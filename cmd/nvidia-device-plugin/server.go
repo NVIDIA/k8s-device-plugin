@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -207,7 +208,7 @@ func (m *NvidiaDevicePlugin) Register() error {
 		Endpoint:     path.Base(m.socket),
 		ResourceName: string(m.resourceName),
 		Options: &pluginapi.DevicePluginOptions{
-			GetPreferredAllocationAvailable: (m.allocatePolicy != nil),
+			GetPreferredAllocationAvailable: true,
 		},
 	}
 
@@ -221,7 +222,7 @@ func (m *NvidiaDevicePlugin) Register() error {
 // GetDevicePluginOptions returns the values of the optional settings for this plugin
 func (m *NvidiaDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
 	options := &pluginapi.DevicePluginOptions{
-		GetPreferredAllocationAvailable: (m.allocatePolicy != nil),
+		GetPreferredAllocationAvailable: true,
 	}
 	return options, nil
 }
@@ -264,9 +265,10 @@ func (m *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *plug
 func (m *NvidiaDevicePlugin) getPreferredAllocationDevices(available, required []string, size int) ([]string, error) {
 	var devices []string
 
-	// If none of the available device IDs has attributes (i.e. is replicated),
-	// then use the gpuallocator to get the preferred set of allocated devices.
-	if !rm.AnnotatedIDs(available).AnyHasAnnotations() {
+	// If an allocation policy is set and none of the available device IDs has
+	// attributes (i.e. is replicated), then use the gpuallocator to get the
+	// preferred set of allocated devices.
+	if m.allocatePolicy != nil && !rm.AnnotatedIDs(available).AnyHasAnnotations() {
 		available, err := gpuallocator.NewDevicesFrom(available)
 		if err != nil {
 			return nil, fmt.Errorf("unable to retrieve list of available devices: %v", err)
@@ -286,18 +288,22 @@ func (m *NvidiaDevicePlugin) getPreferredAllocationDevices(available, required [
 		return devices, nil
 	}
 
-	// Otherwise just return a list of arbitrary
-	// devices, being sure to include any required ones.
+	// Otherwise return a list of sorted devices, being sure to include any
+	// required ones at the front. Sorting them ensures that devices from the
+	// same GPU (in the case of sharing) are chosen first before moving on to
+	// the next one (i.e we follow a packed sharing strategy rather than a
+	// distributed one).
 	requiredSet := make(map[string]bool)
 	for _, r := range required {
 		requiredSet[r] = true
 	}
-	devices = append([]string{}, required...)
 	for _, a := range available {
 		if !requiredSet[a] {
 			devices = append(devices, a)
 		}
 	}
+	sort.Strings(devices)
+	devices = append(required, devices...)
 	if len(devices) < size {
 		return nil, fmt.Errorf("not enough available devices to satisfy allocation")
 	}
