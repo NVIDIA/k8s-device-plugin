@@ -57,7 +57,6 @@ const (
 type NvidiaDevicePlugin struct {
 	rm               rm.ResourceManager
 	config           *spec.Config
-	resourceName     spec.ResourceName
 	deviceListEnvvar string
 	allocatePolicy   gpuallocator.Policy
 	socket           string
@@ -75,7 +74,6 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 	return &NvidiaDevicePlugin{
 		rm:               resourceManager,
 		config:           config,
-		resourceName:     resourceManager.Resource(),
 		deviceListEnvvar: "NVIDIA_VISIBLE_DEVICES",
 		allocatePolicy:   allocatePolicy,
 		socket:           pluginapi.DevicePluginPath + "nvidia-" + name + ".sock",
@@ -116,11 +114,11 @@ func (plugin *NvidiaDevicePlugin) Start() error {
 
 	err := plugin.Serve()
 	if err != nil {
-		log.Printf("Could not start device plugin for '%s': %s", plugin.resourceName, err)
+		log.Printf("Could not start device plugin for '%s': %s", plugin.rm.Resource(), err)
 		plugin.cleanup()
 		return err
 	}
-	log.Printf("Starting to serve '%s' on %s", plugin.resourceName, plugin.socket)
+	log.Printf("Starting to serve '%s' on %s", plugin.rm.Resource(), plugin.socket)
 
 	err = plugin.Register()
 	if err != nil {
@@ -128,7 +126,7 @@ func (plugin *NvidiaDevicePlugin) Start() error {
 		plugin.Stop()
 		return err
 	}
-	log.Printf("Registered device plugin for '%s' with Kubelet", plugin.resourceName)
+	log.Printf("Registered device plugin for '%s' with Kubelet", plugin.rm.Resource())
 
 	go plugin.rm.CheckHealth(plugin.stop, plugin.cachedDevices, plugin.health)
 
@@ -140,7 +138,7 @@ func (plugin *NvidiaDevicePlugin) Stop() error {
 	if plugin == nil || plugin.server == nil {
 		return nil
 	}
-	log.Printf("Stopping to serve '%s' on %s", plugin.resourceName, plugin.socket)
+	log.Printf("Stopping to serve '%s' on %s", plugin.rm.Resource(), plugin.socket)
 	plugin.server.Stop()
 	if err := os.Remove(plugin.socket); err != nil && !os.IsNotExist(err) {
 		return err
@@ -163,19 +161,19 @@ func (plugin *NvidiaDevicePlugin) Serve() error {
 		lastCrashTime := time.Now()
 		restartCount := 0
 		for {
-			log.Printf("Starting GRPC server for '%s'", plugin.resourceName)
+			log.Printf("Starting GRPC server for '%s'", plugin.rm.Resource())
 			err := plugin.server.Serve(sock)
 			if err == nil {
 				break
 			}
 
-			log.Printf("GRPC server for '%s' crashed with error: %v", plugin.resourceName, err)
+			log.Printf("GRPC server for '%s' crashed with error: %v", plugin.rm.Resource(), err)
 
 			// restart if it has not been too often
 			// i.e. if server has crashed more than 5 times and it didn't last more than one hour each time
 			if restartCount > 5 {
 				// quit
-				log.Fatalf("GRPC server for '%s' has repeatedly crashed recently. Quitting", plugin.resourceName)
+				log.Fatalf("GRPC server for '%s' has repeatedly crashed recently. Quitting", plugin.rm.Resource())
 			}
 			timeSinceLastCrash := time.Since(lastCrashTime).Seconds()
 			lastCrashTime = time.Now()
@@ -211,7 +209,7 @@ func (plugin *NvidiaDevicePlugin) Register() error {
 	reqt := &pluginapi.RegisterRequest{
 		Version:      pluginapi.Version,
 		Endpoint:     path.Base(plugin.socket),
-		ResourceName: string(plugin.resourceName),
+		ResourceName: string(plugin.rm.Resource()),
 		Options: &pluginapi.DevicePluginOptions{
 			GetPreferredAllocationAvailable: true,
 		},
@@ -243,7 +241,7 @@ func (plugin *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.D
 		case d := <-plugin.health:
 			// FIXME: there is no way to recover from the Unhealthy state.
 			d.Health = pluginapi.Unhealthy
-			log.Printf("'%s' device marked unhealthy: %s", plugin.resourceName, d.ID)
+			log.Printf("'%s' device marked unhealthy: %s", plugin.rm.Resource(), d.ID)
 			s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()})
 		}
 	}
@@ -322,7 +320,7 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.
 	for _, req := range reqs.ContainerRequests {
 		for _, id := range req.DevicesIDs {
 			if !plugin.cachedDevices.Contains(id) {
-				return nil, fmt.Errorf("invalid allocation request for '%s': unknown device: %s", plugin.resourceName, id)
+				return nil, fmt.Errorf("invalid allocation request for '%s': unknown device: %s", plugin.rm.Resource(), id)
 			}
 		}
 
