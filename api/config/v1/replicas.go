@@ -35,8 +35,8 @@ const (
 
 // TimeSlicing defines the set of replicas to be made for timeSlicing available resources.
 type TimeSlicing struct {
-	Strategy  string               `json:"strategy,omitempty" yaml:"strategy,omitempty"`
-	Resources []ReplicatedResource `json:"resources"          yaml:"resources"`
+	Strategy  string               `json:"strategy,omitempty"  yaml:"strategy,omitempty"`
+	Resources []ReplicatedResource `json:"resources,omitempty" yaml:"resources,omitempty"`
 }
 
 // ReplicatedResource represents a resource to be replicated.

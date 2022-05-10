@@ -82,10 +82,13 @@ func (r *resourceManager) CheckHealth(stop <-chan interface{}, devices Devices, 
 // AddDefaultResourcesToConfig adds default resource matching rules to config.Resources
 func AddDefaultResourcesToConfig(config *spec.Config) error {
 	config.Resources.AddGPUResource("*", "gpu")
-	if config.Sharing.Mig.Strategy != spec.MigStrategyMixed {
+	switch config.Sharing.Mig.Strategy {
+	case spec.MigStrategySingle:
 		return config.Resources.AddMIGResource("*", "gpu")
+	case spec.MigStrategyMixed:
+		return walkMigProfiles(func(migProfile string) error {
+			return config.Resources.AddMIGResource(migProfile, "mig-"+migProfile)
+		})
 	}
-	return walkMigProfiles(func(migProfile string) error {
-		return config.Resources.AddMIGResource(migProfile, "mig-"+migProfile)
-	})
+	return nil
 }
