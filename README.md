@@ -385,12 +385,18 @@ $ ./k8s-device-plugin --pass-device-specs
 
 ### Version v0.11.0
 
+- Update CUDA base image version to 11.6.0
+- Add support for multi-arch images
+
+### Version v0.10.0
+
 - Update CUDA base images to 11.4.2
-- Ignore Xid=13 (Graphics Engine Exception) critical errors in device healthcheck
-- Ignore Xid=64 (Video processor exception) critical errors in device healthcheck
-- Build multiarch container images for linux/amd64 and linux/arm64
+- Ignore Xid=13 (Graphics Engine Exception) critical errors in device health-check
+- Ignore Xid=68 (Video processor exception) critical errors in device health-check
+- Build multi-arch container images for linux/amd64 and linux/arm64
 - Use Ubuntu 20.04 for Ubuntu-based container images
 - Remove Centos7 images
+
 ### Version v0.9.0
 
 - Fix bug when using CPUManager and the device plugin MIG mode not set to "none"
