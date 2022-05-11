@@ -72,3 +72,19 @@ Full image name with tag
 {{- $tag := printf "v%s" .Chart.AppVersion }}
 {{- .Values.image.repository -}}:{{- .Values.image.tag | default $tag -}}
 {{- end }}
+
+{{/*
+Get the configured MigStrategy
+*/}}
+{{- define "nvidia-device-plugin.getMigStrategy" -}}
+{{- $strategy := "none" -}}
+{{- if .Values.migStrategy -}}
+{{- $strategy = .Values.migStrategy -}}
+{{- else if .Values.config -}}
+{{- $config := .Values.config | fromYaml -}}
+{{- if and ($config.sharing) ($config.sharing.mig) -}}
+{{- $strategy = $config.sharing.mig.strategy -}}
+{{- end -}}
+{{- end -}}
+{{ $strategy }}
+{{- end }}
