@@ -31,6 +31,6 @@ const (
 
 // Constants representing the various Time-Slicing strategies
 const (
-	TimeSlicingStrategyPacked = "packed"
-	//RoundRobinTimeSlicingStrategy = "round-robin"
+	TimeSlicingStrategyPacked      = "packed"
+	TimeSlicingStrategyDistributed = "distributed"
 )

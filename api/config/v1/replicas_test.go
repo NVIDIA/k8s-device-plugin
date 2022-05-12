@@ -421,6 +421,7 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 		},
 		{
 			input: `{
+				"strategy": "distributed",
 				"resources": [
 					{
 						"name": "valid",
@@ -429,7 +430,27 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 				]
 			}`,
 			output: TimeSlicing{
-				Strategy: TimeSlicingStrategyPacked,
+				Strategy: TimeSlicingStrategyDistributed,
+				Resources: []ReplicatedResource{
+					{
+						Name:     NoErrorNewResourceName("valid"),
+						Devices:  ReplicatedDevices{All: true},
+						Replicas: 2,
+					},
+				},
+			},
+		},
+		{
+			input: `{
+				"resources": [
+					{
+						"name": "valid",
+						"replicas": 2
+					}
+				]
+			}`,
+			output: TimeSlicing{
+				Strategy: TimeSlicingStrategyDistributed,
 				Resources: []ReplicatedResource{
 					{
 						Name:     NoErrorNewResourceName("valid"),
@@ -453,7 +474,7 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 				]
 			}`,
 			output: TimeSlicing{
-				Strategy: TimeSlicingStrategyPacked,
+				Strategy: TimeSlicingStrategyDistributed,
 				Resources: []ReplicatedResource{
 					{
 						Name:     NoErrorNewResourceName("valid1"),
