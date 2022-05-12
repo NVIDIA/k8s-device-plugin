@@ -24,39 +24,57 @@ import (
 	config "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
-var bestEffortAllocatePolicy = gpuallocator.NewBestEffortPolicy()
+var alignedAllocationPolicy = gpuallocator.NewBestEffortPolicy()
 
+// GetPreferredAllocation runs an allocation algorithm over the inputs.
+// The algorithm chosen is based both on the incoming set of available devices and various config settings.
 func (r *resourceManager) GetPreferredAllocation(available, required []string, size int) ([]string, error) {
-	var devices []string
-
-	// If an allocation policy is set and none of the available device IDs has
-	// attributes (i.e. is replicated), then use the gpuallocator to get the
-	// preferred set of allocated devices.
+	// If all of the available devices are full GPUs without replicas.  then
+	// calculate an aligned allocation of across those devices.
 	if !r.Devices().ContainsMigDevices() && !AnnotatedIDs(available).AnyHasAnnotations() {
-		available, err := gpuallocator.NewDevicesFrom(available)
-		if err != nil {
-			return nil, fmt.Errorf("unable to retrieve list of available devices: %v", err)
-		}
-
-		required, err := gpuallocator.NewDevicesFrom(required)
-		if err != nil {
-			return nil, fmt.Errorf("unable to retrieve list of required devices: %v", err)
-		}
-
-		allocated := bestEffortAllocatePolicy.Allocate(available, required, size)
-
-		for _, device := range allocated {
-			devices = append(devices, device.UUID)
-		}
-
-		return devices, nil
+		return r.alignedAllocation(available, required, size)
 	}
 
-	// Otherwise return a list of sorted devices, being sure to include any
-	// required ones at the front. Sorting them ensures that devices from the
-	// same GPU (in the case of sharing) are chosen first before moving on to
-	// the next one (i.e we follow a packed sharing strategy rather than a
-	// distributed one).
+	// Otherwise, if the time-slicing policy in place is "packed", run that algorithm.
+	if r.config.Sharing.TimeSlicing.Strategy == config.TimeSlicingStrategyPacked {
+		return r.packedAllocation(available, required, size)
+	}
+
+	// Otherwise, error out.
+	return nil, fmt.Errorf("no valid allocation policy selected")
+}
+
+// alignedAllocation shells out to the alignedAllocationPolicy that is set in
+// order to calculate the preferred allocation.
+func (r *resourceManager) alignedAllocation(available, required []string, size int) ([]string, error) {
+	var devices []string
+
+	availableDevices, err := gpuallocator.NewDevicesFrom(available)
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve list of available devices: %v", err)
+	}
+
+	requiredDevices, err := gpuallocator.NewDevicesFrom(required)
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve list of required devices: %v", err)
+	}
+
+	allocatedDevices := alignedAllocationPolicy.Allocate(availableDevices, requiredDevices, size)
+
+	for _, device := range allocatedDevices {
+		devices = append(devices, device.UUID)
+	}
+
+	return devices, nil
+}
+
+// packedAllocation returns a list of sorted devices, being sure to include any
+// required ones at the front. Sorting them ensures that devices from the same
+// GPU (in the case of sharing) are chosen first before moving on to the next
+// one (i.e we follow a packed sharing strategy rather than a distributed one).
+func (r *resourceManager) packedAllocation(available, required []string, size int) ([]string, error) {
+	var devices []string
+
 	requiredSet := make(map[string]bool)
 	for _, r := range required {
 		requiredSet[r] = true
