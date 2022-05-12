@@ -23,11 +23,9 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
-	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"golang.org/x/net/context"
@@ -58,7 +56,6 @@ type NvidiaDevicePlugin struct {
 	rm               rm.ResourceManager
 	config           *spec.Config
 	deviceListEnvvar string
-	allocatePolicy   gpuallocator.Policy
 	socket           string
 
 	server *grpc.Server
@@ -74,7 +71,6 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 		rm:               resourceManager,
 		config:           config,
 		deviceListEnvvar: "NVIDIA_VISIBLE_DEVICES",
-		allocatePolicy:   gpuallocator.NewBestEffortPolicy(),
 		socket:           pluginapi.DevicePluginPath + "nvidia-" + name + ".sock",
 
 		// These will be reinitialized every
@@ -247,7 +243,7 @@ func (plugin *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.D
 func (plugin *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
 	response := &pluginapi.PreferredAllocationResponse{}
 	for _, req := range r.ContainerRequests {
-		devices, err := plugin.getPreferredAllocationDevices(req.AvailableDeviceIDs, req.MustIncludeDeviceIDs, int(req.AllocationSize))
+		devices, err := plugin.rm.GetPreferredAllocation(req.AvailableDeviceIDs, req.MustIncludeDeviceIDs, int(req.AllocationSize))
 		if err != nil {
 			return nil, fmt.Errorf("error getting list of preferred allocation devices: %v", err)
 		}
@@ -259,55 +255,6 @@ func (plugin *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r 
 		response.ContainerResponses = append(response.ContainerResponses, resp)
 	}
 	return response, nil
-}
-
-func (plugin *NvidiaDevicePlugin) getPreferredAllocationDevices(available, required []string, size int) ([]string, error) {
-	var devices []string
-
-	// If an allocation policy is set and none of the available device IDs has
-	// attributes (i.e. is replicated), then use the gpuallocator to get the
-	// preferred set of allocated devices.
-	if !plugin.rm.Devices().ContainsMigDevices() && !rm.AnnotatedIDs(available).AnyHasAnnotations() {
-		available, err := gpuallocator.NewDevicesFrom(available)
-		if err != nil {
-			return nil, fmt.Errorf("unable to retrieve list of available devices: %v", err)
-		}
-
-		required, err := gpuallocator.NewDevicesFrom(required)
-		if err != nil {
-			return nil, fmt.Errorf("unable to retrieve list of required devices: %v", err)
-		}
-
-		allocated := plugin.allocatePolicy.Allocate(available, required, size)
-
-		for _, device := range allocated {
-			devices = append(devices, device.UUID)
-		}
-
-		return devices, nil
-	}
-
-	// Otherwise return a list of sorted devices, being sure to include any
-	// required ones at the front. Sorting them ensures that devices from the
-	// same GPU (in the case of sharing) are chosen first before moving on to
-	// the next one (i.e we follow a packed sharing strategy rather than a
-	// distributed one).
-	requiredSet := make(map[string]bool)
-	for _, r := range required {
-		requiredSet[r] = true
-	}
-	for _, a := range available {
-		if !requiredSet[a] {
-			devices = append(devices, a)
-		}
-	}
-	sort.Strings(devices)
-	devices = append(required, devices...)
-	if len(devices) < size {
-		return nil, fmt.Errorf("not enough available devices to satisfy allocation")
-	}
-
-	return devices[:size], nil
 }
 
 // Allocate which return list of devices.
