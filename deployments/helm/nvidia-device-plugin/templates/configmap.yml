@@ -1,0 +1,10 @@
+{{- if .Values.config }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nvidia-device-plugin.fullname" . }}-config-file
+  namespace: {{ .Values.namespace }}
+data:
+  config.yaml: |-
+{{ .Values.config | indent 4 }}
+{{- end }}

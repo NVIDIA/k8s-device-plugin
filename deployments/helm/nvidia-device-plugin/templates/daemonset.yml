@@ -57,19 +57,35 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: nvidia-device-plugin-ctr
         env:
+        {{- if typeIs "string" .Values.migStrategy }}
           - name: MIG_STRATEGY
             value: "{{ .Values.migStrategy }}"
+        {{- end }}
+        {{- if typeIs "bool" .Values.failOnInitError }}
           - name: FAIL_ON_INIT_ERROR
             value: "{{ .Values.failOnInitError }}"
+        {{- end }}
+        {{- if typeIs "bool" .Values.compatWithCPUManager }}
           - name: PASS_DEVICE_SPECS
             value: "{{ .Values.compatWithCPUManager }}"
+        {{- end }}
+        {{- if typeIs "string" .Values.deviceListStrategy }}
           - name: DEVICE_LIST_STRATEGY
             value: "{{ .Values.deviceListStrategy }}"
+        {{- end }}
+        {{- if typeIs "string" .Values.deviceIDStrategy }}
           - name: DEVICE_ID_STRATEGY
             value: "{{ .Values.deviceIDStrategy }}"
+        {{- end }}
+        {{- if typeIs "string" .Values.nvidiaDriverRoot }}
           - name: NVIDIA_DRIVER_ROOT
             value: "{{ .Values.nvidiaDriverRoot }}"
-        {{- if ne .Values.migStrategy "none" }}
+        {{- end }}
+        {{- if typeIs "string" .Values.config }}
+          - name: CONFIG_FILE
+            value: /config/config.yaml
+        {{- end }}
+        {{- if ne (include "nvidia-device-plugin.getMigStrategy" .) "none" }}
           - name: NVIDIA_MIG_MONITOR_DEVICES
             value: all
         {{- end }}
@@ -78,7 +94,7 @@ spec:
           {{- toYaml .Values.securityContext | nindent 10 }}
         {{- else if .Values.compatWithCPUManager }}
           privileged: true
-        {{- else if ne .Values.migStrategy "none" }}
+        {{- else if ne (include "nvidia-device-plugin.getMigStrategy" .) "none" }}
             capabilities:
               add:
                 - SYS_ADMIN
@@ -90,6 +106,10 @@ spec:
         volumeMounts:
           - name: device-plugin
             mountPath: /var/lib/kubelet/device-plugins
+          {{- if .Values.config }}
+          - name: config-file
+            mountPath: /config
+          {{- end }}
         {{- with .Values.resources }}
         resources:
           {{- toYaml . | nindent 10 }}
@@ -98,6 +118,11 @@ spec:
         - name: device-plugin
           hostPath:
             path: /var/lib/kubelet/device-plugins
+        {{- if .Values.config }}
+        - name: config-file
+          configMap:
+            name: {{ include "nvidia-device-plugin.fullname" . }}-config-file
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

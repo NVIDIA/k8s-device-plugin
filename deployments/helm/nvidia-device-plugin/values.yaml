@@ -1,10 +1,12 @@
-legacyDaemonsetAPI: false
-compatWithCPUManager: false
-migStrategy: none
-failOnInitError: true
-deviceListStrategy: envvar
-deviceIDStrategy: uuid
-nvidiaDriverRoot: "/"
+config: null
+
+legacyDaemonsetAPI: null
+compatWithCPUManager: null
+migStrategy: null
+failOnInitError: null
+deviceListStrategy: null
+deviceIDStrategy: null
+nvidiaDriverRoot: null
 
 nameOverride: ""
 fullnameOverride: ""
