@@ -73,19 +73,10 @@ func (r *resourceManager) alignedAllocation(available, required []string, size i
 // GPU (in the case of sharing) are chosen first before moving on to the next
 // one (i.e we follow a packed sharing strategy rather than a distributed one).
 func (r *resourceManager) packedAllocation(available, required []string, size int) ([]string, error) {
-	var devices []string
+	candidates := r.devices.Subset(available).Difference(r.devices.Subset(required)).GetIDs()
+	sort.Strings(candidates)
 
-	requiredSet := make(map[string]bool)
-	for _, r := range required {
-		requiredSet[r] = true
-	}
-	for _, a := range available {
-		if !requiredSet[a] {
-			devices = append(devices, a)
-		}
-	}
-	sort.Strings(devices)
-	devices = append(required, devices...)
+	devices := append(required, candidates...)
 	if len(devices) < size {
 		return nil, fmt.Errorf("not enough available devices to satisfy allocation")
 	}
