@@ -61,27 +61,27 @@ type NvidiaDevicePlugin struct {
 	allocatePolicy   gpuallocator.Policy
 	socket           string
 
-	server        *grpc.Server
-	health        chan *rm.Device
-	stop          chan interface{}
+	server *grpc.Server
+	health chan *rm.Device
+	stop   chan interface{}
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, allocatePolicy gpuallocator.Policy) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager) *NvidiaDevicePlugin {
 	_, name := resourceManager.Resource().Split()
 
 	return &NvidiaDevicePlugin{
 		rm:               resourceManager,
 		config:           config,
 		deviceListEnvvar: "NVIDIA_VISIBLE_DEVICES",
-		allocatePolicy:   allocatePolicy,
+		allocatePolicy:   gpuallocator.NewBestEffortPolicy(),
 		socket:           pluginapi.DevicePluginPath + "nvidia-" + name + ".sock",
 
 		// These will be reinitialized every
 		// time the plugin server is restarted.
-		server:        nil,
-		health:        nil,
-		stop:          nil,
+		server: nil,
+		health: nil,
+		stop:   nil,
 	}
 }
 
@@ -267,7 +267,7 @@ func (plugin *NvidiaDevicePlugin) getPreferredAllocationDevices(available, requi
 	// If an allocation policy is set and none of the available device IDs has
 	// attributes (i.e. is replicated), then use the gpuallocator to get the
 	// preferred set of allocated devices.
-	if plugin.allocatePolicy != nil && !rm.AnnotatedIDs(available).AnyHasAnnotations() {
+	if !plugin.rm.Devices().ContainsMigDevices() && !rm.AnnotatedIDs(available).AnyHasAnnotations() {
 		available, err := gpuallocator.NewDevicesFrom(available)
 		if err != nil {
 			return nil, fmt.Errorf("unable to retrieve list of available devices: %v", err)

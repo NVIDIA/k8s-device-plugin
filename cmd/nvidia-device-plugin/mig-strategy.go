@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/mig"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
@@ -124,12 +123,7 @@ func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
 func getPlugins(config *spec.Config, rms []rm.ResourceManager) []*NvidiaDevicePlugin {
 	var plugins []*NvidiaDevicePlugin
 	for _, r := range rms {
-		allocationPolicy := gpuallocator.Policy(nil)
-		if !r.Devices().ContainsMigDevices() {
-			allocationPolicy = gpuallocator.NewBestEffortPolicy()
-		}
-		plugin := NewNvidiaDevicePlugin(config, r, allocationPolicy)
-		plugins = append(plugins, plugin)
+		plugins = append(plugins, NewNvidiaDevicePlugin(config, r))
 	}
 	return plugins
 }
