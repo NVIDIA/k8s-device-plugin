@@ -26,9 +26,9 @@ import (
 
 var alignedAllocationPolicy = gpuallocator.NewBestEffortPolicy()
 
-// GetPreferredAllocation runs an allocation algorithm over the inputs.
+// getPreferredAllocation runs an allocation algorithm over the inputs.
 // The algorithm chosen is based both on the incoming set of available devices and various config settings.
-func (r *resourceManager) GetPreferredAllocation(available, required []string, size int) ([]string, error) {
+func (r *resourceManager) getPreferredAllocation(available, required []string, size int) ([]string, error) {
 	// If all of the available devices are full GPUs without replicas.  then
 	// calculate an aligned allocation of across those devices.
 	if !r.Devices().ContainsMigDevices() && !AnnotatedIDs(available).AnyHasAnnotations() {

@@ -80,6 +80,12 @@ func (r *resourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- 
 	return r.checkHealth(stop, r.devices, unhealthy)
 }
 
+// GetPreferredAllocation runs an allocation algorithm over the inputs.
+// The algorithm chosen is based both on the incoming set of available devices and various config settings.
+func (r *resourceManager) GetPreferredAllocation(available, required []string, size int) ([]string, error) {
+	return r.getPreferredAllocation(available, required, size)
+}
+
 // AddDefaultResourcesToConfig adds default resource matching rules to config.Resources
 func AddDefaultResourcesToConfig(config *spec.Config) error {
 	config.Resources.AddGPUResource("*", "gpu")
