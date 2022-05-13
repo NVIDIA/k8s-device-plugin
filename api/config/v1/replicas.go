@@ -27,7 +27,6 @@ import (
 
 // TimeSlicing defines the set of replicas to be made for timeSlicing available resources.
 type TimeSlicing struct {
-	Strategy  string               `json:"strategy,omitempty"  yaml:"strategy,omitempty"`
 	Resources []ReplicatedResource `json:"resources,omitempty" yaml:"resources,omitempty"`
 }
 
@@ -122,23 +121,6 @@ func (s *TimeSlicing) UnmarshalJSON(b []byte) error {
 	err := json.Unmarshal(b, &ts)
 	if err != nil {
 		return err
-	}
-
-	strategy, exists := ts["strategy"]
-	if !exists {
-		strategy = []byte(fmt.Sprintf(`"%s"`, TimeSlicingStrategyDistributed))
-	}
-
-	err = json.Unmarshal(strategy, &s.Strategy)
-	if err != nil {
-		return err
-	}
-
-	switch s.Strategy {
-	case TimeSlicingStrategyPacked:
-	case TimeSlicingStrategyDistributed:
-	default:
-		return fmt.Errorf("unknown time-slicing strategy: %v", s.Strategy)
 	}
 
 	resources, exists := ts["resources"]

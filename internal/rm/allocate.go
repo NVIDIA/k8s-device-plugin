@@ -18,10 +18,8 @@ package rm
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
-	config "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 var alignedAllocationPolicy = gpuallocator.NewBestEffortPolicy()
@@ -35,18 +33,8 @@ func (r *resourceManager) getPreferredAllocation(available, required []string, s
 		return r.alignedAlloc(available, required, size)
 	}
 
-	// Otherwise, if the time-slicing policy in place is "packed", run that algorithm.
-	if r.config.Sharing.TimeSlicing.Strategy == config.TimeSlicingStrategyPacked {
-		return r.packedAllocation(available, required, size)
-	}
-
-	// Otherwise, if the time-slicing policy in place is "distributed", run that algorithm.
-	if r.config.Sharing.TimeSlicing.Strategy == config.TimeSlicingStrategyDistributed {
-		return r.distributedAllocation(available, required, size)
-	}
-
-	// Otherwise, error out.
-	return nil, fmt.Errorf("no valid allocation policy selected")
+	// Otherwise, run a standard allocation algorithm.
+	return r.alloc(available, required, size)
 }
 
 // alignedAlloc shells out to the alignedAllocationPolicy that is set in
@@ -73,74 +61,14 @@ func (r *resourceManager) alignedAlloc(available, required []string, size int) (
 	return devices, nil
 }
 
-// packedAllocation returns a list of sorted devices, being sure to include any
-// required ones at the front. Sorting them ensures that devices from the same
-// GPU (in the case of sharing) are chosen first before moving on to the next
-// one (i.e we follow a packed sharing strategy rather than a distributed one).
-func (r *resourceManager) packedAllocation(available, required []string, size int) ([]string, error) {
-	candidates := r.devices.Subset(available).Difference(r.devices.Subset(required)).GetIDs()
-	sort.Strings(candidates)
-
-	devices := append(required, candidates...)
+// alloc runs a standard allocation algorithm to decide which devices should be preferred.
+// At present, nothing intelligent is being done here. We plan to expand this
+// in the future to implement a more sophisticated allocation algorithm.
+func (r *resourceManager) alloc(available, required []string, size int) ([]string, error) {
+	remainder := r.devices.Subset(available).Difference(r.devices.Subset(required)).GetIDs()
+	devices := append(required, remainder...)
 	if len(devices) < size {
 		return nil, fmt.Errorf("not enough available devices to satisfy allocation")
 	}
-
 	return devices[:size], nil
-}
-
-// distributedAllocation returns a list of devices such that any replicated
-// devices are distributed across all replicated GPUs equally. It takes into
-// account already allocated replicas to ensure a proper balance across them.
-func (r *resourceManager) distributedAllocation(available, required []string, size int) ([]string, error) {
-	// Get the set of candidate devices as the difference between available and required.
-	candidates := r.devices.Subset(available).Difference(r.devices.Subset(required)).GetIDs()
-	needed := size - len(required)
-
-	if len(candidates) < needed {
-		return nil, fmt.Errorf("not enough available devices to satisfy allocation")
-	}
-
-	// For each candidate device, build a mapping of (stripped) device ID to
-	// total / available replicas for that device.
-	replicas := make(map[string]*struct{ total, available int })
-	for _, c := range candidates {
-		id := AnnotatedID(c).GetID()
-		replicas[id] = &struct{ total, available int }{}
-		replicas[id].available++
-	}
-	for d := range r.devices {
-		id := AnnotatedID(d).GetID()
-		if _, exists := replicas[id]; !exists {
-			continue
-		}
-		replicas[id].total++
-	}
-
-	// Grab the set of 'needed' devices one-by-one from the candidates list.
-	// Before selecting each candidate, first sort the candidate list using the
-	// replicas map above. After sorting, the first element in the list will
-	// contain the device with the least difference between total and available
-	// replications (based on what's already been allocated). Add this device
-	// to the list of devices to allocate, remove it from the candidate list,
-	// down its available count in the replicas map, and repeat.
-	var devices []string
-	for i := 0; i < needed; i++ {
-		sort.Slice(candidates, func(i, j int) bool {
-			iid := AnnotatedID(candidates[i]).GetID()
-			jid := AnnotatedID(candidates[j]).GetID()
-			idiff := replicas[iid].total - replicas[iid].available
-			jdiff := replicas[jid].total - replicas[jid].available
-			return idiff < jdiff
-		})
-		id := AnnotatedID(candidates[0]).GetID()
-		replicas[id].available--
-		devices = append(devices, candidates[0])
-		candidates = candidates[1:]
-	}
-
-	// Add the set of required devices to this list and return it.
-	devices = append(required, devices...)
-
-	return devices, nil
 }
