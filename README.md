@@ -82,7 +82,7 @@ Once you have configured the options above on all the GPU nodes in your
 cluster, you can enable GPU support by deploying the following Daemonset:
 
 ```shell
-$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.11.0/nvidia-device-plugin.yml
+$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.12.0-rc.1/nvidia-device-plugin.yml
 ```
 
 **Note:** This is a simple static daemonset meant to demonstrate the basic
@@ -123,7 +123,7 @@ The preferred method to deploy the device plugin is as a daemonset using `helm`.
 Instructions for installing `helm` can be found
 [here](https://helm.sh/docs/intro/install/).
 
-The `helm` chart for the latest release of the plugin (`v0.11.0`) includes
+The `helm` chart for the latest release of the plugin (`v0.12.0-rc.1`) includes
 a number of customizable values. The most commonly overridden ones are:
 
 ```
@@ -207,7 +207,7 @@ attached to them.
 Please take a look in the following `values.yaml` file to see the full set of
 overridable parameters for the device plugin.
 
-* https://github.com/NVIDIA/k8s-device-plugin/blob/v0.11.0/deployments/helm/nvidia-device-plugin/values.yaml
+* https://github.com/NVIDIA/k8s-device-plugin/blob/v0.12.0-rc.1/deployments/helm/nvidia-device-plugin/values.yaml
 
 #### Installing via `helm install`from the `nvidia-device-plugin` `helm` repository
 
@@ -230,7 +230,7 @@ plugin with the various flags from above.
 Using the default values for the flags:
 ```shell
 $ helm install \
-    --version=0.11.0 \
+    --version=0.12.0-rc.1 \
     --generate-name \
     nvdp/nvidia-device-plugin
 ```
@@ -239,7 +239,7 @@ Enabling compatibility with the `CPUManager` and running with a request for
 100ms of CPU time and a limit of 512MB of memory.
 ```shell
 $ helm install \
-    --version=0.11.0 \
+    --version=0.12.0-rc.1 \
     --generate-name \
     --set compatWithCPUManager=true \
     --set resources.requests.cpu=100m \
@@ -250,7 +250,7 @@ $ helm install \
 Use the legacy Daemonset API (only available on Kubernetes < `v1.16`):
 ```shell
 $ helm install \
-    --version=0.11.0 \
+    --version=0.12.0-rc.1 \
     --generate-name \
     --set legacyDaemonsetAPI=true \
     nvdp/nvidia-device-plugin
@@ -259,7 +259,7 @@ $ helm install \
 Enabling compatibility with the `CPUManager` and the `mixed` `migStrategy`
 ```shell
 $ helm install \
-    --version=0.11.0 \
+    --version=0.12.0-rc.1 \
     --generate-name \
     --set compatWithCPUManager=true \
     --set migStrategy=mixed \
@@ -277,7 +277,7 @@ Using the default values for the flags:
 ```shell
 $ helm install \
     --generate-name \
-    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.11.0.tgz
+    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.12.0-rc.1.tgz
 ```
 
 Enabling compatibility with the `CPUManager` and running with a request for
@@ -288,7 +288,7 @@ $ helm install \
     --set compatWithCPUManager=true \
     --set resources.requests.cpu=100m \
     --set resources.limits.memory=512Mi \
-    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.11.0.tgz
+    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.12.0-rc.1.tgz
 ```
 
 Use the legacy Daemonset API (only available on Kubernetes < `v1.16`):
@@ -296,7 +296,7 @@ Use the legacy Daemonset API (only available on Kubernetes < `v1.16`):
 $ helm install \
     --generate-name \
     --set legacyDaemonsetAPI=true \
-    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.11.0.tgz
+    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.12.0-rc.1.tgz
 ```
 
 Enabling compatibility with the `CPUManager` and the `mixed` `migStrategy`
@@ -305,14 +305,14 @@ $ helm install \
     --generate-name \
     --set compatWithCPUManager=true \
     --set migStrategy=mixed \
-    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.11.0.tgz
+    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.12.0-rc.1.tgz
 ```
 
 ## Building and Running Locally
 
 The next sections are focused on building the device plugin locally and running it.
 It is intended purely for development and testing, and not required by most users.
-It assumes you are pinning to the latest release tag (i.e. `v0.11.0`), but can
+It assumes you are pinning to the latest release tag (i.e. `v0.12.0-rc.1`), but can
 easily be modified to work with any available tag or branch.
 
 ### With Docker
@@ -320,8 +320,8 @@ easily be modified to work with any available tag or branch.
 #### Build
 Option 1, pull the prebuilt image from [Docker Hub](https://hub.docker.com/r/nvidia/k8s-device-plugin):
 ```shell
-$ docker pull nvcr.io/nvidia/k8s-device-plugin:v0.11.0
-$ docker tag nvcr.io/nvidia/k8s-device-plugin:v0.11.0 nvcr.io/nvidia/k8s-device-plugin:devel
+$ docker pull nvcr.io/nvidia/k8s-device-plugin:v0.12.0-rc.1
+$ docker tag nvcr.io/nvidia/k8s-device-plugin:v0.12.0-rc.1 nvcr.io/nvidia/k8s-device-plugin:devel
 ```
 
 Option 2, build without cloning the repository:
@@ -329,7 +329,7 @@ Option 2, build without cloning the repository:
 $ docker build \
     -t nvcr.io/nvidia/k8s-device-plugin:devel \
     -f deployments/container/Dockerfile.ubuntu \
-    https://github.com/NVIDIA/k8s-device-plugin.git#v0.11.0
+    https://github.com/NVIDIA/k8s-device-plugin.git#v0.12.0-rc.1
 ```
 
 Option 3, if you want to modify the code:
@@ -382,6 +382,19 @@ $ ./k8s-device-plugin --pass-device-specs
 ```
 
 ## Changelog
+
+### Version v0.12.0-rc.1
+
+- Add API for specifying time-slicing parameters to support GPU sharing
+- Add API for specifying explicit resource naming in the config file
+- Update config file to be used across plugin and GFD
+- Stop publishing images to dockerhub (now only published to nvcr.io)
+- Add NVIDIA_MIG_MONITOR_DEVICES=all to daemonset envvars when mig mode is enabled
+- Print the plugin configuration at startup
+- Add the ability to load the plugin configuration from a file
+- Remove deprecated tolerations for critical-pod
+- Drop critical-pod annotation(removed from 1.16+) in favor of priorityClassName
+- Pass all parameters as env in helm chart and example daemonset.yamls files for consistency
 
 ### Version v0.11.0
 
