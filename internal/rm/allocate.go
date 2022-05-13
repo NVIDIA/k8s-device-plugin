@@ -29,10 +29,10 @@ var alignedAllocationPolicy = gpuallocator.NewBestEffortPolicy()
 // getPreferredAllocation runs an allocation algorithm over the inputs.
 // The algorithm chosen is based both on the incoming set of available devices and various config settings.
 func (r *resourceManager) getPreferredAllocation(available, required []string, size int) ([]string, error) {
-	// If all of the available devices are full GPUs without replicas.  then
-	// calculate an aligned allocation of across those devices.
+	// If all of the available devices are full GPUs without replicas, then
+	// calculate an aligned allocation across those devices.
 	if !r.Devices().ContainsMigDevices() && !AnnotatedIDs(available).AnyHasAnnotations() {
-		return r.alignedAllocation(available, required, size)
+		return r.alignedAlloc(available, required, size)
 	}
 
 	// Otherwise, if the time-slicing policy in place is "packed", run that algorithm.
@@ -49,9 +49,9 @@ func (r *resourceManager) getPreferredAllocation(available, required []string, s
 	return nil, fmt.Errorf("no valid allocation policy selected")
 }
 
-// alignedAllocation shells out to the alignedAllocationPolicy that is set in
+// alignedAlloc shells out to the alignedAllocationPolicy that is set in
 // order to calculate the preferred allocation.
-func (r *resourceManager) alignedAllocation(available, required []string, size int) ([]string, error) {
+func (r *resourceManager) alignedAlloc(available, required []string, size int) ([]string, error) {
 	var devices []string
 
 	availableDevices, err := gpuallocator.NewDevicesFrom(available)
