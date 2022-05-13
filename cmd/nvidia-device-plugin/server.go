@@ -33,18 +33,6 @@ import (
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
-// Constants to represent the various device list strategies
-const (
-	DeviceListStrategyEnvvar       = "envvar"
-	DeviceListStrategyVolumeMounts = "volume-mounts"
-)
-
-// Constants to represent the various device id strategies
-const (
-	DeviceIDStrategyUUID  = "uuid"
-	DeviceIDStrategyIndex = "index"
-)
-
 // Constants for use by the 'volume-mounts' device list strategy
 const (
 	deviceListAsVolumeMountsHostPath          = "/dev/null"
@@ -272,10 +260,10 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.
 		ids := req.DevicesIDs
 		deviceIDs := plugin.deviceIDsFromAnnotatedDeviceIDs(ids)
 
-		if plugin.config.Flags.Plugin.DeviceListStrategy == DeviceListStrategyEnvvar {
+		if plugin.config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyEnvvar {
 			response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, deviceIDs)
 		}
-		if plugin.config.Flags.Plugin.DeviceListStrategy == DeviceListStrategyVolumeMounts {
+		if plugin.config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyVolumeMounts {
 			response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, []string{deviceListAsVolumeMountsContainerPathRoot})
 			response.Mounts = plugin.apiMounts(deviceIDs)
 		}
@@ -312,10 +300,10 @@ func (plugin *NvidiaDevicePlugin) dial(unixSocketPath string, timeout time.Durat
 
 func (plugin *NvidiaDevicePlugin) deviceIDsFromAnnotatedDeviceIDs(ids []string) []string {
 	var deviceIDs []string
-	if plugin.config.Flags.Plugin.DeviceIDStrategy == DeviceIDStrategyUUID {
+	if plugin.config.Flags.Plugin.DeviceIDStrategy == spec.DeviceIDStrategyUUID {
 		deviceIDs = rm.AnnotatedIDs(ids).GetIDs()
 	}
-	if plugin.config.Flags.Plugin.DeviceIDStrategy == DeviceIDStrategyIndex {
+	if plugin.config.Flags.Plugin.DeviceIDStrategy == spec.DeviceIDStrategyIndex {
 		deviceIDs = plugin.rm.Devices().Subset(ids).GetIndices()
 	}
 	return deviceIDs

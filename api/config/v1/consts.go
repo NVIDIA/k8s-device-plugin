@@ -28,3 +28,15 @@ const (
 	MigStrategySingle = "single"
 	MigStrategyMixed  = "mixed"
 )
+
+// Constants to represent the various device list strategies
+const (
+	DeviceListStrategyEnvvar       = "envvar"
+	DeviceListStrategyVolumeMounts = "volume-mounts"
+)
+
+// Constants to represent the various device id strategies
+const (
+	DeviceIDStrategyUUID  = "uuid"
+	DeviceIDStrategyIndex = "index"
+)
