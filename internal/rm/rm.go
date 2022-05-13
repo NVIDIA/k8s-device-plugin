@@ -36,7 +36,8 @@ type resourceManager struct {
 type ResourceManager interface {
 	Resource() spec.ResourceName
 	Devices() Devices
-	CheckHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error
+	GetPreferredAllocation(available, required []string, size int) ([]string, error)
+	CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error
 }
 
 // NewResourceManagers returns a []ResourceManager, one for each resource in 'config'.
@@ -75,8 +76,14 @@ func (r *resourceManager) Devices() Devices {
 }
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
-func (r *resourceManager) CheckHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
-	return r.checkHealth(stop, devices, unhealthy)
+func (r *resourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
+	return r.checkHealth(stop, r.devices, unhealthy)
+}
+
+// GetPreferredAllocation runs an allocation algorithm over the inputs.
+// The algorithm chosen is based both on the incoming set of available devices and various config settings.
+func (r *resourceManager) GetPreferredAllocation(available, required []string, size int) ([]string, error) {
+	return r.getPreferredAllocation(available, required, size)
 }
 
 // AddDefaultResourcesToConfig adds default resource matching rules to config.Resources

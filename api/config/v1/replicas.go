@@ -126,7 +126,7 @@ func (s *TimeSlicing) UnmarshalJSON(b []byte) error {
 
 	strategy, exists := ts["strategy"]
 	if !exists {
-		strategy = []byte(fmt.Sprintf(`"%s"`, TimeSlicingStrategyPacked))
+		strategy = []byte(fmt.Sprintf(`"%s"`, TimeSlicingStrategyDistributed))
 	}
 
 	err = json.Unmarshal(strategy, &s.Strategy)
@@ -136,6 +136,7 @@ func (s *TimeSlicing) UnmarshalJSON(b []byte) error {
 
 	switch s.Strategy {
 	case TimeSlicingStrategyPacked:
+	case TimeSlicingStrategyDistributed:
 	default:
 		return fmt.Errorf("unknown time-slicing strategy: %v", s.Strategy)
 	}
