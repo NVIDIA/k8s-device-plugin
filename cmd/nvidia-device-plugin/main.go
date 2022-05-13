@@ -24,7 +24,7 @@ import (
 	"syscall"
 
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
-	config "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/fsnotify/fsnotify"
 	cli "github.com/urfave/cli/v2"
@@ -35,8 +35,8 @@ import (
 var version string // This should be set at build time to indicate the actual version
 
 func main() {
-	var flags config.CommandLineFlags
-	var config config.Config
+	var flags spec.CommandLineFlags
+	var config spec.Config
 	var configFile string
 
 	c := cli.NewApp()
@@ -56,7 +56,7 @@ func main() {
 		altsrc.NewStringFlag(
 			&cli.StringFlag{
 				Name:        "mig-strategy",
-				Value:       "none",
+				Value:       spec.MigStrategyNone,
 				Usage:       "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
 				Destination: &flags.MigStrategy,
 				EnvVars:     []string{"MIG_STRATEGY"},
@@ -92,7 +92,7 @@ func main() {
 		altsrc.NewStringFlag(
 			&cli.StringFlag{
 				Name:        "device-list-strategy",
-				Value:       "envvar",
+				Value:       spec.DeviceListStrategyEnvvar,
 				Usage:       "the desired strategy for passing the device list to the underlying runtime:\n\t\t[envvar | volume-mounts]",
 				Destination: &flags.Plugin.DeviceListStrategy,
 				EnvVars:     []string{"DEVICE_LIST_STRATEGY"},
@@ -101,7 +101,7 @@ func main() {
 		altsrc.NewStringFlag(
 			&cli.StringFlag{
 				Name:        "device-id-strategy",
-				Value:       "uuid",
+				Value:       spec.DeviceIDStrategyUUID,
 				Usage:       "the desired strategy for passing device IDs to the underlying runtime:\n\t\t[uuid | index]",
 				Destination: &flags.Plugin.DeviceIDStrategy,
 				EnvVars:     []string{"DEVICE_ID_STRATEGY"},
@@ -123,19 +123,19 @@ func main() {
 	}
 }
 
-func validateFlags(config *config.Config) error {
-	if config.Flags.Plugin.DeviceListStrategy != DeviceListStrategyEnvvar && config.Flags.Plugin.DeviceListStrategy != DeviceListStrategyVolumeMounts {
+func validateFlags(config *spec.Config) error {
+	if config.Flags.Plugin.DeviceListStrategy != spec.DeviceListStrategyEnvvar && config.Flags.Plugin.DeviceListStrategy != spec.DeviceListStrategyVolumeMounts {
 		return fmt.Errorf("invalid --device-list-strategy option: %v", config.Flags.Plugin.DeviceListStrategy)
 	}
 
-	if config.Flags.Plugin.DeviceIDStrategy != DeviceIDStrategyUUID && config.Flags.Plugin.DeviceIDStrategy != DeviceIDStrategyIndex {
+	if config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyUUID && config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyIndex {
 		return fmt.Errorf("invalid --device-id-strategy option: %v", config.Flags.Plugin.DeviceIDStrategy)
 	}
 	return nil
 }
 
-func setup(c *cli.Context, flags []cli.Flag) (*config.Config, error) {
-	config, err := config.NewConfig(c, flags)
+func setup(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
+	config, err := spec.NewConfig(c, flags)
 	if err != nil {
 		return nil, fmt.Errorf("unable to finalize config: %v", err)
 	}
@@ -146,7 +146,7 @@ func setup(c *cli.Context, flags []cli.Flag) (*config.Config, error) {
 	return config, nil
 }
 
-func start(c *cli.Context, config *config.Config) error {
+func start(c *cli.Context, config *spec.Config) error {
 	log.Println("Loading NVML")
 	if err := nvml.Init(); err != nil {
 		log.SetOutput(os.Stderr)

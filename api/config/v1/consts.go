@@ -29,8 +29,14 @@ const (
 	MigStrategyMixed  = "mixed"
 )
 
-// Constants representing the various Time-Slicing strategies
+// Constants to represent the various device list strategies
 const (
-	TimeSlicingStrategyPacked      = "packed"
-	TimeSlicingStrategyDistributed = "distributed"
+	DeviceListStrategyEnvvar       = "envvar"
+	DeviceListStrategyVolumeMounts = "volume-mounts"
+)
+
+// Constants to represent the various device id strategies
+const (
+	DeviceIDStrategyUUID  = "uuid"
+	DeviceIDStrategyIndex = "index"
 )
