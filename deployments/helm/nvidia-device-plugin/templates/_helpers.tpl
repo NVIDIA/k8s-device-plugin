@@ -82,8 +82,8 @@ Get the configured MigStrategy
 {{- $strategy = .Values.migStrategy -}}
 {{- else if .Values.config -}}
 {{- $config := .Values.config | fromYaml -}}
-{{- if and ($config.sharing) ($config.sharing.mig) -}}
-{{- $strategy = $config.sharing.mig.strategy -}}
+{{- if $config.flags -}}
+{{- $strategy = $config.flags.migStrategy -}}
 {{- end -}}
 {{- end -}}
 {{ $strategy }}
