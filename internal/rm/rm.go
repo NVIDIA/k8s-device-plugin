@@ -89,7 +89,7 @@ func (r *resourceManager) GetPreferredAllocation(available, required []string, s
 // AddDefaultResourcesToConfig adds default resource matching rules to config.Resources
 func AddDefaultResourcesToConfig(config *spec.Config) error {
 	config.Resources.AddGPUResource("*", "gpu")
-	switch config.Sharing.Mig.Strategy {
+	switch config.Flags.MigStrategy {
 	case spec.MigStrategySingle:
 		return config.Resources.AddMIGResource("*", "gpu")
 	case spec.MigStrategyMixed:

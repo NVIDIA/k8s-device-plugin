@@ -46,7 +46,6 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 		Version: Version,
 		Flags:   Flags{NewCommandLineFlags(c)},
 	}
-	config.Flags.indirectCommandLineFlags.SyncToConfig(config)
 
 	configFile := c.String("config-file")
 	if configFile == "" {
@@ -64,7 +63,6 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 		return nil, fmt.Errorf("unable to load command line flags from config: %v", err)
 	}
 	config.Flags.CommandLineFlags = NewCommandLineFlags(c)
-	config.Flags.indirectCommandLineFlags.SyncToConfig(config)
 
 	return config, nil
 }
@@ -107,8 +105,6 @@ func parseConfigFrom(reader io.Reader) (*Config, error) {
 	if config.Version != Version {
 		return nil, fmt.Errorf("unknown version: %v", config.Version)
 	}
-
-	config.Flags.indirectCommandLineFlags.SyncFromConfig(&config)
 
 	return &config, nil
 }
