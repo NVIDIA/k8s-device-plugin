@@ -70,8 +70,8 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 
 	// If no MIG devices are available fallback to "none" strategy
 	if len(migEnabledDevices) == 0 {
-		none, _ := NewMigStrategy(s.config)
-		log.Printf("No MIG devices found. Falling back to mig.strategy=%v", none)
+		none := &migStrategyNone{s.config}
+		log.Printf("No MIG devices found. Falling back to mig.strategy=%v", spec.MigStrategyNone)
 		return none.GetPlugins()
 	}
 
