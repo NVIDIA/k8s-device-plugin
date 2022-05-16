@@ -17,8 +17,6 @@
 package v1
 
 import (
-	"time"
-
 	cli "github.com/urfave/cli/v2"
 )
 
@@ -45,10 +43,10 @@ type PluginCommandLineFlags struct {
 
 // GFDCommandLineFlags holds the list of command line flags specific to GFD.
 type GFDCommandLineFlags struct {
-	Oneshot       bool          `json:"oneshot"       yaml:"oneshot"`
-	NoTimestamp   bool          `json:"noTimestamp"   yaml:"noTimestamp"`
-	SleepInterval time.Duration `json:"sleepInterval" yaml:"sleepInterval"`
-	OutputFile    string        `json:"outputFile"    yaml:"outputFile"`
+	Oneshot       bool     `json:"oneshot"       yaml:"oneshot"`
+	NoTimestamp   bool     `json:"noTimestamp"   yaml:"noTimestamp"`
+	SleepInterval Duration `json:"sleepInterval" yaml:"sleepInterval"`
+	OutputFile    string   `json:"outputFile"    yaml:"outputFile"`
 }
 
 // NewCommandLineFlags builds out a CommandLineFlags struct from the flags in cli.Context.
@@ -109,7 +107,7 @@ func (f *CommandLineFlags) setGFDFlags(c *cli.Context) {
 				f.GFD.OutputFile = c.String(n)
 			case "sleep-interval":
 				f.initGFDFlags()
-				f.GFD.SleepInterval = c.Duration(n)
+				f.GFD.SleepInterval = Duration(c.Duration(n))
 			case "no-timestamp":
 				f.initGFDFlags()
 				f.GFD.NoTimestamp = c.Bool(n)

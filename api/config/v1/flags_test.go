@@ -1,0 +1,184 @@
+/*
+ * Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package v1
+
+import (
+	"encoding/json"
+	"fmt"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestUnmarshalFlags(t *testing.T) {
+	testCases := []struct {
+		input  string
+		output Flags
+		err    bool
+	}{
+		{
+			input: ``,
+			err:   true,
+		},
+		{
+			input:  `{}`,
+			output: Flags{},
+		},
+		{
+			input: `{
+				"gfd": {}
+			}`,
+			output: Flags{
+				CommandLineFlags{
+					GFD: &GFDCommandLineFlags{},
+				},
+			},
+		},
+		{
+			input: `{
+				"gfd": {
+					"sleepInterval": 0
+				}
+			}`,
+			output: Flags{
+				CommandLineFlags{
+					GFD: &GFDCommandLineFlags{},
+				},
+			},
+		},
+		{
+			input: `{
+				"gfd": {
+					"sleepInterval": "0s"
+				}
+			}`,
+			output: Flags{
+				CommandLineFlags{
+					GFD: &GFDCommandLineFlags{},
+				},
+			},
+		},
+		{
+			input: `{
+				"gfd": {
+					"sleepInterval": 5
+				}
+			}`,
+			output: Flags{
+				CommandLineFlags{
+					GFD: &GFDCommandLineFlags{
+						SleepInterval: Duration(5),
+					},
+				},
+			},
+		},
+		{
+			input: `{
+				"gfd": {
+					"sleepInterval": "5s"
+				}
+			}`,
+			output: Flags{
+				CommandLineFlags{
+					GFD: &GFDCommandLineFlags{
+						SleepInterval: Duration(5 * time.Second),
+					},
+				},
+			},
+		},
+	}
+
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("test case %d", i), func(t *testing.T) {
+			var output Flags
+			err := json.Unmarshal([]byte(tc.input), &output)
+			if tc.err {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.output, output)
+		})
+	}
+}
+
+func TestMarshalFlags(t *testing.T) {
+	testCases := []struct {
+		input  Flags
+		output string
+		err    bool
+	}{
+		{
+			input: Flags{},
+			output: `{
+				"migStrategy": "",
+				"failOnInitError": false
+			}`,
+		},
+		{
+			input: Flags{
+				CommandLineFlags{
+					GFD: &GFDCommandLineFlags{
+						SleepInterval: Duration(0),
+					},
+				},
+			},
+			output: `{
+				"migStrategy": "",
+				"failOnInitError": false,
+				"gfd": {
+					"oneshot": false,
+					"noTimestamp": false,
+					"outputFile": "",
+					"sleepInterval": "0s"
+				}
+			}`,
+		},
+		{
+			input: Flags{
+				CommandLineFlags{
+					GFD: &GFDCommandLineFlags{
+						SleepInterval: Duration(5),
+					},
+				},
+			},
+			output: `{
+				"migStrategy": "",
+				"failOnInitError": false,
+				"gfd": {
+					"oneshot": false,
+					"noTimestamp": false,
+					"outputFile": "",
+					"sleepInterval": "5ns"
+				}
+			}`,
+		},
+	}
+
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("test case %d", i), func(t *testing.T) {
+			output, err := json.Marshal(tc.input)
+			if tc.err {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.JSONEq(t, tc.output, string(output))
+		})
+	}
+}
