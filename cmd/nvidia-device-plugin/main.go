@@ -35,9 +35,9 @@ import (
 var version string // This should be set at build time to indicate the actual version
 
 func main() {
-	var flags spec.CommandLineFlags
 	var config spec.Config
 	var configFile string
+	flags := spec.CommandLineFlags{Plugin: &spec.PluginCommandLineFlags{}}
 
 	c := cli.NewApp()
 	c.Version = version
