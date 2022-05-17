@@ -1,6 +1,6 @@
 module github.com/NVIDIA/k8s-device-plugin
 
-go 1.14
+go 1.18
 
 replace (
 	k8s.io/api => k8s.io/api v0.19.1
