@@ -20,18 +20,22 @@ import (
 	cli "github.com/urfave/cli/v2"
 )
 
-// untypedMap is a map of 'any' to 'any' for use when using the urfave/cli altsrc input
-type untypedMap map[interface{}]interface{}
-
 // prt returns a reference to whatever type is passed into it
 func ptr[T any](x T) *T {
 	return &x
 }
 
-// SetIfNotNil sets the 'key' in 'untypedMap' to '*pvalue' iff 'pvalue' is not nil
-func setIfNotNil[T1 any, T2 any](m untypedMap, key T1, pvalue *T2) {
-	if pvalue != nil {
-		m[key] = *pvalue
+// updateFromCLIFlag conditionally updates the config flag at 'pflag' to the value of the CLI flag with name 'flagName'
+func updateFromCLIFlag[T any](pflag **T, c *cli.Context, flagName string) {
+	if c.IsSet(flagName) || *pflag == (*T)(nil) {
+		switch flag := any(pflag).(type) {
+		case **string:
+			*flag = ptr(c.String(flagName))
+		case **bool:
+			*flag = ptr(c.Bool(flagName))
+		case **Duration:
+			*flag = ptr(Duration(c.Duration(flagName)))
+		}
 	}
 }
 
@@ -64,95 +68,45 @@ type GFDCommandLineFlags struct {
 	OutputFile    *string   `json:"outputFile"    yaml:"outputFile"`
 }
 
-// NewCommandLineFlags builds out a CommandLineFlags struct from the flags in cli.Context.
-func NewCommandLineFlags(c *cli.Context) CommandLineFlags {
-	flags := CommandLineFlags{
-		MigStrategy:      ptr(c.String("mig-strategy")),
-		FailOnInitError:  ptr(c.Bool("fail-on-init-error")),
-		NvidiaDriverRoot: ptr(c.String("nvidia-driver-root")),
-	}
-	flags.setPluginFlags(c)
-	flags.setGFDFlags(c)
-	return flags
-}
-
-// initPluginFlags initializes the CommandLineFlags.Plugin struct if it is currently nil
-func (f *CommandLineFlags) initPluginFlags() {
-	if f.Plugin == nil {
-		f.Plugin = &PluginCommandLineFlags{}
-	}
-}
-
-// setPluginFlags sets the Plugin specific flags in the CommandLineFlags struct (if there are any)
-func (f *CommandLineFlags) setPluginFlags(c *cli.Context) {
-	for _, flag := range c.App.Flags {
+// UpdateFromCLIFlags updates Flags from settings in the cli Flags if they are set.
+func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
+	for _, flag := range flags {
 		for _, n := range flag.Names() {
+			// Common flags
+			switch n {
+			case "mig-strategy":
+				updateFromCLIFlag(&f.MigStrategy, c, n)
+			case "fail-on-init-error":
+				updateFromCLIFlag(&f.FailOnInitError, c, n)
+			case "nvidia-driver-root":
+				updateFromCLIFlag(&f.NvidiaDriverRoot, c, n)
+			}
+			// Plugin specific flags
+			if f.Plugin == nil {
+				f.Plugin = &PluginCommandLineFlags{}
+			}
 			switch n {
 			case "pass-device-specs":
-				f.initPluginFlags()
-				f.Plugin.PassDeviceSpecs = ptr(c.Bool(n))
+				updateFromCLIFlag(&f.Plugin.PassDeviceSpecs, c, n)
 			case "device-list-strategy":
-				f.initPluginFlags()
-				f.Plugin.DeviceListStrategy = ptr(c.String(n))
+				updateFromCLIFlag(&f.Plugin.DeviceListStrategy, c, n)
 			case "device-id-strategy":
-				f.initPluginFlags()
-				f.Plugin.DeviceIDStrategy = ptr(c.String(n))
+				updateFromCLIFlag(&f.Plugin.DeviceIDStrategy, c, n)
 			}
-		}
-	}
-}
-
-// initGFDFlags initializes the CommandLineFlags.GFD struct if it is currently nil
-func (f *CommandLineFlags) initGFDFlags() {
-	if f.GFD == nil {
-		f.GFD = &GFDCommandLineFlags{}
-	}
-}
-
-// setGFDFlags sets the GFD specific flags in the CommandLineFlags struct (if there are any)
-func (f *CommandLineFlags) setGFDFlags(c *cli.Context) {
-	for _, flag := range c.App.Flags {
-		for _, n := range flag.Names() {
+			// GFD specific flags
+			if f.GFD == nil {
+				f.GFD = &GFDCommandLineFlags{}
+			}
 			switch n {
 			case "oneshot":
-				f.initGFDFlags()
-				f.GFD.Oneshot = ptr(c.Bool(n))
+				updateFromCLIFlag(&f.GFD.Oneshot, c, n)
 			case "output-file":
-				f.initGFDFlags()
-				f.GFD.OutputFile = ptr(c.String(n))
+				updateFromCLIFlag(&f.GFD.OutputFile, c, n)
 			case "sleep-interval":
-				f.initGFDFlags()
-				f.GFD.SleepInterval = ptr(Duration(c.Duration(n)))
+				updateFromCLIFlag(&f.GFD.SleepInterval, c, n)
 			case "no-timestamp":
-				f.initGFDFlags()
-				f.GFD.NoTimestamp = ptr(c.Bool(n))
+				updateFromCLIFlag(&f.GFD.NoTimestamp, c, n)
 			}
 		}
 	}
-}
-
-// toMap converts a Flags struct into a generic 'untypedMap'
-func (f *Flags) toMap() untypedMap {
-	m := make(untypedMap)
-	if f == nil {
-		return m
-	}
-	// Common flags
-	setIfNotNil(m, "mig-strategy", f.MigStrategy)
-	setIfNotNil(m, "fail-on-init-error", f.FailOnInitError)
-	setIfNotNil(m, "nvidia-driver-root", f.NvidiaDriverRoot)
-	// Plugin specific flags
-	if f.Plugin != nil {
-		setIfNotNil(m, "pass-device-specs", f.Plugin.PassDeviceSpecs)
-		setIfNotNil(m, "device-list-strategy", f.Plugin.DeviceListStrategy)
-		setIfNotNil(m, "device-id-strategy", f.Plugin.DeviceIDStrategy)
-	}
-	// GFD specific flags
-	if f.GFD != nil {
-		setIfNotNil(m, "oneshot", f.GFD.Oneshot)
-		setIfNotNil(m, "output-file", f.GFD.OutputFile)
-		setIfNotNil(m, "sleep-interval", f.GFD.SleepInterval)
-		setIfNotNil(m, "no-timestamp", f.GFD.NoTimestamp)
-	}
-	return m
 }
