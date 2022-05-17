@@ -17,5 +17,5 @@ VERSION  ?= v0.12.0-rc.3
 # vVERSION represents the version with a guaranteed v-prefix
 vVERSION := v$(VERSION:v%=%)
 
-CUDA_VERSION ?= 11.6.0
+CUDA_VERSION ?= 11.6.1
 GOLANG_VERSION ?= 1.18.2
