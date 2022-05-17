@@ -20,6 +20,21 @@ import (
 	cli "github.com/urfave/cli/v2"
 )
 
+// untypedMap is a map of 'any' to 'any' for use when using the urfave/cli altsrc input
+type untypedMap map[interface{}]interface{}
+
+// prt returns a reference to whatever type is passed into it
+func ptr[T any](x T) *T {
+	return &x
+}
+
+// SetIfNotNil sets the 'key' in 'untypedMap' to '*pvalue' iff 'pvalue' is not nil
+func setIfNotNil[T1 any, T2 any](m untypedMap, key T1, pvalue *T2) {
+	if pvalue != nil {
+		m[key] = *pvalue
+	}
+}
+
 // Flags holds the full list of flags used to configure the device plugin and GFD.
 type Flags struct {
 	CommandLineFlags
@@ -27,34 +42,34 @@ type Flags struct {
 
 // CommandLineFlags holds the list of command line flags used to configure the device plugin and GFD.
 type CommandLineFlags struct {
-	MigStrategy      string                  `json:"migStrategy"                yaml:"migStrategy"`
-	FailOnInitError  bool                    `json:"failOnInitError"            yaml:"failOnInitError"`
-	NvidiaDriverRoot string                  `json:"nvidiaDriverRoot,omitempty" yaml:"nvidiaDriverRoot,omitempty"`
+	MigStrategy      *string                 `json:"migStrategy"                yaml:"migStrategy"`
+	FailOnInitError  *bool                   `json:"failOnInitError"            yaml:"failOnInitError"`
+	NvidiaDriverRoot *string                 `json:"nvidiaDriverRoot,omitempty" yaml:"nvidiaDriverRoot,omitempty"`
 	Plugin           *PluginCommandLineFlags `json:"plugin,omitempty"           yaml:"plugin,omitempty"`
 	GFD              *GFDCommandLineFlags    `json:"gfd,omitempty"              yaml:"gfd,omitempty"`
 }
 
 // PluginCommandLineFlags holds the list of command line flags specific to the device plugin.
 type PluginCommandLineFlags struct {
-	PassDeviceSpecs    bool   `json:"passDeviceSpecs"    yaml:"passDeviceSpecs"`
-	DeviceListStrategy string `json:"deviceListStrategy" yaml:"deviceListStrategy"`
-	DeviceIDStrategy   string `json:"deviceIDStrategy"   yaml:"deviceIDStrategy"`
+	PassDeviceSpecs    *bool   `json:"passDeviceSpecs"    yaml:"passDeviceSpecs"`
+	DeviceListStrategy *string `json:"deviceListStrategy" yaml:"deviceListStrategy"`
+	DeviceIDStrategy   *string `json:"deviceIDStrategy"   yaml:"deviceIDStrategy"`
 }
 
 // GFDCommandLineFlags holds the list of command line flags specific to GFD.
 type GFDCommandLineFlags struct {
-	Oneshot       bool     `json:"oneshot"       yaml:"oneshot"`
-	NoTimestamp   bool     `json:"noTimestamp"   yaml:"noTimestamp"`
-	SleepInterval Duration `json:"sleepInterval" yaml:"sleepInterval"`
-	OutputFile    string   `json:"outputFile"    yaml:"outputFile"`
+	Oneshot       *bool     `json:"oneshot"       yaml:"oneshot"`
+	NoTimestamp   *bool     `json:"noTimestamp"   yaml:"noTimestamp"`
+	SleepInterval *Duration `json:"sleepInterval" yaml:"sleepInterval"`
+	OutputFile    *string   `json:"outputFile"    yaml:"outputFile"`
 }
 
 // NewCommandLineFlags builds out a CommandLineFlags struct from the flags in cli.Context.
 func NewCommandLineFlags(c *cli.Context) CommandLineFlags {
 	flags := CommandLineFlags{
-		MigStrategy:      c.String("mig-strategy"),
-		FailOnInitError:  c.Bool("fail-on-init-error"),
-		NvidiaDriverRoot: c.String("nvidia-driver-root"),
+		MigStrategy:      ptr(c.String("mig-strategy")),
+		FailOnInitError:  ptr(c.Bool("fail-on-init-error")),
+		NvidiaDriverRoot: ptr(c.String("nvidia-driver-root")),
 	}
 	flags.setPluginFlags(c)
 	flags.setGFDFlags(c)
@@ -75,13 +90,13 @@ func (f *CommandLineFlags) setPluginFlags(c *cli.Context) {
 			switch n {
 			case "pass-device-specs":
 				f.initPluginFlags()
-				f.Plugin.PassDeviceSpecs = c.Bool(n)
+				f.Plugin.PassDeviceSpecs = ptr(c.Bool(n))
 			case "device-list-strategy":
 				f.initPluginFlags()
-				f.Plugin.DeviceListStrategy = c.String(n)
+				f.Plugin.DeviceListStrategy = ptr(c.String(n))
 			case "device-id-strategy":
 				f.initPluginFlags()
-				f.Plugin.DeviceIDStrategy = c.String(n)
+				f.Plugin.DeviceIDStrategy = ptr(c.String(n))
 			}
 		}
 	}
@@ -101,43 +116,43 @@ func (f *CommandLineFlags) setGFDFlags(c *cli.Context) {
 			switch n {
 			case "oneshot":
 				f.initGFDFlags()
-				f.GFD.Oneshot = c.Bool(n)
+				f.GFD.Oneshot = ptr(c.Bool(n))
 			case "output-file":
 				f.initGFDFlags()
-				f.GFD.OutputFile = c.String(n)
+				f.GFD.OutputFile = ptr(c.String(n))
 			case "sleep-interval":
 				f.initGFDFlags()
-				f.GFD.SleepInterval = Duration(c.Duration(n))
+				f.GFD.SleepInterval = ptr(Duration(c.Duration(n)))
 			case "no-timestamp":
 				f.initGFDFlags()
-				f.GFD.NoTimestamp = c.Bool(n)
+				f.GFD.NoTimestamp = ptr(c.Bool(n))
 			}
 		}
 	}
 }
 
-// ToMap converts a Flags struct into a generic map[interface{}]interface{}
-func (f *Flags) ToMap() map[interface{}]interface{} {
-	m := map[interface{}]interface{}{}
+// toMap converts a Flags struct into a generic 'untypedMap'
+func (f *Flags) toMap() untypedMap {
+	m := make(untypedMap)
 	if f == nil {
 		return m
 	}
 	// Common flags
-	m["mig-strategy"] = f.MigStrategy
-	m["fail-on-init-error"] = f.FailOnInitError
-	m["nvidia-driver-root"] = f.NvidiaDriverRoot
+	setIfNotNil(m, "mig-strategy", f.MigStrategy)
+	setIfNotNil(m, "fail-on-init-error", f.FailOnInitError)
+	setIfNotNil(m, "nvidia-driver-root", f.NvidiaDriverRoot)
 	// Plugin specific flags
 	if f.Plugin != nil {
-		m["pass-device-specs"] = f.Plugin.PassDeviceSpecs
-		m["device-list-strategy"] = f.Plugin.DeviceListStrategy
-		m["device-id-strategy"] = f.Plugin.DeviceIDStrategy
+		setIfNotNil(m, "pass-device-specs", f.Plugin.PassDeviceSpecs)
+		setIfNotNil(m, "device-list-strategy", f.Plugin.DeviceListStrategy)
+		setIfNotNil(m, "device-id-strategy", f.Plugin.DeviceIDStrategy)
 	}
 	// GFD specific flags
 	if f.GFD != nil {
-		m["oneshot"] = f.GFD.Oneshot
-		m["output-file"] = f.GFD.OutputFile
-		m["sleep-interval"] = f.GFD.SleepInterval
-		m["no-timestamp"] = f.GFD.NoTimestamp
+		setIfNotNil(m, "oneshot", f.GFD.Oneshot)
+		setIfNotNil(m, "output-file", f.GFD.OutputFile)
+		setIfNotNil(m, "sleep-interval", f.GFD.SleepInterval)
+		setIfNotNil(m, "no-timestamp", f.GFD.NoTimestamp)
 	}
 	return m
 }

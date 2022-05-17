@@ -57,7 +57,7 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 		return nil, fmt.Errorf("unable to parse config file: %v", err)
 	}
 
-	commandLineFlagsInputSource := altsrc.NewMapInputSource(configFile, config.Flags.ToMap())
+	commandLineFlagsInputSource := altsrc.NewMapInputSource(configFile, config.Flags.toMap())
 	err = altsrc.ApplyInputSourceValues(c, commandLineFlagsInputSource, flags)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load command line flags from config: %v", err)

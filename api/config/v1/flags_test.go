@@ -57,7 +57,9 @@ func TestUnmarshalFlags(t *testing.T) {
 			}`,
 			output: Flags{
 				CommandLineFlags{
-					GFD: &GFDCommandLineFlags{},
+					GFD: &GFDCommandLineFlags{
+						SleepInterval: ptr(Duration(0)),
+					},
 				},
 			},
 		},
@@ -69,7 +71,9 @@ func TestUnmarshalFlags(t *testing.T) {
 			}`,
 			output: Flags{
 				CommandLineFlags{
-					GFD: &GFDCommandLineFlags{},
+					GFD: &GFDCommandLineFlags{
+						SleepInterval: ptr(Duration(0)),
+					},
 				},
 			},
 		},
@@ -82,7 +86,7 @@ func TestUnmarshalFlags(t *testing.T) {
 			output: Flags{
 				CommandLineFlags{
 					GFD: &GFDCommandLineFlags{
-						SleepInterval: Duration(5),
+						SleepInterval: ptr(Duration(5)),
 					},
 				},
 			},
@@ -96,7 +100,7 @@ func TestUnmarshalFlags(t *testing.T) {
 			output: Flags{
 				CommandLineFlags{
 					GFD: &GFDCommandLineFlags{
-						SleepInterval: Duration(5 * time.Second),
+						SleepInterval: ptr(Duration(5 * time.Second)),
 					},
 				},
 			},
@@ -126,25 +130,25 @@ func TestMarshalFlags(t *testing.T) {
 		{
 			input: Flags{},
 			output: `{
-				"migStrategy": "",
-				"failOnInitError": false
+				"migStrategy": null,
+				"failOnInitError": null
 			}`,
 		},
 		{
 			input: Flags{
 				CommandLineFlags{
 					GFD: &GFDCommandLineFlags{
-						SleepInterval: Duration(0),
+						SleepInterval: ptr(Duration(0)),
 					},
 				},
 			},
 			output: `{
-				"migStrategy": "",
-				"failOnInitError": false,
+				"migStrategy": null,
+				"failOnInitError": null,
 				"gfd": {
-					"oneshot": false,
-					"noTimestamp": false,
-					"outputFile": "",
+					"oneshot": null,
+					"noTimestamp": null,
+					"outputFile": null,
 					"sleepInterval": "0s"
 				}
 			}`,
@@ -153,17 +157,17 @@ func TestMarshalFlags(t *testing.T) {
 			input: Flags{
 				CommandLineFlags{
 					GFD: &GFDCommandLineFlags{
-						SleepInterval: Duration(5),
+						SleepInterval: ptr(Duration(5)),
 					},
 				},
 			},
 			output: `{
-				"migStrategy": "",
-				"failOnInitError": false,
+				"migStrategy": null,
+				"failOnInitError": null,
 				"gfd": {
-					"oneshot": false,
-					"noTimestamp": false,
-					"outputFile": "",
+					"oneshot": null,
+					"noTimestamp": null,
+					"outputFile": null,
 					"sleepInterval": "5ns"
 				}
 			}`,

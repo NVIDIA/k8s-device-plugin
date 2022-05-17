@@ -117,12 +117,12 @@ func main() {
 }
 
 func validateFlags(config *spec.Config) error {
-	if config.Flags.Plugin.DeviceListStrategy != spec.DeviceListStrategyEnvvar && config.Flags.Plugin.DeviceListStrategy != spec.DeviceListStrategyVolumeMounts {
-		return fmt.Errorf("invalid --device-list-strategy option: %v", config.Flags.Plugin.DeviceListStrategy)
+	if *config.Flags.Plugin.DeviceListStrategy != spec.DeviceListStrategyEnvvar && *config.Flags.Plugin.DeviceListStrategy != spec.DeviceListStrategyVolumeMounts {
+		return fmt.Errorf("invalid --device-list-strategy option: %v", *config.Flags.Plugin.DeviceListStrategy)
 	}
 
-	if config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyUUID && config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyIndex {
-		return fmt.Errorf("invalid --device-id-strategy option: %v", config.Flags.Plugin.DeviceIDStrategy)
+	if *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyUUID && *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyIndex {
+		return fmt.Errorf("invalid --device-id-strategy option: %v", *config.Flags.Plugin.DeviceIDStrategy)
 	}
 	return nil
 }
@@ -148,7 +148,7 @@ func start(c *cli.Context, config *spec.Config) error {
 		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
 		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
 		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
-		if config.Flags.FailOnInitError {
+		if *config.Flags.FailOnInitError {
 			return fmt.Errorf("failed to initialize NVML: %v", err)
 		}
 		select {}
