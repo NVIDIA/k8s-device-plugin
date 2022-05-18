@@ -22,7 +22,6 @@ import (
 	"os"
 
 	cli "github.com/urfave/cli/v2"
-	altsrc "github.com/urfave/cli/v2/altsrc"
 
 	"sigs.k8s.io/yaml"
 )
@@ -42,27 +41,17 @@ type Config struct {
 // The data stored in the config will be populated in order of precedence from
 // (1) command line, (2) environment variable, (3) config file.
 func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
-	config := &Config{
-		Version: Version,
-		Flags:   Flags{NewCommandLineFlags(c)},
+	config := &Config{Version: Version}
+
+	if configFile := c.String("config-file"); configFile != "" {
+		var err error
+		config, err = parseConfig(configFile)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse config file: %v", err)
+		}
 	}
 
-	configFile := c.String("config-file")
-	if configFile == "" {
-		return config, nil
-	}
-
-	config, err := parseConfig(configFile)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse config file: %v", err)
-	}
-
-	commandLineFlagsInputSource := altsrc.NewMapInputSource(configFile, config.Flags.ToMap())
-	err = altsrc.ApplyInputSourceValues(c, commandLineFlagsInputSource, flags)
-	if err != nil {
-		return nil, fmt.Errorf("unable to load command line flags from config: %v", err)
-	}
-	config.Flags.CommandLineFlags = NewCommandLineFlags(c)
+	config.Flags.UpdateFromCLIFlags(c, flags)
 
 	return config, nil
 }

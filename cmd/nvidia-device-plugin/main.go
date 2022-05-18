@@ -28,7 +28,6 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/fsnotify/fsnotify"
 	cli "github.com/urfave/cli/v2"
-	altsrc "github.com/urfave/cli/v2/altsrc"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
@@ -37,7 +36,6 @@ var version string // This should be set at build time to indicate the actual ve
 func main() {
 	var config spec.Config
 	var configFile string
-	flags := spec.CommandLineFlags{Plugin: &spec.PluginCommandLineFlags{}}
 
 	c := cli.NewApp()
 	c.Version = version
@@ -53,60 +51,42 @@ func main() {
 	}
 
 	c.Flags = []cli.Flag{
-		altsrc.NewStringFlag(
-			&cli.StringFlag{
-				Name:        "mig-strategy",
-				Value:       spec.MigStrategyNone,
-				Usage:       "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
-				Destination: &flags.MigStrategy,
-				EnvVars:     []string{"MIG_STRATEGY"},
-			},
-		),
-		altsrc.NewBoolFlag(
-			&cli.BoolFlag{
-				Name:        "fail-on-init-error",
-				Value:       true,
-				Usage:       "fail the plugin if an error is encountered during initialization, otherwise block indefinitely",
-				Destination: &flags.FailOnInitError,
-				EnvVars:     []string{"FAIL_ON_INIT_ERROR"},
-			},
-		),
-		altsrc.NewStringFlag(
-			&cli.StringFlag{
-				Name:        "nvidia-driver-root",
-				Value:       "/",
-				Usage:       "the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')",
-				Destination: &flags.NvidiaDriverRoot,
-				EnvVars:     []string{"NVIDIA_DRIVER_ROOT"},
-			},
-		),
-		altsrc.NewBoolFlag(
-			&cli.BoolFlag{
-				Name:        "pass-device-specs",
-				Value:       false,
-				Usage:       "pass the list of DeviceSpecs to the kubelet on Allocate()",
-				Destination: &flags.Plugin.PassDeviceSpecs,
-				EnvVars:     []string{"PASS_DEVICE_SPECS"},
-			},
-		),
-		altsrc.NewStringFlag(
-			&cli.StringFlag{
-				Name:        "device-list-strategy",
-				Value:       spec.DeviceListStrategyEnvvar,
-				Usage:       "the desired strategy for passing the device list to the underlying runtime:\n\t\t[envvar | volume-mounts]",
-				Destination: &flags.Plugin.DeviceListStrategy,
-				EnvVars:     []string{"DEVICE_LIST_STRATEGY"},
-			},
-		),
-		altsrc.NewStringFlag(
-			&cli.StringFlag{
-				Name:        "device-id-strategy",
-				Value:       spec.DeviceIDStrategyUUID,
-				Usage:       "the desired strategy for passing device IDs to the underlying runtime:\n\t\t[uuid | index]",
-				Destination: &flags.Plugin.DeviceIDStrategy,
-				EnvVars:     []string{"DEVICE_ID_STRATEGY"},
-			},
-		),
+		&cli.StringFlag{
+			Name:    "mig-strategy",
+			Value:   spec.MigStrategyNone,
+			Usage:   "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
+			EnvVars: []string{"MIG_STRATEGY"},
+		},
+		&cli.BoolFlag{
+			Name:    "fail-on-init-error",
+			Value:   true,
+			Usage:   "fail the plugin if an error is encountered during initialization, otherwise block indefinitely",
+			EnvVars: []string{"FAIL_ON_INIT_ERROR"},
+		},
+		&cli.StringFlag{
+			Name:    "nvidia-driver-root",
+			Value:   "/",
+			Usage:   "the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')",
+			EnvVars: []string{"NVIDIA_DRIVER_ROOT"},
+		},
+		&cli.BoolFlag{
+			Name:    "pass-device-specs",
+			Value:   false,
+			Usage:   "pass the list of DeviceSpecs to the kubelet on Allocate()",
+			EnvVars: []string{"PASS_DEVICE_SPECS"},
+		},
+		&cli.StringFlag{
+			Name:    "device-list-strategy",
+			Value:   spec.DeviceListStrategyEnvvar,
+			Usage:   "the desired strategy for passing the device list to the underlying runtime:\n\t\t[envvar | volume-mounts]",
+			EnvVars: []string{"DEVICE_LIST_STRATEGY"},
+		},
+		&cli.StringFlag{
+			Name:    "device-id-strategy",
+			Value:   spec.DeviceIDStrategyUUID,
+			Usage:   "the desired strategy for passing device IDs to the underlying runtime:\n\t\t[uuid | index]",
+			EnvVars: []string{"DEVICE_ID_STRATEGY"},
+		},
 		&cli.StringFlag{
 			Name:        "config-file",
 			Usage:       "the path to a config file as an alternative to command line options or environment variables",
@@ -124,12 +104,12 @@ func main() {
 }
 
 func validateFlags(config *spec.Config) error {
-	if config.Flags.Plugin.DeviceListStrategy != spec.DeviceListStrategyEnvvar && config.Flags.Plugin.DeviceListStrategy != spec.DeviceListStrategyVolumeMounts {
-		return fmt.Errorf("invalid --device-list-strategy option: %v", config.Flags.Plugin.DeviceListStrategy)
+	if *config.Flags.Plugin.DeviceListStrategy != spec.DeviceListStrategyEnvvar && *config.Flags.Plugin.DeviceListStrategy != spec.DeviceListStrategyVolumeMounts {
+		return fmt.Errorf("invalid --device-list-strategy option: %v", *config.Flags.Plugin.DeviceListStrategy)
 	}
 
-	if config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyUUID && config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyIndex {
-		return fmt.Errorf("invalid --device-id-strategy option: %v", config.Flags.Plugin.DeviceIDStrategy)
+	if *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyUUID && *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyIndex {
+		return fmt.Errorf("invalid --device-id-strategy option: %v", *config.Flags.Plugin.DeviceIDStrategy)
 	}
 	return nil
 }
@@ -143,6 +123,7 @@ func setup(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to validate flags: %v", err)
 	}
+	config.Flags.GFD = nil
 	return config, nil
 }
 
@@ -155,7 +136,7 @@ func start(c *cli.Context, config *spec.Config) error {
 		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
 		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
 		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
-		if config.Flags.FailOnInitError {
+		if *config.Flags.FailOnInitError {
 			return fmt.Errorf("failed to initialize NVML: %v", err)
 		}
 		select {}

@@ -1,6 +1,5 @@
 # github.com/BurntSushi/toml v0.3.1
 ## explicit
-github.com/BurntSushi/toml
 # github.com/NVIDIA/go-gpuallocator v0.2.1
 ## explicit
 github.com/NVIDIA/go-gpuallocator/gpuallocator
@@ -64,7 +63,6 @@ github.com/stretchr/testify/require
 # github.com/urfave/cli/v2 v2.4.0
 ## explicit; go 1.11
 github.com/urfave/cli/v2
-github.com/urfave/cli/v2/altsrc
 # golang.org/x/net v0.0.0-20201021035429-f5854403a974
 ## explicit; go 1.11
 golang.org/x/net/context

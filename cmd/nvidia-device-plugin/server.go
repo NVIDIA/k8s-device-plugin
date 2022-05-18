@@ -260,15 +260,15 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.
 		ids := req.DevicesIDs
 		deviceIDs := plugin.deviceIDsFromAnnotatedDeviceIDs(ids)
 
-		if plugin.config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyEnvvar {
+		if *plugin.config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyEnvvar {
 			response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, deviceIDs)
 		}
-		if plugin.config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyVolumeMounts {
+		if *plugin.config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyVolumeMounts {
 			response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, []string{deviceListAsVolumeMountsContainerPathRoot})
 			response.Mounts = plugin.apiMounts(deviceIDs)
 		}
-		if plugin.config.Flags.Plugin.PassDeviceSpecs {
-			response.Devices = plugin.apiDeviceSpecs(plugin.config.Flags.NvidiaDriverRoot, ids)
+		if *plugin.config.Flags.Plugin.PassDeviceSpecs {
+			response.Devices = plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDriverRoot, ids)
 		}
 
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
@@ -300,10 +300,10 @@ func (plugin *NvidiaDevicePlugin) dial(unixSocketPath string, timeout time.Durat
 
 func (plugin *NvidiaDevicePlugin) deviceIDsFromAnnotatedDeviceIDs(ids []string) []string {
 	var deviceIDs []string
-	if plugin.config.Flags.Plugin.DeviceIDStrategy == spec.DeviceIDStrategyUUID {
+	if *plugin.config.Flags.Plugin.DeviceIDStrategy == spec.DeviceIDStrategyUUID {
 		deviceIDs = rm.AnnotatedIDs(ids).GetIDs()
 	}
-	if plugin.config.Flags.Plugin.DeviceIDStrategy == spec.DeviceIDStrategyIndex {
+	if *plugin.config.Flags.Plugin.DeviceIDStrategy == spec.DeviceIDStrategyIndex {
 		deviceIDs = plugin.rm.Devices().Subset(ids).GetIndices()
 	}
 	return deviceIDs
