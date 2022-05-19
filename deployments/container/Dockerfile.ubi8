@@ -21,10 +21,9 @@ FROM golang:${GOLANG_VERSION} as build
 WORKDIR /build
 COPY . .
 
+RUN mkdir /artifacts
 ARG VERSION="N/A"
-RUN export CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' && \
-    go build -ldflags="-s -w -X 'main.Version=${VERSION}'" -v ./cmd/nvidia-device-plugin
-
+RUN make PREFIX=/artifacts cmds
 
 FROM nvidia/${CUDA_IMAGE}:${CUDA_VERSION}-base-${BASE_DIST}
 
@@ -43,7 +42,7 @@ LABEL description="See summary"
 
 COPY ./LICENSE ./licenses/LICENSE
 
-COPY --from=build /build/nvidia-device-plugin /usr/bin/nvidia-device-plugin
+COPY --from=build /artifacts/nvidia-device-plugin /usr/bin/nvidia-device-plugin
 
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES
