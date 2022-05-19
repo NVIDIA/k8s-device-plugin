@@ -161,7 +161,9 @@ restart:
 		p.Stop()
 	}
 
-	log.Println("Updating config with default resource matching patterns")
+	disableResourceRenamingInConfig(config)
+
+	log.Println("Updating config with default resource matching patterns.")
 	err = rm.AddDefaultResourcesToConfig(config)
 	if err != nil {
 		return fmt.Errorf("unable to add default resources to config: %v", err)
@@ -247,4 +249,37 @@ events:
 		}
 	}
 	return nil
+}
+
+// disableResourceRenamingInConfig temporarily disable the resource renaming feature of the plugin.
+// We plan to reeenable this feature in a future release.
+func disableResourceRenamingInConfig(config *spec.Config) {
+	// Disable resource renaming through config.Resource
+	if len(config.Resources.GPUs) > 0 || len(config.Resources.MIGs) > 0 {
+		log.Printf("Customizing the 'resources' field is not yet supported in the config. Ignoring...")
+	}
+	config.Resources.GPUs = nil
+	config.Resources.MIGs = nil
+
+	// Disable renaming / device selection in Sharing.TimeSlicing.Resources
+	setsRename := false
+	setsDevices := false
+	for i, r := range config.Sharing.TimeSlicing.Resources {
+		if r.Rename != "" {
+			setsRename = true
+		}
+		if !r.Devices.All {
+			setsDevices = true
+		}
+		config.Sharing.TimeSlicing.Resources[i].Rename = ""
+		config.Sharing.TimeSlicing.Resources[i].Devices.All = true
+		config.Sharing.TimeSlicing.Resources[i].Devices.Count = 0
+		config.Sharing.TimeSlicing.Resources[i].Devices.List = nil
+	}
+	if setsRename {
+		log.Printf("Setting the 'rename' field in sharing.timeSlicing.resources is not yet supported in the config. Ignoring...")
+	}
+	if setsDevices {
+		log.Printf("Customizing the 'devices' field in sharing.timeSlicing.resources is not yet supported in the config. Ignoring...")
+	}
 }
