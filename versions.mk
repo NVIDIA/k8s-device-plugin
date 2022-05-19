@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+MODULE := github.com/NVIDIA/k8s-device-plugin
+
 VERSION  ?= v0.12.0-rc.3
 
 # vVERSION represents the version with a guaranteed v-prefix

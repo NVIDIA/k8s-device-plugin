@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2021, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2020-2022, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,67 +12,53 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-.PHONY: all build test
-.DEFAULT_GOAL := all
-
-##### Global variables #####
-
 DOCKER   ?= docker
-ifeq ($(IMAGE_NAME),)
-REGISTRY ?= nvcr.io/nvidia
-IMAGE_NAME := $(REGISTRY)/k8s-device-plugin
-endif
+MKDIR    ?= mkdir
+DIST_DIR ?= $(CURDIR)/dist
 
 include $(CURDIR)/versions.mk
 
-##### Public rules #####
-
-all: $(MAKE_TARGETS)
-
-# Define local and dockerized golang targets
-MODULE := github.com/NVIDIA/k8s-device-plugin
+ifeq ($(IMAGE_NAME),)
+REGISTRY ?= nvidia
+IMAGE_NAME = $(REGISTRY)/k8s-device-plugin
+endif
 
 BUILDIMAGE_TAG ?= golang$(GOLANG_VERSION)
 BUILDIMAGE ?= $(IMAGE_NAME)-build:$(BUILDIMAGE_TAG)
 
+EXAMPLES := $(patsubst ./examples/%/,%,$(sort $(dir $(wildcard ./examples/*/))))
+EXAMPLE_TARGETS := $(patsubst %,example-%, $(EXAMPLES))
+
+CMDS := $(patsubst ./cmd/%/,%,$(sort $(dir $(wildcard ./cmd/*/))))
+CMD_TARGETS := $(patsubst %,cmd-%, $(CMDS))
+
 CHECK_TARGETS := assert-fmt vet lint ineffassign misspell
-MAKE_TARGETS := fmt build test check coverage $(CHECK_TARGETS)
-DOCKER_TARGETS := $(patsubst %,docker-%, $(MAKE_TARGETS))
-.PHONY: $(MAKE_TARGETS) $(DOCKER_TARGETS)
+MAKE_TARGETS := binaries build check fmt lint-internal test examples cmds coverage generate $(CHECK_TARGETS)
 
-# Generate an image for containerized builds
-# Note: This image is local only
-.PHONY: .build-image .pull-build-image .push-build-image
-.build-image: docker/Dockerfile.devel
-	if [ x"$(SKIP_IMAGE_BUILD)" = x"" ]; then \
-		$(DOCKER) build \
-			--progress=plain \
-			--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
-			--tag $(BUILDIMAGE) \
-			-f $(^) \
-			docker; \
-	fi
+TARGETS := $(MAKE_TARGETS) $(EXAMPLE_TARGETS) $(CMD_TARGETS)
 
-.pull-build-image:
-	$(DOCKER) pull $(BUILDIMAGE)
+DOCKER_TARGETS := $(patsubst %,docker-%, $(TARGETS))
+.PHONY: $(TARGETS) $(DOCKER_TARGETS)
 
-.push-build-image:
-	$(DOCKER) push $(BUILDIMAGE)
+GOOS ?= linux
 
-# Define a docker-* target to run golang targets in a container based on the
-# build image.
-$(DOCKER_TARGETS): docker-%: .build-image
-	@echo "Running 'make $(*)' in docker container $(BUILDIMAGE)"
-	$(DOCKER) run \
-		--rm \
-		-e GOCACHE=/tmp/.cache \
-		-v $(PWD):$(PWD) \
-		-w $(PWD) \
-		--user $$(id -u):$$(id -g) \
-		$(BUILDIMAGE) \
-			make $(*)
+binaries: cmds
+ifneq ($(PREFIX),)
+cmd-%: COMMAND_BUILD_OPTIONS = -o $(PREFIX)/$(*)
+endif
+cmds: $(CMD_TARGETS)
+$(CMD_TARGETS): cmd-%:
+	CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' GOOS=$(GOOS) \
+		go build -ldflags "-s -w -X main.version=$(VERSION)" $(COMMAND_BUILD_OPTIONS) $(MODULE)/cmd/$(*)
 
+build:
+	GOOS=$(GOOS) go build ./...
+
+examples: $(EXAMPLE_TARGETS)
+$(EXAMPLE_TARGETS): example-%:
+	GOOS=$(GOOS) go build ./examples/$(*)
+
+all: check test build binary
 check: $(CHECK_TARGETS)
 
 # Apply go fmt to the codebase
@@ -82,7 +68,7 @@ fmt:
 
 assert-fmt:
 	go list -f '{{.Dir}}' $(MODULE)/... \
-		| xargs gofmt -s -l | ( grep -v /vendor/ || true ) > fmt.out
+		| xargs gofmt -s -l > fmt.out
 	@if [ -s fmt.out ]; then \
 		echo "\nERROR: The following files are not formatted:\n"; \
 		cat fmt.out; \
@@ -109,14 +95,55 @@ misspell:
 vet:
 	go vet $(MODULE)/...
 
-build:
-	go build $(MODULE)/...
-
 COVERAGE_FILE := coverage.out
-unit-test: test
-test: build
+test: build cmds
 	go test -v -coverprofile=$(COVERAGE_FILE) $(MODULE)/...
 
 coverage: test
 	cat $(COVERAGE_FILE) | grep -v "_mock.go" > $(COVERAGE_FILE).no-mocks
 	go tool cover -func=$(COVERAGE_FILE).no-mocks
+
+generate:
+	go generate $(MODULE)/...
+
+# Generate an image for containerized builds
+# Note: This image is local only
+.PHONY: .build-image .pull-build-image .push-build-image
+.build-image: docker/Dockerfile.devel
+	if [ x"$(SKIP_IMAGE_BUILD)" = x"" ]; then \
+		$(DOCKER) build \
+			--progress=plain \
+			--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
+			--tag $(BUILDIMAGE) \
+			-f $(^) \
+			docker; \
+	fi
+
+.pull-build-image:
+	$(DOCKER) pull $(BUILDIMAGE)
+
+.push-build-image:
+	$(DOCKER) push $(BUILDIMAGE)
+
+$(DOCKER_TARGETS): docker-%: .build-image
+	@echo "Running 'make $(*)' in docker container $(BUILDIMAGE)"
+	$(DOCKER) run \
+		--rm \
+		-e GOCACHE=/tmp/.cache \
+		-v $(PWD):$(PWD) \
+		-w $(PWD) \
+		--user $$(id -u):$$(id -g) \
+		$(BUILDIMAGE) \
+			make $(*)
+
+# Start an interactive shell using the development image.
+PHONY: .shell
+.shell:
+	$(DOCKER) run \
+		--rm \
+		-ti \
+		-e GOCACHE=/tmp/.cache \
+		-v $(PWD):$(PWD) \
+		-w $(PWD) \
+		--user $$(id -u):$$(id -g) \
+		$(BUILDIMAGE)
