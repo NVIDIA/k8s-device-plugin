@@ -18,8 +18,6 @@ DIST_DIR ?= $(CURDIR)/dist
 
 include $(CURDIR)/versions.mk
 
-MODULE := github.com/NVIDIA/k8s-device-plugin
-
 ifeq ($(IMAGE_NAME),)
 REGISTRY ?= nvidia
 IMAGE_NAME = $(REGISTRY)/k8s-device-plugin
