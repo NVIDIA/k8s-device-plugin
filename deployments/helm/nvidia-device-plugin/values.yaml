@@ -1,4 +1,21 @@
-config: null
+# Provide a set of configuration files (with a default) for the plugin.
+# An example might look like the following:
+# config:
+#   default: "config-none"
+#   files:
+#   - name: "config-none"
+#     contents: |-
+#       version: v1
+#       flags:
+#         migStrategy: none
+#   - name: "config-mixed"
+#     contents: |-
+#       version: v1
+#       flags:
+#         migStrategy: mixed
+config:
+  default: null
+  files: []
 
 legacyDaemonsetAPI: null
 compatWithCPUManager: null

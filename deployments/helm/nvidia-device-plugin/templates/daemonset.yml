@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+{{- $hasConfigFiles := (include "nvidia-device-plugin.hasConfigFiles" .) | trim }}
+{{- $defaultConfig := (include "nvidia-device-plugin.getDefaultConfig" .) | trim }}
+{{- $migStrategiesAreAllNone := (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) | trim }}
+
 {{- if .Values.legacyDaemonsetAPI }}
 apiVersion: extensions/v1beta1
 {{- else }}
@@ -52,6 +56,18 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if eq $hasConfigFiles "true" }}
+      initContainers:
+      - image: {{ include "nvidia-device-plugin.fullimage" . }}
+        name: nvidia-device-plugin-init
+        command: ["bash", "-c"]
+        args: ["ln -s /available-configs/{{ $defaultConfig }}.yaml /config/config.yaml"]
+        volumeMounts:
+          - name: available-configs
+            mountPath: /available-configs
+          - name: config
+            mountPath: /config
+      {{- end }}
       containers:
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -81,11 +97,11 @@ spec:
           - name: NVIDIA_DRIVER_ROOT
             value: "{{ .Values.nvidiaDriverRoot }}"
         {{- end }}
-        {{- if typeIs "string" .Values.config }}
+        {{- if eq $hasConfigFiles "true" }}
           - name: CONFIG_FILE
             value: /config/config.yaml
         {{- end }}
-        {{- if ne (include "nvidia-device-plugin.getMigStrategy" .) "none" }}
+        {{- if ne $migStrategiesAreAllNone "true" }}
           - name: NVIDIA_MIG_MONITOR_DEVICES
             value: all
         {{- end }}
@@ -94,7 +110,7 @@ spec:
           {{- toYaml .Values.securityContext | nindent 10 }}
         {{- else if .Values.compatWithCPUManager }}
           privileged: true
-        {{- else if ne (include "nvidia-device-plugin.getMigStrategy" .) "none" }}
+        {{- else if ne $migStrategiesAreAllNone "true" }}
             capabilities:
               add:
                 - SYS_ADMIN
@@ -106,8 +122,10 @@ spec:
         volumeMounts:
           - name: device-plugin
             mountPath: /var/lib/kubelet/device-plugins
-          {{- if .Values.config }}
-          - name: config-file
+          {{- if eq $hasConfigFiles "true" }}
+          - name: available-configs
+            mountPath: /available-configs
+          - name: config
             mountPath: /config
           {{- end }}
         {{- with .Values.resources }}
@@ -118,10 +136,12 @@ spec:
         - name: device-plugin
           hostPath:
             path: /var/lib/kubelet/device-plugins
-        {{- if .Values.config }}
-        - name: config-file
+        {{- if eq $hasConfigFiles "true" }}
+        - name: available-configs
           configMap:
-            name: {{ include "nvidia-device-plugin.fullname" . }}-config-file
+            name: {{ include "nvidia-device-plugin.fullname" . }}-configs
+        - name: config
+          emptyDir: {}
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
