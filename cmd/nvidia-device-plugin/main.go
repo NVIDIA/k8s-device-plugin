@@ -22,6 +22,7 @@ import (
 	"log"
 	"os"
 	"syscall"
+	"time"
 
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
@@ -34,20 +35,12 @@ import (
 var version string // This should be set at build time to indicate the actual version
 
 func main() {
-	var config spec.Config
 	var configFile string
 
 	c := cli.NewApp()
 	c.Version = version
-	c.Before = func(ctx *cli.Context) error {
-		cfg, err := setup(ctx, c.Flags)
-		if err == nil {
-			config = *cfg
-		}
-		return err
-	}
 	c.Action = func(ctx *cli.Context) error {
-		return start(ctx, &config)
+		return start(ctx, c.Flags)
 	}
 
 	c.Flags = []cli.Flag{
@@ -114,7 +107,7 @@ func validateFlags(config *spec.Config) error {
 	return nil
 }
 
-func setup(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
+func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 	config, err := spec.NewConfig(c, flags)
 	if err != nil {
 		return nil, fmt.Errorf("unable to finalize config: %v", err)
@@ -127,22 +120,7 @@ func setup(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 	return config, nil
 }
 
-func start(c *cli.Context, config *spec.Config) error {
-	log.Println("Loading NVML")
-	if err := nvml.Init(); err != nil {
-		log.SetOutput(os.Stderr)
-		log.Printf("Failed to initialize NVML: %v.", err)
-		log.Printf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
-		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
-		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
-		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
-		if *config.Flags.FailOnInitError {
-			return fmt.Errorf("failed to initialize NVML: %v", err)
-		}
-		select {}
-	}
-	defer func() { log.Println("Shutdown of NVML returned:", nvml.Shutdown()) }()
-
+func start(c *cli.Context, flags []cli.Flag) error {
 	log.Println("Starting FS watcher.")
 	watcher, err := newFSWatcher(pluginapi.DevicePluginPath)
 	if err != nil {
@@ -153,69 +131,26 @@ func start(c *cli.Context, config *spec.Config) error {
 	log.Println("Starting OS watcher.")
 	sigs := newOSWatcher(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	var plugins []*NvidiaDevicePlugin
+	var restarting bool
+	var restartTimeout <-chan time.Time
 restart:
-	// If we are restarting, idempotently stop any running plugins before
-	// recreating them below.
-	for _, p := range plugins {
-		p.Stop()
-	}
-
-	disableResourceRenamingInConfig(config)
-
-	log.Println("Updating config with default resource matching patterns.")
-	err = rm.AddDefaultResourcesToConfig(config)
+	log.Println("Starting Plugins.")
+	plugins, restartPlugins, err := startPlugins(c, flags, restarting)
 	if err != nil {
-		return fmt.Errorf("unable to add default resources to config: %v", err)
+		return fmt.Errorf("error starting plugins: %v", err)
 	}
-
-	configJSON, err := json.MarshalIndent(config, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal config to JSON: %v", err)
+	if restartPlugins {
+		log.Printf("Failed to start one or more plugins. Retrying in 30s...")
+		restartTimeout = time.After(30 * time.Second)
 	}
-	log.Printf("\nRunning with config:\n%v", string(configJSON))
+	restarting = true
 
-	log.Println("Retreiving plugins.")
-	migStrategy, err := NewMigStrategy(config)
-	if err != nil {
-		return fmt.Errorf("error creating MIG strategy: %v", err)
-	}
-	plugins = migStrategy.GetPlugins()
-
-	// Loop through all plugins, starting them if they have any devices
-	// to serve. If even one plugin fails to start properly, try
-	// starting them all again.
-	started := 0
-	pluginStartError := make(chan struct{})
-	for _, p := range plugins {
-		// Just continue if there are no devices to serve for plugin p.
-		if len(p.Devices()) == 0 {
-			continue
-		}
-
-		// Start the gRPC server for plugin p and connect it with the kubelet.
-		if err := p.Start(); err != nil {
-			log.SetOutput(os.Stderr)
-			log.Println("Could not contact Kubelet, retrying. Did you enable the device plugin feature gate?")
-			log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
-			log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
-			close(pluginStartError)
-			goto events
-		}
-		started++
-	}
-
-	if started == 0 {
-		log.Println("No devices found. Waiting indefinitely.")
-	}
-
-events:
 	// Start an infinite loop, waiting for several indicators to either log
 	// some messages, trigger a restart of the plugins, or exit the program.
 	for {
 		select {
-		// If there was an error starting any plugins, restart them all.
-		case <-pluginStartError:
+		// If the restart timout has expired, then restart the plugins
+		case <-restartTimeout:
 			goto restart
 
 		// Detect a kubelet restart by watching for a newly created
@@ -241,12 +176,112 @@ events:
 				goto restart
 			default:
 				log.Printf("Received signal \"%v\", shutting down.", s)
-				for _, p := range plugins {
-					p.Stop()
-				}
-				break events
+				goto exit
 			}
 		}
+	}
+exit:
+	err = stopPlugins(plugins)
+	if err != nil {
+		return fmt.Errorf("error stopping plugins: %v", err)
+	}
+	return nil
+}
+
+func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]*NvidiaDevicePlugin, bool, error) {
+	var plugins []*NvidiaDevicePlugin
+
+	// If we are restarting, stop plugins from previous run.
+	if restarting {
+		err := stopPlugins(plugins)
+		if err != nil {
+			return nil, false, fmt.Errorf("error stopping plugins from previous run: %v", err)
+		}
+	}
+
+	// Load the configuration file
+	log.Println("Loading configuration.")
+	config, err := loadConfig(c, flags)
+	if err != nil {
+		return nil, false, fmt.Errorf("unable to load config: %v", err)
+	}
+	disableResourceRenamingInConfig(config)
+
+	// Start NVML
+	log.Println("Initializing NVML.")
+	if err := nvml.Init(); err != nil {
+		log.SetOutput(os.Stderr)
+		log.Printf("Failed to initialize NVML: %v.", err)
+		log.Printf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
+		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
+		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
+		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
+		log.SetOutput(os.Stdout)
+		if *config.Flags.FailOnInitError {
+			return nil, false, fmt.Errorf("failed to initialize NVML: %v", err)
+		}
+		select {}
+	}
+
+	// Update the configuration file with default resources.
+	log.Println("Updating config with default resource matching patterns.")
+	err = rm.AddDefaultResourcesToConfig(config)
+	if err != nil {
+		return nil, false, fmt.Errorf("unable to add default resources to config: %v", err)
+	}
+
+	// Print the config to the output.
+	configJSON, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to marshal config to JSON: %v", err)
+	}
+	log.Printf("\nRunning with config:\n%v", string(configJSON))
+
+	// Get the set of plugins.
+	log.Println("Retreiving plugins.")
+	migStrategy, err := NewMigStrategy(config)
+	if err != nil {
+		return nil, false, fmt.Errorf("error creating MIG strategy: %v", err)
+	}
+	plugins = migStrategy.GetPlugins()
+
+	// Loop through all plugins, starting them if they have any devices
+	// to serve. If even one plugin fails to start properly, try
+	// starting them all again.
+	started := 0
+	for _, p := range plugins {
+		// Just continue if there are no devices to serve for plugin p.
+		if len(p.Devices()) == 0 {
+			continue
+		}
+
+		// Start the gRPC server for plugin p and connect it with the kubelet.
+		if err := p.Start(); err != nil {
+			log.SetOutput(os.Stderr)
+			log.Println("Could not contact Kubelet. Did you enable the device plugin feature gate?")
+			log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
+			log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
+			log.SetOutput(os.Stdout)
+			return plugins, true, nil
+		}
+		started++
+	}
+
+	if started == 0 {
+		log.Println("No devices found. Waiting indefinitely.")
+	}
+
+	return plugins, false, nil
+}
+
+func stopPlugins(plugins []*NvidiaDevicePlugin) error {
+	log.Println("Stopping plugins.")
+	for _, p := range plugins {
+		p.Stop()
+	}
+	log.Println("Shutting down NVML.")
+	if err := nvml.Shutdown(); err != nil {
+		return fmt.Errorf("error shutting down NVML: %v", err)
 	}
 	return nil
 }
