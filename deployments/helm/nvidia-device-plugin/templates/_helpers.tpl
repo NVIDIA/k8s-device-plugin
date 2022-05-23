@@ -74,17 +74,49 @@ Full image name with tag
 {{- end }}
 
 {{/*
-Get the configured MigStrategy
+Check if migStrategy (from all possible configurations) is "none"
 */}}
-{{- define "nvidia-device-plugin.getMigStrategy" -}}
-{{- $strategy := "none" -}}
+{{- define "nvidia-device-plugin.allPossibleMigStrategiesAreNone" -}}
+{{- $result := true -}}
 {{- if .Values.migStrategy -}}
-{{- $strategy = .Values.migStrategy -}}
-{{- else if .Values.config -}}
-{{- $config := .Values.config | fromYaml -}}
-{{- if $config.flags -}}
-{{- $strategy = $config.flags.migStrategy -}}
+  {{- if ne .Values.migStrategy "none" -}}
+    {{- $result = false -}}
+  {{- end -}}
+{{- else -}}
+  {{- range $.Values.config.files -}}
+    {{- $config := .contents | fromYaml -}}
+    {{- if $config.flags -}}
+      {{- if ne $config.flags.migStrategy "none" -}}
+        {{- $result = false -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
 {{- end -}}
+{{- $result -}}
+{{- end }}
+
+{{/*
+Check if config files have been provided or not
+*/}}
+{{- define "nvidia-device-plugin.hasConfigFiles" -}}
+{{- $result := false -}}
+{{- if ne (len .Values.config.files) 0 -}}
+  {{- $result = true -}}
 {{- end -}}
-{{ $strategy }}
+{{- $result -}}
+{{- end }}
+
+{{/*
+Get the name of the default configuration
+*/}}
+{{- define "nvidia-device-plugin.getDefaultConfig" -}}
+{{- $result := "" -}}
+{{- if .Values.config.default -}}
+  {{- $result = .Values.config.default -}}
+{{- else if ne (len .Values.config.files) 0 -}}
+  {{- with (index .Values.config.files 0) -}}
+  {{- $result = .name -}}
+  {{- end -}}
+{{- end -}}
+{{- $result -}}
 {{- end }}
