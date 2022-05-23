@@ -57,11 +57,35 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- if eq $hasConfigFiles "true" }}
+      serviceAccountName: {{ include "nvidia-device-plugin.fullname" . }}-service-account
+      shareProcessNamespace: true
       initContainers:
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         name: nvidia-device-plugin-init
-        command: ["bash", "-c"]
-        args: ["ln -s /available-configs/{{ $defaultConfig }}.yaml /config/config.yaml"]
+        command: ["config-manager"]
+        env:
+        - name: ONESHOT
+          value: "true"
+        - name: KUBECONFIG
+          value: ""
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: "spec.nodeName"
+        - name: NODE_LABEL
+          value: "nvidia.com/device-plugin.config"
+        - name: CONFIG_FILE_SRCDIR
+          value: "/available-configs"
+        - name: CONFIG_FILE_DST
+          value: "/config/config.yaml"
+        - name: DEFAULT_CONFIG
+          value: "{{ $defaultConfig }}"
+        - name: SEND_SIGNAL
+          value: "false"
+        - name: SIGNAL
+          value: ""
+        - name: PROCESS_TO_SIGNAL
+          value: ""
         volumeMounts:
           - name: available-configs
             mountPath: /available-configs
@@ -69,6 +93,39 @@ spec:
             mountPath: /config
       {{- end }}
       containers:
+      {{- if eq $hasConfigFiles "true" }}
+      - image: {{ include "nvidia-device-plugin.fullimage" . }}
+        name: nvidia-device-plugin-sidecar
+        command: ["config-manager"]
+        env:
+        - name: ONESHOT
+          value: "false"
+        - name: KUBECONFIG
+          value: ""
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: "spec.nodeName"
+        - name: NODE_LABEL
+          value: "nvidia.com/device-plugin.config"
+        - name: CONFIG_FILE_SRCDIR
+          value: "/available-configs"
+        - name: CONFIG_FILE_DST
+          value: "/config/config.yaml"
+        - name: DEFAULT_CONFIG
+          value: "{{ $defaultConfig }}"
+        - name: SEND_SIGNAL
+          value: "true"
+        - name: SIGNAL
+          value: "1" # SIGHUP
+        - name: PROCESS_TO_SIGNAL
+          value: "nvidia-device-plugin"
+        volumeMounts:
+          - name: available-configs
+            mountPath: /available-configs
+          - name: config
+            mountPath: /config
+      {{- end }}
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: nvidia-device-plugin-ctr
