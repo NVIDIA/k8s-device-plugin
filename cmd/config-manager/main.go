@@ -309,11 +309,19 @@ func updateConfig(config string, f *Flags) error {
 func updateSymlink(config string, f *Flags) (bool, error) {
 	src := filepath.Join(f.ConfigFileSrcdir, fmt.Sprintf("%s.yaml", config))
 
-	if !fileExists(src) {
+	exists, err := fileExists(src)
+	if err != nil {
+		return false, fmt.Errorf("error checking if file '%s' exists: %v", src, err)
+	}
+	if !exists {
 		return false, fmt.Errorf("unknown configuration: %v", config)
 	}
 
-	if fileExists(f.ConfigFileDst) {
+	exists, err = fileExists(f.ConfigFileDst)
+	if err != nil {
+		return false, fmt.Errorf("error checking if file '%s' exists: %v", f.ConfigFileDst, err)
+	}
+	if exists {
 		realpath, err := filepath.EvalSymlinks(f.ConfigFileDst)
 		if err != nil {
 			return false, fmt.Errorf("error evaluating realpath of '%v': %v", f.ConfigFileDst, err)
@@ -330,7 +338,7 @@ func updateSymlink(config string, f *Flags) (bool, error) {
 		}
 	}
 
-	err := os.Symlink(src, f.ConfigFileDst)
+	err = os.Symlink(src, f.ConfigFileDst)
 	if err != nil {
 		return false, fmt.Errorf("error creating symlink: %v", err)
 	}
@@ -367,10 +375,13 @@ func findPidToSignal(f *Flags) (int, error) {
 	return -1, fmt.Errorf("no process found")
 }
 
-func fileExists(filename string) bool {
+func fileExists(filename string) (bool, error) {
 	info, err := os.Stat(filename)
 	if os.IsNotExist(err) {
-		return false
+		return false, nil
 	}
-	return !info.IsDir()
+	if err != nil {
+		return false, err
+	}
+	return !info.IsDir(), nil
 }
