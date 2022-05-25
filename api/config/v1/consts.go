@@ -18,8 +18,9 @@ package v1
 
 // Constants related to resource names
 const (
-	ResourceNamePrefix    = "nvidia.com"
-	MaxResourceNameLength = 63
+	ResourceNamePrefix              = "nvidia.com"
+	DefaultSharedResourceNameSuffix = ".shared"
+	MaxResourceNameLength           = 63
 )
 
 // Constants representing the various MIG strategies

@@ -297,21 +297,26 @@ func disableResourceRenamingInConfig(config *spec.Config) {
 	config.Resources.MIGs = nil
 
 	// Disable renaming / device selection in Sharing.TimeSlicing.Resources
-	setsRename := false
+	withDefaultRename := config.Sharing.TimeSlicing.WithDefaultRename
+	setsNonDefaultRename := false
 	setsDevices := false
 	for i, r := range config.Sharing.TimeSlicing.Resources {
-		if r.Rename != "" {
-			setsRename = true
+		if !withDefaultRename && r.Rename != "" {
+			setsNonDefaultRename = true
+			config.Sharing.TimeSlicing.Resources[i].Rename = ""
+		}
+		if withDefaultRename && r.Rename != r.Name.DefaultSharedRename() {
+			setsNonDefaultRename = true
+			config.Sharing.TimeSlicing.Resources[i].Rename = r.Name.DefaultSharedRename()
 		}
 		if !r.Devices.All {
 			setsDevices = true
+			config.Sharing.TimeSlicing.Resources[i].Devices.All = true
+			config.Sharing.TimeSlicing.Resources[i].Devices.Count = 0
+			config.Sharing.TimeSlicing.Resources[i].Devices.List = nil
 		}
-		config.Sharing.TimeSlicing.Resources[i].Rename = ""
-		config.Sharing.TimeSlicing.Resources[i].Devices.All = true
-		config.Sharing.TimeSlicing.Resources[i].Devices.Count = 0
-		config.Sharing.TimeSlicing.Resources[i].Devices.List = nil
 	}
-	if setsRename {
+	if setsNonDefaultRename {
 		log.Printf("Setting the 'rename' field in sharing.timeSlicing.resources is not yet supported in the config. Ignoring...")
 	}
 	if setsDevices {
