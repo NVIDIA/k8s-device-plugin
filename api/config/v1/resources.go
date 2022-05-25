@@ -85,6 +85,11 @@ func (r ResourceName) Split() (string, string) {
 	return split[0], split[1]
 }
 
+// DefaultSharedRename returns the default renaming to apply when this resource is shared
+func (r ResourceName) DefaultSharedRename() ResourceName {
+	return r + DefaultSharedResourceNameSuffix
+}
+
 // UnmarshalJSON unmarshals raw bytes into a 'Resource' struct.
 func (r *Resource) UnmarshalJSON(b []byte) error {
 	res := make(map[string]json.RawMessage)
