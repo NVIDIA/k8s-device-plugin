@@ -28,7 +28,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "gpu-feature-discovery.selectorLabels" . | nindent 8 }}
+        {{- include "gpu-feature-discovery.templateLabels" . | nindent 8 }}
       {{- with .Values.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
