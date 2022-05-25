@@ -41,6 +41,7 @@ image:
 updateStrategy:
   type: RollingUpdate
 
+podAnnotations: {}
 podSecurityContext: {}
 securityContext: {}
 
