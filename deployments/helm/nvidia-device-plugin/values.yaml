@@ -58,3 +58,7 @@ tolerations:
     effect: NoSchedule
 
 runtimeClassName: null
+
+# Subcharts
+gfd:
+  enabled: false

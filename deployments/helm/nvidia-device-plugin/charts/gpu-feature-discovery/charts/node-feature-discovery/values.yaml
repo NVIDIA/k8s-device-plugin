@@ -1,0 +1,66 @@
+nameOverride: ""
+fullnameOverride: nfd
+
+imagePullSecrets: []
+image:
+  repository: quay.io/kubernetes_incubator/node-feature-discovery
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+namespace:
+  # Name of the namespace to put all components in
+  name: node-feature-discovery
+  # Specifies whether this namespace should be created or not
+  create: true
+
+worker:
+  options: {}
+  resources: {}
+  securityContext: {}
+  podSecurityContext: {}
+  nodeSelector: {}
+  annotations: {}
+  tolerations: {}
+  affinity: {}
+
+master:
+  extraLabelNs: []
+  service:
+    type: ClusterIP
+    port: 8080
+  resources: {}
+  securityContext: {}
+  podSecurityContext: {}
+  nodeSelector: {}
+  annotations: {}
+  tolerations:
+  - key: "node-role.kubernetes.io/master"
+    operator: "Equal"
+    value: ""
+    effect: "NoSchedule"
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 1
+          preference:
+            matchExpressions:
+              - key: "node-role.kubernetes.io/master"
+                operator: In
+                values: [""]
+
+serviceAccount:
+  # Name of the service account to use (whether existing or to be created)
+  # [Default: $fullname-master if set to empty string]
+  name: ""
+  # Specifies whether this service account should be created or not
+  create: true
+  # Annotations to add to the service account when creating it
+  annotations: {}
+
+rbac:
+  # Role to associate with the service account above (whether existing to to be created)
+  # [Default: $fullname-master if set to empty string]
+  role: ""
+  # Specifies whether this role should be created or not
+  create: true
