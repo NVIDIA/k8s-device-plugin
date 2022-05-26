@@ -29,7 +29,7 @@ nameOverride: ""
 fullnameOverride: ""
 selectorLabelsOverride: {}
 
-namespace: kube-system
+allowDefaultNamespace: false
 
 imagePullSecrets: []
 image:

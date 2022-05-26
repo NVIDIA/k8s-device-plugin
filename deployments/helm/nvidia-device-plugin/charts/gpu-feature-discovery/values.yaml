@@ -7,8 +7,6 @@ nameOverride: ""
 fullnameOverride: ""
 selectorLabelsOverride: {}
 
-namespace: node-feature-discovery
-
 imagePullSecrets: []
 image:
   repository: nvcr.io/nvidia/gpu-feature-discovery
