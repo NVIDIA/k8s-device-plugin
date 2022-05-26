@@ -6,3 +6,14 @@ version: "0.12.0-rc.3"
 appVersion: "0.12.0-rc.3"
 kubeVersion: ">= 1.10.0-0"
 home: https://github.com/NVIDIA/k8s-device-plugin
+
+dependencies:
+  - name: node-feature-discovery
+    alias: nfd
+    version: "0.11.0"
+    condition: nfd.enabled,gfd.enabled
+    repository: https://kubernetes-sigs.github.io/node-feature-discovery/charts
+  - name: gpu-feature-discovery
+    alias: gfd
+    version: "0.5.0"
+    condition: gfd.enabled

@@ -3,13 +3,12 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: {{ include "nvidia-device-plugin.fullname" . }}-role-binding
-  namespace: {{ .Values.namespace }}
   labels:
     {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
 subjects:
   - kind: ServiceAccount
     name: {{ include "nvidia-device-plugin.fullname" . }}-service-account
-    namespace: {{ .Values.namespace }}
+    namespace: {{ $.Release.Namespace }}
 roleRef:
   kind: ClusterRole
   name: {{ include "nvidia-device-plugin.fullname" . }}-role

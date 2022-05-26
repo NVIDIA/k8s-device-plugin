@@ -3,7 +3,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: {{ include "nvidia-device-plugin.fullname" . }}-role
-  namespace: {{ .Values.namespace }}
   labels:
     {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
 rules:

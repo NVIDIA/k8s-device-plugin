@@ -29,7 +29,7 @@ nameOverride: ""
 fullnameOverride: ""
 selectorLabelsOverride: {}
 
-namespace: kube-system
+allowDefaultNamespace: false
 
 imagePullSecrets: []
 image:
@@ -41,6 +41,7 @@ image:
 updateStrategy:
   type: RollingUpdate
 
+podAnnotations: {}
 podSecurityContext: {}
 securityContext: {}
 
@@ -57,3 +58,28 @@ tolerations:
     effect: NoSchedule
 
 runtimeClassName: null
+
+# Subcharts
+nfd:
+  nameOverride: node-feature-discovery
+  master:
+    extraLabelNs:
+      - nvidia.com
+  worker:
+    config:
+      sources:
+        pci:
+          deviceClassWhitelist:
+          - "02"
+          - "0200"
+          - "0207"
+          - "0300"
+          - "0302"
+          deviceLabelFields:
+          - vendor
+  serviceAccount:
+    name: node-feature-discovery
+
+gfd:
+  enabled: false
+  nameOverride: gpu-feature-discovery
