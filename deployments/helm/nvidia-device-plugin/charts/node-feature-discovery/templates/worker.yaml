@@ -28,7 +28,7 @@ spec:
         {{- toYaml .Values.worker.podSecurityContext | nindent 8 }}
       containers:
         - name: worker
-          image: {{ include "gpu-feature-discovery.fullimage" . }}
+          image: {{ include "node-feature-discovery.fullimage" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.worker.securityContext | nindent 12 }}

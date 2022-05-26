@@ -29,7 +29,7 @@ spec:
         {{- toYaml .Values.master.podSecurityContext | nindent 8 }}
       containers:
         - name: master
-          image: {{ include "gpu-feature-discovery.fullimage" . }}
+          image: {{ include "node-feature-discovery.fullimage" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.master.securityContext | nindent 12 }}
