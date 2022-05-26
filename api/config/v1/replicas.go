@@ -27,8 +27,8 @@ import (
 
 // TimeSlicing defines the set of replicas to be made for timeSlicing available resources.
 type TimeSlicing struct {
-	WithDefaultRename bool                 `json:"withDefaultRename,omitempty" yaml:"withDefaultRename,omitempty"`
-	Resources         []ReplicatedResource `json:"resources,omitempty"         yaml:"resources,omitempty"`
+	RenameByDefault bool                 `json:"renameByDefault,omitempty" yaml:"renameByDefault,omitempty"`
+	Resources       []ReplicatedResource `json:"resources,omitempty"       yaml:"resources,omitempty"`
 }
 
 // ReplicatedResource represents a resource to be replicated.
@@ -124,12 +124,12 @@ func (s *TimeSlicing) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	withDefaultRename, exists := ts["withDefaultRename"]
+	renameByDefault, exists := ts["renameByDefault"]
 	if !exists {
-		withDefaultRename = []byte(`false`)
+		renameByDefault = []byte(`false`)
 	}
 
-	err = json.Unmarshal(withDefaultRename, &s.WithDefaultRename)
+	err = json.Unmarshal(renameByDefault, &s.RenameByDefault)
 	if err != nil {
 		return err
 	}
@@ -149,7 +149,7 @@ func (s *TimeSlicing) UnmarshalJSON(b []byte) error {
 	}
 
 	for i, r := range s.Resources {
-		if s.WithDefaultRename && r.Rename == "" {
+		if s.RenameByDefault && r.Rename == "" {
 			s.Resources[i].Rename = r.Name.DefaultSharedRename()
 		}
 	}
