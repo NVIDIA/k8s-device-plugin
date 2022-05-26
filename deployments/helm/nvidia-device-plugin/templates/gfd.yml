@@ -38,8 +38,9 @@ spec:
     metadata:
       labels:
         {{- include "nvidia-device-plugin.templateLabels" . | nindent 8 }}
-      {{- with .Values.podAnnotations }}
       annotations:
+        rollme: {{ randAlphaNum 5 | quote }}
+      {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
