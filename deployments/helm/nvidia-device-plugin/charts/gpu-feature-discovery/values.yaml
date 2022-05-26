@@ -20,12 +20,3 @@ securityContext:
 resources: {}
 nodeSelector:
   feature.node.kubernetes.io/pci-10de.present: "true" # NVIDIA vendor ID
-affinity: {}
-tolerations:
-  # This toleration is deprecated. Kept here for backward compatibility
-  # See https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
-  - key: CriticalAddonsOnly
-    operator: Exists
-  - key: nvidia.com/gpu
-    operator: Exists
-    effect: NoSchedule
