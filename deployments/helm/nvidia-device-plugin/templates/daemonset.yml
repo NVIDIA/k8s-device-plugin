@@ -204,7 +204,7 @@ spec:
           emptyDir: {}
         {{- end }}
       {{- $nodeSelector := .Values.nodeSelector }}
-      {{- if empty $nodeSelector }}
+      {{- if and (empty $nodeSelector) .Subcharts.gfd }}
       {{- $nodeSelector = .Subcharts.gfd.Values.nodeSelector }}
       {{- end }}
       {{- with $nodeSelector }}
