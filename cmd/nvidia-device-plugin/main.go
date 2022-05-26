@@ -297,15 +297,15 @@ func disableResourceRenamingInConfig(config *spec.Config) {
 	config.Resources.MIGs = nil
 
 	// Disable renaming / device selection in Sharing.TimeSlicing.Resources
-	withDefaultRename := config.Sharing.TimeSlicing.WithDefaultRename
+	renameByDefault := config.Sharing.TimeSlicing.RenameByDefault
 	setsNonDefaultRename := false
 	setsDevices := false
 	for i, r := range config.Sharing.TimeSlicing.Resources {
-		if !withDefaultRename && r.Rename != "" {
+		if !renameByDefault && r.Rename != "" {
 			setsNonDefaultRename = true
 			config.Sharing.TimeSlicing.Resources[i].Rename = ""
 		}
-		if withDefaultRename && r.Rename != r.Name.DefaultSharedRename() {
+		if renameByDefault && r.Rename != r.Name.DefaultSharedRename() {
 			setsNonDefaultRename = true
 			config.Sharing.TimeSlicing.Resources[i].Rename = r.Name.DefaultSharedRename()
 		}
