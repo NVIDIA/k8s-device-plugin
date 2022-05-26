@@ -61,7 +61,6 @@ runtimeClassName: null
 
 # Subcharts
 nfd:
-  enabled: false
   nameOverride: node-feature-discovery
   master:
     extraLabelNs:
