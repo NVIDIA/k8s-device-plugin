@@ -60,5 +60,17 @@ tolerations:
 runtimeClassName: null
 
 # Subcharts
+nfd:
+  enabled: false
+  master:
+    extraLabelNs:
+      - nvidia.com
+  worker:
+    options:
+      sources:
+        pci:
+          deviceLabelFields:
+            - vendor
+
 gfd:
   enabled: false

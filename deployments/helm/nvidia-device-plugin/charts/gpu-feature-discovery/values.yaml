@@ -24,18 +24,3 @@ affinity: {}
 tolerations: {}
 nodeSelector:
   feature.node.kubernetes.io/pci-10de.present: "true" # NVIDIA vendor ID
-
-nfd:
-  deploy: true
-
-node-feature-discovery:
-  master:
-    extraLabelNs:
-      - nvidia.com
-  worker:
-    options:
-      sources:
-        pci:
-          deviceLabelFields:
-            - vendor
-
