@@ -30,7 +30,7 @@ spec:
   selector:
     matchLabels:
       {{- include "nvidia-device-plugin.selectorLabels" . | nindent 6 }}
-  {{- with .Values.updateStrategy }}
+  {{- with $root.Values.updateStrategy }}
   updateStrategy:
     {{- toYaml . | nindent 4 }}
   {{- end }}
