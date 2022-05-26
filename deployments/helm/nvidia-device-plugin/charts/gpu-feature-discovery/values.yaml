@@ -1,10 +1,11 @@
-failOnInitError: true
-migStrategy: none
-noTimestamp: false
-sleepInterval: 60s
+failOnInitError: null
+migStrategy: null
+noTimestamp: null
+sleepInterval: null
 
 nameOverride: ""
 fullnameOverride: ""
+selectorLabelsOverride: {}
 
 namespace: node-feature-discovery
 
@@ -15,12 +16,25 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
+updateStrategy:
+  type: RollingUpdate
+
+podAnnotations: {}
 podSecurityContext: {}
 securityContext:
   privileged: true
 
 resources: {}
-affinity: {}
-tolerations: {}
 nodeSelector:
   feature.node.kubernetes.io/pci-10de.present: "true" # NVIDIA vendor ID
+affinity: {}
+tolerations:
+  # This toleration is deprecated. Kept here for backward compatibility
+  # See https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
+  - key: CriticalAddonsOnly
+    operator: Exists
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+
+runtimeClassName: null

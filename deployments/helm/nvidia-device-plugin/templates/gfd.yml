@@ -14,24 +14,31 @@
 
 {{- if .Values.gfd.enabled }}
 
+{{- $root := . }}
+{{- $hasConfigFiles := (include "nvidia-device-plugin.hasConfigFiles" .) | trim }}
+{{- $defaultConfig := (include "nvidia-device-plugin.getDefaultConfig" .) | trim }}
+{{- $migStrategiesAreAllNone := (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) | trim }}
+
 {{- with .Subcharts.gfd }}
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: {{ include "gpu-feature-discovery.fullname" . }}
-  namespace: {{ .Values.namespace }}
+  name: {{ include "nvidia-device-plugin.fullname" . }}
+  namespace: {{ $root.Values.namespace }}
   labels:
-    {{- include "gpu-feature-discovery.labels" . | nindent 4 }}
+    {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      {{- include "gpu-feature-discovery.selectorLabels" . | nindent 6 }}
+      {{- include "nvidia-device-plugin.selectorLabels" . | nindent 6 }}
+  {{- with .Values.updateStrategy }}
   updateStrategy:
-    type: RollingUpdate
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   template:
     metadata:
       labels:
-        {{- include "gpu-feature-discovery.templateLabels" . | nindent 8 }}
+        {{- include "nvidia-device-plugin.templateLabels" . | nindent 8 }}
       {{- with .Values.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
@@ -42,45 +49,139 @@ spec:
       # be rescheduled after a failure.
       # See https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
       priorityClassName: "system-node-critical"
+      {{- if .Values.runtimeClassName }}
+      runtimeClassName: {{ .Values.runtimeClassName }}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if eq $hasConfigFiles "true" }}
+      serviceAccountName: {{ include "nvidia-device-plugin.fullname" $root }}-service-account
+      shareProcessNamespace: true
+      initContainers:
+      - image: {{ include "nvidia-device-plugin.fullimage" $root }}
+        name: gpu-feature-discovery-init
+        command: ["config-manager"]
+        env:
+        - name: ONESHOT
+          value: "true"
+        - name: KUBECONFIG
+          value: ""
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: "spec.nodeName"
+        - name: NODE_LABEL
+          value: "nvidia.com/device-plugin.config"
+        - name: CONFIG_FILE_SRCDIR
+          value: "/available-configs"
+        - name: CONFIG_FILE_DST
+          value: "/config/config.yaml"
+        - name: DEFAULT_CONFIG
+          value: "{{ $defaultConfig }}"
+        - name: SEND_SIGNAL
+          value: "false"
+        - name: SIGNAL
+          value: ""
+        - name: PROCESS_TO_SIGNAL
+          value: ""
+        volumeMounts:
+          - name: available-configs
+            mountPath: /available-configs
+          - name: config
+            mountPath: /config
+      {{- end }}
       containers:
-        - image: {{ include "gpu-feature-discovery.fullimage" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          name: gpu-feature-discovery
+      {{- if eq $hasConfigFiles "true" }}
+        - image: {{ include "nvidia-device-plugin.fullimage" $root }}
+          name: gpu-feature-discovery-sidecar
+          command: ["config-manager"]
           env:
+          - name: ONESHOT
+            value: "false"
+          - name: KUBECONFIG
+            value: ""
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: "spec.nodeName"
+          - name: NODE_LABEL
+            value: "nvidia.com/device-plugin.config"
+          - name: CONFIG_FILE_SRCDIR
+            value: "/available-configs"
+          - name: CONFIG_FILE_DST
+            value: "/config/config.yaml"
+          - name: DEFAULT_CONFIG
+            value: "{{ $defaultConfig }}"
+          - name: SEND_SIGNAL
+            value: "false"
+          - name: SIGNAL
+            value: ""
+          - name: PROCESS_TO_SIGNAL
+            value: ""
+          volumeMounts:
+            - name: available-configs
+              mountPath: /available-configs
+            - name: config
+              mountPath: /config
+      {{- end }}
+        - image: {{ include "nvidia-device-plugin.fullimage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          name: gpu-feature-discovery-ctr
+          env:
+          {{- if typeIs "bool" .Values.failOnInitError }}
             - name: GFD_FAIL_ON_INIT_ERROR
               value: "{{ .Values.failOnInitError }}"
+          {{- end }}
+          {{- if typeIs "string" .Values.migStrategy }}
             - name: GFD_MIG_STRATEGY
               value: "{{ .Values.migStrategy }}"
+          {{- end }}
+          {{- if typeIs "bool" .Values.noTimestamp }}
             - name: GFD_NO_TIMESTAMP
               value: "{{ .Values.noTimestamp}}"
+          {{- end }}
+          {{- if or (typeIs "string" .Values.sleepInterval) (typeIs "int" .Values.sleepInterval) }}
             - name: GFD_SLEEP_INTERVAL
               value: "{{ .Values.sleepInterval }}"
-          {{- if ne .Values.migStrategy "none" }}
+          {{- end }}
+          {{- if eq $hasConfigFiles "true" }}
+            - name: GFD_CONFIG_FILE
+              value: /config/config.yaml
+          {{- end }}
+          {{- if ne $migStrategiesAreAllNone "true" }}
             - name: NVIDIA_MIG_MONITOR_DEVICES
               value: all
           {{- end }}
           securityContext:
-          {{- if and (ne .Values.migStrategy "none") (eq (len .Values.securityContext) 0) }}
-            capabilities:
-              add:
-                - SYS_ADMIN
-          {{- else }}
+          {{- if ne (len .Values.securityContext) 0 }}
             {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- else if ne $migStrategiesAreAllNone "true" }}
+              capabilities:
+                add:
+                  - SYS_ADMIN
+          {{- else }}
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           {{- end }}
           volumeMounts:
             - name: output-dir
               mountPath: "/etc/kubernetes/node-feature-discovery/features.d"
             - name: dmi-product-name
               mountPath: "/sys/class/dmi/id/product_name"
+          {{- if eq $hasConfigFiles "true" }}
+            - name: available-configs
+              mountPath: /available-configs
+            - name: config
+              mountPath: /config
+          {{- end }}
           {{- with .Values.resources }}
           resources:
-            {{- toYaml . | nindent 10 }}
+            {{- toYaml . | nindent 12 }}
           {{- end }}
       volumes:
         - name: output-dir
@@ -89,6 +190,13 @@ spec:
         - name: dmi-product-name
           hostPath:
             path: "/sys/class/dmi/id/product_name"
+      {{- if eq $hasConfigFiles "true" }}
+        - name: available-configs
+          configMap:
+            name: {{ include "nvidia-device-plugin.fullname" $root }}-configs
+        - name: config
+          emptyDir: {}
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
