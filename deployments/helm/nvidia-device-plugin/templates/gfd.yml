@@ -131,13 +131,13 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           name: gpu-feature-discovery-ctr
           env:
-          {{- if typeIs "bool" .Values.failOnInitError }}
+          {{- if typeIs "bool" $root.Values.failOnInitError }}
             - name: GFD_FAIL_ON_INIT_ERROR
-              value: "{{ .Values.failOnInitError }}"
+              value: "{{ $root.Values.failOnInitError }}"
           {{- end }}
-          {{- if typeIs "string" .Values.migStrategy }}
+          {{- if typeIs "string" $root.Values.migStrategy }}
             - name: GFD_MIG_STRATEGY
-              value: "{{ .Values.migStrategy }}"
+              value: "{{ $root.Values.migStrategy }}"
           {{- end }}
           {{- if typeIs "bool" .Values.noTimestamp }}
             - name: GFD_NO_TIMESTAMP
