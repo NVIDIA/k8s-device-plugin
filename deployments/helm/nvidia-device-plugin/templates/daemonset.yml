@@ -203,7 +203,11 @@ spec:
         - name: config
           emptyDir: {}
         {{- end }}
-      {{- with .Values.nodeSelector }}
+      {{- $nodeSelector := .Values.nodeSelector }}
+      {{- if empty $nodeSelector }}
+      {{- $nodeSelector = .Subcharts.gfd.Values.nodeSelector }}
+      {{- end }}
+      {{- with $nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
