@@ -62,6 +62,7 @@ runtimeClassName: null
 # Subcharts
 nfd:
   enabled: false
+  nameOverride: node-feature-discovery
   master:
     extraLabelNs:
       - nvidia.com
@@ -74,3 +75,4 @@ nfd:
 
 gfd:
   enabled: false
+  nameOverride: gpu-feature-discovery

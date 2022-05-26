@@ -44,7 +44,8 @@ Create a default fully qualified app name for the nfd-worker.
 Create chart name and version as used by the chart label.
 */}}
 {{- define "node-feature-discovery.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- $name := default .Chart.Name .Values.nameOverride -}}
+{{- printf "%s-%s" $name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
