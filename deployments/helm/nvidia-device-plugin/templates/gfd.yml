@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+{{- if .Values.gfd.enabled }}
+
+{{- with .Subcharts.gfd }}
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -98,3 +101,6 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+{{- end }}
+
+{{- end }}
