@@ -133,16 +133,27 @@ func start(c *cli.Context, flags []cli.Flag) error {
 
 	var restarting bool
 	var restartTimeout <-chan time.Time
+	var plugins []*NvidiaDevicePlugin
 restart:
+	// If we are restarting, stop plugins from previous run.
+	if restarting {
+		err := stopPlugins(plugins)
+		if err != nil {
+			return fmt.Errorf("error stopping plugins from previous run: %v", err)
+		}
+	}
+
 	log.Println("Starting Plugins.")
 	plugins, restartPlugins, err := startPlugins(c, flags, restarting)
 	if err != nil {
 		return fmt.Errorf("error starting plugins: %v", err)
 	}
+
 	if restartPlugins {
 		log.Printf("Failed to start one or more plugins. Retrying in 30s...")
 		restartTimeout = time.After(30 * time.Second)
 	}
+
 	restarting = true
 
 	// Start an infinite loop, waiting for several indicators to either log
@@ -189,16 +200,6 @@ exit:
 }
 
 func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]*NvidiaDevicePlugin, bool, error) {
-	var plugins []*NvidiaDevicePlugin
-
-	// If we are restarting, stop plugins from previous run.
-	if restarting {
-		err := stopPlugins(plugins)
-		if err != nil {
-			return nil, false, fmt.Errorf("error stopping plugins from previous run: %v", err)
-		}
-	}
-
 	// Load the configuration file
 	log.Println("Loading configuration.")
 	config, err := loadConfig(c, flags)
@@ -243,7 +244,7 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]*NvidiaD
 	if err != nil {
 		return nil, false, fmt.Errorf("error creating MIG strategy: %v", err)
 	}
-	plugins = migStrategy.GetPlugins()
+	plugins := migStrategy.GetPlugins()
 
 	// Loop through all plugins, starting them if they have any devices
 	// to serve. If even one plugin fails to start properly, try
