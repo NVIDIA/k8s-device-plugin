@@ -1,3 +1,6 @@
+{{- $hasEmbeddedConfigMap := (include "nvidia-device-plugin.hasEmbeddedConfigMap" .) | trim }}
+{{- $defaultConfig := (include "nvidia-device-plugin.getDefaultConfig" .) | trim }}
+
 {{- if .Values.namespace }}
 {{- $error := "" }}
 {{- $error = printf "%s\nValue 'namespace' set to %s" $error .Values.namespace }}
@@ -13,5 +16,20 @@
 {{- $error = printf "%s\nSet 'allowDefaultNamespace=true' to bypass this error." $error }}
 {{- $error = printf "%s\nOtherwise, use --namespace (with --create-namespace as necessary) to run in a specific namespace." $error }}
 {{- $error = printf "%s\nSee: https://helm.sh/docs/helm/helm_install/#options" $error }}
+{{- fail $error }}
+{{- end }}
+
+{{- if and .Values.config.name .Values.config.map }}
+{{- $error := "" }}
+{{- $error = printf "%s\nOnly one of 'config.name' or 'config.map' should ever be set for a given deployment." $error }}
+{{- $error = printf "%s\nUse 'config.name' to point to an external ConfigMap with a list of configurations." $error }}
+{{- $error = printf "%s\nUse 'config.map' to build an integrated ConfigMap from a set of configurations as part of this helm chart." $error }}
+{{- fail $error }}
+{{- end }}
+
+{{- if and (eq $hasEmbeddedConfigMap "true") (eq $defaultConfig "") }}
+{{- $error := "" }}
+{{- $error = printf "%s\nA default config must be provided when more than one configuration is set in 'config.map'." $error }}
+{{- $error = printf "%s\nEither set the default using 'config.default' or name one of the configurations in 'config.map' with the special name 'default'." $error }}
 {{- fail $error }}
 {{- end }}
