@@ -1,21 +1,19 @@
 # Provide a set of configuration files (with a default) for the plugin.
 # An example might look like the following:
 # config:
-#   default: "config-none"
-#   files:
-#   - name: "config-none"
-#     contents: |-
+#     default:
 #       version: v1
 #       flags:
 #         migStrategy: none
-#   - name: "config-mixed"
-#     contents: |-
+#     mig-single:
+#       version: v1
+#       flags:
+#         migStrategy: single
+#     mig-mixed:
 #       version: v1
 #       flags:
 #         migStrategy: mixed
-config:
-  default: null
-  files: []
+config: {}
 
 legacyDaemonsetAPI: null
 compatWithCPUManager: null

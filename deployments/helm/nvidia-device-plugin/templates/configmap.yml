@@ -6,8 +6,8 @@ metadata:
   labels:
     {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
 data:
-{{- range $.Values.config.files }}
-  {{ .name }}.yaml: |-
-{{ .contents | indent 4 }}
+{{- range $name, $contents := $.Values.config }}
+  {{ $name }}: |-
+{{ $contents | indent 4 }}
 {{- end -}}
 {{- end -}}

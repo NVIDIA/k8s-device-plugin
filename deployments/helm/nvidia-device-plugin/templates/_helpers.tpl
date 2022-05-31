@@ -84,8 +84,8 @@ Check if migStrategy (from all possible configurations) is "none"
     {{- $result = false -}}
   {{- end -}}
 {{- else -}}
-  {{- range $.Values.config.files -}}
-    {{- $config := .contents | fromYaml -}}
+  {{- range $name, $contents := $.Values.config -}}
+    {{- $config := $contents | fromYaml -}}
     {{- if $config.flags -}}
       {{- if ne $config.flags.migStrategy "none" -}}
         {{- $result = false -}}
@@ -100,9 +100,9 @@ Check if migStrategy (from all possible configurations) is "none"
 Check if config files have been provided or not
 */}}
 {{- define "nvidia-device-plugin.hasConfigFiles" -}}
-{{- $result := false -}}
-{{- if ne (len .Values.config.files) 0 -}}
-  {{- $result = true -}}
+{{- $result := true -}}
+{{- if empty .Values.config -}}
+  {{- $result = false -}}
 {{- end -}}
 {{- $result -}}
 {{- end }}
@@ -112,12 +112,10 @@ Get the name of the default configuration
 */}}
 {{- define "nvidia-device-plugin.getDefaultConfig" -}}
 {{- $result := "" -}}
-{{- if .Values.config.default -}}
-  {{- $result = .Values.config.default -}}
-{{- else if ne (len .Values.config.files) 0 -}}
-  {{- with (index .Values.config.files 0) -}}
-  {{- $result = .name -}}
-  {{- end -}}
+{{- if hasKey .Values.config "default" -}}
+  {{- $result = "default" -}}
+{{- else if not (empty .Values.config) -}}
+  {{- $result = (.Values.config | keys | first) -}}
 {{- end -}}
 {{- $result -}}
 {{- end }}

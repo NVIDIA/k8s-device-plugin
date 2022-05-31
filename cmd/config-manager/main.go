@@ -307,7 +307,7 @@ func updateConfig(config string, f *Flags) error {
 }
 
 func updateSymlink(config string, f *Flags) (bool, error) {
-	src := filepath.Join(f.ConfigFileSrcdir, fmt.Sprintf("%s.yaml", config))
+	src := filepath.Join(f.ConfigFileSrcdir, config)
 
 	exists, err := fileExists(src)
 	if err != nil {
