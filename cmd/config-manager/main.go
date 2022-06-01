@@ -47,6 +47,7 @@ const (
 	DefaultSignal          = int(syscall.SIGHUP)
 	DefaultProcessToSignal = "nvidia-device-plugin"
 	DefaultConfigLabel     = "nvidia.com/device-plugin.config"
+	DefaultConfigFallback  = "default"
 )
 
 // Flags holds configurable settings as set via the CLI
@@ -68,18 +69,16 @@ type Flags struct {
 // Multiple calls to Set() do not queue, meaning that only calls to Get() made
 // *before* a call to Set() will be notified.
 type SyncableConfig struct {
-	cond         *sync.Cond
-	mutex        sync.Mutex
-	defaultValue string
-	current      string
-	lastRead     string
+	cond     *sync.Cond
+	mutex    sync.Mutex
+	current  string
+	lastRead string
 }
 
 // NewSyncableConfig creates a new SyncableConfig
 func NewSyncableConfig(f *Flags) *SyncableConfig {
 	var m SyncableConfig
 	m.cond = sync.NewCond(&m.mutex)
-	m.defaultValue = f.DefaultConfig
 	return &m
 }
 
@@ -88,10 +87,6 @@ func NewSyncableConfig(f *Flags) *SyncableConfig {
 func (m *SyncableConfig) Set(value string) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	if value == "" {
-		log.Infof("No value set. Using default: %v", m.defaultValue)
-		value = m.defaultValue
-	}
 	m.current = value
 	m.cond.Broadcast()
 }
@@ -213,9 +208,6 @@ func validateFlags(c *cli.Context, f *Flags) error {
 	if f.ConfigFileDst == "" {
 		return fmt.Errorf("invalid <config-file-dst>: must not be empty string")
 	}
-	if f.DefaultConfig == "" {
-		return fmt.Errorf("invalid <default-config>: must not be empty string")
-	}
 	return nil
 }
 
@@ -237,7 +229,9 @@ func start(c *cli.Context, f *Flags) error {
 
 	for {
 		log.Infof("Waiting for change to '%s' label", f.NodeLabel)
-		err := updateConfig(config.Get(), f)
+		config := config.Get()
+		log.Infof("Label change detected: %s=%s", f.NodeLabel, config)
+		err := updateConfig(config, f)
 		if f.Oneshot {
 			return err
 		}
@@ -283,6 +277,11 @@ func continuouslySyncConfigChanges(clientset *kubernetes.Clientset, config *Sync
 }
 
 func updateConfig(config string, f *Flags) error {
+	config, err := updateConfigName(config, f)
+	if err != nil {
+		return err
+	}
+
 	log.Infof("Updating to config: %s", config)
 	updated, err := updateSymlink(config, f)
 	if err != nil {
@@ -306,18 +305,68 @@ func updateConfig(config string, f *Flags) error {
 	return nil
 }
 
-func updateSymlink(config string, f *Flags) (bool, error) {
-	src := filepath.Join(f.ConfigFileSrcdir, fmt.Sprintf("%s.yaml", config))
+func updateConfigName(config string, f *Flags) (string, error) {
+	// Announce which configs we plan to try if config == "".
+	if config == "" && f.DefaultConfig != "" {
+		log.Infof("No value set. Selecting default name: %v", f.DefaultConfig)
+	}
+	if config == "" && f.DefaultConfig == "" {
+		log.Infof("No value set and no default set. Selecting fallback name: %v", DefaultConfigFallback)
+	}
 
-	exists, err := fileExists(src)
+	// Get a lists of the available config file names
+	files, err := getConfigFileNameMap(f)
 	if err != nil {
-		return false, fmt.Errorf("error checking if file '%s' exists: %v", src, err)
-	}
-	if !exists {
-		return false, fmt.Errorf("unknown configuration: %v", config)
+		return "", fmt.Errorf("error getting list of configuration files: %v", err)
 	}
 
-	exists, err = fileExists(f.ConfigFileDst)
+	if len(files) == 0 {
+		return "", fmt.Errorf("no configuration files available")
+	}
+
+	// If an explicit config was passed in, check to see if it is available.
+	if config != "" {
+		if !files[config] {
+			return "", fmt.Errorf("specified config %v does not exist", config)
+		}
+		return config, nil
+	}
+
+	// Otherwise, if an explicit default is set, check to see if it is available.
+	if f.DefaultConfig != "" {
+		if !files[f.DefaultConfig] {
+			return "", fmt.Errorf("specified config %v does not exist", config)
+		}
+		return f.DefaultConfig, nil
+	}
+
+	// Otherwise fall back to trying the DefaultConfigFallback
+	if files[DefaultConfigFallback] {
+		return DefaultConfigFallback, nil
+	}
+
+	// If none of the above configurations result in a match, check to see how
+	// many possible configurations there are. If there is only one, return it,
+	// if there is more than one, throw an error.
+	log.Infof("No configuration called '%s' was found", DefaultConfigFallback)
+
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+
+	if len(names) == 1 {
+		log.Infof("Only one configuration available, selecting it...")
+		return names[0], nil
+	}
+
+	return "", fmt.Errorf("more than one configuration is available with no default set: %s", names)
+}
+
+func updateSymlink(config string, f *Flags) (bool, error) {
+	src := filepath.Join(f.ConfigFileSrcdir, config)
+
+	exists, err := fileExists(f.ConfigFileDst)
 	if err != nil {
 		return false, fmt.Errorf("error checking if file '%s' exists: %v", f.ConfigFileDst, err)
 	}
@@ -384,4 +433,22 @@ func fileExists(filename string) (bool, error) {
 		return false, err
 	}
 	return !info.IsDir(), nil
+}
+
+func getConfigFileNameMap(f *Flags) (map[string]bool, error) {
+	files, err := os.ReadDir(f.ConfigFileSrcdir)
+	if err != nil {
+		return nil, fmt.Errorf("errorr reading directory: %v", err)
+	}
+
+	filemap := make(map[string]bool)
+	for _, f := range files {
+		// ConfigMaps mounted as volumes have special files with the prefix
+		// "..". We want to explicitly exclude these as well as any directories.
+		if !f.IsDir() && !strings.HasPrefix(f.Name(), "..") {
+			filemap[f.Name()] = true
+		}
+	}
+
+	return filemap, nil
 }

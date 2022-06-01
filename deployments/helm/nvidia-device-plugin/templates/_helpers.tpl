@@ -83,9 +83,11 @@ Check if migStrategy (from all possible configurations) is "none"
   {{- if ne .Values.migStrategy "none" -}}
     {{- $result = false -}}
   {{- end -}}
+{{- else if ne (include "nvidia-device-plugin.configMapName" .) "true" -}}
+    {{- $result = false -}}
 {{- else -}}
-  {{- range $.Values.config.files -}}
-    {{- $config := .contents | fromYaml -}}
+  {{- range $name, $contents := $.Values.config.map -}}
+    {{- $config := $contents | fromYaml -}}
     {{- if $config.flags -}}
       {{- if ne $config.flags.migStrategy "none" -}}
         {{- $result = false -}}
@@ -97,11 +99,22 @@ Check if migStrategy (from all possible configurations) is "none"
 {{- end }}
 
 {{/*
-Check if config files have been provided or not
+Check if an explicit set of configs has been provided or not
 */}}
-{{- define "nvidia-device-plugin.hasConfigFiles" -}}
+{{- define "nvidia-device-plugin.hasEmbeddedConfigMap" -}}
+{{- $result := true -}}
+{{- if empty .Values.config.map  -}}
+  {{- $result = false -}}
+{{- end -}}
+{{- $result -}}
+{{- end }}
+
+{{/*
+Check if there is a ConfigMap in use or not
+*/}}
+{{- define "nvidia-device-plugin.hasConfigMap" -}}
 {{- $result := false -}}
-{{- if ne (len .Values.config.files) 0 -}}
+{{- if ne (include "nvidia-device-plugin.configMapName" .) "" -}}
   {{- $result = true -}}
 {{- end -}}
 {{- $result -}}
@@ -113,11 +126,26 @@ Get the name of the default configuration
 {{- define "nvidia-device-plugin.getDefaultConfig" -}}
 {{- $result := "" -}}
 {{- if .Values.config.default -}}
-  {{- $result = .Values.config.default -}}
-{{- else if ne (len .Values.config.files) 0 -}}
-  {{- with (index .Values.config.files 0) -}}
-  {{- $result = .name -}}
+  {{- $result = .Values.config.default  -}}
+{{- else if not (empty .Values.config.map) -}}
+  {{- if hasKey .Values.config.map "default" -}}
+    {{- $result = "default" -}}
+  {{- else if eq (.Values.config.map | keys | len) 1 -}}
+    {{- $result = (.Values.config.map | keys | first) -}}
   {{- end -}}
+{{- end -}}
+{{- $result -}}
+{{- end }}
+
+{{/*
+Get the name of the configmap to use
+*/}}
+{{- define "nvidia-device-plugin.configMapName" -}}
+{{- $result := "" -}}
+{{- if .Values.config.name -}}
+  {{- $result = .Values.config.name -}}
+{{- else if not (empty .Values.config.map) -}}
+  {{- $result = printf "%s-%s" (include "nvidia-device-plugin.fullname" .) "configs" -}}
 {{- end -}}
 {{- $result -}}
 {{- end }}

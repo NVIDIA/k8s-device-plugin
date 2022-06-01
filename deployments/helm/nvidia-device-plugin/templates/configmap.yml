@@ -1,13 +1,13 @@
-{{- if eq (include "nvidia-device-plugin.hasConfigFiles" .) "true" }}
+{{- if eq (include "nvidia-device-plugin.hasEmbeddedConfigMap" .) "true" }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "nvidia-device-plugin.fullname" . }}-configs
+  name: {{ include "nvidia-device-plugin.configMapName" . }}
   labels:
     {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
 data:
-{{- range $.Values.config.files }}
-  {{ .name }}.yaml: |-
-{{ .contents | indent 4 }}
+{{- range $name, $contents := $.Values.config.map }}
+  {{ $name }}: |-
+{{ $contents | indent 4 }}
 {{- end -}}
 {{- end -}}

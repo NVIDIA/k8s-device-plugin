@@ -15,7 +15,8 @@
 {{- if .Values.gfd.enabled }}
 
 {{- $root := . }}
-{{- $hasConfigFiles := (include "nvidia-device-plugin.hasConfigFiles" .) | trim }}
+{{- $hasConfigMap := (include "nvidia-device-plugin.hasConfigMap" .) | trim }}
+{{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}
 {{- $defaultConfig := (include "nvidia-device-plugin.getDefaultConfig" .) | trim }}
 {{- $migStrategiesAreAllNone := (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) | trim }}
 
@@ -58,7 +59,7 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if eq $hasConfigFiles "true" }}
+      {{- if eq $hasConfigMap "true" }}
       serviceAccountName: {{ include "nvidia-device-plugin.fullname" $root }}-service-account
       shareProcessNamespace: true
       initContainers:
@@ -95,7 +96,7 @@ spec:
             mountPath: /config
       {{- end }}
       containers:
-      {{- if eq $hasConfigFiles "true" }}
+      {{- if eq $hasConfigMap "true" }}
         - image: {{ include "nvidia-device-plugin.fullimage" $root }}
           name: gpu-feature-discovery-sidecar
           command: ["config-manager"]
@@ -148,7 +149,7 @@ spec:
             - name: GFD_SLEEP_INTERVAL
               value: "{{ .Values.sleepInterval }}"
           {{- end }}
-          {{- if eq $hasConfigFiles "true" }}
+          {{- if eq $hasConfigMap "true" }}
             - name: GFD_CONFIG_FILE
               value: /config/config.yaml
           {{- end }}
@@ -173,7 +174,7 @@ spec:
               mountPath: "/etc/kubernetes/node-feature-discovery/features.d"
             - name: dmi-product-name
               mountPath: "/sys/class/dmi/id/product_name"
-          {{- if eq $hasConfigFiles "true" }}
+          {{- if eq $hasConfigMap "true" }}
             - name: available-configs
               mountPath: /available-configs
             - name: config
@@ -190,10 +191,10 @@ spec:
         - name: dmi-product-name
           hostPath:
             path: "/sys/class/dmi/id/product_name"
-      {{- if eq $hasConfigFiles "true" }}
+      {{- if eq $hasConfigMap "true" }}
         - name: available-configs
           configMap:
-            name: {{ include "nvidia-device-plugin.fullname" $root }}-configs
+            name: "{{ $configMapName }}"
         - name: config
           emptyDir: {}
       {{- end }}

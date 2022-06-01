@@ -1,21 +1,29 @@
-# Provide a set of configuration files (with a default) for the plugin.
-# An example might look like the following:
+# Plugin configuration
+# Only one of "name" or "map" should ever be set for a given deployment.
+# Use "name" to point to an external ConfigMap with a list of configurations.
+# Use "map" to build an integrated ConfigMap from a set of configurations as
+# part of this helm chart. An example of setting "map" might be:
 # config:
-#   default: "config-none"
-#   files:
-#   - name: "config-none"
-#     contents: |-
+#   map:
+#     default:
 #       version: v1
 #       flags:
 #         migStrategy: none
-#   - name: "config-mixed"
-#     contents: |-
+#     mig-single:
+#       version: v1
+#       flags:
+#         migStrategy: single
+#     mig-mixed:
 #       version: v1
 #       flags:
 #         migStrategy: mixed
 config:
-  default: null
-  files: []
+  # ConfigMap name if pulling from an external ConfigMap
+  name: ""
+  # Set of named configs to build an integrated ConfigMap from
+  map: {}
+  # Default config name within the ConfigMap
+  default: ""
 
 legacyDaemonsetAPI: null
 compatWithCPUManager: null
