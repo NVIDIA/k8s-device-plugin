@@ -27,8 +27,9 @@ import (
 
 // TimeSlicing defines the set of replicas to be made for timeSlicing available resources.
 type TimeSlicing struct {
-	RenameByDefault bool                 `json:"renameByDefault,omitempty" yaml:"renameByDefault,omitempty"`
-	Resources       []ReplicatedResource `json:"resources,omitempty"       yaml:"resources,omitempty"`
+	RenameByDefault            bool                 `json:"renameByDefault,omitempty"            yaml:"renameByDefault,omitempty"`
+	FailRequestsGreaterThanOne bool                 `json:"failRequestsGreaterThanOne,omitempty" yaml:"failRequestsGreaterThanOne,omitempty"`
+	Resources                  []ReplicatedResource `json:"resources,omitempty"                  yaml:"resources,omitempty"`
 }
 
 // ReplicatedResource represents a resource to be replicated.
@@ -130,6 +131,16 @@ func (s *TimeSlicing) UnmarshalJSON(b []byte) error {
 	}
 
 	err = json.Unmarshal(renameByDefault, &s.RenameByDefault)
+	if err != nil {
+		return err
+	}
+
+	failRequestsGreaterThanOne, exists := ts["failRequestsGreaterThanOne"]
+	if !exists {
+		failRequestsGreaterThanOne = []byte(`false`)
+	}
+
+	err = json.Unmarshal(failRequestsGreaterThanOne, &s.FailRequestsGreaterThanOne)
 	if err != nil {
 		return err
 	}
