@@ -130,6 +130,8 @@ spec:
             mountPath: /available-configs
           - name: config
             mountPath: /config
+        securityContext:
+          {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
       {{- end }}
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -168,19 +170,7 @@ spec:
             value: all
         {{- end }}
         securityContext:
-        {{- if ne (len .Values.securityContext) 0 }}
-          {{- toYaml .Values.securityContext | nindent 10 }}
-        {{- else if .Values.compatWithCPUManager }}
-          privileged: true
-        {{- else if ne $migStrategiesAreAllNone "true" }}
-            capabilities:
-              add:
-                - SYS_ADMIN
-        {{- else }}
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: ["ALL"]
-        {{- end }}
+          {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
         volumeMounts:
           - name: device-plugin
             mountPath: /var/lib/kubelet/device-plugins
