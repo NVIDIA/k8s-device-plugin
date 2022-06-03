@@ -74,6 +74,15 @@ nfd:
     extraLabelNs:
       - nvidia.com
   worker:
+    tolerations:
+    - key: "node-role.kubernetes.io/master"
+      operator: "Equal"
+      value: ""
+      effect: "NoSchedule"
+    - key: "nvidia.com/gpu"
+      operator: "Equal"
+      value: "present"
+      effect: "NoSchedule"
     config:
       sources:
         pci:

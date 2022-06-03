@@ -118,16 +118,18 @@ spec:
           - name: DEFAULT_CONFIG
             value: "{{ $defaultConfig }}"
           - name: SEND_SIGNAL
-            value: "false"
+            value: "true"
           - name: SIGNAL
-            value: ""
+            value: "1"
           - name: PROCESS_TO_SIGNAL
-            value: ""
+            value: "/usr/bin/gpu-feature-discovery"
           volumeMounts:
             - name: available-configs
               mountPath: /available-configs
             - name: config
               mountPath: /config
+          securityContext:
+            {{- include "gpu-feature-discovery.securityContext" . | nindent 12 }}
       {{- end }}
         - image: {{ include "nvidia-device-plugin.fullimage" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -158,17 +160,7 @@ spec:
               value: all
           {{- end }}
           securityContext:
-          {{- if ne (len .Values.securityContext) 0 }}
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          {{- else if ne $migStrategiesAreAllNone "true" }}
-              capabilities:
-                add:
-                  - SYS_ADMIN
-          {{- else }}
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-          {{- end }}
+            {{- include "gpu-feature-discovery.securityContext" . | nindent 12 }}
           volumeMounts:
             - name: output-dir
               mountPath: "/etc/kubernetes/node-feature-discovery/features.d"

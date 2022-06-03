@@ -75,6 +75,42 @@ Full image name with tag
 {{- end }}
 
 {{/*
+Security context for the plugin
+*/}}
+{{- define "nvidia-device-plugin.securityContext" -}}
+{{- if ne (len .Values.securityContext) 0 -}}
+  {{ toYaml .Values.securityContext }}
+{{- else if .Values.compatWithCPUManager -}}
+  privileged: true
+{{- else if ne (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) "true" -}}
+    capabilities:
+      add:
+        - SYS_ADMIN
+{{- else -}}
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+{{- end -}}
+{{- end -}}
+
+{{/*
+Security context for GFD
+*/}}
+{{- define "gpu-feature-discovery.securityContext" -}}
+{{- if ne (len .Values.securityContext) 0 -}}
+  {{ toYaml .Values.securityContext }}
+{{- else if ne (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) "true" -}}
+    capabilities:
+      add:
+        - SYS_ADMIN
+{{- else -}}
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+{{- end -}}
+{{- end -}}
+
+{{/*
 Check if migStrategy (from all possible configurations) is "none"
 */}}
 {{- define "nvidia-device-plugin.allPossibleMigStrategiesAreNone" -}}
