@@ -118,11 +118,11 @@ spec:
           - name: DEFAULT_CONFIG
             value: "{{ $defaultConfig }}"
           - name: SEND_SIGNAL
-            value: "false"
+            value: "true"
           - name: SIGNAL
-            value: ""
+            value: "1"
           - name: PROCESS_TO_SIGNAL
-            value: ""
+            value: "/usr/bin/gpu-feature-discovery"
           volumeMounts:
             - name: available-configs
               mountPath: /available-configs
