@@ -232,11 +232,8 @@ func start(c *cli.Context, f *Flags) error {
 		config := config.Get()
 		log.Infof("Label change detected: %s=%s", f.NodeLabel, config)
 		err := updateConfig(config, f)
-		if f.Oneshot {
+		if f.Oneshot || err != nil {
 			return err
-		}
-		if err != nil {
-			log.Printf("Error: %v", err)
 		}
 	}
 }
