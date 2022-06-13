@@ -190,12 +190,10 @@ Get the name of the configmap to use
 Pod annotations for the plugin and GFD
 */}}
 {{- define "nvidia-device-plugin.podAnnotations" -}}
-{{- $annotations := .local.Values.podAnnotations -}}
-{{- if not (hasKey $annotations "rollme") -}}
+{{- $annotations := deepCopy .local.Values.podAnnotations -}}
+{{- if not (hasKey $annotations "checksum/config") -}}
   {{- if eq (include "nvidia-device-plugin.hasEmbeddedConfigMap" .root) "true" -}}
-    {{- $_ := set $annotations "rollme" (include (print $.root.Template.BasePath "/configmap.yml") .root | sha256sum) -}}
-  {{- else if eq (include "nvidia-device-plugin.hasConfigMap" .root) "true" -}}
-    {{- $_ := set $annotations "rollme" (randAlphaNum 5) -}}
+    {{- $_ := set $annotations "checksum/config" (include (print $.root.Template.BasePath "/configmap.yml") .root | sha256sum) -}}
   {{- end -}}
 {{- end -}}
 {{- toYaml $annotations }}
