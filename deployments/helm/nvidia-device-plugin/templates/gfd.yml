@@ -129,7 +129,7 @@ spec:
             - name: config
               mountPath: /config
           securityContext:
-            {{- include "gpu-feature-discovery.securityContext" . | nindent 12 }}
+            {{- include "gpu-feature-discovery.securityContext" $root | nindent 12 }}
       {{- end }}
         - image: {{ include "nvidia-device-plugin.fullimage" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
