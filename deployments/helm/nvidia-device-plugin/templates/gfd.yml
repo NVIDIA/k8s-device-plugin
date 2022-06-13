@@ -157,7 +157,7 @@ spec:
               value: all
           {{- end }}
           securityContext:
-            {{- include "gpu-feature-discovery.securityContext" . | nindent 12 }}
+            {{- include "gpu-feature-discovery.securityContext" $root | nindent 12 }}
           volumeMounts:
             - name: output-dir
               mountPath: "/etc/kubernetes/node-feature-discovery/features.d"
