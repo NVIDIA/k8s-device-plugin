@@ -88,7 +88,7 @@ func parseConfigFrom(reader io.Reader) (*Config, error) {
 	}
 
 	if config.Version == "" {
-		return nil, fmt.Errorf("missing version field")
+		config.Version = Version
 	}
 
 	if config.Version != Version {
