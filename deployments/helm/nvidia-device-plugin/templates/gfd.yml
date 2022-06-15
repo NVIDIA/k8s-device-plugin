@@ -17,7 +17,6 @@
 {{- $root := . }}
 {{- $hasConfigMap := (include "nvidia-device-plugin.hasConfigMap" .) | trim }}
 {{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}
-{{- $defaultConfig := (include "nvidia-device-plugin.getDefaultConfig" .) | trim }}
 {{- $migStrategiesAreAllNone := (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) | trim }}
 
 {{- with .Subcharts.gfd }}
@@ -77,7 +76,9 @@ spec:
         - name: CONFIG_FILE_DST
           value: "/config/config.yaml"
         - name: DEFAULT_CONFIG
-          value: "{{ $defaultConfig }}"
+          value: "{{ $root.Values.config.default }}"
+        - name: FALLBACK_STRATEGIES
+          value: "{{ join "," $root.Values.config.fallbackStrategies }}"
         - name: SEND_SIGNAL
           value: "false"
         - name: SIGNAL
@@ -111,7 +112,9 @@ spec:
           - name: CONFIG_FILE_DST
             value: "/config/config.yaml"
           - name: DEFAULT_CONFIG
-            value: "{{ $defaultConfig }}"
+            value: "{{ $root.Values.config.default }}"
+          - name: FALLBACK_STRATEGIES
+            value: "{{ join "," $root.Values.config.fallbackStrategies }}"
           - name: SEND_SIGNAL
             value: "true"
           - name: SIGNAL

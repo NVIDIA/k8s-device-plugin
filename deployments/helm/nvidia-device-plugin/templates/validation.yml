@@ -1,5 +1,5 @@
 {{- $hasEmbeddedConfigMap := (include "nvidia-device-plugin.hasEmbeddedConfigMap" .) | trim }}
-{{- $defaultConfig := (include "nvidia-device-plugin.getDefaultConfig" .) | trim }}
+{{- $hasDefaultConfig := (include "nvidia-device-plugin.hasDefaultConfig" .) | trim }}
 
 {{- if .Values.namespace }}
 {{- $error := "" }}
@@ -27,9 +27,12 @@
 {{- fail $error }}
 {{- end }}
 
-{{- if and (eq $hasEmbeddedConfigMap "true") (eq $defaultConfig "") }}
+{{- if and (eq $hasEmbeddedConfigMap "true") (eq $hasDefaultConfig "false") }}
 {{- $error := "" }}
 {{- $error = printf "%s\nA default config must be provided when more than one configuration is set in 'config.map'." $error }}
-{{- $error = printf "%s\nEither set the default using 'config.default' or name one of the configurations in 'config.map' with the special name 'default'." $error }}
+{{- $error = printf "%s\nEither set the default using 'config.default' or provide a list of fallback strategies to try in 'config.fallbackStrategies'." $error }}
+{{- $error = printf "%s\nThe 'named' fallback will look for a 'config.map' entry with the special name 'default'." $error }}
+{{- $error = printf "%s\nThe 'single' fallback will look to see if only a single config has been provided and make that the default." $error }}
+{{- $error = printf "%s\nFallbacks are attempted in order and the current set is %s." $error .Values.config.fallbackStrategies }}
 {{- fail $error }}
 {{- end }}

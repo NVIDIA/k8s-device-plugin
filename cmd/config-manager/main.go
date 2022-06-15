@@ -47,21 +47,30 @@ const (
 	DefaultSignal          = int(syscall.SIGHUP)
 	DefaultProcessToSignal = "nvidia-device-plugin"
 	DefaultConfigLabel     = "nvidia.com/device-plugin.config"
-	DefaultConfigFallback  = "default"
 )
+
+// These constants represent the various FallbackStrategies that are possible
+const (
+	FallbackStrategyNamedConfig  = "named"
+	FallbackStrategySingleConfig = "single"
+)
+
+// NamedConfigFallback is the name of the config to look for when applying FallbackStrategyNamedConfig
+const NamedConfigFallback = "default"
 
 // Flags holds configurable settings as set via the CLI
 type Flags struct {
-	Oneshot          bool
-	Kubeconfig       string
-	NodeName         string
-	NodeLabel        string
-	ConfigFileSrcdir string
-	ConfigFileDst    string
-	DefaultConfig    string
-	SendSignal       bool
-	Signal           int
-	ProcessToSignal  string
+	Oneshot            bool
+	Kubeconfig         string
+	NodeName           string
+	NodeLabel          string
+	ConfigFileSrcdir   string
+	ConfigFileDst      string
+	DefaultConfig      string
+	FallbackStrategies cli.StringSlice
+	SendSignal         bool
+	Signal             int
+	ProcessToSignal    string
 }
 
 // SyncableConfig is used to synchronize on changes to a configuration value
@@ -163,6 +172,12 @@ func main() {
 			Usage:       "the default config to use if no label is set",
 			Destination: &flags.DefaultConfig,
 			EnvVars:     []string{"DEFAULT_CONFIG"},
+		},
+		&cli.StringSliceFlag{
+			Name:        "fallback-strategies",
+			Usage:       "ordered list of fallback strategies to use to set a default config when none is provided",
+			Destination: &flags.FallbackStrategies,
+			EnvVars:     []string{"FALLBACK_STRATEGIES"},
 		},
 		&cli.BoolFlag{
 			Name:        "send-signal",
@@ -303,14 +318,6 @@ func updateConfig(config string, f *Flags) error {
 }
 
 func updateConfigName(config string, f *Flags) (string, error) {
-	// Announce which configs we plan to try if config == "".
-	if config == "" && f.DefaultConfig != "" {
-		log.Infof("No value set. Selecting default name: %v", f.DefaultConfig)
-	}
-	if config == "" && f.DefaultConfig == "" {
-		log.Infof("No value set and no default set. Selecting fallback name: %v", DefaultConfigFallback)
-	}
-
 	// Get a lists of the available config file names
 	files, err := getConfigFileNameMap(f)
 	if err != nil {
@@ -319,6 +326,11 @@ func updateConfigName(config string, f *Flags) (string, error) {
 
 	if len(files) == 0 {
 		return "", fmt.Errorf("no configuration files available")
+	}
+
+	filenames := make([]string, 0, len(files))
+	for f := range files {
+		filenames = append(filenames, f)
 	}
 
 	// If an explicit config was passed in, check to see if it is available.
@@ -331,33 +343,35 @@ func updateConfigName(config string, f *Flags) (string, error) {
 
 	// Otherwise, if an explicit default is set, check to see if it is available.
 	if f.DefaultConfig != "" {
+		log.Infof("No value set. Selecting default name: %v", f.DefaultConfig)
 		if !files[f.DefaultConfig] {
 			return "", fmt.Errorf("specified config %v does not exist", config)
 		}
 		return f.DefaultConfig, nil
 	}
 
-	// Otherwise fall back to trying the DefaultConfigFallback
-	if files[DefaultConfigFallback] {
-		return DefaultConfigFallback, nil
+	// Otherwise, if no explicit default is set, step through the configured fallbacks.
+	log.Infof("No value set and no default set. Attempting fallback strategies: %v", f.FallbackStrategies.Value())
+	for _, fallback := range f.FallbackStrategies.Value() {
+		switch fallback {
+		case FallbackStrategyNamedConfig:
+			log.Infof("Attempting to find config named: %v", NamedConfigFallback)
+			if files[NamedConfigFallback] {
+				return NamedConfigFallback, nil
+			}
+			log.Infof("No configuration named '%v' was found", NamedConfigFallback)
+		case FallbackStrategySingleConfig:
+			log.Infof("Attempting to see if only a single config is available...")
+			if len(filenames) == 1 {
+				return filenames[0], nil
+			}
+			log.Infof("More than one configuration was found: %v", filenames)
+		default:
+			return "", fmt.Errorf("unknown fallback strategy: %v", fallback)
+		}
 	}
 
-	// If none of the above configurations result in a match, check to see how
-	// many possible configurations there are. If there is only one, return it,
-	// if there is more than one, throw an error.
-	log.Infof("No configuration called '%s' was found", DefaultConfigFallback)
-
-	names := make([]string, 0, len(files))
-	for name := range files {
-		names = append(names, name)
-	}
-
-	if len(names) == 1 {
-		log.Infof("Only one configuration available, selecting it...")
-		return names[0], nil
-	}
-
-	return "", fmt.Errorf("more than one configuration is available with no default set: %s", names)
+	return "", fmt.Errorf("no config was set, no default was provided, and all fallbacks failed")
 }
 
 func updateSymlink(config string, f *Flags) (bool, error) {

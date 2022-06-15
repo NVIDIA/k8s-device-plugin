@@ -159,15 +159,20 @@ Check if there is a ConfigMap in use or not
 {{/*
 Get the name of the default configuration
 */}}
-{{- define "nvidia-device-plugin.getDefaultConfig" -}}
-{{- $result := "" -}}
+{{- define "nvidia-device-plugin.hasDefaultConfig" -}}
+{{- $result := "false" -}}
 {{- if .Values.config.default -}}
-  {{- $result = .Values.config.default  -}}
+  {{- $result = "true"  -}}
 {{- else if not (empty .Values.config.map) -}}
-  {{- if hasKey .Values.config.map "default" -}}
-    {{- $result = "default" -}}
-  {{- else if eq (.Values.config.map | keys | len) 1 -}}
-    {{- $result = (.Values.config.map | keys | first) -}}
+  {{- if has "named" .Values.config.fallbackStrategies -}}
+    {{- if hasKey .Values.config.map "default" -}}
+      {{- $result = "true" -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if has "single" .Values.config.fallbackStrategies -}}
+    {{- if eq (.Values.config.map | keys | len) 1 -}}
+      {{- $result = "true" -}}
+    {{- end -}}
   {{- end -}}
 {{- end -}}
 {{- $result -}}
