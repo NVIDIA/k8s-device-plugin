@@ -73,6 +73,9 @@ nfd:
   master:
     extraLabelNs:
       - nvidia.com
+    serviceAccount:
+      name: node-feature-discovery
+
   worker:
     tolerations:
     - key: "node-role.kubernetes.io/master"
@@ -94,9 +97,6 @@ nfd:
           - "0302"
           deviceLabelFields:
           - vendor
-  serviceAccount:
-    name: node-feature-discovery
-
 gfd:
   enabled: false
   nameOverride: gpu-feature-discovery
