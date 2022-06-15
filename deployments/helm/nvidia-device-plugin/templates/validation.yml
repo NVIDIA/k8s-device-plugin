@@ -33,6 +33,7 @@
 {{- $error = printf "%s\nEither set the default using 'config.default' or provide a list of fallback strategies to try in 'config.fallbackStrategies'." $error }}
 {{- $error = printf "%s\nThe 'named' fallback will look for a 'config.map' entry with the special name 'default'." $error }}
 {{- $error = printf "%s\nThe 'single' fallback will look to see if only a single config has been provided and make that the default." $error }}
+{{- $error = printf "%s\nThe 'empty' fallback will apply an empty config if none of the other fallbacks are successful." $error }}
 {{- $error = printf "%s\nFallbacks are attempted in order and the current set is %s." $error .Values.config.fallbackStrategies }}
 {{- fail $error }}
 {{- end }}

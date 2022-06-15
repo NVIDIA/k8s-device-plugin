@@ -53,6 +53,7 @@ const (
 const (
 	FallbackStrategyNamedConfig  = "named"
 	FallbackStrategySingleConfig = "single"
+	FallbackStrategyEmptyConfig  = "empty"
 )
 
 // NamedConfigFallback is the name of the config to look for when applying FallbackStrategyNamedConfig
@@ -294,7 +295,12 @@ func updateConfig(config string, f *Flags) error {
 		return err
 	}
 
-	log.Infof("Updating to config: %s", config)
+	if config == "" {
+		log.Infof("Updating to empty config")
+	} else {
+		log.Infof("Updating to config: %s", config)
+	}
+
 	updated, err := updateSymlink(config, f)
 	if err != nil {
 		return err
@@ -303,7 +309,12 @@ func updateConfig(config string, f *Flags) error {
 		log.Infof("Already configured. Skipping update...")
 		return nil
 	}
-	log.Infof("Successfully updated config: %s", config)
+
+	if config == "" {
+		log.Infof("Successfully updated to empty config")
+	} else {
+		log.Infof("Successfully updated to config: %s", config)
+	}
 
 	if f.SendSignal {
 		log.Infof("Sending signal '%s' to '%s'", syscall.Signal(f.Signal), f.ProcessToSignal)
@@ -366,6 +377,9 @@ func updateConfigName(config string, f *Flags) (string, error) {
 				return filenames[0], nil
 			}
 			log.Infof("More than one configuration was found: %v", filenames)
+		case FallbackStrategyEmptyConfig:
+			log.Infof("Falling back to an empty configuration")
+			return "", nil
 		default:
 			return "", fmt.Errorf("unknown fallback strategy: %v", fallback)
 		}
@@ -375,20 +389,27 @@ func updateConfigName(config string, f *Flags) (string, error) {
 }
 
 func updateSymlink(config string, f *Flags) (bool, error) {
-	src := filepath.Join(f.ConfigFileSrcdir, config)
+	src := "/dev/null"
+	if config != "" {
+		src = filepath.Join(f.ConfigFileSrcdir, config)
+	}
 
 	exists, err := fileExists(f.ConfigFileDst)
 	if err != nil {
 		return false, fmt.Errorf("error checking if file '%s' exists: %v", f.ConfigFileDst, err)
 	}
 	if exists {
-		realpath, err := filepath.EvalSymlinks(f.ConfigFileDst)
+		srcRealpath, err := filepath.EvalSymlinks(src)
+		if err != nil {
+			return false, fmt.Errorf("error evaluating realpath of '%v': %v", src, err)
+		}
+
+		dstRealpath, err := filepath.EvalSymlinks(f.ConfigFileDst)
 		if err != nil {
 			return false, fmt.Errorf("error evaluating realpath of '%v': %v", f.ConfigFileDst, err)
 		}
 
-		base := filepath.Base(realpath)
-		if config == strings.TrimSuffix(base, filepath.Ext(base)) {
+		if srcRealpath == dstRealpath {
 			return false, nil
 		}
 

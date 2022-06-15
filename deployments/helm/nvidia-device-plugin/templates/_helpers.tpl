@@ -174,6 +174,9 @@ Get the name of the default configuration
       {{- $result = "true" -}}
     {{- end -}}
   {{- end -}}
+  {{- if has "empty" .Values.config.fallbackStrategies -}}
+    {{- $result = "true" -}}
+  {{- end -}}
 {{- end -}}
 {{- $result -}}
 {{- end }}
