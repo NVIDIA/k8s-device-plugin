@@ -5,15 +5,15 @@
 # part of this helm chart. An example of setting "map" might be:
 # config:
 #   map:
-#     default:
+#     default: |-
 #       version: v1
 #       flags:
 #         migStrategy: none
-#     mig-single:
+#     mig-single: |-
 #       version: v1
 #       flags:
 #         migStrategy: single
-#     mig-mixed:
+#     mig-mixed: |-
 #       version: v1
 #       flags:
 #         migStrategy: mixed
