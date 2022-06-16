@@ -83,21 +83,13 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 		panic(fmt.Errorf("For mig.strategy=single all devices on the node must all be configured with the same migEnabled value"))
 	}
 
-	if err := info.AssertAllMigEnabledDevicesAreValid(); err != nil {
+	if err := info.AssertAllMigEnabledDevicesAreValid(true); err != nil {
 		panic(fmt.Errorf("At least one device with migEnabled=true was not configured correctly: %v", err))
 	}
 
 	rms, err := rm.NewResourceManagers(s.config)
 	if err != nil {
 		panic(fmt.Errorf("Unable to load resource managers to manage plugin devices: %v", err))
-	}
-
-	if len(rms) == 0 {
-		panic("No MIG devices present on node")
-	}
-
-	if len(rms) != 1 {
-		panic("More than one MIG device type present on node")
 	}
 
 	return getPlugins(s.config, rms)
@@ -107,7 +99,7 @@ func (s *migStrategySingle) GetPlugins() []*NvidiaDevicePlugin {
 func (s *migStrategyMixed) GetPlugins() []*NvidiaDevicePlugin {
 	info := mig.NewDeviceInfo()
 
-	if err := info.AssertAllMigEnabledDevicesAreValid(); err != nil {
+	if err := info.AssertAllMigEnabledDevicesAreValid(false); err != nil {
 		panic(fmt.Errorf("At least one device with migEnabled=true was not configured correctly: %v", err))
 	}
 

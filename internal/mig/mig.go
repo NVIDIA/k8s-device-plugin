@@ -78,15 +78,18 @@ func (devices *DeviceInfo) GetDevicesWithMigDisabled() ([]*nvml.Device, error) {
 	return devicesMap[false], nil
 }
 
-// AssertAllMigEnabledDevicesAreValid ensures that all devices with migEnabled=true are valid. This means:
-// * The have at least 1 mig devices associated with them
-// Returns nill if the device is valid, or an error if these are not valid
-func (devices *DeviceInfo) AssertAllMigEnabledDevicesAreValid() error {
+// AssertAllMigEnabledDevicesAreValid ensures that all devices with migEnabled=true are valid.
+// This means:
+// * They have at least 1 mig devices associated with them
+// * If (uniform == true) all MIG devices are associated with the same profile
+// Returns nil if the device is valid, or an error if these are not valid
+func (devices *DeviceInfo) AssertAllMigEnabledDevicesAreValid(uniform bool) error {
 	devicesMap, err := devices.getDevicesMap()
 	if err != nil {
 		return err
 	}
 
+	var previousAttrs *nvml.DeviceAttributes
 	for _, d := range devicesMap[true] {
 		migs, err := d.GetMigDevices()
 		if err != nil {
@@ -95,7 +98,23 @@ func (devices *DeviceInfo) AssertAllMigEnabledDevicesAreValid() error {
 		if len(migs) == 0 {
 			return fmt.Errorf("No MIG devices associated with %v: %v", d.Path, d.UUID)
 		}
+		if !uniform {
+			continue
+		}
+		for _, m := range migs {
+			attrs, err := m.GetAttributes()
+			if err != nil {
+				return err
+			}
+			if previousAttrs == nil {
+				previousAttrs = &attrs
+			}
+			if attrs != *previousAttrs {
+				return fmt.Errorf("More than one MIG device type present on node")
+			}
+		}
 	}
+
 	return nil
 }
 
