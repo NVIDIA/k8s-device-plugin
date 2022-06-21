@@ -37,6 +37,7 @@ nvidiaDriverRoot: null
 
 nameOverride: ""
 fullnameOverride: ""
+namespaceOverride: ""
 selectorLabelsOverride: {}
 
 allowDefaultNamespace: false
