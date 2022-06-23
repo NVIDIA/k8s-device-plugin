@@ -80,6 +80,16 @@ func main() {
 			Usage:   "the desired strategy for passing device IDs to the underlying runtime:\n\t\t[uuid | index]",
 			EnvVars: []string{"DEVICE_ID_STRATEGY"},
 		},
+		&cli.BoolFlag{
+			Name:    "gds-enabled",
+			Usage:   "ensure that containers are started with NVIDIA_GDS=enabled",
+			EnvVars: []string{"GDS_ENABLED"},
+		},
+		&cli.BoolFlag{
+			Name:    "mofed-enabled",
+			Usage:   "ensure that containers are started with NVIDIA_MOFED=enabled",
+			EnvVars: []string{"MOFED_ENABLED"},
+		},
 		&cli.StringFlag{
 			Name:        "config-file",
 			Usage:       "the path to a config file as an alternative to command line options or environment variables",
