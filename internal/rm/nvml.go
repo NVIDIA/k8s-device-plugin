@@ -292,6 +292,40 @@ func (d nvmlDevice) isMigEnabled() (bool, error) {
 	return (mode == nvml.DEVICE_MIG_ENABLE), nil
 }
 
+// isMigValid checks if the GPU device is in a valid MIG state.
+// A GPU device's MIG state is invalid if MIG is enabled but no MIG devices are defined
+// A GPU device with MIG disabled has a valid MIG state by definition
+func (d nvmlDevice) isMigValid() (bool, error) {
+	migEnabled, err := d.isMigEnabled()
+	if err != nil {
+		return false, fmt.Errorf("error checking MIG enabled: %v", err)
+	}
+	if !migEnabled {
+		return true, nil
+	}
+
+	migCount, err := d.getMigDeviceCount()
+	if err != nil {
+		return false, fmt.Errorf("error getting number of MIG devices: %v", err)
+	}
+
+	return migCount > 0, nil
+}
+
+// getMigDeviceCount gets the number of MIG devices associated with the specified device
+func (d nvmlDevice) getMigDeviceCount() (int, error) {
+	var migCount int
+	err := nvmlDevice(d).walkMigDevices(func(i int, d nvml.Device) error {
+		migCount++
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return migCount, nil
+}
+
 // isMigDevice checks if the given NVML device is a MIG device (as opposed to a GPU device)
 func (d nvmlDevice) isMigDevice() (bool, error) {
 	err := nvmlLookupSymbol("nvmlDeviceIsMigDeviceHandle")
@@ -402,4 +436,41 @@ func (d nvmlDevice) getNumaNode() (*int, error) {
 
 	n := int(node)
 	return &n, nil
+}
+
+// assertAllMigDevicesAreValid ensures that each MIG-enabled device has at least one MIG device
+// associated with it.
+func assertAllMigDevicesAreValid(uniform bool) error {
+	err := walkGPUDevices(func(i int, d nvml.Device) error {
+		migValid, err := nvmlDevice(d).isMigValid()
+		if err != nil {
+			return err
+		}
+		if !migValid {
+			return fmt.Errorf("device %v has an invalid MIG configuration", i)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("At least one device with migEnabled=true was not configured correctly: %v", err)
+	}
+
+	if !uniform {
+		return nil
+	}
+
+	var previousAttributes *nvml.DeviceAttributes
+	return walkMigDevices(func(i, j int, d nvml.Device) error {
+		attrs, ret := d.GetAttributes()
+		if ret != nvml.SUCCESS {
+			return fmt.Errorf("error getting device attributes: %v", nvml.ErrorString(ret))
+		}
+		if previousAttributes == nil {
+			previousAttributes = &attrs
+		} else if attrs != *previousAttributes {
+			return fmt.Errorf("more than one MIG device type present on node")
+		}
+
+		return nil
+	})
 }

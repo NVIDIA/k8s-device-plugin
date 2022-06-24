@@ -240,11 +240,11 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]*NvidiaD
 
 	// Get the set of plugins.
 	log.Println("Retreiving plugins.")
-	migStrategy, err := NewMigStrategy(config)
+	pluginManager, err := NewNVMLPluginManager(config)
 	if err != nil {
-		return nil, false, fmt.Errorf("error creating MIG strategy: %v", err)
+		return nil, false, fmt.Errorf("error creating plugin manager: %v", err)
 	}
-	plugins := migStrategy.GetPlugins()
+	plugins := pluginManager.GetPlugins()
 
 	// Loop through all plugins, starting them if they have any devices
 	// to serve. If even one plugin fails to start properly, try
