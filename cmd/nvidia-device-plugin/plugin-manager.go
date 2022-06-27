@@ -25,7 +25,7 @@ import (
 
 // PluginManager provides an interface for building the set of plugins required to implement a given MIG strategy
 type PluginManager interface {
-	GetPlugins() []*NvidiaDevicePlugin
+	GetPlugins() ([]*NvidiaDevicePlugin, error)
 }
 
 // NewNVMLPluginManager creates an NVML-based plugin manager
@@ -46,15 +46,15 @@ type nvmlPluginManager struct {
 }
 
 // GetPlugins returns the plugins associated with the NVML resources available on the node
-func (s *nvmlPluginManager) GetPlugins() []*NvidiaDevicePlugin {
+func (s *nvmlPluginManager) GetPlugins() ([]*NvidiaDevicePlugin, error) {
 	rms, err := rm.NewResourceManagers(s.config)
 	if err != nil {
-		panic(fmt.Errorf("unable to load resource managers to manage plugin devices: %v", err))
+		return nil, fmt.Errorf("unable to load resource managers to manage plugin devices: %v", err)
 	}
 
 	var plugins []*NvidiaDevicePlugin
 	for _, r := range rms {
 		plugins = append(plugins, NewNvidiaDevicePlugin(s.config, r))
 	}
-	return plugins
+	return plugins, nil
 }
