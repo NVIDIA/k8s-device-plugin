@@ -39,7 +39,7 @@ const (
 )
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
-func (r *resourceManager) checkHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
+func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
 	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
 	if disableHealthChecks == "all" {
 		disableHealthChecks = allHealthChecks
@@ -216,7 +216,7 @@ func getAdditionalXids(input string) []uint64 {
 // getDevicePlacement returns the placement of the specified device.
 // For a MIG device the placement is defined by the 3-tuple <parent UUID, GI, CI>
 // For a full device the returned 3-tuple is the device's uuid and 0xFFFFFFFF for the other two elements.
-func (r *resourceManager) getDevicePlacement(d *Device) (string, int, int, error) {
+func (r *nvmlResourceManager) getDevicePlacement(d *Device) (string, int, int, error) {
 	if !d.IsMigDevice() {
 		return d.ID, 0xFFFFFFFF, 0xFFFFFFFF, nil
 	}
@@ -224,7 +224,7 @@ func (r *resourceManager) getDevicePlacement(d *Device) (string, int, int, error
 }
 
 // getMigDeviceParts returns the parent GI and CI ids of the MIG device.
-func (r *resourceManager) getMigDeviceParts(d *Device) (string, int, int, error) {
+func (r *nvmlResourceManager) getMigDeviceParts(d *Device) (string, int, int, error) {
 	if !d.IsMigDevice() {
 		return "", 0, 0, fmt.Errorf("cannot get GI and CI of full device")
 	}
