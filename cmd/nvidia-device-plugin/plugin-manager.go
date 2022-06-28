@@ -35,7 +35,7 @@ func NewNVMLPluginManager(config *spec.Config) (PluginManager, error) {
 	case spec.MigStrategySingle:
 	case spec.MigStrategyMixed:
 	default:
-		return nil, fmt.Errorf("Unknown strategy: %v", *config.Flags.MigStrategy)
+		return nil, fmt.Errorf("unknown strategy: %v", *config.Flags.MigStrategy)
 	}
 
 	return &nvmlPluginManager{config}, nil
@@ -49,7 +49,7 @@ type nvmlPluginManager struct {
 func (s *nvmlPluginManager) GetPlugins() []*NvidiaDevicePlugin {
 	rms, err := rm.NewResourceManagers(s.config)
 	if err != nil {
-		panic(fmt.Errorf("Unable to load resource managers to manage plugin devices: %v", err))
+		panic(fmt.Errorf("unable to load resource managers to manage plugin devices: %v", err))
 	}
 
 	var plugins []*NvidiaDevicePlugin
