@@ -32,13 +32,9 @@ var nvml *dl.DynamicLibrary
 // nvml.Init()
 func Init() Return {
 	lib := dl.New(nvmlLibraryName, nvmlLibraryLoadFlags)
-	if lib == nil {
-		panic(fmt.Sprintf("error instantiating DynamicLibrary for %s", nvmlLibraryName))
-	}
-
 	err := lib.Open()
 	if err != nil {
-		panic(fmt.Sprintf("error opening %s: %v", nvmlLibraryName, err))
+		return ERROR_LIBRARY_NOT_FOUND
 	}
 
 	nvml = lib
@@ -50,13 +46,9 @@ func Init() Return {
 // nvml.InitWithFlags()
 func InitWithFlags(Flags uint32) Return {
 	lib := dl.New(nvmlLibraryName, nvmlLibraryLoadFlags)
-	if lib == nil {
-		panic(fmt.Sprintf("error instantiating DynamicLibrary for %s", nvmlLibraryName))
-	}
-
 	err := lib.Open()
 	if err != nil {
-		panic(fmt.Sprintf("error opening %s: %v", nvmlLibraryName, err))
+		return ERROR_LIBRARY_NOT_FOUND
 	}
 
 	nvml = lib
