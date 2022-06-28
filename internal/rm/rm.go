@@ -37,6 +37,7 @@ type resourceManager struct {
 type ResourceManager interface {
 	Resource() spec.ResourceName
 	Devices() Devices
+	GetDevicePaths([]string) ([]string, []string)
 	GetPreferredAllocation(available, required []string, size int) ([]string, error)
 	CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error
 }

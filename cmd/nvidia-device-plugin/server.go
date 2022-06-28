@@ -350,25 +350,15 @@ func (plugin *NvidiaDevicePlugin) apiMounts(deviceIDs []string) []*pluginapi.Mou
 func (plugin *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, ids []string) []*pluginapi.DeviceSpec {
 	var specs []*pluginapi.DeviceSpec
 
-	paths := []string{
-		"/dev/nvidiactl",
-		"/dev/nvidia-uvm",
-		"/dev/nvidia-uvm-tools",
-		"/dev/nvidia-modeset",
-	}
+	required, optional := plugin.rm.GetDevicePaths(ids)
 
-	for _, p := range paths {
+	for _, p := range optional {
 		if _, err := os.Stat(p); err == nil {
-			spec := &pluginapi.DeviceSpec{
-				ContainerPath: p,
-				HostPath:      filepath.Join(driverRoot, p),
-				Permissions:   "rw",
-			}
-			specs = append(specs, spec)
+
 		}
 	}
 
-	for _, p := range plugin.rm.Devices().Subset(ids).GetPaths() {
+	for _, p := range required {
 		spec := &pluginapi.DeviceSpec{
 			ContainerPath: p,
 			HostPath:      filepath.Join(driverRoot, p),

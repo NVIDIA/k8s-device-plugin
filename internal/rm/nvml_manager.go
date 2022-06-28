@@ -85,6 +85,23 @@ func (r *nvmlResourceManager) GetPreferredAllocation(available, required []strin
 	return r.getPreferredAllocation(available, required, size)
 }
 
+// GetDevicePaths returns the required and optional device nodes for the requested resources
+func (r *nvmlResourceManager) GetDevicePaths(ids []string) ([]string, []string) {
+	optional := []string{
+		"/dev/nvidiactl",
+		"/dev/nvidia-uvm",
+		"/dev/nvidia-uvm-tools",
+		"/dev/nvidia-modeset",
+	}
+
+	var required []string
+	for _, p := range r.Devices().Subset(ids).GetPaths() {
+		required = append(required, p)
+	}
+
+	return required, optional
+}
+
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
 func (r *nvmlResourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
 	return r.checkHealth(stop, r.devices, unhealthy)

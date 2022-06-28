@@ -65,6 +65,11 @@ func (r *tegraResourceManager) GetPreferredAllocation(available, required []stri
 	return r.alloc(available, required, size)
 }
 
+// GetDevicePaths returns an empty slice for the tegraResourceManager
+func (r *tegraResourceManager) GetDevicePaths(ids []string) ([]string, []string) {
+	return nil, nil
+}
+
 // CheckHealth is disabled for the tegraResourceManager
 func (r *tegraResourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
 	return nil
