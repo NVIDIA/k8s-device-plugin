@@ -37,6 +37,7 @@ nvidiaDriverRoot: null
 
 nameOverride: ""
 fullnameOverride: ""
+namespaceOverride: ""
 selectorLabelsOverride: {}
 
 allowDefaultNamespace: false
@@ -108,3 +109,4 @@ nfd:
 gfd:
   enabled: false
   nameOverride: gpu-feature-discovery
+  namespaceOverride: ""
