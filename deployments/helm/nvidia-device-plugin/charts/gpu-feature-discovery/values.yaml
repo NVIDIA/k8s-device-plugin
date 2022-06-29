@@ -3,6 +3,7 @@ sleepInterval: null
 
 nameOverride: ""
 fullnameOverride: ""
+namespaceOverride: ""
 selectorLabelsOverride: {}
 
 imagePullSecrets: []

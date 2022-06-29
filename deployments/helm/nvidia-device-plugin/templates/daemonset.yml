@@ -24,6 +24,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: {{ include "nvidia-device-plugin.fullname" . }}
+  namespace: {{ include "nvidia-device-plugin.namespace" . }}
   labels:
     {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
 spec:
