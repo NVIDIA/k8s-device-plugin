@@ -34,6 +34,8 @@ failOnInitError: null
 deviceListStrategy: null
 deviceIDStrategy: null
 nvidiaDriverRoot: null
+gdsEnabled: null
+mofedEnabled: null
 
 nameOverride: ""
 fullnameOverride: ""
