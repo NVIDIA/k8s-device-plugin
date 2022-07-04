@@ -160,6 +160,14 @@ spec:
           - name: NVIDIA_DRIVER_ROOT
             value: "{{ .Values.nvidiaDriverRoot }}"
         {{- end }}
+        {{- if typeIs "bool" .Values.gdsEnabled }}
+          - name: GDS_ENABLED
+            value: "{{ .Values.gdsEnabled }}"
+        {{- end }}
+        {{- if typeIs "bool" .Values.mofedEnabled }}
+          - name: MOFED_ENABLED
+            value: "{{ .Values.mofedEnabled }}"
+        {{- end }}
         {{- if eq $hasConfigMap "true" }}
           - name: CONFIG_FILE
             value: /config/config.yaml

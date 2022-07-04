@@ -278,6 +278,12 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.
 		if *plugin.config.Flags.Plugin.PassDeviceSpecs {
 			response.Devices = plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDriverRoot, ids)
 		}
+		if *plugin.config.Flags.GDSEnabled {
+			response.Envs["NVIDIA_GDS"] = "enabled"
+		}
+		if *plugin.config.Flags.MOFEDEnabled {
+			response.Envs["NVIDIA_MOFED"] = "enabled"
+		}
 
 		responses.ContainerResponses = append(responses.ContainerResponses, &response)
 	}

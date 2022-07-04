@@ -131,7 +131,9 @@ func TestMarshalFlags(t *testing.T) {
 			input: Flags{},
 			output: `{
 				"migStrategy": null,
-				"failOnInitError": null
+				"failOnInitError": null,
+				"gdsEnabled": null,
+				"mofedEnabled": null
 			}`,
 		},
 		{
@@ -145,6 +147,8 @@ func TestMarshalFlags(t *testing.T) {
 			output: `{
 				"migStrategy": null,
 				"failOnInitError": null,
+				"gdsEnabled": null,
+				"mofedEnabled": null,
 				"gfd": {
 					"oneshot": null,
 					"noTimestamp": null,
@@ -164,6 +168,8 @@ func TestMarshalFlags(t *testing.T) {
 			output: `{
 				"migStrategy": null,
 				"failOnInitError": null,
+				"gdsEnabled": null,
+				"mofedEnabled": null,
 				"gfd": {
 					"oneshot": null,
 					"noTimestamp": null,
