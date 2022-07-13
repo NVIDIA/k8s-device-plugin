@@ -208,7 +208,7 @@ func buildDeviceMap(config *spec.Config) (map[spec.ResourceName]Devices, error) 
 func buildDeviceMapFromConfigResources(config *spec.Config) (map[spec.ResourceName]Devices, error) {
 	devices := make(map[spec.ResourceName]Devices)
 
-	err := buildGPUDeviceMap(config, devices)
+	numGPUs, err := buildGPUDeviceMap(config, devices)
 	if err != nil {
 		return nil, fmt.Errorf("error building GPU device map: %v", err)
 	}
@@ -217,17 +217,32 @@ func buildDeviceMapFromConfigResources(config *spec.Config) (map[spec.ResourceNa
 		return devices, nil
 	}
 
-	err = buildMigDeviceMap(config, devices)
+	numMIGs, err := buildMigDeviceMap(config, devices)
 	if err != nil {
 		return nil, fmt.Errorf("error building MIG device map: %v", err)
+	}
+
+	var requireUniformMIGDevices bool
+	if *config.Flags.MigStrategy == spec.MigStrategySingle {
+		requireUniformMIGDevices = true
+	}
+
+	err = assertAllMigDevicesAreValid(requireUniformMIGDevices)
+	if err != nil {
+		return nil, fmt.Errorf("invalid MIG configuration: %v", err)
+	}
+
+	if requireUniformMIGDevices && numGPUs > 0 && numMIGs > 0 {
+		return nil, fmt.Errorf("all devices on the node must be configured with the same migEnabled value")
 	}
 
 	return devices, nil
 }
 
 // buildGPUDeviceMap builds a map of resource names to GPU devices
-func buildGPUDeviceMap(config *spec.Config, devices map[spec.ResourceName]Devices) error {
-	return walkGPUDevices(func(i int, gpu nvml.Device) error {
+func buildGPUDeviceMap(config *spec.Config, devices map[spec.ResourceName]Devices) (int, error) {
+	var numMatches int
+	err := walkGPUDevices(func(i int, gpu nvml.Device) error {
 		name, ret := gpu.GetName()
 		if ret != nvml.SUCCESS {
 			return fmt.Errorf("error getting product name for GPU with index '%v': %v", i, nvml.ErrorString(ret))
@@ -241,11 +256,13 @@ func buildGPUDeviceMap(config *spec.Config, devices map[spec.ResourceName]Device
 		}
 		for _, resource := range config.Resources.GPUs {
 			if resource.Pattern.Matches(name) {
+				numMatches++
 				return setGPUDeviceMapEntry(i, gpu, &resource, devices)
 			}
 		}
 		return fmt.Errorf("GPU name '%v' does not match any resource patterns", name)
 	})
+	return numMatches, err
 }
 
 // setMigDeviceMapEntry sets the deviceMap entry for a given GPU device
@@ -262,19 +279,22 @@ func setGPUDeviceMapEntry(i int, gpu nvml.Device, resource *spec.Resource, devic
 }
 
 // buildMigDeviceMap builds a map of resource names to MIG devices
-func buildMigDeviceMap(config *spec.Config, devices map[spec.ResourceName]Devices) error {
-	return walkMigDevices(func(i, j int, mig nvml.Device) error {
+func buildMigDeviceMap(config *spec.Config, devices map[spec.ResourceName]Devices) (int, error) {
+	var numMatches int
+	err := walkMigDevices(func(i, j int, mig nvml.Device) error {
 		migProfile, err := nvmlDevice(mig).getMigProfile()
 		if err != nil {
 			return fmt.Errorf("error getting MIG profile for MIG device at index '(%v, %v)': %v", i, j, err)
 		}
 		for _, resource := range config.Resources.MIGs {
 			if resource.Pattern.Matches(migProfile) {
+				numMatches++
 				return setMigDeviceMapEntry(i, j, mig, &resource, devices)
 			}
 		}
 		return fmt.Errorf("MIG profile '%v' does not match any resource patterns", migProfile)
 	})
+	return numMatches, err
 }
 
 // setMigDeviceMapEntry sets the deviceMap entry for a given MIG device
