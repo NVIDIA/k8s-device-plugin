@@ -29,8 +29,8 @@ type PluginManager interface {
 	GetPlugins() ([]*NvidiaDevicePlugin, error)
 }
 
-// NewNVMLPluginManager creates an NVML-based plugin manager
-func NewNVMLPluginManager(config *spec.Config) (PluginManager, error) {
+// NewPluginManager creates an NVML-based plugin manager
+func NewPluginManager(config *spec.Config) (PluginManager, error) {
 	switch *config.Flags.MigStrategy {
 	case spec.MigStrategyNone:
 	case spec.MigStrategySingle:
@@ -41,20 +41,20 @@ func NewNVMLPluginManager(config *spec.Config) (PluginManager, error) {
 
 	nvmllib := nvml.New()
 
-	m := nvmlPluginManager{
+	m := pluginManager{
 		nvml:   nvmllib,
 		config: config,
 	}
 	return &m, nil
 }
 
-type nvmlPluginManager struct {
+type pluginManager struct {
 	nvml   nvml.Interface
 	config *spec.Config
 }
 
 // GetPlugins returns the plugins associated with the NVML resources available on the node
-func (s *nvmlPluginManager) GetPlugins() ([]*NvidiaDevicePlugin, error) {
+func (s *pluginManager) GetPlugins() ([]*NvidiaDevicePlugin, error) {
 	rms, err := rm.NewResourceManagers(s.nvml, s.config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load resource managers to manage plugin devices: %v", err)
