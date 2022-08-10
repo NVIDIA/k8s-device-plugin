@@ -18,9 +18,12 @@ package rm
 
 import (
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvinfo"
 )
 
 var _ ResourceManager = (*resourceManager)(nil)
@@ -42,8 +45,26 @@ type ResourceManager interface {
 
 // NewResourceManagers returns a []ResourceManager, one for each resource in 'config'.
 func NewResourceManagers(config *spec.Config) ([]ResourceManager, error) {
-	nvml.Init()
-	defer nvml.Shutdown()
+	ret := nvml.Init()
+	if ret != nvml.SUCCESS {
+		log.SetOutput(os.Stderr)
+		log.Printf("Failed to initialize NVML: %v.", nvml.ErrorString(ret))
+		log.Printf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
+		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
+		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
+		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
+		log.SetOutput(os.Stdout)
+		if *config.Flags.FailOnInitError {
+			return nil, fmt.Errorf("failed to initialize NVML: %v", nvml.ErrorString(ret))
+		}
+		return nil, nil
+	}
+	defer func() {
+		ret := nvml.Shutdown()
+		if ret != nvml.SUCCESS {
+			log.Printf("Error shutting down NVML: %v", nvml.ErrorString(ret))
+		}
+	}()
 
 	deviceMap, err := buildDeviceMap(config)
 	if err != nil {
@@ -93,6 +114,27 @@ func AddDefaultResourcesToConfig(config *spec.Config) error {
 	case spec.MigStrategySingle:
 		return config.Resources.AddMIGResource("*", "gpu")
 	case spec.MigStrategyMixed:
+		hasNVML, reason := nvinfo.HasNVML()
+		if !hasNVML {
+			log.Printf("WARNING: mig-strategy=%q is only supported with NVML", spec.MigStrategyMixed)
+			log.Printf("NVML not detected: %v", reason)
+			return nil
+		}
+
+		ret := nvml.Init()
+		if ret != nvml.SUCCESS {
+			if *config.Flags.FailOnInitError {
+				return fmt.Errorf("failed to initialize NVML: %v", nvml.ErrorString(ret))
+			}
+			return nil
+		}
+		defer func() {
+			ret := nvml.Shutdown()
+			if ret != nvml.SUCCESS {
+				log.Printf("Error shutting down NVML: %v", nvml.ErrorString(ret))
+			}
+		}()
+
 		return walkMigProfiles(func(migProfile string) error {
 			return config.Resources.AddMIGResource(migProfile, "mig-"+migProfile)
 		})

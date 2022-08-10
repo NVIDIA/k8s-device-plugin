@@ -28,14 +28,15 @@ replace (
 
 require (
 	github.com/NVIDIA/go-gpuallocator v0.2.1
-	github.com/NVIDIA/go-nvml v0.11.6-0
+	github.com/NVIDIA/go-nvml v0.11.6-0.0.20220715143214-a79f46f2a6f7
 	github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201222072828-352eb4c503a7
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/google/uuid v1.1.1
 	github.com/prometheus/procfs v0.1.3
 	github.com/sirupsen/logrus v1.6.0
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli/v2 v2.4.0
+	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20220714203917-f281b5e5818e
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974
 	google.golang.org/grpc v1.29.0
 	k8s.io/api v0.19.1
@@ -73,6 +74,7 @@ require (
 	google.golang.org/protobuf v1.24.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
 	k8s.io/klog/v2 v2.2.0 // indirect
 	k8s.io/utils v0.0.0-20200729134348-d5654de09c73 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.0.1 // indirect

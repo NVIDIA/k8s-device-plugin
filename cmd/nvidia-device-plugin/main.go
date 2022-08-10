@@ -24,7 +24,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/fsnotify/fsnotify"
@@ -218,22 +217,6 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]*NvidiaD
 	}
 	disableResourceRenamingInConfig(config)
 
-	// Start NVML
-	log.Println("Initializing NVML.")
-	if err := nvml.Init(); err != nil {
-		log.SetOutput(os.Stderr)
-		log.Printf("Failed to initialize NVML: %v.", err)
-		log.Printf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
-		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
-		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
-		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
-		log.SetOutput(os.Stdout)
-		if *config.Flags.FailOnInitError {
-			return nil, false, fmt.Errorf("failed to initialize NVML: %v", err)
-		}
-		select {}
-	}
-
 	// Update the configuration file with default resources.
 	log.Println("Updating config with default resource matching patterns.")
 	err = rm.AddDefaultResourcesToConfig(config)
@@ -254,7 +237,10 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]*NvidiaD
 	if err != nil {
 		return nil, false, fmt.Errorf("error creating plugin manager: %v", err)
 	}
-	plugins := pluginManager.GetPlugins()
+	plugins, err := pluginManager.GetPlugins()
+	if err != nil {
+		return nil, false, fmt.Errorf("error getting plugins: %v", err)
+	}
 
 	// Loop through all plugins, starting them if they have any devices
 	// to serve. If even one plugin fails to start properly, try
@@ -289,10 +275,6 @@ func stopPlugins(plugins []*NvidiaDevicePlugin) error {
 	log.Println("Stopping plugins.")
 	for _, p := range plugins {
 		p.Stop()
-	}
-	log.Println("Shutting down NVML.")
-	if err := nvml.Shutdown(); err != nil {
-		return fmt.Errorf("error shutting down NVML: %v", err)
 	}
 	return nil
 }

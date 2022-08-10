@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/NVIDIA/k8s-device-plugin/internal/mig"
 )
 
@@ -44,6 +45,20 @@ func (r *resourceManager) checkHealth(stop <-chan interface{}, devices Devices, 
 	if strings.Contains(disableHealthChecks, "xids") {
 		return nil
 	}
+
+	ret := nvml.Init()
+	if ret != nvml.SUCCESS {
+		if *r.config.Flags.FailOnInitError {
+			return fmt.Errorf("failed to initialize NVML: %v", nvml.ErrorString(ret))
+		}
+		return nil
+	}
+	defer func() {
+		ret := nvml.Shutdown()
+		if ret != nvml.SUCCESS {
+			log.Printf("Error shutting down NVML: %v", nvml.ErrorString(ret))
+		}
+	}()
 
 	// FIXME: formalize the full list and document it.
 	// http://docs.nvidia.com/deploy/xid-errors/index.html#topic_4

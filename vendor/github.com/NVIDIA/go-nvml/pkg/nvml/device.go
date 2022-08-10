@@ -58,8 +58,8 @@ func DeviceGetHandleByPciBusId(PciBusId string) (Device, Return) {
 
 // nvml.DeviceGetName()
 func DeviceGetName(Device Device) (string, Return) {
-	Name := make([]byte, DEVICE_NAME_BUFFER_SIZE)
-	ret := nvmlDeviceGetName(Device, &Name[0], DEVICE_NAME_BUFFER_SIZE)
+	Name := make([]byte, DEVICE_NAME_V2_BUFFER_SIZE)
+	ret := nvmlDeviceGetName(Device, &Name[0], DEVICE_NAME_V2_BUFFER_SIZE)
 	return string(Name[:clen(Name)]), ret
 }
 
