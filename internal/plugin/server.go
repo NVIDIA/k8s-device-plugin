@@ -245,6 +245,11 @@ func (plugin *NvidiaDevicePlugin) Serve() error {
 
 // Register registers the device plugin for the given resourceName with Kubelet.
 func (plugin *NvidiaDevicePlugin) Register(kubeletSocket string) error {
+	if kubeletSocket == "" {
+		klog.Info("Skipping registration with Kubelet")
+		return nil
+	}
+
 	conn, err := plugin.dial(kubeletSocket, 5*time.Second)
 	if err != nil {
 		return err
