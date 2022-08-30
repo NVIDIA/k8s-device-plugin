@@ -30,7 +30,9 @@ import (
 )
 
 const (
-	nvmlXidCriticalError = nvml.EventTypeXidCriticalError
+	nvmlXidCriticalError  = nvml.EventTypeXidCriticalError
+	nvmlSingleBitEccError = nvml.EventTypeSingleBitEccError
+	nvmlDoubleBitEccError = nvml.EventTypeDoubleBitEccError
 )
 
 // nvmlDevice wraps an nvml.Device with more functions.
