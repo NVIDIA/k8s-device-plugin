@@ -29,7 +29,7 @@ import (
 )
 
 // NewPluginManager creates an NVML-based plugin manager
-func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) (manager.Interface, error) {
+func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, kubeletSocket string, config *spec.Config) (manager.Interface, error) {
 	var err error
 	switch *config.Flags.MigStrategy {
 	case spec.MigStrategyNone:
@@ -67,6 +67,7 @@ func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib 
 		manager.WithCDIHandler(cdiHandler),
 		manager.WithConfig(config),
 		manager.WithFailOnInitError(*config.Flags.FailOnInitError),
+		manager.WithKubeletSocket(kubeletSocket),
 		manager.WithMigStrategy(*config.Flags.MigStrategy),
 	)
 	if err != nil {
