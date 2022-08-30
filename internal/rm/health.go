@@ -86,13 +86,14 @@ func (r *resourceManager) checkHealth(stop <-chan interface{}, devices Devices, 
 	eventSet := nvmlNewEventSet()
 	defer nvmlDeleteEventSet(eventSet)
 
+	eventMask := nvmlXidCriticalError | nvmlDoubleBitEccError | nvmlSingleBitEccError
 	for _, d := range devices {
 		gpu, _, _, err := mig.GetMigDevicePartsByUUID(d.ID)
 		if err != nil {
 			gpu = d.ID
 		}
 
-		err = nvmlRegisterEventForDevice(eventSet, nvmlXidCriticalError, gpu)
+		err = nvmlRegisterEventForDevice(eventSet, eventMask, gpu)
 		if err != nil && strings.HasSuffix(err.Error(), "Not Supported") {
 			log.Printf("Warning: %s is too old to support healthchecking: %s. Marking it unhealthy.", d.ID, err)
 			unhealthy <- d
@@ -126,9 +127,7 @@ func (r *resourceManager) checkHealth(stop <-chan interface{}, devices Devices, 
 
 		successiveEventErrorCount = 0
 		if e.Etype != nvmlXidCriticalError {
-			if e.Etype == nvmlDoubleBitEccError || e.Etype == nvmlSingleBitEccError {
-				log.Printf("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
-			}
+			log.Printf("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
 			continue
 		}
 
