@@ -126,13 +126,18 @@ func (r *resourceManager) checkHealth(stop <-chan interface{}, devices Devices, 
 
 		successiveEventErrorCount = 0
 		if e.Etype != nvmlXidCriticalError {
+			if e.Etype == nvmlDoubleBitEccError || e.Etype == nvmlSingleBitEccError {
+				log.Printf("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
+			}
 			continue
 		}
 
 		if skippedXids[e.Edata] {
+			log.Printf("Skipping event %+v", e)
 			continue
 		}
 
+		log.Printf("Processing event %+v", e)
 		if e.UUID == nil || len(*e.UUID) == 0 {
 			// All devices are unhealthy
 			log.Printf("XidCriticalError: Xid=%d, All devices will go unhealthy.", e.Edata)
