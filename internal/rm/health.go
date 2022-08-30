@@ -34,6 +34,9 @@ const (
 	// this is in addition to the Application errors that are already ignored.
 	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
 	allHealthChecks        = "xids"
+
+	// maxSuccessiveEventErrorCount sets the number of errors waiting for events before marking all devices as unhealthy.
+	maxSuccessiveEventErrorCount = 3
 )
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
@@ -100,6 +103,7 @@ func (r *resourceManager) checkHealth(stop <-chan interface{}, devices Devices, 
 		}
 	}
 
+	successiveEventErrorCount := 0
 	for {
 		select {
 		case <-stop:
@@ -108,7 +112,20 @@ func (r *resourceManager) checkHealth(stop <-chan interface{}, devices Devices, 
 		}
 
 		e, err := nvmlWaitForEvent(eventSet, 5000)
-		if err != nil && e.Etype != nvmlXidCriticalError {
+		if err != nil && err.Error() != "Timeout" {
+			successiveEventErrorCount += 1
+			log.Printf("Error waiting for event (%d of %d): %v", successiveEventErrorCount, maxSuccessiveEventErrorCount, err)
+			if successiveEventErrorCount >= maxSuccessiveEventErrorCount {
+				log.Printf("Marking all devices as unhealthy")
+				for _, d := range devices {
+					unhealthy <- d
+				}
+			}
+			continue
+		}
+
+		successiveEventErrorCount = 0
+		if e.Etype != nvmlXidCriticalError {
 			continue
 		}
 
