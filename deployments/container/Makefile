@@ -82,6 +82,7 @@ $(BUILD_TARGETS): build-%:
 		--build-arg CUDA_VERSION="$(CUDA_VERSION)" \
 		--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
 		--build-arg VERSION="$(VERSION)" \
+		--build-arg GIT_COMMIT="$(GIT_COMMIT)" \
 		--build-arg CVE_UPDATES="$(CVE_UPDATES)" \
 		-f $(DOCKERFILE) \
 		$(CURDIR)

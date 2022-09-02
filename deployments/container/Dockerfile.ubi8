@@ -23,6 +23,7 @@ COPY . .
 
 RUN mkdir /artifacts
 ARG VERSION="N/A"
+ARG GIT_COMMIT="unknown"
 RUN make PREFIX=/artifacts cmds
 
 FROM nvidia/${CUDA_IMAGE}:${CUDA_VERSION}-base-${BASE_DIST}
@@ -34,11 +35,14 @@ ENV NVIDIA_DISABLE_REQUIRE="true"
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=utility
 
+ARG VERSION="N/A"
+ARG GIT_COMMIT="unknown"
+
 LABEL io.k8s.display-name="NVIDIA Device Plugin"
 LABEL name="NVIDIA Device Plugin"
 LABEL vendor="NVIDIA"
-ARG VERSION="N/A"
 LABEL version=${VERSION}
+LABEL com.nvidia.git-commit=${GIT_COMMIT}
 LABEL release="N/A"
 LABEL summary="NVIDIA device plugin for Kubernetes"
 LABEL description="See summary"
