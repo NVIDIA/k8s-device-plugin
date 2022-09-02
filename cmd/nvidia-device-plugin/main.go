@@ -25,19 +25,20 @@ import (
 	"time"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/info"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/fsnotify/fsnotify"
 	cli "github.com/urfave/cli/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
-var version string // This should be set at build time to indicate the actual version
-
 func main() {
 	var configFile string
 
 	c := cli.NewApp()
-	c.Version = version
+	c.Name = "NVIDIA Device Plugin"
+	c.Usage = "NVIDIA device plugin for Kubernetes"
+	c.Version = info.GetVersionString()
 	c.Action = func(ctx *cli.Context) error {
 		return start(ctx, c.Flags)
 	}

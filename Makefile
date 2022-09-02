@@ -40,6 +40,13 @@ TARGETS := $(MAKE_TARGETS) $(EXAMPLE_TARGETS) $(CMD_TARGETS)
 DOCKER_TARGETS := $(patsubst %,docker-%, $(TARGETS))
 .PHONY: $(TARGETS) $(DOCKER_TARGETS)
 
+ifeq ($(VERSION),)
+CLI_VERSION = $(LIB_VERSION)$(if $(LIB_TAG),-$(LIB_TAG))
+else
+CLI_VERSION = $(VERSION)
+endif
+CLI_VERSION_PACKAGE = github.com/NVIDIA/k8s-device-plugin/internal/info
+
 GOOS ?= linux
 
 binaries: cmds
@@ -49,8 +56,7 @@ endif
 cmds: $(CMD_TARGETS)
 $(CMD_TARGETS): cmd-%:
 	CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' GOOS=$(GOOS) \
-		go build -ldflags "-s -w -X main.version=$(VERSION)" $(COMMAND_BUILD_OPTIONS) $(MODULE)/cmd/$(*)
-
+		go build -ldflags "-s -w -X $(CLI_VERSION_PACKAGE).gitCommit=$(GIT_COMMIT) -X $(CLI_VERSION_PACKAGE).version=$(CLI_VERSION)" $(COMMAND_BUILD_OPTIONS) $(MODULE)/cmd/$(*)
 build:
 	GOOS=$(GOOS) go build ./...
 
