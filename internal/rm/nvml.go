@@ -33,10 +33,16 @@ const (
 	nvmlXidCriticalError  = nvml.EventTypeXidCriticalError
 	nvmlSingleBitEccError = nvml.EventTypeSingleBitEccError
 	nvmlDoubleBitEccError = nvml.EventTypeDoubleBitEccError
+
+	nvidiaProcDriverPath   = "/proc/driver/nvidia"
+	nvidiaCapabilitiesPath = nvidiaProcDriverPath + "/capabilities"
 )
 
 // nvmlDevice wraps an nvml.Device with more functions.
 type nvmlDevice nvml.Device
+
+// nvmlMigDevice allows for specific functions of nvmlDevice to be overridden.
+type nvmlMigDevice nvmlDevice
 
 // nvmlEvent holds relevant data about an NVML Event.
 type nvmlEvent struct {
@@ -377,25 +383,63 @@ func (d nvmlDevice) getPaths() ([]string, error) {
 		return nil, fmt.Errorf("error checking if device is a MIG device: %v", err)
 	}
 
-	if !isMig {
-		minor, ret := nvml.Device(d).GetMinorNumber()
-		if ret != nvml.SUCCESS {
-			return nil, fmt.Errorf("error getting GPU device minor number: %v", nvml.ErrorString(ret))
-		}
-		return []string{fmt.Sprintf("/dev/nvidia%d", minor)}, nil
+	if isMig {
+		return nvmlMigDevice(d).getPaths()
 	}
 
-	uuid, ret := nvml.Device(d).GetUUID()
+	minor, ret := nvml.Device(d).GetMinorNumber()
 	if ret != nvml.SUCCESS {
-		return nil, fmt.Errorf("error getting UUID of MIG device: %v", nvml.ErrorString(ret))
+		return nil, fmt.Errorf("error getting GPU device minor number: %v", nvml.ErrorString(ret))
 	}
+	path := fmt.Sprintf("/dev/nvidia%d", minor)
 
-	paths, err := mig.GetMigDeviceNodePaths(uuid)
+	return []string{path}, nil
+}
+
+// getPaths returns the paths for the specified MIG device
+func (d nvmlMigDevice) getPaths() ([]string, error) {
+	capDevicePaths, err := mig.GetMigCapabilityDevicePaths()
 	if err != nil {
-		return nil, fmt.Errorf("error getting MIG device paths: %v", err)
+		return nil, fmt.Errorf("error getting MIG capability device paths: %v", err)
 	}
 
-	return paths, nil
+	gi, ret := nvml.Device(d).GetGpuInstanceId()
+	if ret != nvml.SUCCESS {
+		return nil, fmt.Errorf("error getting GPU Instance ID: %v", nvml.ErrorString(ret))
+	}
+
+	ci, ret := nvml.Device(d).GetComputeInstanceId()
+	if ret != nvml.SUCCESS {
+		return nil, fmt.Errorf("error getting Compute Instance ID: %v", nvml.ErrorString(ret))
+	}
+
+	parent, ret := nvml.Device(d).GetDeviceHandleFromMigDeviceHandle()
+	if ret != nvml.SUCCESS {
+		return nil, fmt.Errorf("error getting parent device: %v", nvml.ErrorString(ret))
+	}
+	minor, ret := parent.GetMinorNumber()
+	if ret != nvml.SUCCESS {
+		return nil, fmt.Errorf("error getting GPU device minor number: %v", nvml.ErrorString(ret))
+	}
+	parentPath := fmt.Sprintf("/dev/nvidia%d", minor)
+
+	giCapPath := fmt.Sprintf(nvidiaCapabilitiesPath+"/gpu%d/mig/gi%d/access", minor, gi)
+	if _, exists := capDevicePaths[giCapPath]; !exists {
+		return nil, fmt.Errorf("missing MIG GPU instance capability path: %v", giCapPath)
+	}
+
+	ciCapPath := fmt.Sprintf(nvidiaCapabilitiesPath+"/gpu%d/mig/gi%d/ci%d/access", minor, gi, ci)
+	if _, exists := capDevicePaths[ciCapPath]; !exists {
+		return nil, fmt.Errorf("missing MIG GPU instance capability path: %v", giCapPath)
+	}
+
+	devicePaths := []string{
+		parentPath,
+		capDevicePaths[giCapPath],
+		capDevicePaths[ciCapPath],
+	}
+
+	return devicePaths, nil
 }
 
 // getNumaNode returns the NUMA node associated with the given device (MIG or GPU)
