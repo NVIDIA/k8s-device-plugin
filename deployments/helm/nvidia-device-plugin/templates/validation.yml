@@ -10,7 +10,7 @@
 {{- fail $error }}
 {{- end }}
 
-{{- if and (eq .Release.Namespace "default") (not .Values.allowDefaultNamespace) }}
+{{- if and (eq (include "nvidia-device-plugin.namespace" .) "default") ( eq .Values.namespaceOverride "") (not .Values.allowDefaultNamespace) }}
 {{- $error := "" }}
 {{- $error = printf "%s\nRunning in the 'default' namespace is not recommended." $error }}
 {{- $error = printf "%s\nSet 'allowDefaultNamespace=true' to bypass this error." $error }}
