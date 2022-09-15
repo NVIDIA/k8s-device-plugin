@@ -113,8 +113,11 @@ func (r *resourceManager) checkHealth(stop <-chan interface{}, devices Devices, 
 		}
 
 		e, err := nvmlWaitForEvent(eventSet, 5000)
+		if err != nil && err.Error() == "Timeout" {
+			continue
+		}
 		if err != nil && err.Error() != "Timeout" {
-			successiveEventErrorCount += 1
+			successiveEventErrorCount++
 			log.Printf("Error waiting for event (%d of %d): %v", successiveEventErrorCount, maxSuccessiveEventErrorCount, err)
 			if successiveEventErrorCount >= maxSuccessiveEventErrorCount {
 				log.Printf("Marking all devices as unhealthy")
