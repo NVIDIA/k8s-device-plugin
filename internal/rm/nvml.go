@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 
 	"github.com/NVIDIA/k8s-device-plugin/internal/mig"
@@ -135,49 +134,4 @@ func (d nvmlMigDevice) getNumaNode() (*int, error) {
 		return nil, fmt.Errorf("error getting parent GPU device from MIG device: %v", ret)
 	}
 	return nvmlDevice{parent}.getNumaNode()
-}
-
-// assertAllMigDevicesAreValid ensures that each MIG-enabled device has at least one MIG device
-// associated with it.
-func (b *builder) assertAllMigDevicesAreValid(uniform bool) error {
-	err := b.VisitDevices(func(i int, d device.Device) error {
-		isMigEnabled, err := d.IsMigEnabled()
-		if err != nil {
-			return err
-		}
-		if !isMigEnabled {
-			return nil
-		}
-		migDevices, err := d.GetMigDevices()
-		if err != nil {
-			return err
-		}
-		if len(migDevices) == 0 {
-			i := 0
-			return fmt.Errorf("device %v has an invalid MIG configuration", i)
-		}
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("At least one device with migEnabled=true was not configured correctly: %v", err)
-	}
-
-	if !uniform {
-		return nil
-	}
-
-	var previousAttributes *nvml.DeviceAttributes
-	return b.VisitMigDevices(func(i int, d device.Device, j int, m device.MigDevice) error {
-		attrs, ret := m.GetAttributes()
-		if ret != nvml.SUCCESS {
-			return fmt.Errorf("error getting device attributes: %v", ret)
-		}
-		if previousAttributes == nil {
-			previousAttributes = &attrs
-		} else if attrs != *previousAttributes {
-			return fmt.Errorf("more than one MIG device type present on node")
-		}
-
-		return nil
-	})
 }

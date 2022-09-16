@@ -309,6 +309,51 @@ func (b *builder) buildMigDeviceMap(config *spec.Config, devices map[spec.Resour
 	return numMatches, err
 }
 
+// assertAllMigDevicesAreValid ensures that each MIG-enabled device has at least one MIG device
+// associated with it.
+func (b *builder) assertAllMigDevicesAreValid(uniform bool) error {
+	err := b.VisitDevices(func(i int, d device.Device) error {
+		isMigEnabled, err := d.IsMigEnabled()
+		if err != nil {
+			return err
+		}
+		if !isMigEnabled {
+			return nil
+		}
+		migDevices, err := d.GetMigDevices()
+		if err != nil {
+			return err
+		}
+		if len(migDevices) == 0 {
+			i := 0
+			return fmt.Errorf("device %v has an invalid MIG configuration", i)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("At least one device with migEnabled=true was not configured correctly: %v", err)
+	}
+
+	if !uniform {
+		return nil
+	}
+
+	var previousAttributes *nvml.DeviceAttributes
+	return b.VisitMigDevices(func(i int, d device.Device, j int, m device.MigDevice) error {
+		attrs, ret := m.GetAttributes()
+		if ret != nvml.SUCCESS {
+			return fmt.Errorf("error getting device attributes: %v", ret)
+		}
+		if previousAttributes == nil {
+			previousAttributes = &attrs
+		} else if attrs != *previousAttributes {
+			return fmt.Errorf("more than one MIG device type present on node")
+		}
+
+		return nil
+	})
+}
+
 // setMigDeviceMapEntry sets the deviceMap entry for a given MIG device
 func setMigDeviceMapEntry(i, j int, mig nvml.Device, resource *spec.Resource, devices map[spec.ResourceName]Devices) error {
 	dev, err := buildDevice(fmt.Sprintf("%v:%v", i, j), nvmlMigDevice{mig})
