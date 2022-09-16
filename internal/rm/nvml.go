@@ -30,10 +30,6 @@ import (
 )
 
 const (
-	nvmlXidCriticalError  = nvml.EventTypeXidCriticalError
-	nvmlSingleBitEccError = nvml.EventTypeSingleBitEccError
-	nvmlDoubleBitEccError = nvml.EventTypeDoubleBitEccError
-
 	nvidiaProcDriverPath   = "/proc/driver/nvidia"
 	nvidiaCapabilitiesPath = nvidiaProcDriverPath + "/capabilities"
 )
@@ -43,15 +39,6 @@ type nvmlDevice nvml.Device
 
 // nvmlMigDevice allows for specific functions of nvmlDevice to be overridden.
 type nvmlMigDevice nvmlDevice
-
-// nvmlEvent holds relevant data about an NVML Event.
-type nvmlEvent struct {
-	UUID              *string
-	GpuInstanceID     *uint
-	ComputeInstanceID *uint
-	Etype             uint64
-	Edata             uint64
-}
 
 // nvmlLookupSymbol checks to see if the given symbol is present in the NVMl library.
 func nvmlLookupSymbol(symbol string) error {
@@ -65,83 +52,6 @@ func nvmlLookupSymbol(symbol string) error {
 	}
 	defer lib.Close()
 	return lib.Lookup(symbol)
-}
-
-// nvmlNewEventSet creates a new NVML EventSet
-func nvmlNewEventSet() nvml.EventSet {
-	set, _ := nvml.EventSetCreate()
-	return set
-}
-
-// nvmlDeleteEventSet deletes an NVML EventSet
-func nvmlDeleteEventSet(es nvml.EventSet) {
-	es.Free()
-}
-
-// nvmlWaitForEvent waits for an NVML Event
-func nvmlWaitForEvent(es nvml.EventSet, timeout uint) (nvmlEvent, error) {
-	data, ret := es.Wait(uint32(timeout))
-	if ret != nvml.SUCCESS {
-		return nvmlEvent{}, fmt.Errorf("%v", nvml.ErrorString(ret))
-	}
-
-	uuid, ret := data.Device.GetUUID()
-	if ret != nvml.SUCCESS {
-		return nvmlEvent{}, fmt.Errorf("%v", nvml.ErrorString(ret))
-	}
-
-	isMig, ret := data.Device.IsMigDeviceHandle()
-	if ret != nvml.SUCCESS {
-		return nvmlEvent{}, fmt.Errorf("%v", nvml.ErrorString(ret))
-	}
-
-	if !isMig {
-		data.GpuInstanceId = 0xFFFFFFFF
-		data.ComputeInstanceId = 0xFFFFFFFF
-	}
-
-	event := nvmlEvent{
-		UUID:              &uuid,
-		Etype:             uint64(data.EventType),
-		Edata:             uint64(data.EventData),
-		GpuInstanceID:     uintPtr(data.GpuInstanceId),
-		ComputeInstanceID: uintPtr(data.ComputeInstanceId),
-	}
-
-	return event, nil
-}
-
-// nvmlRegisterEventForDevice registers an Event for a device with a specific UUID.
-func nvmlRegisterEventForDevice(es nvml.EventSet, event int, uuid string) error {
-	count, ret := nvml.DeviceGetCount()
-	if ret != nvml.SUCCESS {
-		return fmt.Errorf("%v", nvml.ErrorString(ret))
-	}
-
-	for i := 0; i < count; i++ {
-		d, ret := nvml.DeviceGetHandleByIndex(i)
-		if ret != nvml.SUCCESS {
-			return fmt.Errorf("%v", nvml.ErrorString(ret))
-		}
-
-		duuid, ret := d.GetUUID()
-		if ret != nvml.SUCCESS {
-			return fmt.Errorf("%v", nvml.ErrorString(ret))
-		}
-
-		if duuid != uuid {
-			continue
-		}
-
-		ret = d.RegisterEvents(uint64(event), es)
-		if ret != nvml.SUCCESS {
-			return fmt.Errorf("%v", nvml.ErrorString(ret))
-		}
-
-		return nil
-	}
-
-	return fmt.Errorf("nvml: device not found")
 }
 
 // walkGPUDevices walks all of the GPU devices reported by NVML

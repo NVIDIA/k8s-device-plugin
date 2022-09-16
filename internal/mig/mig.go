@@ -7,10 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
-	"strings"
-
-	"github.com/NVIDIA/go-nvml/pkg/nvml"
 )
 
 const (
@@ -21,16 +17,6 @@ const (
 	nvcapsMigMinorsPath  = nvcapsProcDriverPath + "/mig-minors"
 	nvcapsDevicePath     = "/dev/nvidia-caps"
 )
-
-// GetMigDevicePartsByUUID returns the parent GPU UUID and GI and CI ids of the MIG device.
-func GetMigDevicePartsByUUID(uuid string) (string, uint, uint, error) {
-	// For older driver versions, the call to DeviceGetHandleByUUID will fail for MIG devices.
-	migHandle, ret := nvml.DeviceGetHandleByUUID(uuid)
-	if ret == nvml.SUCCESS {
-		return getMIGDeviceInfo(migHandle)
-	}
-	return parseMigDeviceUUID(uuid)
-}
 
 // GetMigCapabilityDevicePaths returns a mapping of MIG capability path to device node path
 func GetMigCapabilityDevicePaths() (map[string]string, error) {
@@ -96,54 +82,4 @@ func GetMigCapabilityDevicePaths() (map[string]string, error) {
 		capsDevicePaths[capPath] = fmt.Sprintf(nvcapsDevicePath+"/nvidia-cap%d", migMinor)
 	}
 	return capsDevicePaths, nil
-}
-
-// getMIGDeviceInfo returns the parent ID, gi, and ci for the specified device
-func getMIGDeviceInfo(mig nvml.Device) (string, uint, uint, error) {
-	parentHandle, ret := mig.GetDeviceHandleFromMigDeviceHandle()
-	if ret != nvml.SUCCESS {
-		return "", 0, 0, fmt.Errorf("%v", nvml.ErrorString(ret))
-	}
-
-	parentUUID, ret := parentHandle.GetUUID()
-	if ret != nvml.SUCCESS {
-		return "", 0, 0, fmt.Errorf("%v", nvml.ErrorString(ret))
-	}
-
-	gi, ret := mig.GetGpuInstanceId()
-	if ret != nvml.SUCCESS {
-		return "", 0, 0, fmt.Errorf("%v", nvml.ErrorString(ret))
-	}
-
-	ci, ret := mig.GetComputeInstanceId()
-	if ret != nvml.SUCCESS {
-		return "", 0, 0, fmt.Errorf("%v", nvml.ErrorString(ret))
-	}
-
-	return parentUUID, uint(gi), uint(ci), nil
-}
-
-// parseMigDeviceUUID splits the MIG device UUID into the parent device UUID and ci and gi
-func parseMigDeviceUUID(mig string) (string, uint, uint, error) {
-	tokens := strings.SplitN(mig, "-", 2)
-	if len(tokens) != 2 || tokens[0] != "MIG" {
-		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
-	}
-
-	tokens = strings.SplitN(tokens[1], "/", 3)
-	if len(tokens) != 3 || !strings.HasPrefix(tokens[0], "GPU-") {
-		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
-	}
-
-	gi, err := strconv.Atoi(tokens[1])
-	if err != nil {
-		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
-	}
-
-	ci, err := strconv.Atoi(tokens[2])
-	if err != nil {
-		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
-	}
-
-	return tokens[0], uint(gi), uint(ci), nil
 }
