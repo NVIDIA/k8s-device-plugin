@@ -68,7 +68,7 @@ func NewResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]Resourc
 		}
 	}()
 
-	deviceMap, err := buildDeviceMap(nvmllib, config)
+	deviceMap, err := NewDeviceMap(nvmllib, config)
 	if err != nil {
 		return nil, fmt.Errorf("error building device map: %v", err)
 	}

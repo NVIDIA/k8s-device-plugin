@@ -41,8 +41,22 @@ type nvmlDevice struct {
 // nvmlMigDevice allows for specific functions of nvmlDevice to be overridden.
 type nvmlMigDevice nvmlDevice
 
-// getPaths returns the set of Paths associated with the given device (MIG or GPU)
-func (d nvmlDevice) getPaths() ([]string, error) {
+// GetUUID returns the UUID of the device
+func (d nvmlDevice) GetUUID() (string, error) {
+	uuid, ret := d.Device.GetUUID()
+	if ret != nvml.SUCCESS {
+		return "", ret
+	}
+	return uuid, nil
+}
+
+// GetUUID returns the UUID of the device
+func (d nvmlMigDevice) GetUUID() (string, error) {
+	return nvmlDevice(d).GetUUID()
+}
+
+// GetPaths returns the paths for a GPU device
+func (d nvmlDevice) GetPaths() ([]string, error) {
 	minor, ret := d.GetMinorNumber()
 	if ret != nvml.SUCCESS {
 		return nil, fmt.Errorf("error getting GPU device minor number: %v", ret)
@@ -52,8 +66,8 @@ func (d nvmlDevice) getPaths() ([]string, error) {
 	return []string{path}, nil
 }
 
-// getPaths returns the paths for the specified MIG device
-func (d nvmlMigDevice) getPaths() ([]string, error) {
+// GetPaths returns the paths for a MIG device
+func (d nvmlMigDevice) GetPaths() ([]string, error) {
 	capDevicePaths, err := mig.GetMigCapabilityDevicePaths()
 	if err != nil {
 		return nil, fmt.Errorf("error getting MIG capability device paths: %v", err)
@@ -98,11 +112,11 @@ func (d nvmlMigDevice) getPaths() ([]string, error) {
 	return devicePaths, nil
 }
 
-// getNumaNode returns the NUMA node associated with the given device (MIG or GPU)
-func (d nvmlDevice) getNumaNode() (*int, error) {
+// GetNumaNode returns the NUMA node associated with the GPU device
+func (d nvmlDevice) GetNumaNode() (bool, int, error) {
 	info, ret := d.GetPciInfo()
 	if ret != nvml.SUCCESS {
-		return nil, fmt.Errorf("error getting PCI Bus Info of device: %v", ret)
+		return false, 0, fmt.Errorf("error getting PCI Bus Info of device: %v", ret)
 	}
 
 	// Discard leading zeros.
@@ -110,28 +124,27 @@ func (d nvmlDevice) getNumaNode() (*int, error) {
 
 	b, err := os.ReadFile(fmt.Sprintf("/sys/bus/pci/devices/%s/numa_node", busID))
 	if err != nil {
-		// Report nil if NUMA support isn't enabled
-		return nil, nil
+		return false, 0, nil
 	}
 
-	node, err := strconv.ParseInt(string(bytes.TrimSpace(b)), 10, 8)
+	node, err := strconv.Atoi(string(bytes.TrimSpace(b)))
 	if err != nil {
-		return nil, fmt.Errorf("eror parsing value for NUMA node: %v", err)
+		return false, 0, fmt.Errorf("eror parsing value for NUMA node: %v", err)
 	}
 
 	if node < 0 {
-		return nil, nil
+		return false, 0, nil
 	}
 
-	n := int(node)
-	return &n, nil
+	return true, node, nil
 }
 
-// getNumaNode for a MIG device is the NUMA node of the parent device.
-func (d nvmlMigDevice) getNumaNode() (*int, error) {
+// GetNumaNode for a MIG device is the NUMA node of the parent device.
+func (d nvmlMigDevice) GetNumaNode() (bool, int, error) {
 	parent, ret := d.GetDeviceHandleFromMigDeviceHandle()
 	if ret != nvml.SUCCESS {
-		return nil, fmt.Errorf("error getting parent GPU device from MIG device: %v", ret)
+		return false, 0, fmt.Errorf("error getting parent GPU device from MIG device: %v", ret)
 	}
-	return nvmlDevice{parent}.getNumaNode()
+
+	return nvmlDevice{parent}.GetNumaNode()
 }

@@ -22,8 +22,6 @@ import (
 	"strings"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
@@ -35,6 +33,13 @@ type Device struct {
 	Index string
 }
 
+// deviceInfo defines the information the required to construct a Device
+type deviceInfo interface {
+	GetUUID() (string, error)
+	GetPaths() ([]string, error)
+	GetNumaNode() (bool, int, error)
+}
+
 // Devices wraps a map[string]*Device with some functions.
 type Devices map[string]*Device
 
@@ -43,6 +48,41 @@ type AnnotatedID string
 
 // AnnotatedIDs can be used to treat a []string as a []AnnotatedID.
 type AnnotatedIDs []string
+
+// BuildDevice builds an rm.Device with the specified index and deviceInfo
+func BuildDevice(index string, d deviceInfo) (*Device, error) {
+	uuid, err := d.GetUUID()
+	if err != nil {
+		return nil, fmt.Errorf("error getting UUID device: %v", err)
+	}
+
+	paths, err := d.GetPaths()
+	if err != nil {
+		return nil, fmt.Errorf("error getting device paths: %v", err)
+	}
+
+	hasNuma, numa, err := d.GetNumaNode()
+	if err != nil {
+		return nil, fmt.Errorf("error getting device NUMA node: %v", err)
+	}
+
+	dev := Device{}
+	dev.ID = uuid
+	dev.Index = index
+	dev.Paths = paths
+	dev.Health = pluginapi.Healthy
+	if hasNuma {
+		dev.Topology = &pluginapi.TopologyInfo{
+			Nodes: []*pluginapi.NUMANode{
+				{
+					ID: int64(numa),
+				},
+			},
+		}
+	}
+
+	return &dev, nil
+}
 
 // ContainsMigDevices checks if Devices contains any MIG devices or not
 func (ds Devices) ContainsMigDevices() bool {
@@ -190,223 +230,6 @@ func (rs AnnotatedIDs) GetIDs() []string {
 		res[i] = AnnotatedID(r).GetID()
 	}
 	return res
-}
-
-// buildDeviceMap builds a map of resource names to devices
-func buildDeviceMap(nvmllib nvml.Interface, config *spec.Config) (map[spec.ResourceName]Devices, error) {
-	devicelib := device.New(device.WithNvml(nvmllib))
-	b := builder{
-		Interface: devicelib,
-		nvml:      nvmllib,
-	}
-
-	devices, err := b.buildDeviceMapFromConfigResources(config)
-	if err != nil {
-		return nil, fmt.Errorf("error building device map from config.resources: %v", err)
-	}
-	devices, err = updateDeviceMapWithReplicas(config, devices)
-	if err != nil {
-		return nil, fmt.Errorf("error updating device map with replicas from config.sharing.timeSlicing.resources: %v", err)
-	}
-	return devices, nil
-}
-
-type builder struct {
-	device.Interface
-	nvml nvml.Interface
-}
-
-// buildDeviceMapFromConfigResources builds a map of resource names to devices from spec.Config.Resources
-func (b *builder) buildDeviceMapFromConfigResources(config *spec.Config) (map[spec.ResourceName]Devices, error) {
-	devices := make(map[spec.ResourceName]Devices)
-
-	numGPUs, err := b.buildGPUDeviceMap(config, devices)
-	if err != nil {
-		return nil, fmt.Errorf("error building GPU device map: %v", err)
-	}
-
-	if *config.Flags.MigStrategy == spec.MigStrategyNone {
-		return devices, nil
-	}
-
-	numMIGs, err := b.buildMigDeviceMap(config, devices)
-	if err != nil {
-		return nil, fmt.Errorf("error building MIG device map: %v", err)
-	}
-
-	var requireUniformMIGDevices bool
-	if *config.Flags.MigStrategy == spec.MigStrategySingle {
-		requireUniformMIGDevices = true
-	}
-
-	err = b.assertAllMigDevicesAreValid(requireUniformMIGDevices)
-	if err != nil {
-		return nil, fmt.Errorf("invalid MIG configuration: %v", err)
-	}
-
-	if requireUniformMIGDevices && numGPUs > 0 && numMIGs > 0 {
-		return nil, fmt.Errorf("all devices on the node must be configured with the same migEnabled value")
-	}
-
-	return devices, nil
-}
-
-// buildGPUDeviceMap builds a map of resource names to GPU devices
-func (b *builder) buildGPUDeviceMap(config *spec.Config, devices map[spec.ResourceName]Devices) (int, error) {
-	var numMatches int
-
-	b.VisitDevices(func(i int, gpu device.Device) error {
-		name, ret := gpu.GetName()
-		if ret != nvml.SUCCESS {
-			return fmt.Errorf("error getting product name for GPU: %v", ret)
-		}
-		migEnabled, err := gpu.IsMigEnabled()
-		if err != nil {
-			return fmt.Errorf("error checking if MIG is enabled on GPU: %v", err)
-		}
-		if migEnabled && *config.Flags.MigStrategy != spec.MigStrategyNone {
-			return nil
-		}
-		for _, resource := range config.Resources.GPUs {
-			if resource.Pattern.Matches(name) {
-				return setGPUDeviceMapEntry(i, gpu, &resource, devices)
-			}
-		}
-		return fmt.Errorf("GPU name '%v' does not match any resource patterns", name)
-	})
-	return numMatches, nil
-}
-
-// setMigDeviceMapEntry sets the deviceMap entry for a given GPU device
-func setGPUDeviceMapEntry(i int, gpu device.Device, resource *spec.Resource, devices map[spec.ResourceName]Devices) error {
-	dev, err := buildDevice(fmt.Sprintf("%v", i), nvmlDevice{gpu})
-	if err != nil {
-		return fmt.Errorf("error building GPU Device: %v", err)
-	}
-	if devices[resource.Name] == nil {
-		devices[resource.Name] = make(Devices)
-	}
-	devices[resource.Name][dev.ID] = dev
-	return nil
-}
-
-// buildMigDeviceMap builds a map of resource names to MIG devices
-func (b *builder) buildMigDeviceMap(config *spec.Config, devices map[spec.ResourceName]Devices) (int, error) {
-	var numMatches int
-	err := b.VisitMigDevices(func(i int, d device.Device, j int, mig device.MigDevice) error {
-		migProfile, err := mig.GetProfile()
-		if err != nil {
-			return fmt.Errorf("error getting MIG profile for MIG device at index '(%v, %v)': %v", i, j, err)
-		}
-		for _, resource := range config.Resources.MIGs {
-			if resource.Pattern.Matches(migProfile.String()) {
-				numMatches++
-				return setMigDeviceMapEntry(i, j, mig, &resource, devices)
-			}
-		}
-		return fmt.Errorf("MIG profile '%v' does not match any resource patterns", migProfile)
-	})
-	return numMatches, err
-}
-
-// assertAllMigDevicesAreValid ensures that each MIG-enabled device has at least one MIG device
-// associated with it.
-func (b *builder) assertAllMigDevicesAreValid(uniform bool) error {
-	err := b.VisitDevices(func(i int, d device.Device) error {
-		isMigEnabled, err := d.IsMigEnabled()
-		if err != nil {
-			return err
-		}
-		if !isMigEnabled {
-			return nil
-		}
-		migDevices, err := d.GetMigDevices()
-		if err != nil {
-			return err
-		}
-		if len(migDevices) == 0 {
-			i := 0
-			return fmt.Errorf("device %v has an invalid MIG configuration", i)
-		}
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("At least one device with migEnabled=true was not configured correctly: %v", err)
-	}
-
-	if !uniform {
-		return nil
-	}
-
-	var previousAttributes *nvml.DeviceAttributes
-	return b.VisitMigDevices(func(i int, d device.Device, j int, m device.MigDevice) error {
-		attrs, ret := m.GetAttributes()
-		if ret != nvml.SUCCESS {
-			return fmt.Errorf("error getting device attributes: %v", ret)
-		}
-		if previousAttributes == nil {
-			previousAttributes = &attrs
-		} else if attrs != *previousAttributes {
-			return fmt.Errorf("more than one MIG device type present on node")
-		}
-
-		return nil
-	})
-}
-
-// setMigDeviceMapEntry sets the deviceMap entry for a given MIG device
-func setMigDeviceMapEntry(i, j int, mig nvml.Device, resource *spec.Resource, devices map[spec.ResourceName]Devices) error {
-	dev, err := buildDevice(fmt.Sprintf("%v:%v", i, j), nvmlMigDevice{mig})
-	if err != nil {
-		return fmt.Errorf("error building Device from MIG device: %v", err)
-	}
-	if devices[resource.Name] == nil {
-		devices[resource.Name] = make(Devices)
-	}
-	devices[resource.Name][dev.ID] = dev
-	return nil
-}
-
-// ddd
-type ddd interface {
-	GetUUID() (string, nvml.Return)
-	getPaths() ([]string, error)
-	getNumaNode() (*int, error)
-}
-
-// buildDevice builds an rm.Device from an nvml.Device
-func buildDevice(index string, d ddd) (*Device, error) {
-	uuid, ret := d.GetUUID()
-	if ret != nvml.SUCCESS {
-		return nil, fmt.Errorf("error getting UUID device: %v", ret)
-	}
-
-	paths, err := d.getPaths()
-	if err != nil {
-		return nil, fmt.Errorf("error getting device paths: %v", err)
-	}
-
-	numa, err := d.getNumaNode()
-	if err != nil {
-		return nil, fmt.Errorf("error getting device NUMA node: %v", err)
-	}
-
-	dev := Device{}
-	dev.ID = uuid
-	dev.Index = index
-	dev.Paths = paths
-	dev.Health = pluginapi.Healthy
-	if numa != nil {
-		dev.Topology = &pluginapi.TopologyInfo{
-			Nodes: []*pluginapi.NUMANode{
-				{
-					ID: int64(*numa),
-				},
-			},
-		}
-	}
-
-	return &dev, nil
 }
 
 // updateDeviceMapWithReplicas returns an updated map of resource names to devices with replica information from spec.Config.Sharing.TimeSlicing.Resources
