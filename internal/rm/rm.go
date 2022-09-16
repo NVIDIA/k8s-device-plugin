@@ -21,9 +21,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info"
+	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 )
 
 var _ ResourceManager = (*resourceManager)(nil)
@@ -44,25 +44,25 @@ type ResourceManager interface {
 }
 
 // NewResourceManagers returns a []ResourceManager, one for each resource in 'config'.
-func NewResourceManagers(config *spec.Config) ([]ResourceManager, error) {
-	ret := nvml.Init()
+func NewResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]ResourceManager, error) {
+	ret := nvmllib.Init()
 	if ret != nvml.SUCCESS {
 		log.SetOutput(os.Stderr)
-		log.Printf("Failed to initialize NVML: %v.", nvml.ErrorString(ret))
+		log.Printf("Failed to initialize NVML: %v.", ret)
 		log.Printf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
 		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
 		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
 		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
 		log.SetOutput(os.Stdout)
 		if *config.Flags.FailOnInitError {
-			return nil, fmt.Errorf("failed to initialize NVML: %v", nvml.ErrorString(ret))
+			return nil, fmt.Errorf("failed to initialize NVML: %v", ret)
 		}
 		return nil, nil
 	}
 	defer func() {
-		ret := nvml.Shutdown()
+		ret := nvmllib.Shutdown()
 		if ret != nvml.SUCCESS {
-			log.Printf("Error shutting down NVML: %v", nvml.ErrorString(ret))
+			log.Printf("Error shutting down NVML: %v", ret)
 		}
 	}()
 
@@ -121,17 +121,18 @@ func AddDefaultResourcesToConfig(config *spec.Config) error {
 			return nil
 		}
 
-		ret := nvml.Init()
+		nvmllib := nvml.New()
+		ret := nvmllib.Init()
 		if ret != nvml.SUCCESS {
 			if *config.Flags.FailOnInitError {
-				return fmt.Errorf("failed to initialize NVML: %v", nvml.ErrorString(ret))
+				return fmt.Errorf("failed to initialize NVML: %v", ret)
 			}
 			return nil
 		}
 		defer func() {
-			ret := nvml.Shutdown()
+			ret := nvmllib.Shutdown()
 			if ret != nvml.SUCCESS {
-				log.Printf("Error shutting down NVML: %v", nvml.ErrorString(ret))
+				log.Printf("Error shutting down NVML: %v", ret)
 			}
 		}()
 

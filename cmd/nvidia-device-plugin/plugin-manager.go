@@ -21,6 +21,7 @@ import (
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
+	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 )
 
 // PluginManager provides an interface for building the set of plugins required to implement a given MIG strategy
@@ -38,16 +39,23 @@ func NewNVMLPluginManager(config *spec.Config) (PluginManager, error) {
 		return nil, fmt.Errorf("unknown strategy: %v", *config.Flags.MigStrategy)
 	}
 
-	return &nvmlPluginManager{config}, nil
+	nvmllib := nvml.New()
+
+	m := nvmlPluginManager{
+		nvml:   nvmllib,
+		config: config,
+	}
+	return &m, nil
 }
 
 type nvmlPluginManager struct {
+	nvml   nvml.Interface
 	config *spec.Config
 }
 
 // GetPlugins returns the plugins associated with the NVML resources available on the node
 func (s *nvmlPluginManager) GetPlugins() ([]*NvidiaDevicePlugin, error) {
-	rms, err := rm.NewResourceManagers(s.config)
+	rms, err := rm.NewResourceManagers(s.nvml, s.config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load resource managers to manage plugin devices: %v", err)
 	}
