@@ -1,7 +1,7 @@
 # github.com/NVIDIA/go-gpuallocator v0.2.1
 ## explicit
 github.com/NVIDIA/go-gpuallocator/gpuallocator
-# github.com/NVIDIA/go-nvml v0.11.6-0.0.20220715143214-a79f46f2a6f7
+# github.com/NVIDIA/go-nvml v0.11.6-0.0.20220823120812-7e2082095e82
 ## explicit; go 1.15
 github.com/NVIDIA/go-nvml/pkg/dl
 github.com/NVIDIA/go-nvml/pkg/nvml
@@ -94,9 +94,9 @@ github.com/stretchr/testify/require
 # github.com/urfave/cli/v2 v2.4.0
 ## explicit; go 1.11
 github.com/urfave/cli/v2
-# gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20220714203917-f281b5e5818e
+# gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20220916081741-8719e258a8b5
 ## explicit; go 1.16
-gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvinfo
+gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info
 # golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 ## explicit; go 1.11
 golang.org/x/crypto/ssh/terminal

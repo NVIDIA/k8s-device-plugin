@@ -38,21 +38,21 @@ func DeviceGetHandleByIndex(Index int) (Device, Return) {
 // nvml.DeviceGetHandleBySerial()
 func DeviceGetHandleBySerial(Serial string) (Device, Return) {
 	var Device Device
-	ret := nvmlDeviceGetHandleBySerial(Serial, &Device)
+	ret := nvmlDeviceGetHandleBySerial(Serial + string(rune(0)), &Device)
 	return Device, ret
 }
 
 // nvml.DeviceGetHandleByUUID()
 func DeviceGetHandleByUUID(Uuid string) (Device, Return) {
 	var Device Device
-	ret := nvmlDeviceGetHandleByUUID(Uuid, &Device)
+	ret := nvmlDeviceGetHandleByUUID(Uuid + string(rune(0)), &Device)
 	return Device, ret
 }
 
 // nvml.DeviceGetHandleByPciBusId()
 func DeviceGetHandleByPciBusId(PciBusId string) (Device, Return) {
 	var Device Device
-	ret := nvmlDeviceGetHandleByPciBusId(PciBusId, &Device)
+	ret := nvmlDeviceGetHandleByPciBusId(PciBusId + string(rune(0)), &Device)
 	return Device, ret
 }
 

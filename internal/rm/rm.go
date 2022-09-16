@@ -23,7 +23,7 @@ import (
 
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvinfo"
+	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info"
 )
 
 var _ ResourceManager = (*resourceManager)(nil)
@@ -114,7 +114,7 @@ func AddDefaultResourcesToConfig(config *spec.Config) error {
 	case spec.MigStrategySingle:
 		return config.Resources.AddMIGResource("*", "gpu")
 	case spec.MigStrategyMixed:
-		hasNVML, reason := nvinfo.HasNVML()
+		hasNVML, reason := info.New().HasNvml()
 		if !hasNVML {
 			log.Printf("WARNING: mig-strategy=%q is only supported with NVML", spec.MigStrategyMixed)
 			log.Printf("NVML not detected: %v", reason)
