@@ -22,6 +22,7 @@ import (
 	"os"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 )
@@ -30,6 +31,7 @@ var _ ResourceManager = (*resourceManager)(nil)
 
 // resourceManager implements the ResourceManager interface
 type resourceManager struct {
+	nvml     nvml.Interface
 	config   *spec.Config
 	resource spec.ResourceName
 	devices  Devices
@@ -66,7 +68,7 @@ func NewResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]Resourc
 		}
 	}()
 
-	deviceMap, err := buildDeviceMap(config)
+	deviceMap, err := buildDeviceMap(nvmllib, config)
 	if err != nil {
 		return nil, fmt.Errorf("error building device map: %v", err)
 	}
@@ -74,6 +76,7 @@ func NewResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]Resourc
 	var rms []ResourceManager
 	for resourceName, devices := range deviceMap {
 		r := &resourceManager{
+			nvml:     nvmllib,
 			config:   config,
 			resource: resourceName,
 			devices:  devices,
@@ -136,8 +139,15 @@ func AddDefaultResourcesToConfig(config *spec.Config) error {
 			}
 		}()
 
-		return walkMigProfiles(func(migProfile string) error {
-			return config.Resources.AddMIGResource(migProfile, "mig-"+migProfile)
+		devicelib := device.New(
+			device.WithNvml(nvmllib),
+		)
+		return devicelib.VisitMigProfiles(func(p device.MigProfile) error {
+			info := p.GetInfo()
+			if info.C != info.G {
+				return nil
+			}
+			return config.Resources.AddMIGResource(p.String(), "mig-"+p.String())
 		})
 	}
 	return nil

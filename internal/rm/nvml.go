@@ -23,8 +23,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/NVIDIA/go-nvml/pkg/dl"
-	"github.com/NVIDIA/go-nvml/pkg/nvml"
+	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
+	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 
 	"github.com/NVIDIA/k8s-device-plugin/internal/mig"
 )
@@ -35,271 +35,18 @@ const (
 )
 
 // nvmlDevice wraps an nvml.Device with more functions.
-type nvmlDevice nvml.Device
+type nvmlDevice struct {
+	nvml.Device
+}
 
 // nvmlMigDevice allows for specific functions of nvmlDevice to be overridden.
 type nvmlMigDevice nvmlDevice
 
-// nvmlLookupSymbol checks to see if the given symbol is present in the NVMl library.
-func nvmlLookupSymbol(symbol string) error {
-	lib := dl.New("libnvidia-ml.so.1", dl.RTLD_LAZY|dl.RTLD_GLOBAL)
-	if lib == nil {
-		return fmt.Errorf("error instantiating DynamicLibrary for NVML")
-	}
-	err := lib.Open()
-	if err != nil {
-		return fmt.Errorf("error opening DynamicLibrary for NVML: %v", err)
-	}
-	defer lib.Close()
-	return lib.Lookup(symbol)
-}
-
-// walkGPUDevices walks all of the GPU devices reported by NVML
-func walkGPUDevices(f func(i int, d nvml.Device) error) error {
-	count, ret := nvml.DeviceGetCount()
-	if ret != nvml.SUCCESS {
-		return fmt.Errorf("error getting device count: %v", nvml.ErrorString(ret))
-	}
-
-	for i := 0; i < count; i++ {
-		device, ret := nvml.DeviceGetHandleByIndex(i)
-		if ret != nvml.SUCCESS {
-			return fmt.Errorf("error getting device handle for index '%v': %v", i, nvml.ErrorString(ret))
-		}
-		err := f(i, device)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// walkMigProfiles walks all of the possible MIG profiles across all GPU devices reported by NVML
-func walkMigProfiles(f func(p string) error) error {
-	visited := make(map[string]bool)
-	return walkGPUDevices(func(i int, gpu nvml.Device) error {
-		capable, err := nvmlDevice(gpu).isMigCapable()
-		if err != nil {
-			return fmt.Errorf("error checking if GPU %v is MIG capable: %v", i, err)
-		}
-		if !capable {
-			return nil
-		}
-		for i := 0; i < nvml.GPU_INSTANCE_PROFILE_COUNT; i++ {
-			giProfileInfo, ret := gpu.GetGpuInstanceProfileInfo(i)
-			if ret == nvml.ERROR_NOT_SUPPORTED {
-				continue
-			}
-			if ret == nvml.ERROR_INVALID_ARGUMENT {
-				continue
-			}
-			if ret != nvml.SUCCESS {
-				return fmt.Errorf("error getting GPU instance profile info for '%v': %v", i, nvml.ErrorString(ret))
-			}
-
-			g := giProfileInfo.SliceCount
-			gb := ((giProfileInfo.MemorySizeMB + 1024 - 1) / 1024)
-			p := fmt.Sprintf("%dg.%dgb", g, gb)
-
-			if visited[p] {
-				continue
-			}
-
-			err := f(p)
-			if err != nil {
-				return err
-			}
-
-			visited[p] = true
-		}
-		return nil
-	})
-}
-
-// walkMigDevices walks all of the MIG devices across all GPU devices reported by NVML
-func walkMigDevices(f func(i, j int, d nvml.Device) error) error {
-	count, ret := nvml.DeviceGetCount()
-	if ret != nvml.SUCCESS {
-		return fmt.Errorf("error getting GPU device count: %v", nvml.ErrorString(ret))
-	}
-
-	for i := 0; i < count; i++ {
-		device, ret := nvml.DeviceGetHandleByIndex(i)
-		if ret != nvml.SUCCESS {
-			return fmt.Errorf("error getting device handle for GPU with index '%v': %v", i, nvml.ErrorString(ret))
-		}
-
-		migEnabled, err := nvmlDevice(device).isMigEnabled()
-		if err != nil {
-			return fmt.Errorf("error checking if MIG is enabled on GPU with index '%v': %v", i, err)
-		}
-
-		if !migEnabled {
-			continue
-		}
-
-		err = nvmlDevice(device).walkMigDevices(func(j int, device nvml.Device) error {
-			return f(i, j, device)
-		})
-		if err != nil {
-			return fmt.Errorf("error walking MIG devices on GPU with index '%v': %v", i, err)
-		}
-	}
-	return nil
-}
-
-// walkMigDevices walks all of the MIG devices on a specific GPU device reported by NVML
-func (d nvmlDevice) walkMigDevices(f func(i int, d nvml.Device) error) error {
-	count, ret := nvml.Device(d).GetMaxMigDeviceCount()
-	if ret != nvml.SUCCESS {
-		return fmt.Errorf("error getting max MIG device count: %v", nvml.ErrorString(ret))
-	}
-
-	for i := 0; i < count; i++ {
-		device, ret := nvml.Device(d).GetMigDeviceHandleByIndex(i)
-		if ret == nvml.ERROR_NOT_FOUND {
-			continue
-		}
-		if ret == nvml.ERROR_INVALID_ARGUMENT {
-			continue
-		}
-		if ret != nvml.SUCCESS {
-			return fmt.Errorf("error getting MIG device handle at index '%v': %v", i, nvml.ErrorString(ret))
-		}
-		err := f(i, device)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// isMigCapable checks if a device is MIG capable or not
-func (d nvmlDevice) isMigCapable() (bool, error) {
-	err := nvmlLookupSymbol("nvmlDeviceGetMigMode")
-	if err != nil {
-		return false, nil
-	}
-
-	_, _, ret := nvml.Device(d).GetMigMode()
-	if ret == nvml.ERROR_NOT_SUPPORTED {
-		return false, nil
-	}
-	if ret != nvml.SUCCESS {
-		return false, fmt.Errorf("error getting MIG mode: %v", nvml.ErrorString(ret))
-	}
-
-	return true, nil
-}
-
-// isMigEnabled checks if MIG is enabled on the given GPU device
-func (d nvmlDevice) isMigEnabled() (bool, error) {
-	err := nvmlLookupSymbol("nvmlDeviceGetMigMode")
-	if err != nil {
-		return false, nil
-	}
-
-	mode, _, ret := nvml.Device(d).GetMigMode()
-	if ret == nvml.ERROR_NOT_SUPPORTED {
-		return false, nil
-	}
-	if ret != nvml.SUCCESS {
-		return false, fmt.Errorf("error getting MIG mode: %v", nvml.ErrorString(ret))
-	}
-
-	return (mode == nvml.DEVICE_MIG_ENABLE), nil
-}
-
-// isMigValid checks if the GPU device is in a valid MIG state.
-// A GPU device's MIG state is invalid if MIG is enabled but no MIG devices are defined
-// A GPU device with MIG disabled has a valid MIG state by definition
-func (d nvmlDevice) isMigValid() (bool, error) {
-	migEnabled, err := d.isMigEnabled()
-	if err != nil {
-		return false, fmt.Errorf("error checking MIG enabled: %v", err)
-	}
-	if !migEnabled {
-		return true, nil
-	}
-
-	migCount, err := d.getMigDeviceCount()
-	if err != nil {
-		return false, fmt.Errorf("error getting number of MIG devices: %v", err)
-	}
-
-	return migCount > 0, nil
-}
-
-// getMigDeviceCount gets the number of MIG devices associated with the specified device
-func (d nvmlDevice) getMigDeviceCount() (int, error) {
-	var migCount int
-	err := nvmlDevice(d).walkMigDevices(func(i int, d nvml.Device) error {
-		migCount++
-		return nil
-	})
-	if err != nil {
-		return 0, err
-	}
-
-	return migCount, nil
-}
-
-// isMigDevice checks if the given NVML device is a MIG device (as opposed to a GPU device)
-func (d nvmlDevice) isMigDevice() (bool, error) {
-	err := nvmlLookupSymbol("nvmlDeviceIsMigDeviceHandle")
-	if err != nil {
-		return false, nil
-	}
-	isMig, ret := nvml.Device(d).IsMigDeviceHandle()
-	if ret != nvml.SUCCESS {
-		return false, fmt.Errorf("%v", nvml.ErrorString(ret))
-	}
-	return isMig, nil
-}
-
-// getMigProfile gets the MIG profile name associated with the given MIG device
-func (d nvmlDevice) getMigProfile() (string, error) {
-	isMig, err := d.isMigDevice()
-	if err != nil {
-		return "", fmt.Errorf("error checking if device is a MIG device: %v", err)
-	}
-	if !isMig {
-		return "", fmt.Errorf("device handle is not a MIG device")
-	}
-
-	attr, ret := nvml.Device(d).GetAttributes()
-	if ret != nvml.SUCCESS {
-		return "", fmt.Errorf("error getting MIG device attributes: %v", nvml.ErrorString(ret))
-	}
-
-	g := attr.GpuInstanceSliceCount
-	c := attr.ComputeInstanceSliceCount
-	gb := ((attr.MemorySizeMB + 1024 - 1) / 1024)
-
-	var p string
-	if g == c {
-		p = fmt.Sprintf("%dg.%dgb", g, gb)
-	} else {
-		p = fmt.Sprintf("%dc.%dg.%dgb", c, g, gb)
-	}
-
-	return p, nil
-}
-
 // getPaths returns the set of Paths associated with the given device (MIG or GPU)
 func (d nvmlDevice) getPaths() ([]string, error) {
-	isMig, err := d.isMigDevice()
-	if err != nil {
-		return nil, fmt.Errorf("error checking if device is a MIG device: %v", err)
-	}
-
-	if isMig {
-		return nvmlMigDevice(d).getPaths()
-	}
-
-	minor, ret := nvml.Device(d).GetMinorNumber()
+	minor, ret := d.GetMinorNumber()
 	if ret != nvml.SUCCESS {
-		return nil, fmt.Errorf("error getting GPU device minor number: %v", nvml.ErrorString(ret))
+		return nil, fmt.Errorf("error getting GPU device minor number: %v", ret)
 	}
 	path := fmt.Sprintf("/dev/nvidia%d", minor)
 
@@ -313,23 +60,23 @@ func (d nvmlMigDevice) getPaths() ([]string, error) {
 		return nil, fmt.Errorf("error getting MIG capability device paths: %v", err)
 	}
 
-	gi, ret := nvml.Device(d).GetGpuInstanceId()
+	gi, ret := d.GetGpuInstanceId()
 	if ret != nvml.SUCCESS {
-		return nil, fmt.Errorf("error getting GPU Instance ID: %v", nvml.ErrorString(ret))
+		return nil, fmt.Errorf("error getting GPU Instance ID: %v", ret)
 	}
 
-	ci, ret := nvml.Device(d).GetComputeInstanceId()
+	ci, ret := d.GetComputeInstanceId()
 	if ret != nvml.SUCCESS {
-		return nil, fmt.Errorf("error getting Compute Instance ID: %v", nvml.ErrorString(ret))
+		return nil, fmt.Errorf("error getting Compute Instance ID: %v", ret)
 	}
 
-	parent, ret := nvml.Device(d).GetDeviceHandleFromMigDeviceHandle()
+	parent, ret := d.GetDeviceHandleFromMigDeviceHandle()
 	if ret != nvml.SUCCESS {
-		return nil, fmt.Errorf("error getting parent device: %v", nvml.ErrorString(ret))
+		return nil, fmt.Errorf("error getting parent device: %v", ret)
 	}
 	minor, ret := parent.GetMinorNumber()
 	if ret != nvml.SUCCESS {
-		return nil, fmt.Errorf("error getting GPU device minor number: %v", nvml.ErrorString(ret))
+		return nil, fmt.Errorf("error getting GPU device minor number: %v", ret)
 	}
 	parentPath := fmt.Sprintf("/dev/nvidia%d", minor)
 
@@ -354,22 +101,9 @@ func (d nvmlMigDevice) getPaths() ([]string, error) {
 
 // getNumaNode returns the NUMA node associated with the given device (MIG or GPU)
 func (d nvmlDevice) getNumaNode() (*int, error) {
-	isMig, err := d.isMigDevice()
-	if err != nil {
-		return nil, fmt.Errorf("error checking if device is a MIG device: %v", err)
-	}
-
-	if isMig {
-		parent, ret := nvml.Device(d).GetDeviceHandleFromMigDeviceHandle()
-		if ret != nvml.SUCCESS {
-			return nil, fmt.Errorf("error getting parent GPU device from MIG device: %v", nvml.ErrorString(ret))
-		}
-		d = nvmlDevice(parent)
-	}
-
-	info, ret := nvml.Device(d).GetPciInfo()
+	info, ret := d.GetPciInfo()
 	if ret != nvml.SUCCESS {
-		return nil, fmt.Errorf("error getting PCI Bus Info of device: %v", nvml.ErrorString(ret))
+		return nil, fmt.Errorf("error getting PCI Bus Info of device: %v", ret)
 	}
 
 	// Discard leading zeros.
@@ -394,15 +128,32 @@ func (d nvmlDevice) getNumaNode() (*int, error) {
 	return &n, nil
 }
 
+// getNumaNode for a MIG device is the NUMA node of the parent device.
+func (d nvmlMigDevice) getNumaNode() (*int, error) {
+	parent, ret := d.GetDeviceHandleFromMigDeviceHandle()
+	if ret != nvml.SUCCESS {
+		return nil, fmt.Errorf("error getting parent GPU device from MIG device: %v", ret)
+	}
+	return nvmlDevice{parent}.getNumaNode()
+}
+
 // assertAllMigDevicesAreValid ensures that each MIG-enabled device has at least one MIG device
 // associated with it.
-func assertAllMigDevicesAreValid(uniform bool) error {
-	err := walkGPUDevices(func(i int, d nvml.Device) error {
-		migValid, err := nvmlDevice(d).isMigValid()
+func (b *builder) assertAllMigDevicesAreValid(uniform bool) error {
+	err := b.VisitDevices(func(i int, d device.Device) error {
+		isMigEnabled, err := d.IsMigEnabled()
 		if err != nil {
 			return err
 		}
-		if !migValid {
+		if !isMigEnabled {
+			return nil
+		}
+		migDevices, err := d.GetMigDevices()
+		if err != nil {
+			return err
+		}
+		if len(migDevices) == 0 {
+			i := 0
 			return fmt.Errorf("device %v has an invalid MIG configuration", i)
 		}
 		return nil
@@ -416,10 +167,10 @@ func assertAllMigDevicesAreValid(uniform bool) error {
 	}
 
 	var previousAttributes *nvml.DeviceAttributes
-	return walkMigDevices(func(i, j int, d nvml.Device) error {
-		attrs, ret := d.GetAttributes()
+	return b.VisitMigDevices(func(i int, d device.Device, j int, m device.MigDevice) error {
+		attrs, ret := m.GetAttributes()
 		if ret != nvml.SUCCESS {
-			return fmt.Errorf("error getting device attributes: %v", nvml.ErrorString(ret))
+			return fmt.Errorf("error getting device attributes: %v", ret)
 		}
 		if previousAttributes == nil {
 			previousAttributes = &attrs
