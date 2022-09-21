@@ -94,7 +94,7 @@ github.com/stretchr/testify/require
 # github.com/urfave/cli/v2 v2.4.0
 ## explicit; go 1.11
 github.com/urfave/cli/v2
-# gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20220916141532-01649c65eac1
+# gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20220922133427-1049a7fa76a9
 ## explicit; go 1.16
 gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device
 gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info

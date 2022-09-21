@@ -65,11 +65,17 @@ var _ Device = &DeviceMock{}
 // 			GetPciInfoFunc: func() (PciInfo, Return) {
 // 				panic("mock out the GetPciInfo method")
 // 			},
+// 			GetSupportedEventTypesFunc: func() (uint64, Return) {
+// 				panic("mock out the GetSupportedEventTypes method")
+// 			},
 // 			GetUUIDFunc: func() (string, Return) {
 // 				panic("mock out the GetUUID method")
 // 			},
 // 			IsMigDeviceHandleFunc: func() (bool, Return) {
 // 				panic("mock out the IsMigDeviceHandle method")
+// 			},
+// 			RegisterEventsFunc: func(v uint64, eventSet EventSet) Return {
+// 				panic("mock out the RegisterEvents method")
 // 			},
 // 			SetMigModeFunc: func(Mode int) (Return, Return) {
 // 				panic("mock out the SetMigMode method")
@@ -129,11 +135,17 @@ type DeviceMock struct {
 	// GetPciInfoFunc mocks the GetPciInfo method.
 	GetPciInfoFunc func() (PciInfo, Return)
 
+	// GetSupportedEventTypesFunc mocks the GetSupportedEventTypes method.
+	GetSupportedEventTypesFunc func() (uint64, Return)
+
 	// GetUUIDFunc mocks the GetUUID method.
 	GetUUIDFunc func() (string, Return)
 
 	// IsMigDeviceHandleFunc mocks the IsMigDeviceHandle method.
 	IsMigDeviceHandleFunc func() (bool, Return)
+
+	// RegisterEventsFunc mocks the RegisterEvents method.
+	RegisterEventsFunc func(v uint64, eventSet EventSet) Return
 
 	// SetMigModeFunc mocks the SetMigMode method.
 	SetMigModeFunc func(Mode int) (Return, Return)
@@ -196,11 +208,21 @@ type DeviceMock struct {
 		// GetPciInfo holds details about calls to the GetPciInfo method.
 		GetPciInfo []struct {
 		}
+		// GetSupportedEventTypes holds details about calls to the GetSupportedEventTypes method.
+		GetSupportedEventTypes []struct {
+		}
 		// GetUUID holds details about calls to the GetUUID method.
 		GetUUID []struct {
 		}
 		// IsMigDeviceHandle holds details about calls to the IsMigDeviceHandle method.
 		IsMigDeviceHandle []struct {
+		}
+		// RegisterEvents holds details about calls to the RegisterEvents method.
+		RegisterEvents []struct {
+			// V is the v argument value.
+			V uint64
+			// EventSet is the eventSet argument value.
+			EventSet EventSet
 		}
 		// SetMigMode holds details about calls to the SetMigMode method.
 		SetMigMode []struct {
@@ -224,8 +246,10 @@ type DeviceMock struct {
 	lockGetMinorNumber                     sync.RWMutex
 	lockGetName                            sync.RWMutex
 	lockGetPciInfo                         sync.RWMutex
+	lockGetSupportedEventTypes             sync.RWMutex
 	lockGetUUID                            sync.RWMutex
 	lockIsMigDeviceHandle                  sync.RWMutex
+	lockRegisterEvents                     sync.RWMutex
 	lockSetMigMode                         sync.RWMutex
 }
 
@@ -665,6 +689,32 @@ func (mock *DeviceMock) GetPciInfoCalls() []struct {
 	return calls
 }
 
+// GetSupportedEventTypes calls GetSupportedEventTypesFunc.
+func (mock *DeviceMock) GetSupportedEventTypes() (uint64, Return) {
+	if mock.GetSupportedEventTypesFunc == nil {
+		panic("DeviceMock.GetSupportedEventTypesFunc: method is nil but Device.GetSupportedEventTypes was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockGetSupportedEventTypes.Lock()
+	mock.calls.GetSupportedEventTypes = append(mock.calls.GetSupportedEventTypes, callInfo)
+	mock.lockGetSupportedEventTypes.Unlock()
+	return mock.GetSupportedEventTypesFunc()
+}
+
+// GetSupportedEventTypesCalls gets all the calls that were made to GetSupportedEventTypes.
+// Check the length with:
+//     len(mockedDevice.GetSupportedEventTypesCalls())
+func (mock *DeviceMock) GetSupportedEventTypesCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockGetSupportedEventTypes.RLock()
+	calls = mock.calls.GetSupportedEventTypes
+	mock.lockGetSupportedEventTypes.RUnlock()
+	return calls
+}
+
 // GetUUID calls GetUUIDFunc.
 func (mock *DeviceMock) GetUUID() (string, Return) {
 	if mock.GetUUIDFunc == nil {
@@ -714,6 +764,41 @@ func (mock *DeviceMock) IsMigDeviceHandleCalls() []struct {
 	mock.lockIsMigDeviceHandle.RLock()
 	calls = mock.calls.IsMigDeviceHandle
 	mock.lockIsMigDeviceHandle.RUnlock()
+	return calls
+}
+
+// RegisterEvents calls RegisterEventsFunc.
+func (mock *DeviceMock) RegisterEvents(v uint64, eventSet EventSet) Return {
+	if mock.RegisterEventsFunc == nil {
+		panic("DeviceMock.RegisterEventsFunc: method is nil but Device.RegisterEvents was just called")
+	}
+	callInfo := struct {
+		V        uint64
+		EventSet EventSet
+	}{
+		V:        v,
+		EventSet: eventSet,
+	}
+	mock.lockRegisterEvents.Lock()
+	mock.calls.RegisterEvents = append(mock.calls.RegisterEvents, callInfo)
+	mock.lockRegisterEvents.Unlock()
+	return mock.RegisterEventsFunc(v, eventSet)
+}
+
+// RegisterEventsCalls gets all the calls that were made to RegisterEvents.
+// Check the length with:
+//     len(mockedDevice.RegisterEventsCalls())
+func (mock *DeviceMock) RegisterEventsCalls() []struct {
+	V        uint64
+	EventSet EventSet
+} {
+	var calls []struct {
+		V        uint64
+		EventSet EventSet
+	}
+	mock.lockRegisterEvents.RLock()
+	calls = mock.calls.RegisterEvents
+	mock.lockRegisterEvents.RUnlock()
 	return calls
 }
 

@@ -28,6 +28,7 @@ type Interface interface {
 	DeviceGetHandleByIndex(Index int) (Device, Return)
 	DeviceGetHandleByUUID(UUID string) (Device, Return)
 	ErrorString(r Return) string
+	EventSetCreate() (EventSet, Return)
 	Init() Return
 	Shutdown() Return
 	SystemGetCudaDriverVersion() (int, Return)
@@ -54,8 +55,10 @@ type Device interface {
 	GetMinorNumber() (int, Return)
 	GetName() (string, Return)
 	GetPciInfo() (PciInfo, Return)
+	GetSupportedEventTypes() (uint64, Return)
 	GetUUID() (string, Return)
 	IsMigDeviceHandle() (bool, Return)
+	RegisterEvents(uint64, EventSet) Return
 	SetMigMode(Mode int) (Return, Return)
 }
 
@@ -95,6 +98,18 @@ type ComputeInstanceInfo struct {
 	ProfileId   uint32
 	Placement   ComputeInstancePlacement
 }
+
+// EventData defines NVML event Data
+type EventData struct {
+	Device            Device
+	EventType         uint64
+	EventData         uint64
+	GpuInstanceId     uint32
+	ComputeInstanceId uint32
+}
+
+// EventSet defines NVML event Data
+type EventSet nvml.EventSet
 
 // Return defines an NVML return type
 type Return nvml.Return

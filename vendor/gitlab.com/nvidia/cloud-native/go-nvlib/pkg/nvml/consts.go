@@ -85,3 +85,10 @@ const (
 	COMPUTE_INSTANCE_ENGINE_PROFILE_SHARED = nvml.COMPUTE_INSTANCE_ENGINE_PROFILE_SHARED
 	COMPUTE_INSTANCE_ENGINE_PROFILE_COUNT  = nvml.COMPUTE_INSTANCE_ENGINE_PROFILE_COUNT
 )
+
+// Event Types
+const (
+	EventTypeXidCriticalError  = nvml.EventTypeXidCriticalError
+	EventTypeSingleBitEccError = nvml.EventTypeSingleBitEccError
+	EventTypeDoubleBitEccError = nvml.EventTypeDoubleBitEccError
+)

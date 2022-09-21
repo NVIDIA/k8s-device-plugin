@@ -102,3 +102,9 @@ func (n *nvmlLib) SystemGetCudaDriverVersion() (int, Return) {
 func (n *nvmlLib) ErrorString(ret Return) string {
 	return nvml.ErrorString(nvml.Return(ret))
 }
+
+// EventSetCreate creates an event set
+func (n *nvmlLib) EventSetCreate() (EventSet, Return) {
+	e, r := nvml.EventSetCreate()
+	return EventSet(e), Return(r)
+}

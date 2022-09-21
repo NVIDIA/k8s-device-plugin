@@ -139,3 +139,14 @@ func (d nvmlDevice) GetName() (string, Return) {
 	n, r := nvml.Device(d).GetName()
 	return n, Return(r)
 }
+
+// RegisterEvents registers the specified event set and type with the device
+func (d nvmlDevice) RegisterEvents(EventTypes uint64, Set EventSet) Return {
+	return Return(nvml.Device(d).RegisterEvents(EventTypes, nvml.EventSet(Set)))
+}
+
+// GetSupportedEventTypes returns the events supported by the device
+func (d nvmlDevice) GetSupportedEventTypes() (uint64, Return) {
+	e, r := nvml.Device(d).GetSupportedEventTypes()
+	return e, Return(r)
+}

@@ -29,6 +29,9 @@ var _ Interface = &InterfaceMock{}
 // 			ErrorStringFunc: func(r Return) string {
 // 				panic("mock out the ErrorString method")
 // 			},
+// 			EventSetCreateFunc: func() (EventSet, Return) {
+// 				panic("mock out the EventSetCreate method")
+// 			},
 // 			InitFunc: func() Return {
 // 				panic("mock out the Init method")
 // 			},
@@ -59,6 +62,9 @@ type InterfaceMock struct {
 
 	// ErrorStringFunc mocks the ErrorString method.
 	ErrorStringFunc func(r Return) string
+
+	// EventSetCreateFunc mocks the EventSetCreate method.
+	EventSetCreateFunc func() (EventSet, Return)
 
 	// InitFunc mocks the Init method.
 	InitFunc func() Return
@@ -92,6 +98,9 @@ type InterfaceMock struct {
 			// R is the r argument value.
 			R Return
 		}
+		// EventSetCreate holds details about calls to the EventSetCreate method.
+		EventSetCreate []struct {
+		}
 		// Init holds details about calls to the Init method.
 		Init []struct {
 		}
@@ -109,6 +118,7 @@ type InterfaceMock struct {
 	lockDeviceGetHandleByIndex     sync.RWMutex
 	lockDeviceGetHandleByUUID      sync.RWMutex
 	lockErrorString                sync.RWMutex
+	lockEventSetCreate             sync.RWMutex
 	lockInit                       sync.RWMutex
 	lockShutdown                   sync.RWMutex
 	lockSystemGetCudaDriverVersion sync.RWMutex
@@ -231,6 +241,32 @@ func (mock *InterfaceMock) ErrorStringCalls() []struct {
 	mock.lockErrorString.RLock()
 	calls = mock.calls.ErrorString
 	mock.lockErrorString.RUnlock()
+	return calls
+}
+
+// EventSetCreate calls EventSetCreateFunc.
+func (mock *InterfaceMock) EventSetCreate() (EventSet, Return) {
+	if mock.EventSetCreateFunc == nil {
+		panic("InterfaceMock.EventSetCreateFunc: method is nil but Interface.EventSetCreate was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockEventSetCreate.Lock()
+	mock.calls.EventSetCreate = append(mock.calls.EventSetCreate, callInfo)
+	mock.lockEventSetCreate.Unlock()
+	return mock.EventSetCreateFunc()
+}
+
+// EventSetCreateCalls gets all the calls that were made to EventSetCreate.
+// Check the length with:
+//     len(mockedInterface.EventSetCreateCalls())
+func (mock *InterfaceMock) EventSetCreateCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockEventSetCreate.RLock()
+	calls = mock.calls.EventSetCreate
+	mock.lockEventSetCreate.RUnlock()
 	return calls
 }
 
