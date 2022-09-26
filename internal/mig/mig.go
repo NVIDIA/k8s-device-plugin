@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-
-	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 )
 
 const (
@@ -19,11 +17,6 @@ const (
 	nvcapsMigMinorsPath  = nvcapsProcDriverPath + "/mig-minors"
 	nvcapsDevicePath     = "/dev/nvidia-caps"
 )
-
-// GetMigDevicePartsByUUID returns the parent GPU UUID and GI and CI ids of the MIG device.
-func GetMigDevicePartsByUUID(uuid string) (string, uint, uint, error) {
-	return nvml.ParseMigDeviceUUID(uuid)
-}
 
 // GetMigCapabilityDevicePaths returns a mapping of MIG capability path to device node path
 func GetMigCapabilityDevicePaths() (map[string]string, error) {
@@ -89,46 +82,4 @@ func GetMigCapabilityDevicePaths() (map[string]string, error) {
 		capsDevicePaths[capPath] = fmt.Sprintf(nvcapsDevicePath+"/nvidia-cap%d", migMinor)
 	}
 	return capsDevicePaths, nil
-}
-
-// GetMigDeviceNodePaths returns a list of device node paths associated with a MIG device
-func GetMigDeviceNodePaths(uuid string) ([]string, error) {
-	capDevicePaths, err := GetMigCapabilityDevicePaths()
-	if err != nil {
-		return nil, fmt.Errorf("error getting MIG capability device paths: %v", err)
-	}
-
-	parentUUID, gi, ci, err := nvml.ParseMigDeviceUUID(uuid)
-	if err != nil {
-		return nil, fmt.Errorf("error separating MIG device into its constituent parts: %v", err)
-	}
-
-	parent, err := nvml.NewDeviceLiteByUUID(parentUUID)
-	if err != nil {
-		return nil, fmt.Errorf("error getting parent for MIG device with UUID '%v': %v", uuid, err)
-	}
-
-	var gpu int
-	_, err = fmt.Sscanf(parent.Path, "/dev/nvidia%d", &gpu)
-	if err != nil {
-		return nil, fmt.Errorf("error getting GPU minor: %v", err)
-	}
-
-	giCapPath := fmt.Sprintf(nvidiaCapabilitiesPath+"/gpu%d/mig/gi%d/access", gpu, gi)
-	if _, exists := capDevicePaths[giCapPath]; !exists {
-		return nil, fmt.Errorf("missing MIG GPU instance capability path: %v", giCapPath)
-	}
-
-	ciCapPath := fmt.Sprintf(nvidiaCapabilitiesPath+"/gpu%d/mig/gi%d/ci%d/access", gpu, gi, ci)
-	if _, exists := capDevicePaths[ciCapPath]; !exists {
-		return nil, fmt.Errorf("missing MIG GPU instance capability path: %v", giCapPath)
-	}
-
-	devicePaths := []string{
-		parent.Path,
-		capDevicePaths[giCapPath],
-		capDevicePaths[ciCapPath],
-	}
-
-	return devicePaths, nil
 }

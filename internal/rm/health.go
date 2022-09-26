@@ -23,8 +23,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/NVIDIA/go-nvml/pkg/nvml"
-	"github.com/NVIDIA/k8s-device-plugin/internal/mig"
+	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 )
 
 const (
@@ -49,17 +48,17 @@ func (r *resourceManager) checkHealth(stop <-chan interface{}, devices Devices, 
 		return nil
 	}
 
-	ret := nvml.Init()
+	ret := r.nvml.Init()
 	if ret != nvml.SUCCESS {
 		if *r.config.Flags.FailOnInitError {
-			return fmt.Errorf("failed to initialize NVML: %v", nvml.ErrorString(ret))
+			return fmt.Errorf("failed to initialize NVML: %v", ret)
 		}
 		return nil
 	}
 	defer func() {
-		ret := nvml.Shutdown()
+		ret := r.nvml.Shutdown()
 		if ret != nvml.SUCCESS {
-			log.Printf("Error shutting down NVML: %v", nvml.ErrorString(ret))
+			log.Printf("Error shutting down NVML: %v", ret)
 		}
 	}()
 
@@ -83,28 +82,52 @@ func (r *resourceManager) checkHealth(stop <-chan interface{}, devices Devices, 
 		skippedXids[additionalXid] = true
 	}
 
-	eventSet := nvmlNewEventSet()
-	defer nvmlDeleteEventSet(eventSet)
+	eventSet, ret := r.nvml.EventSetCreate()
+	if ret != nvml.SUCCESS {
+		return fmt.Errorf("failed to create event set: %v", ret)
+	}
+	defer eventSet.Free()
 
-	eventMask := nvmlXidCriticalError | nvmlDoubleBitEccError | nvmlSingleBitEccError
+	parentToDeviceMap := make(map[string]*Device)
+	deviceIDToGiMap := make(map[string]int)
+	deviceIDToCiMap := make(map[string]int)
+
+	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
 	for _, d := range devices {
-		gpu, _, _, err := mig.GetMigDevicePartsByUUID(d.ID)
+		uuid, gi, ci, err := r.getDevicePlacement(d)
 		if err != nil {
-			gpu = d.ID
-		}
-
-		err = nvmlRegisterEventForDevice(eventSet, eventMask, gpu)
-		if err != nil && strings.HasSuffix(err.Error(), "Not Supported") {
-			log.Printf("Warning: %s is too old to support healthchecking: %s. Marking it unhealthy.", d.ID, err)
+			log.Printf("Warning: could not determine device placement for %v: %v; Marking it unhealthy.", d.ID, err)
 			unhealthy <- d
 			continue
 		}
-		if err != nil {
-			return fmt.Errorf("unable to register events for health checking on GPU %v: %v", gpu, err)
+		deviceIDToGiMap[d.ID] = gi
+		deviceIDToCiMap[d.ID] = ci
+		parentToDeviceMap[uuid] = d
+
+		gpu, ret := r.nvml.DeviceGetHandleByUUID(uuid)
+		if ret != nvml.SUCCESS {
+			log.Printf("unable to get device handle from UUID: %v; marking it as unhealthy", ret)
+			unhealthy <- d
+			continue
+		}
+
+		supportedEvents, ret := gpu.GetSupportedEventTypes()
+		if ret != nvml.SUCCESS {
+			log.Printf("unabled to determine the supported events for %v: %v; marking it as unhealthy", d.ID, ret)
+			unhealthy <- d
+			continue
+		}
+
+		ret = gpu.RegisterEvents(eventMask&supportedEvents, eventSet)
+		if ret == nvml.ERROR_NOT_SUPPORTED {
+			log.Printf("Warning: Device %v is too old to support healthchecking.", d.ID)
+		}
+		if ret != nvml.SUCCESS {
+			log.Printf("Marking device %v as unhealthy: %v", d.ID, ret)
+			unhealthy <- d
 		}
 	}
 
-	successiveEventErrorCount := 0
 	for {
 		select {
 		case <-stop:
@@ -112,58 +135,56 @@ func (r *resourceManager) checkHealth(stop <-chan interface{}, devices Devices, 
 		default:
 		}
 
-		e, err := nvmlWaitForEvent(eventSet, 5000)
-		if err != nil && err.Error() == "Timeout" {
+		e, ret := eventSet.Wait(5000)
+		if ret == nvml.ERROR_TIMEOUT {
 			continue
 		}
-		if err != nil && err.Error() != "Timeout" {
-			successiveEventErrorCount++
-			log.Printf("Error waiting for event (%d of %d): %v", successiveEventErrorCount, maxSuccessiveEventErrorCount, err)
-			if successiveEventErrorCount >= maxSuccessiveEventErrorCount {
-				log.Printf("Marking all devices as unhealthy")
-				for _, d := range devices {
-					unhealthy <- d
-				}
-			}
-			continue
-		}
-
-		successiveEventErrorCount = 0
-		if e.Etype != nvmlXidCriticalError {
-			log.Printf("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
-			continue
-		}
-
-		if skippedXids[e.Edata] {
-			log.Printf("Skipping event %+v", e)
-			continue
-		}
-
-		log.Printf("Processing event %+v", e)
-		if e.UUID == nil || len(*e.UUID) == 0 {
-			// All devices are unhealthy
-			log.Printf("XidCriticalError: Xid=%d, All devices will go unhealthy.", e.Edata)
+		if ret != nvml.SUCCESS {
+			log.Printf("Error waiting for event: %v; Marking all devices as unhealthy", ret)
 			for _, d := range devices {
 				unhealthy <- d
 			}
 			continue
 		}
 
-		for _, d := range devices {
-			// Please see https://github.com/NVIDIA/gpu-monitoring-tools/blob/148415f505c96052cb3b7fdf443b34ac853139ec/bindings/go/nvml/nvml.h#L1424
-			// for the rationale why gi and ci can be set as such when the UUID is a full GPU UUID and not a MIG device UUID.
-			gpu, gi, ci, err := mig.GetMigDevicePartsByUUID(d.ID)
-			if err != nil {
-				gpu = d.ID
-				gi = 0xFFFFFFFF
-				ci = 0xFFFFFFFF
-			}
+		if e.EventType != nvml.EventTypeXidCriticalError {
+			log.Printf("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
+			continue
+		}
 
-			if gpu == *e.UUID && gi == *e.GpuInstanceID && ci == *e.ComputeInstanceID {
-				log.Printf("XidCriticalError: Xid=%d on Device=%s, the device will go unhealthy.", e.Edata, d.ID)
+		if skippedXids[e.EventData] {
+			log.Printf("Skipping event %+v", e)
+			continue
+		}
+
+		log.Printf("Processing event %+v", e)
+		eventUUID, ret := e.Device.GetUUID()
+		if ret != nvml.SUCCESS {
+			// If we cannot reliably determine the device UUID, we mark all devices as unhealthy.
+			log.Printf("Failed to determine uuid for event %v: %v; Marking all devices as unhealthy.", e, ret)
+			for _, d := range devices {
 				unhealthy <- d
 			}
+			continue
 		}
+
+		d, exists := parentToDeviceMap[eventUUID]
+		if !exists {
+			log.Printf("Ignoring event for unexpected device: %v", eventUUID)
+			continue
+		}
+
+		if d.IsMigDevice() && e.GpuInstanceId != 0xFFFFFFFF && e.ComputeInstanceId != 0xFFFFFFFF {
+			gi := deviceIDToGiMap[d.ID]
+			ci := deviceIDToCiMap[d.ID]
+			if !(uint32(gi) == e.GpuInstanceId && uint32(ci) == e.ComputeInstanceId) {
+				continue
+			}
+			log.Printf("Event for mig device %v (gi=%v, ci=%v)", d.ID, gi, ci)
+		}
+
+		log.Printf("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
+		unhealthy <- d
 	}
 }
 
@@ -190,4 +211,70 @@ func getAdditionalXids(input string) []uint64 {
 	}
 
 	return additionalXids
+}
+
+// getDevicePlacement returns the placement of the specified device.
+// For a MIG device the placement is defined by the 3-tuple <parent UUID, GI, CI>
+// For a full device the returned 3-tuple is the device's uuid and 0xFFFFFFFF for the other two elements.
+func (r *resourceManager) getDevicePlacement(d *Device) (string, int, int, error) {
+	if !d.IsMigDevice() {
+		return d.ID, 0xFFFFFFFF, 0xFFFFFFFF, nil
+	}
+	return r.getMigDeviceParts(d)
+}
+
+// getMigDeviceParts returns the parent GI and CI ids of the MIG device.
+func (r *resourceManager) getMigDeviceParts(d *Device) (string, int, int, error) {
+	if !d.IsMigDevice() {
+		return "", 0, 0, fmt.Errorf("cannot get GI and CI of full device")
+	}
+	// For older driver versions, the call to DeviceGetHandleByUUID will fail for MIG devices.
+	mig, ret := r.nvml.DeviceGetHandleByUUID(d.ID)
+	if ret == nvml.SUCCESS {
+		parentHandle, ret := mig.GetDeviceHandleFromMigDeviceHandle()
+		if ret != nvml.SUCCESS {
+			return "", 0, 0, fmt.Errorf("failed to get parent device handle: %v", ret)
+		}
+
+		parentUUID, ret := parentHandle.GetUUID()
+		if ret != nvml.SUCCESS {
+			return "", 0, 0, fmt.Errorf("failed to get parent uuid: %v", ret)
+		}
+		gi, ret := mig.GetGpuInstanceId()
+		if ret != nvml.SUCCESS {
+			return "", 0, 0, fmt.Errorf("failed to get GPU Instance ID: %v", ret)
+		}
+
+		ci, ret := mig.GetComputeInstanceId()
+		if ret != nvml.SUCCESS {
+			return "", 0, 0, fmt.Errorf("failed to get Compute Instance ID: %v", ret)
+		}
+		return parentUUID, gi, ci, nil
+	}
+	return parseMigDeviceUUID(d.ID)
+}
+
+// parseMigDeviceUUID splits the MIG device UUID into the parent device UUID and ci and gi
+func parseMigDeviceUUID(mig string) (string, int, int, error) {
+	tokens := strings.SplitN(mig, "-", 2)
+	if len(tokens) != 2 || tokens[0] != "MIG" {
+		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+	}
+
+	tokens = strings.SplitN(tokens[1], "/", 3)
+	if len(tokens) != 3 || !strings.HasPrefix(tokens[0], "GPU-") {
+		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+	}
+
+	gi, err := strconv.Atoi(tokens[1])
+	if err != nil {
+		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+	}
+
+	ci, err := strconv.Atoi(tokens[2])
+	if err != nil {
+		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+	}
+
+	return tokens[0], gi, ci, nil
 }

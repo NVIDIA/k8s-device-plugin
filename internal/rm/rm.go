@@ -21,15 +21,17 @@ import (
 	"log"
 	"os"
 
-	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info"
+	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 )
 
 var _ ResourceManager = (*resourceManager)(nil)
 
 // resourceManager implements the ResourceManager interface
 type resourceManager struct {
+	nvml     nvml.Interface
 	config   *spec.Config
 	resource spec.ResourceName
 	devices  Devices
@@ -44,29 +46,29 @@ type ResourceManager interface {
 }
 
 // NewResourceManagers returns a []ResourceManager, one for each resource in 'config'.
-func NewResourceManagers(config *spec.Config) ([]ResourceManager, error) {
-	ret := nvml.Init()
+func NewResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]ResourceManager, error) {
+	ret := nvmllib.Init()
 	if ret != nvml.SUCCESS {
 		log.SetOutput(os.Stderr)
-		log.Printf("Failed to initialize NVML: %v.", nvml.ErrorString(ret))
+		log.Printf("Failed to initialize NVML: %v.", ret)
 		log.Printf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
 		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
 		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
 		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
 		log.SetOutput(os.Stdout)
 		if *config.Flags.FailOnInitError {
-			return nil, fmt.Errorf("failed to initialize NVML: %v", nvml.ErrorString(ret))
+			return nil, fmt.Errorf("failed to initialize NVML: %v", ret)
 		}
 		return nil, nil
 	}
 	defer func() {
-		ret := nvml.Shutdown()
+		ret := nvmllib.Shutdown()
 		if ret != nvml.SUCCESS {
-			log.Printf("Error shutting down NVML: %v", nvml.ErrorString(ret))
+			log.Printf("Error shutting down NVML: %v", ret)
 		}
 	}()
 
-	deviceMap, err := buildDeviceMap(config)
+	deviceMap, err := NewDeviceMap(nvmllib, config)
 	if err != nil {
 		return nil, fmt.Errorf("error building device map: %v", err)
 	}
@@ -74,6 +76,7 @@ func NewResourceManagers(config *spec.Config) ([]ResourceManager, error) {
 	var rms []ResourceManager
 	for resourceName, devices := range deviceMap {
 		r := &resourceManager{
+			nvml:     nvmllib,
 			config:   config,
 			resource: resourceName,
 			devices:  devices,
@@ -121,22 +124,30 @@ func AddDefaultResourcesToConfig(config *spec.Config) error {
 			return nil
 		}
 
-		ret := nvml.Init()
+		nvmllib := nvml.New()
+		ret := nvmllib.Init()
 		if ret != nvml.SUCCESS {
 			if *config.Flags.FailOnInitError {
-				return fmt.Errorf("failed to initialize NVML: %v", nvml.ErrorString(ret))
+				return fmt.Errorf("failed to initialize NVML: %v", ret)
 			}
 			return nil
 		}
 		defer func() {
-			ret := nvml.Shutdown()
+			ret := nvmllib.Shutdown()
 			if ret != nvml.SUCCESS {
-				log.Printf("Error shutting down NVML: %v", nvml.ErrorString(ret))
+				log.Printf("Error shutting down NVML: %v", ret)
 			}
 		}()
 
-		return walkMigProfiles(func(migProfile string) error {
-			return config.Resources.AddMIGResource(migProfile, "mig-"+migProfile)
+		devicelib := device.New(
+			device.WithNvml(nvmllib),
+		)
+		return devicelib.VisitMigProfiles(func(p device.MigProfile) error {
+			info := p.GetInfo()
+			if info.C != info.G {
+				return nil
+			}
+			return config.Resources.AddMIGResource(p.String(), "mig-"+p.String())
 		})
 	}
 	return nil
