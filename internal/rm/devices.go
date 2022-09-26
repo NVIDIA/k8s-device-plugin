@@ -233,8 +233,8 @@ func (rs AnnotatedIDs) GetIDs() []string {
 }
 
 // updateDeviceMapWithReplicas returns an updated map of resource names to devices with replica information from spec.Config.Sharing.TimeSlicing.Resources
-func updateDeviceMapWithReplicas(config *spec.Config, oDevices map[spec.ResourceName]Devices) (map[spec.ResourceName]Devices, error) {
-	devices := make(map[spec.ResourceName]Devices)
+func updateDeviceMapWithReplicas(config *spec.Config, oDevices DeviceMap) (DeviceMap, error) {
+	devices := make(DeviceMap)
 
 	// Begin by walking config.Sharing.TimeSlicing.Resources and building a map of just the resource names.
 	names := make(map[spec.ResourceName]bool)
