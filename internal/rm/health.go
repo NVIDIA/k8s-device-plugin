@@ -89,28 +89,20 @@ func (r *resourceManager) checkHealth(stop <-chan interface{}, devices Devices, 
 	defer eventSet.Free()
 
 	parentToDeviceMap := make(map[string]*Device)
-	migToGiMap := make(map[string]uint32)
-	migToCiMap := make(map[string]uint32)
+	deviceIDToGiMap := make(map[string]int)
+	deviceIDToCiMap := make(map[string]int)
 
 	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
 	for _, d := range devices {
-		uuid, err := r.getParentUUIDForDevice(d)
+		uuid, gi, ci, err := r.getDevicePlacement(d)
 		if err != nil {
-			log.Printf("Warning: could not determine parent device for %v: %v; Marking it unhealthy.", d.ID, err)
+			log.Printf("Warning: could not determine device placement for %v: %v; Marking it unhealthy.", d.ID, err)
 			unhealthy <- d
 			continue
 		}
+		deviceIDToGiMap[d.ID] = gi
+		deviceIDToCiMap[d.ID] = ci
 		parentToDeviceMap[uuid] = d
-		if d.IsMigDevice() {
-			gi, ci, err := r.getMigDeviceParts(d)
-			if err != nil {
-				log.Printf("Warning: could not determine GI and CI for mig device %v: %v; Marking it unhealthy.", d.ID, err)
-				unhealthy <- d
-				continue
-			}
-			migToGiMap[d.ID] = uint32(gi)
-			migToCiMap[d.ID] = uint32(ci)
-		}
 
 		gpu, ret := r.nvml.DeviceGetHandleByUUID(uuid)
 		if ret != nvml.SUCCESS {
@@ -176,16 +168,16 @@ func (r *resourceManager) checkHealth(stop <-chan interface{}, devices Devices, 
 			continue
 		}
 
-		d, ok := parentToDeviceMap[eventUUID]
-		if !ok {
+		d, exists := parentToDeviceMap[eventUUID]
+		if !exists {
 			log.Printf("Ignoring event for unexpected device: %v", eventUUID)
 			continue
 		}
 
 		if d.IsMigDevice() && e.GpuInstanceId != 0xFFFFFFFF && e.ComputeInstanceId != 0xFFFFFFFF {
-			gi := migToGiMap[d.ID]
-			ci := migToCiMap[d.ID]
-			if !(gi == e.GpuInstanceId && ci == e.ComputeInstanceId) {
+			gi := deviceIDToGiMap[d.ID]
+			ci := deviceIDToCiMap[d.ID]
+			if !(uint32(gi) == e.GpuInstanceId && uint32(ci) == e.ComputeInstanceId) {
 				continue
 			}
 			log.Printf("Event for mig device %v (gi=%v, ci=%v)", d.ID, gi, ci)
@@ -221,62 +213,45 @@ func getAdditionalXids(input string) []uint64 {
 	return additionalXids
 }
 
-// getParentUUIDForDevice returns the parent of the Device or an error if this cannot be determined.
-// For a full GPU the parent UUID is defined as the ID of the device itself.
-func (r *resourceManager) getParentUUIDForDevice(d *Device) (string, error) {
-	uuid := d.ID
+// getDevicePlacement returns the placement of the specified device.
+// For a MIG device the placement is defined by the 3-tuple <parent UUID, GI, CI>
+// For a full device the returned 3-tuple is the device's uuid and 0xFFFFFFFF for the other two elements.
+func (r *resourceManager) getDevicePlacement(d *Device) (string, int, int, error) {
 	if !d.IsMigDevice() {
-		return uuid, nil
+		return d.ID, 0xFFFFFFFF, 0xFFFFFFFF, nil
 	}
-
-	// For older driver versions, the call to DeviceGetHandleByUUID will fail for MIG devices.
-	mig, ret := r.nvml.DeviceGetHandleByUUID(uuid)
-	if ret == nvml.SUCCESS {
-		parentHandle, ret := mig.GetDeviceHandleFromMigDeviceHandle()
-		if ret != nvml.SUCCESS {
-			return "", fmt.Errorf("failed to get parent device handle: %v", ret)
-		}
-
-		parentUUID, ret := parentHandle.GetUUID()
-		if ret != nvml.SUCCESS {
-			return "", fmt.Errorf("failed to get parent uuid: %v", ret)
-		}
-
-		return parentUUID, nil
-	}
-
-	parentUUID, _, _, err := parseMigDeviceUUID(uuid)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse parent uuid from mig uuid: %v", err)
-	}
-	return parentUUID, nil
+	return r.getMigDeviceParts(d)
 }
 
 // getMigDeviceParts returns the parent GI and CI ids of the MIG device.
-func (r *resourceManager) getMigDeviceParts(d *Device) (int, int, error) {
+func (r *resourceManager) getMigDeviceParts(d *Device) (string, int, int, error) {
 	if !d.IsMigDevice() {
-		return 0, 0, fmt.Errorf("cannot get GI and CI of full device")
+		return "", 0, 0, fmt.Errorf("cannot get GI and CI of full device")
 	}
 	// For older driver versions, the call to DeviceGetHandleByUUID will fail for MIG devices.
 	mig, ret := r.nvml.DeviceGetHandleByUUID(d.ID)
 	if ret == nvml.SUCCESS {
+		parentHandle, ret := mig.GetDeviceHandleFromMigDeviceHandle()
+		if ret != nvml.SUCCESS {
+			return "", 0, 0, fmt.Errorf("failed to get parent device handle: %v", ret)
+		}
+
+		parentUUID, ret := parentHandle.GetUUID()
+		if ret != nvml.SUCCESS {
+			return "", 0, 0, fmt.Errorf("failed to get parent uuid: %v", ret)
+		}
 		gi, ret := mig.GetGpuInstanceId()
 		if ret != nvml.SUCCESS {
-			return 0, 0, fmt.Errorf("failed to get GPU Instance ID: %v", ret)
+			return "", 0, 0, fmt.Errorf("failed to get GPU Instance ID: %v", ret)
 		}
 
 		ci, ret := mig.GetComputeInstanceId()
 		if ret != nvml.SUCCESS {
-			return 0, 0, fmt.Errorf("failed to get Compute Instance ID: %v", ret)
+			return "", 0, 0, fmt.Errorf("failed to get Compute Instance ID: %v", ret)
 		}
-		return gi, ci, nil
+		return parentUUID, gi, ci, nil
 	}
-	_, gi, ci, err := parseMigDeviceUUID(d.ID)
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to parse gi and ci from mig uuid: %v", err)
-	}
-
-	return gi, ci, err
+	return parseMigDeviceUUID(d.ID)
 }
 
 // parseMigDeviceUUID splits the MIG device UUID into the parent device UUID and ci and gi
