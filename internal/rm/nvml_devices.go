@@ -41,6 +41,17 @@ type nvmlDevice struct {
 // nvmlMigDevice allows for specific functions of nvmlDevice to be overridden.
 type nvmlMigDevice nvmlDevice
 
+var _ deviceInfo = (*nvmlDevice)(nil)
+var _ deviceInfo = (*nvmlMigDevice)(nil)
+
+func newGPUDevice(i int, gpu nvml.Device) (string, nvmlDevice) {
+	return fmt.Sprintf("%v", i), nvmlDevice{gpu}
+}
+
+func newMigDevice(i int, j int, mig nvml.Device) (string, nvmlMigDevice) {
+	return fmt.Sprintf("%v:%v", i, j), nvmlMigDevice{mig}
+}
+
 // GetUUID returns the UUID of the device
 func (d nvmlDevice) GetUUID() (string, error) {
 	uuid, ret := d.Device.GetUUID()

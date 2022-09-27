@@ -56,18 +56,16 @@ func (b *deviceMapBuilder) build() (DeviceMap, error) {
 
 // buildDeviceMapFromConfigResources builds a map of resource names to devices from spec.Config.Resources
 func (b *deviceMapBuilder) buildDeviceMapFromConfigResources() (DeviceMap, error) {
-	devices := make(DeviceMap)
-
-	numGPUs, err := b.buildGPUDeviceMap(devices)
+	deviceMap, err := b.buildGPUDeviceMap()
 	if err != nil {
 		return nil, fmt.Errorf("error building GPU device map: %v", err)
 	}
 
 	if *b.config.Flags.MigStrategy == spec.MigStrategyNone {
-		return devices, nil
+		return deviceMap, nil
 	}
 
-	numMIGs, err := b.buildMigDeviceMap(devices)
+	migDeviceMap, err := b.buildMigDeviceMap()
 	if err != nil {
 		return nil, fmt.Errorf("error building MIG device map: %v", err)
 	}
@@ -82,16 +80,18 @@ func (b *deviceMapBuilder) buildDeviceMapFromConfigResources() (DeviceMap, error
 		return nil, fmt.Errorf("invalid MIG configuration: %v", err)
 	}
 
-	if requireUniformMIGDevices && numGPUs > 0 && numMIGs > 0 {
+	if requireUniformMIGDevices && !deviceMap.isEmpty() && !migDeviceMap.isEmpty() {
 		return nil, fmt.Errorf("all devices on the node must be configured with the same migEnabled value")
 	}
 
-	return devices, nil
+	deviceMap.merge(migDeviceMap)
+
+	return deviceMap, nil
 }
 
 // buildGPUDeviceMap builds a map of resource names to GPU devices
-func (b *deviceMapBuilder) buildGPUDeviceMap(devices DeviceMap) (int, error) {
-	var numMatches int
+func (b *deviceMapBuilder) buildGPUDeviceMap() (DeviceMap, error) {
+	devices := make(DeviceMap)
 
 	b.VisitDevices(func(i int, gpu device.Device) error {
 		name, ret := gpu.GetName()
@@ -107,17 +107,18 @@ func (b *deviceMapBuilder) buildGPUDeviceMap(devices DeviceMap) (int, error) {
 		}
 		for _, resource := range b.config.Resources.GPUs {
 			if resource.Pattern.Matches(name) {
-				return devices.setGPUEntry(i, gpu, &resource)
+				index, info := newGPUDevice(i, gpu)
+				return devices.setEntry(resource.Name, index, info)
 			}
 		}
 		return fmt.Errorf("GPU name '%v' does not match any resource patterns", name)
 	})
-	return numMatches, nil
+	return devices, nil
 }
 
 // buildMigDeviceMap builds a map of resource names to MIG devices
-func (b *deviceMapBuilder) buildMigDeviceMap(devices DeviceMap) (int, error) {
-	var numMatches int
+func (b *deviceMapBuilder) buildMigDeviceMap() (DeviceMap, error) {
+	devices := make(DeviceMap)
 	err := b.VisitMigDevices(func(i int, d device.Device, j int, mig device.MigDevice) error {
 		migProfile, err := mig.GetProfile()
 		if err != nil {
@@ -125,13 +126,13 @@ func (b *deviceMapBuilder) buildMigDeviceMap(devices DeviceMap) (int, error) {
 		}
 		for _, resource := range b.config.Resources.MIGs {
 			if resource.Pattern.Matches(migProfile.String()) {
-				numMatches++
-				return devices.setMigEntry(i, j, mig, &resource)
+				index, info := newMigDevice(i, j, mig)
+				return devices.setEntry(resource.Name, index, info)
 			}
 		}
 		return fmt.Errorf("MIG profile '%v' does not match any resource patterns", migProfile)
 	})
-	return numMatches, err
+	return devices, err
 }
 
 // assertAllMigDevicesAreValid ensures that each MIG-enabled device has at least one MIG device
@@ -179,24 +180,6 @@ func (b *deviceMapBuilder) assertAllMigDevicesAreValid(uniform bool) error {
 	})
 }
 
-// setGPUEntry sets the DeviceMap entry for a given GPU device
-func (d DeviceMap) setGPUEntry(i int, gpu device.Device, resource *spec.Resource) error {
-	err := d.setEntry(resource.Name, fmt.Sprintf("%v", i), nvmlDevice{gpu})
-	if err != nil {
-		return fmt.Errorf("error setting GPU device entry: %v", err)
-	}
-	return nil
-}
-
-// setMigEntry sets the DeviceMap entry for a given MIG device
-func (d DeviceMap) setMigEntry(i, j int, mig nvml.Device, resource *spec.Resource) error {
-	err := d.setEntry(resource.Name, fmt.Sprintf("%v:%v", i, j), nvmlMigDevice{mig})
-	if err != nil {
-		return fmt.Errorf("error setting MIG device entry: %v", err)
-	}
-	return nil
-}
-
 // setEntry sets the DeviceMap entry for the specified resource
 func (d DeviceMap) setEntry(name spec.ResourceName, index string, device deviceInfo) error {
 	dev, err := BuildDevice(index, device)
@@ -213,4 +196,121 @@ func (d DeviceMap) insert(name spec.ResourceName, dev *Device) {
 		d[name] = make(Devices)
 	}
 	d[name][dev.ID] = dev
+}
+
+// merge merges two devices maps
+func (d DeviceMap) merge(o DeviceMap) {
+	for name, devices := range o {
+		for _, device := range devices {
+			d.insert(name, device)
+		}
+	}
+}
+
+// isEmpty checks whether a device map is empty
+func (d DeviceMap) isEmpty() bool {
+	for _, devices := range d {
+		if len(devices) > 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// getIDsOfDevicesToReplicate returns a list of dervice IDs that we want to replicate.
+func (d DeviceMap) getIDsOfDevicesToReplicate(r *spec.ReplicatedResource) ([]string, error) {
+	devices, exists := d[r.Name]
+	if !exists {
+		return nil, nil
+	}
+
+	// If all devices for this resource type are to be replicated.
+	if r.Devices.All {
+		return devices.GetIDs(), nil
+	}
+
+	// If a specific number of devices for this resource type are to be replicated.
+	if r.Devices.Count > 0 {
+		if r.Devices.Count > len(devices) {
+			return nil, fmt.Errorf("requested %d devices to be replicated, but only %d devices available", r.Devices.Count, len(devices))
+		}
+		return devices.GetIDs()[:r.Devices.Count], nil
+	}
+
+	// If a specific set of devices for this resource type are to be replicated.
+	if len(r.Devices.List) > 0 {
+		var ids []string
+		for _, ref := range r.Devices.List {
+			if ref.IsUUID() {
+				d := devices.GetByID(string(ref))
+				if d == nil {
+					return nil, fmt.Errorf("no matching device with UUID: %v", ref)
+				}
+				ids = append(ids, d.ID)
+			}
+			if ref.IsGPUIndex() || ref.IsMigIndex() {
+				d := devices.GetByIndex(string(ref))
+				if d == nil {
+					return nil, fmt.Errorf("no matching device at index: %v", ref)
+				}
+				ids = append(ids, d.ID)
+			}
+		}
+		return ids, nil
+	}
+
+	return nil, fmt.Errorf("unexpected error")
+}
+
+// updateDeviceMapWithReplicas returns an updated map of resource names to devices with replica information from spec.Config.Sharing.TimeSlicing.Resources
+func updateDeviceMapWithReplicas(config *spec.Config, oDevices DeviceMap) (DeviceMap, error) {
+	devices := make(DeviceMap)
+
+	// Begin by walking config.Sharing.TimeSlicing.Resources and building a map of just the resource names.
+	names := make(map[spec.ResourceName]bool)
+	for _, r := range config.Sharing.TimeSlicing.Resources {
+		names[r.Name] = true
+	}
+
+	// Copy over all devices from oDevices without a resource reference in TimeSlicing.Resources.
+	for r, ds := range oDevices {
+		if !names[r] {
+			devices[r] = ds
+		}
+	}
+
+	// Walk TimeSlicing.Resources and update devices in the device map as appropriate.
+	for _, r := range config.Sharing.TimeSlicing.Resources {
+		// Get the IDs of the devices we want to replicate from oDevices
+		ids, err := oDevices.getIDsOfDevicesToReplicate(&r)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get IDs of devices to replicate for '%v' resource: %v", r.Name, err)
+		}
+		// Skip any resources not matched in oDevices
+		if len(ids) == 0 {
+			continue
+		}
+
+		// Add any devices we don't want replicated directly into the device map.
+		for _, d := range oDevices[r.Name].Difference(oDevices[r.Name].Subset(ids)) {
+			devices.insert(r.Name, d)
+		}
+
+		// Create replicated devices add them to the device map.
+		// Rename the resource for replicated devices as requested.
+		name := r.Name
+		if r.Rename != "" {
+			name = r.Rename
+		}
+		for _, id := range ids {
+			for i := 0; i < r.Replicas; i++ {
+				annotatedID := string(NewAnnotatedID(id, i))
+				replicatedDevice := *(oDevices[r.Name][id])
+				replicatedDevice.ID = annotatedID
+				devices.insert(name, &replicatedDevice)
+			}
+		}
+	}
+
+	return devices, nil
 }
