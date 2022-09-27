@@ -19,7 +19,6 @@ package rm
 import (
 	"fmt"
 	"log"
-	"os"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
@@ -27,11 +26,8 @@ import (
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 )
 
-var _ ResourceManager = (*resourceManager)(nil)
-
-// resourceManager implements the ResourceManager interface
+// resourceManager forms the base type for specific resource manager implementations
 type resourceManager struct {
-	nvml     nvml.Interface
 	config   *spec.Config
 	resource spec.ResourceName
 	devices  Devices
@@ -41,52 +37,53 @@ type resourceManager struct {
 type ResourceManager interface {
 	Resource() spec.ResourceName
 	Devices() Devices
+	GetDevicePaths([]string) []string
 	GetPreferredAllocation(available, required []string, size int) ([]string, error)
 	CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error
 }
 
 // NewResourceManagers returns a []ResourceManager, one for each resource in 'config'.
 func NewResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]ResourceManager, error) {
-	ret := nvmllib.Init()
-	if ret != nvml.SUCCESS {
-		log.SetOutput(os.Stderr)
-		log.Printf("Failed to initialize NVML: %v.", ret)
-		log.Printf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
-		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
-		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
-		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
-		log.SetOutput(os.Stdout)
-		if *config.Flags.FailOnInitError {
-			return nil, fmt.Errorf("failed to initialize NVML: %v", ret)
+	// logWithReason logs the output of the has* / is* checks from the info.Interface
+	logWithReason := func(f func() (bool, string), tag string) bool {
+		is, reason := f()
+		if !is {
+			tag = "non-" + tag
 		}
-		return nil, nil
-	}
-	defer func() {
-		ret := nvmllib.Shutdown()
-		if ret != nvml.SUCCESS {
-			log.Printf("Error shutting down NVML: %v", ret)
-		}
-	}()
-
-	deviceMap, err := NewDeviceMap(nvmllib, config)
-	if err != nil {
-		return nil, fmt.Errorf("error building device map: %v", err)
+		log.Printf("Detected %v platform: %v", tag, reason)
+		return is
 	}
 
-	var rms []ResourceManager
-	for resourceName, devices := range deviceMap {
-		r := &resourceManager{
-			nvml:     nvmllib,
-			config:   config,
-			resource: resourceName,
-			devices:  devices,
-		}
-		if len(r.Devices()) != 0 {
-			rms = append(rms, r)
-		}
+	infolib := info.New()
+
+	hasNVML := logWithReason(infolib.HasNvml, "NVML")
+	isTegra := logWithReason(infolib.IsTegraSystem, "Tegra")
+
+	// The NVIDIA container stack does not yet support the use of integrated AND discrete GPUs on the same node.
+	if hasNVML && isTegra {
+		log.Printf("WARNING: Disabling Tegra-based resources on NVML system")
+		isTegra = false
 	}
 
-	return rms, nil
+	var resourceManagers []ResourceManager
+
+	if hasNVML {
+		nvmlManagers, err := NewNVMLResourceManagers(nvmllib, config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to construct NVML resource managers: %v", err)
+		}
+		resourceManagers = append(resourceManagers, nvmlManagers...)
+	}
+
+	if isTegra {
+		tegraManagers, err := NewTegraResourceManagers(config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to construct Tegra resource managers: %v", err)
+		}
+		resourceManagers = append(resourceManagers, tegraManagers...)
+	}
+
+	return resourceManagers, nil
 }
 
 // Resource gets the resource name associated with the ResourceManager
@@ -97,17 +94,6 @@ func (r *resourceManager) Resource() spec.ResourceName {
 // Resource gets the devices managed by the ResourceManager
 func (r *resourceManager) Devices() Devices {
 	return r.devices
-}
-
-// CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
-func (r *resourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
-	return r.checkHealth(stop, r.devices, unhealthy)
-}
-
-// GetPreferredAllocation runs an allocation algorithm over the inputs.
-// The algorithm chosen is based both on the incoming set of available devices and various config settings.
-func (r *resourceManager) GetPreferredAllocation(available, required []string, size int) ([]string, error) {
-	return r.getPreferredAllocation(available, required, size)
 }
 
 // AddDefaultResourcesToConfig adds default resource matching rules to config.Resources
