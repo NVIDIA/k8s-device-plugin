@@ -2,8 +2,31 @@ apiVersion: v1
 entries:
   nvidia-device-plugin:
   - apiVersion: v2
+    appVersion: 0.13.0-rc.1
+    created: "2022-10-11T13:31:21.513621+02:00"
+    dependencies:
+    - alias: nfd
+      condition: nfd.enabled,gfd.enabled
+      name: node-feature-discovery
+      repository: https://kubernetes-sigs.github.io/node-feature-discovery/charts
+      version: 0.11.0
+    - alias: gfd
+      condition: gfd.enabled
+      name: gpu-feature-discovery
+      repository: ""
+      version: 0.7.0-rc.1
+    description: A Helm chart for the nvidia-device-plugin on Kubernetes
+    digest: af3a81c60d229b3abfe1bdfae7d0947efbebc2242aef0680b55fa95bd1fc2e9c
+    home: https://github.com/NVIDIA/k8s-device-plugin
+    kubeVersion: '>= 1.10.0-0'
+    name: nvidia-device-plugin
+    type: application
+    urls:
+    - https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.13.0-rc.1.tgz
+    version: 0.13.0-rc.1
+  - apiVersion: v2
     appVersion: 0.12.3
-    created: "2022-09-12T13:30:36.044024036Z"
+    created: "2022-10-11T13:31:21.511788+02:00"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -26,7 +49,7 @@ entries:
     version: 0.12.3
   - apiVersion: v2
     appVersion: 0.12.2
-    created: "2022-09-12T13:30:36.041185814Z"
+    created: "2022-10-11T13:31:21.509941+02:00"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -49,7 +72,7 @@ entries:
     version: 0.12.2
   - apiVersion: v2
     appVersion: 0.12.1
-    created: "2022-09-12T13:30:36.039412196Z"
+    created: "2022-10-11T13:31:21.508215+02:00"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -72,7 +95,7 @@ entries:
     version: 0.12.1
   - apiVersion: v2
     appVersion: 0.12.0
-    created: "2022-09-12T13:30:36.037616327Z"
+    created: "2022-10-11T13:31:21.505135+02:00"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -95,7 +118,7 @@ entries:
     version: 0.12.0
   - apiVersion: v2
     appVersion: 0.12.0-rc.6
-    created: "2022-09-12T13:30:36.035838231Z"
+    created: "2022-10-11T13:31:21.503372+02:00"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -118,7 +141,7 @@ entries:
     version: 0.12.0-rc.6
   - apiVersion: v2
     appVersion: 0.12.0-rc.5
-    created: "2022-09-12T13:30:36.034109128Z"
+    created: "2022-10-11T13:31:21.501543+02:00"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -141,7 +164,7 @@ entries:
     version: 0.12.0-rc.5
   - apiVersion: v2
     appVersion: 0.12.0-rc.4
-    created: "2022-09-12T13:30:36.032485655Z"
+    created: "2022-10-11T13:31:21.500025+02:00"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -164,7 +187,7 @@ entries:
     version: 0.12.0-rc.4
   - apiVersion: v2
     appVersion: 0.12.0-rc.3
-    created: "2022-09-12T13:30:36.030757554Z"
+    created: "2022-10-11T13:31:21.498423+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 8fade18fc4f11b43e0690211fdbaf7b4fd81862a6824267c6ed5cbbf4f11a8a7
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -176,7 +199,7 @@ entries:
     version: 0.12.0-rc.3
   - apiVersion: v2
     appVersion: 0.12.0-rc.2
-    created: "2022-09-12T13:30:36.030357547Z"
+    created: "2022-10-11T13:31:21.497069+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: b5d6ee330ee18a1102a26ff43df7ec6dce5d354d1757b9e9d8e790cc4bb4688b
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -188,7 +211,7 @@ entries:
     version: 0.12.0-rc.2
   - apiVersion: v2
     appVersion: 0.12.0-rc.1
-    created: "2022-09-12T13:30:36.030002575Z"
+    created: "2022-10-11T13:31:21.496463+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 5c617c9c829bea516bb7a5db2baf591d34bebb58e79fbead06f3f974cfb7ba86
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -200,7 +223,7 @@ entries:
     version: 0.12.0-rc.1
   - apiVersion: v2
     appVersion: 0.11.0
-    created: "2022-09-12T13:30:36.029658584Z"
+    created: "2022-10-11T13:31:21.49585+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 0a6c5c4a1d7753625d9cda0de7994ce9dbd683846bfb4c9ca8b0bbeb5cf98c4b
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -212,7 +235,7 @@ entries:
     version: 0.11.0
   - apiVersion: v2
     appVersion: 0.10.0
-    created: "2022-09-12T13:30:36.029304003Z"
+    created: "2022-10-11T13:31:21.495133+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 2875296daa3b2d82019115131faad5939e1b7564739ca4f15ff6f31babf2b2ba
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -224,7 +247,7 @@ entries:
     version: 0.10.0
   - apiVersion: v2
     appVersion: 0.9.0
-    created: "2022-09-12T13:30:36.04914518Z"
+    created: "2022-10-11T13:31:21.524678+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 84988d3baa300487a2dc8e43fe2fb52a8587c82391b33bf9ce18ce577a6926c5
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -236,7 +259,7 @@ entries:
     version: 0.9.0
   - apiVersion: v2
     appVersion: 0.8.2
-    created: "2022-09-12T13:30:36.048824923Z"
+    created: "2022-10-11T13:31:21.524229+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 688a0d373716cbe7992d00c469e7deb68d13f86fb6b9151e58952af77c542e51
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -248,7 +271,7 @@ entries:
     version: 0.8.2
   - apiVersion: v2
     appVersion: 0.8.1
-    created: "2022-09-12T13:30:36.048512412Z"
+    created: "2022-10-11T13:31:21.523616+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: b401a983702d654919944306069ad0c9e934b17bf71c4b2403a7b20a270bb79c
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -260,7 +283,7 @@ entries:
     version: 0.8.1
   - apiVersion: v2
     appVersion: 0.8.0
-    created: "2022-09-12T13:30:36.048218175Z"
+    created: "2022-10-11T13:31:21.522998+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: f1bda480b34cc3cd11436e64ef9e05e61ef4275bc4def1f0ee4353a8c5738e90
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -272,7 +295,7 @@ entries:
     version: 0.8.0
   - apiVersion: v2
     appVersion: 0.7.3
-    created: "2022-09-12T13:30:36.047890825Z"
+    created: "2022-10-11T13:31:21.522553+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: dfbad87e2bb96b07fb7d954feaa75b31f9fa6094cdf79629cdd06b059d73579c
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -284,7 +307,7 @@ entries:
     version: 0.7.3
   - apiVersion: v2
     appVersion: 0.7.2
-    created: "2022-09-12T13:30:36.047580598Z"
+    created: "2022-10-11T13:31:21.522087+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 96baf5b857113497c3d9cf607af15d9baeb6eda7e3301eeb9617c065df0b2121
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -296,7 +319,7 @@ entries:
     version: 0.7.2
   - apiVersion: v2
     appVersion: 0.7.1
-    created: "2022-09-12T13:30:36.047294356Z"
+    created: "2022-10-11T13:31:21.521573+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: db847545cfa603f55b79284933f6d44a1193aeedc37c85e861dbe62d9b344a49
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -308,7 +331,7 @@ entries:
     version: 0.7.1
   - apiVersion: v2
     appVersion: 0.7.0
-    created: "2022-09-12T13:30:36.046999077Z"
+    created: "2022-10-11T13:31:21.521004+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 4e982ffc0fbca6b5ee2cb20ec6c88b30bc27f8ef7fdf1481b8f345b34f53d1a0
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -320,7 +343,7 @@ entries:
     version: 0.7.0
   - apiVersion: v2
     appVersion: 0.7.0-rc.8
-    created: "2022-09-12T13:30:36.046692177Z"
+    created: "2022-10-11T13:31:21.520358+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 7c8ffd37565d6395a288fc51d6a8af4f57cd23b571656e8c82ab1ca84924acbe
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -332,7 +355,7 @@ entries:
     version: 0.7.0-rc.8
   - apiVersion: v2
     appVersion: 0.7.0-rc.7
-    created: "2022-09-12T13:30:36.046395244Z"
+    created: "2022-10-11T13:31:21.519686+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 457b324725f8ad68b609110c74b2eac363d8521d17f1db470636c7b059d2c3e7
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -344,7 +367,7 @@ entries:
     version: 0.7.0-rc.7
   - apiVersion: v2
     appVersion: 0.7.0-rc.6
-    created: "2022-09-12T13:30:36.046082192Z"
+    created: "2022-10-11T13:31:21.517837+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: ef40df5dbe87c10860741db634fe30236bea12e5f9d1ccfcd0084307bcd89545
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -356,7 +379,7 @@ entries:
     version: 0.7.0-rc.6
   - apiVersion: v2
     appVersion: 0.7.0-rc.5
-    created: "2022-09-12T13:30:36.045744452Z"
+    created: "2022-10-11T13:31:21.517283+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: f0697e1ea997a32b32b80e1269fb0520fa09e30d77f8b7299d46faeb43fc299a
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -368,7 +391,7 @@ entries:
     version: 0.7.0-rc.5
   - apiVersion: v2
     appVersion: 0.7.0-rc.4
-    created: "2022-09-12T13:30:36.045429507Z"
+    created: "2022-10-11T13:31:21.516662+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: ff0e44aa17572f586fac1b7fc483c0a6664490f76802e5739f3116ea4d8d19d0
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -380,7 +403,7 @@ entries:
     version: 0.7.0-rc.4
   - apiVersion: v2
     appVersion: 0.7.0-rc.3
-    created: "2022-09-12T13:30:36.045109882Z"
+    created: "2022-10-11T13:31:21.515881+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: aedd1691a082b089998d7b4a699997373a9af51cb25a542da347412d27319191
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -392,7 +415,7 @@ entries:
     version: 0.7.0-rc.3
   - apiVersion: v2
     appVersion: 0.7.0-rc.2
-    created: "2022-09-12T13:30:36.044793222Z"
+    created: "2022-10-11T13:31:21.515201+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: d61cfe352a5fdebb656636a1b78d81661eb9425c4fb00f2f0dadd9a1d4edebca
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -404,7 +427,7 @@ entries:
     version: 0.7.0-rc.2
   - apiVersion: v2
     appVersion: 0.7.0-rc.1
-    created: "2022-09-12T13:30:36.04450693Z"
+    created: "2022-10-11T13:31:21.514686+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 4ec5ce800641292bae9c49e0cd0c564829864f09371a498e4765e8545be8d1e5
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -416,7 +439,7 @@ entries:
     version: 0.7.0-rc.1
   - apiVersion: v2
     appVersion: 0.6.0
-    created: "2022-09-12T13:30:36.044270202Z"
+    created: "2022-10-11T13:31:21.514155+02:00"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 9e41b02c88844890c5f4b78a6d0beaeb936b478116172bb015381ccf32f6057a
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -426,4 +449,4 @@ entries:
     urls:
     - https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.6.0.tgz
     version: 0.6.0
-generated: "2022-09-12T13:30:36.028681233Z"
+generated: "2022-10-11T13:31:21.494122+02:00"
