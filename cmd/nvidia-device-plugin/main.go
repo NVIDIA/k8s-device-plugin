@@ -107,7 +107,12 @@ func main() {
 }
 
 func validateFlags(config *spec.Config) error {
-	if *config.Flags.Plugin.DeviceListStrategy != spec.DeviceListStrategyEnvvar && *config.Flags.Plugin.DeviceListStrategy != spec.DeviceListStrategyVolumeMounts {
+	allowedDeviceListStrategy := map[string]bool{
+		spec.DeviceListStrategyEnvvar:         true,
+		spec.DeviceListStrategyVolumeMounts:   true,
+		spec.DeviceListStrategyCDIAnnotations: true,
+	}
+	if !allowedDeviceListStrategy[*config.Flags.Plugin.DeviceListStrategy] {
 		return fmt.Errorf("invalid --device-list-strategy option: %v", *config.Flags.Plugin.DeviceListStrategy)
 	}
 

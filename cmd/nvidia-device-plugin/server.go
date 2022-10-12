@@ -28,6 +28,7 @@ import (
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
+	"github.com/google/uuid"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
@@ -263,32 +264,72 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.
 			}
 		}
 
-		response := pluginapi.ContainerAllocateResponse{}
-
-		ids := req.DevicesIDs
-		deviceIDs := plugin.deviceIDsFromAnnotatedDeviceIDs(ids)
-
-		if *plugin.config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyEnvvar {
-			response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, deviceIDs)
-		}
-		if *plugin.config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyVolumeMounts {
-			response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, []string{deviceListAsVolumeMountsContainerPathRoot})
-			response.Mounts = plugin.apiMounts(deviceIDs)
-		}
-		if *plugin.config.Flags.Plugin.PassDeviceSpecs {
-			response.Devices = plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDriverRoot, ids)
-		}
-		if *plugin.config.Flags.GDSEnabled {
-			response.Envs["NVIDIA_GDS"] = "enabled"
-		}
-		if *plugin.config.Flags.MOFEDEnabled {
-			response.Envs["NVIDIA_MOFED"] = "enabled"
-		}
-
-		responses.ContainerResponses = append(responses.ContainerResponses, &response)
+		response := plugin.getAllocateResponse(req.DevicesIDs)
+		responses.ContainerResponses = append(responses.ContainerResponses, response)
 	}
 
 	return &responses, nil
+}
+
+func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) *pluginapi.ContainerAllocateResponse {
+	deviceIDs := plugin.deviceIDsFromAnnotatedDeviceIDs(requestIds)
+
+	if *plugin.config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyCDIAnnotations {
+		responseID := uuid.New().String()
+		return plugin.getAllocateResponseForCDIAnnotations(responseID, deviceIDs)
+	}
+
+	response := pluginapi.ContainerAllocateResponse{}
+	if *plugin.config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyEnvvar {
+		response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, deviceIDs)
+	}
+	if *plugin.config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyVolumeMounts {
+		response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, []string{deviceListAsVolumeMountsContainerPathRoot})
+		response.Mounts = plugin.apiMounts(deviceIDs)
+	}
+	if *plugin.config.Flags.Plugin.PassDeviceSpecs {
+		response.Devices = plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDriverRoot, requestIds)
+	}
+	if *plugin.config.Flags.GDSEnabled {
+		response.Envs["NVIDIA_GDS"] = "enabled"
+	}
+	if *plugin.config.Flags.MOFEDEnabled {
+		response.Envs["NVIDIA_MOFED"] = "enabled"
+	}
+
+	return &response
+}
+
+// getAllocateResponseForCDIAnnotations returns the allocate response for the specified device IDs.
+// This response contains the annotations required to trigger CDI injection in the container engine or nvidia-container-runtime.
+func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDIAnnotations(responseID string, deviceIDs []string) *pluginapi.ContainerAllocateResponse {
+	const (
+		// AnnotationPrefix is the prefix for CDI container annotation keys.
+		AnnotationPrefix = "cdi.k8s.io/"
+		cdiKind          = spec.ResourceNamePrefix + "/gpu"
+	)
+
+	response := pluginapi.ContainerAllocateResponse{}
+
+	var devices []string
+	for _, id := range deviceIDs {
+		devices = append(devices, fmt.Sprintf("%s=%s", cdiKind, id))
+	}
+
+	if *plugin.config.Flags.GDSEnabled {
+		devices = append(devices, "nvidia.com/gds=all")
+	}
+	if *plugin.config.Flags.MOFEDEnabled {
+		devices = append(devices, "nvidia.com/mofed=all")
+	}
+
+	if len(devices) > 0 {
+		response.Annotations = make(map[string]string)
+		key := AnnotationPrefix + "nvidia-device-plugin_" + responseID
+		response.Annotations[key] = strings.Join(devices, ",")
+	}
+
+	return &response
 }
 
 // PreStartContainer is unimplemented for this plugin
