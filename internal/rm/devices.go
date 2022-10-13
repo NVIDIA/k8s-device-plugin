@@ -181,6 +181,11 @@ func (d Device) IsMigDevice() bool {
 	return strings.Contains(d.Index, ":")
 }
 
+// GetUUID returns the UUID for the device from the annotated ID.
+func (d Device) GetUUID() string {
+	return AnnotatedID(d.ID).GetID()
+}
+
 // NewAnnotatedID creates a new AnnotatedID from an ID and a replica number.
 func NewAnnotatedID(id string, replica int) AnnotatedID {
 	return AnnotatedID(fmt.Sprintf("%s::%d", id, replica))
