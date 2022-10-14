@@ -47,7 +47,7 @@ Please note that:
 ## Prerequisites
 
 The list of prerequisites for running the NVIDIA device plugin is described below:
-* NVIDIA drivers ~= 384.81
+- NVIDIA drivers >= 418.81.07
 * nvidia-docker >= 2.0 || nvidia-container-toolkit >= 1.7.0
 * nvidia-container-runtime configured as the default low-level runtime
 * Kubernetes version >= 1.10
@@ -112,6 +112,7 @@ version = 2
           runtime_type = "io.containerd.runc.v2"
           [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia.options]
             BinaryName = "/usr/bin/nvidia-container-runtime"
+            SystemdCgroup = true
 ```
 And then restart `containerd`:
 ```
