@@ -148,6 +148,8 @@ golang.org/x/net/trace
 ## explicit; go 1.11
 golang.org/x/oauth2
 golang.org/x/oauth2/internal
+## explicit
+golang.org/x/sync/semaphore
 # golang.org/x/sys v0.5.0
 ## explicit; go 1.17
 golang.org/x/sys/internal/unsafeheader
