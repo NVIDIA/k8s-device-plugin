@@ -62,7 +62,7 @@ func NewTegraResourceManagers(config *spec.Config) ([]ResourceManager, error) {
 
 // GetPreferredAllocation returns a standard allocation for the Tegra resource manager.
 func (r *tegraResourceManager) GetPreferredAllocation(available, required []string, size int) ([]string, error) {
-	return r.alloc(available, required, size)
+	return r.distributedAlloc(available, required, size)
 }
 
 // GetDevicePaths returns an empty slice for the tegraResourceManager
