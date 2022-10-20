@@ -19,6 +19,7 @@ package rm
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
@@ -133,7 +134,8 @@ func AddDefaultResourcesToConfig(config *spec.Config) error {
 			if info.C != info.G {
 				return nil
 			}
-			return config.Resources.AddMIGResource(p.String(), "mig-"+p.String())
+			resourceName := strings.ReplaceAll("mig-"+p.String(), "+", ".")
+			return config.Resources.AddMIGResource(p.String(), resourceName)
 		})
 	}
 	return nil
