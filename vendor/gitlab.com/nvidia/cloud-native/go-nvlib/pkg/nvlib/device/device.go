@@ -130,6 +130,12 @@ func (d *device) VisitMigProfiles(visit func(MigProfile) error) error {
 
 	for i := 0; i < nvml.GPU_INSTANCE_PROFILE_COUNT; i++ {
 		giProfileInfo, ret := d.GetGpuInstanceProfileInfo(i)
+		if ret == nvml.ERROR_NOT_SUPPORTED {
+			continue
+		}
+		if ret == nvml.ERROR_INVALID_ARGUMENT {
+			continue
+		}
 		if ret != nvml.SUCCESS {
 			return fmt.Errorf("error getting GPU Instance profile info: %v", ret)
 		}

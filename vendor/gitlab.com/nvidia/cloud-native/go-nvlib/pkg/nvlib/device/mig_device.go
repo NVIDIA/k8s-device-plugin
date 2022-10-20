@@ -101,6 +101,12 @@ func (m *migdevice) GetProfile() (MigProfile, error) {
 
 	for i := 0; i < nvml.GPU_INSTANCE_PROFILE_COUNT; i++ {
 		giProfileInfo, ret := parent.GetGpuInstanceProfileInfo(i)
+		if ret == nvml.ERROR_NOT_SUPPORTED {
+			continue
+		}
+		if ret == nvml.ERROR_INVALID_ARGUMENT {
+			continue
+		}
 		if ret != nvml.SUCCESS {
 			return nil, fmt.Errorf("error getting GPU Instance profile info: %v", ret)
 		}
@@ -112,6 +118,12 @@ func (m *migdevice) GetProfile() (MigProfile, error) {
 		for j := 0; j < nvml.COMPUTE_INSTANCE_PROFILE_COUNT; j++ {
 			for k := 0; k < nvml.COMPUTE_INSTANCE_ENGINE_PROFILE_COUNT; k++ {
 				ciProfileInfo, ret := gi.GetComputeInstanceProfileInfo(j, k)
+				if ret == nvml.ERROR_NOT_SUPPORTED {
+					continue
+				}
+				if ret == nvml.ERROR_INVALID_ARGUMENT {
+					continue
+				}
 				if ret != nvml.SUCCESS {
 					return nil, fmt.Errorf("error getting Compute Instance profile info: %v", ret)
 
