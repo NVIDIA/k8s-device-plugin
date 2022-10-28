@@ -197,7 +197,11 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with $root.Values.affinity }}
+      {{- $affinity := $root.Values.affinity }}
+      {{- if empty $affinity }}
+      {{- $affinity = .Values.affinity }}
+      {{- end }}
+      {{- with $affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
