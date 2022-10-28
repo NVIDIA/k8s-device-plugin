@@ -210,7 +210,11 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- $affinity := .Values.affinity }}
+      {{- if and (empty $affinity) .Subcharts.gfd }}
+      {{- $affinity = .Subcharts.gfd.Values.affinity }}
+      {{- end }}
+      {{- with $affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
