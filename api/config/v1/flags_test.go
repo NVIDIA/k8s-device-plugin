@@ -153,7 +153,8 @@ func TestMarshalFlags(t *testing.T) {
 					"oneshot": null,
 					"noTimestamp": null,
 					"outputFile": null,
-					"sleepInterval": "0s"
+					"sleepInterval": "0s",
+					"machineTypeFile": null
 				}
 			}`,
 		},
@@ -174,7 +175,8 @@ func TestMarshalFlags(t *testing.T) {
 					"oneshot": null,
 					"noTimestamp": null,
 					"outputFile": null,
-					"sleepInterval": "5ns"
+					"sleepInterval": "5ns",
+					"machineTypeFile": null
 				}
 			}`,
 		},
