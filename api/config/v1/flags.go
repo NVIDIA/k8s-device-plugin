@@ -64,10 +64,11 @@ type PluginCommandLineFlags struct {
 
 // GFDCommandLineFlags holds the list of command line flags specific to GFD.
 type GFDCommandLineFlags struct {
-	Oneshot       *bool     `json:"oneshot"       yaml:"oneshot"`
-	NoTimestamp   *bool     `json:"noTimestamp"   yaml:"noTimestamp"`
-	SleepInterval *Duration `json:"sleepInterval" yaml:"sleepInterval"`
-	OutputFile    *string   `json:"outputFile"    yaml:"outputFile"`
+	Oneshot         *bool     `json:"oneshot"         yaml:"oneshot"`
+	NoTimestamp     *bool     `json:"noTimestamp"     yaml:"noTimestamp"`
+	SleepInterval   *Duration `json:"sleepInterval"   yaml:"sleepInterval"`
+	OutputFile      *string   `json:"outputFile"      yaml:"outputFile"`
+	MachineTypeFile *string   `json:"machineTypeFile" yaml:"machineTypeFile"`
 }
 
 // UpdateFromCLIFlags updates Flags from settings in the cli Flags if they are set.
@@ -112,6 +113,8 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.GFD.SleepInterval, c, n)
 			case "no-timestamp":
 				updateFromCLIFlag(&f.GFD.NoTimestamp, c, n)
+			case "machine-type-file":
+				updateFromCLIFlag(&f.GFD.MachineTypeFile, c, n)
 			}
 		}
 	}
