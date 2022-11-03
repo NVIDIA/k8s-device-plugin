@@ -15,5 +15,5 @@ dependencies:
     repository: https://kubernetes-sigs.github.io/node-feature-discovery/charts
   - name: gpu-feature-discovery
     alias: gfd
-    version: "0.7.0-rc.2"
+    version: "0.7.0-rc.3"
     condition: gfd.enabled
