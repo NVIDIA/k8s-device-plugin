@@ -874,6 +874,7 @@ $ ./k8s-device-plugin --pass-device-specs
 ### Version v0.13.0-rc.3
 
 - Use `nodeAffinity` instead of `nodeSelector` by default in daemonsets
+- Add `machine-file-path` option to GFD config flags
 - Mount `/sys` instead of `/sys/class/dmi/id/product_name` in GPU Feature Discovery daemonset
 - Bump GFD subchard to version 0.7.0-rc.3
 
