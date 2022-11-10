@@ -60,6 +60,18 @@ func NewResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]Resourc
 	hasNVML := logWithReason(infolib.HasNvml, "NVML")
 	isTegra := logWithReason(infolib.IsTegraSystem, "Tegra")
 
+	if !hasNVML && !isTegra {
+		log.Printf("Incompatible platform detected")
+		log.Printf("If this is a GPU node, did you configure the NVIDIA Container Toolkit?")
+		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
+		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
+		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
+		if *config.Flags.FailOnInitError {
+			return nil, fmt.Errorf("platform detection failed")
+		}
+		return nil, nil
+	}
+
 	// The NVIDIA container stack does not yet support the use of integrated AND discrete GPUs on the same node.
 	if hasNVML && isTegra {
 		log.Printf("WARNING: Disabling Tegra-based resources on NVML system")
