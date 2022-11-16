@@ -35,7 +35,8 @@ type Interface interface {
 }
 
 type devicelib struct {
-	nvml nvml.Interface
+	nvml                  nvml.Interface
+	selectedDeviceClasses map[Class]struct{}
 }
 
 var _ Interface = &devicelib{}
@@ -49,6 +50,11 @@ func New(opts ...Option) Interface {
 	if d.nvml == nil {
 		d.nvml = nvml.New()
 	}
+	if d.selectedDeviceClasses == nil {
+		d.selectedDeviceClasses = map[Class]struct{}{
+			ClassCompute: {},
+		}
+	}
 	return d
 }
 
@@ -56,6 +62,18 @@ func New(opts ...Option) Interface {
 func WithNvml(nvml nvml.Interface) Option {
 	return func(d *devicelib) {
 		d.nvml = nvml
+	}
+}
+
+// WithSelectedDeviceClasses selects the specified device classes when filtering devices
+func WithSelectedDeviceClasses(classes ...Class) Option {
+	return func(d *devicelib) {
+		if d.selectedDeviceClasses == nil {
+			d.selectedDeviceClasses = make(map[Class]struct{})
+		}
+		for _, c := range classes {
+			d.selectedDeviceClasses[c] = struct{}{}
+		}
 	}
 }
 
