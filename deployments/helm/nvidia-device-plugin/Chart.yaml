@@ -2,8 +2,8 @@ apiVersion: v2
 name: nvidia-device-plugin
 type: application
 description: A Helm chart for the nvidia-device-plugin on Kubernetes
-version: "0.13.0-rc.3"
-appVersion: "0.13.0-rc.3"
+version: "0.13.0"
+appVersion: "0.13.0"
 kubeVersion: ">= 1.10.0-0"
 home: https://github.com/NVIDIA/k8s-device-plugin
 
