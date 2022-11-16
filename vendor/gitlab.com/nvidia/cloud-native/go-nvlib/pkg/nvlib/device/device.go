@@ -224,7 +224,7 @@ func (d *device) getClass() (Class, error) {
 		}
 		bytes = append(bytes, byte(b))
 	}
-	id := string(bytes)
+	id := strings.ToLower(string(bytes))
 
 	if id != "0000" {
 		id = strings.TrimPrefix(id, "0000")
@@ -232,7 +232,7 @@ func (d *device) getClass() (Class, error) {
 
 	device, err := nvpci.New().GetGPUByPciBusID(id)
 	if err != nil {
-		return 0, fmt.Errorf("failed to construct PCI device: %v", ret)
+		return 0, fmt.Errorf("failed to construct PCI device: %v", err)
 	}
 
 	return Class(device.Class), nil

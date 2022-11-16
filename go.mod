@@ -34,7 +34,7 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli/v2 v2.4.0
-	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20221116094848-9110850748b8
+	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20221116111358-0e10f084d1ed
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974
 	google.golang.org/grpc v1.29.0
 	k8s.io/api v0.19.1
