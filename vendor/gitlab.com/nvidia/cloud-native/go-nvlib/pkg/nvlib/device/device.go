@@ -18,9 +18,11 @@ package device
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/NVIDIA/go-nvml/pkg/dl"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
+	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvpci"
 )
 
 // Device defines the set of extended functions associated with a device.Device
@@ -39,11 +41,35 @@ type device struct {
 	lib *devicelib
 }
 
+// Class represents the PCI class for a device
+type Class uint32
+
+// Define constants for common device classes
+const (
+	ClassCompute = Class(nvpci.PCI3dControllerClass)
+	ClassDisplay = Class(nvpci.PCIVgaControllerClass)
+)
+
 var _ Device = &device{}
 
 // NewDevice builds a new Device from an nvml.Device
 func (d *devicelib) NewDevice(dev nvml.Device) (Device, error) {
+	return d.newDevice(dev)
+}
+
+// newDevice creates a device from an nvml.Device
+func (d *devicelib) newDevice(dev nvml.Device) (*device, error) {
 	return &device{dev, d}, nil
+}
+
+// classIsSelected checks whether the specified class has been selected when constructing the devicelib
+func (d *devicelib) classIsSelected(c Class) bool {
+	if d.selectedDeviceClasses == nil {
+		return false
+	}
+	_, exists := d.selectedDeviceClasses[c]
+
+	return exists
 }
 
 // IsMigCapable checks if a device is capable of having MIG paprtitions created on it
@@ -183,6 +209,35 @@ func (d *device) GetMigProfiles() ([]MigProfile, error) {
 	return profiles, nil
 }
 
+// getClass returns the PCI device class for the device
+func (d *device) getClass() (Class, error) {
+	info, ret := d.GetPciInfo()
+	if ret != nvml.SUCCESS {
+		return 0, fmt.Errorf("failed to get PCI info: %v", ret)
+	}
+
+	// We convert the BusId to a string
+	var bytes []byte
+	for _, b := range info.BusId {
+		if byte(b) == '\x00' {
+			break
+		}
+		bytes = append(bytes, byte(b))
+	}
+	id := string(bytes)
+
+	if id != "0000" {
+		id = strings.TrimPrefix(id, "0000")
+	}
+
+	device, err := nvpci.New().GetGPUByPciBusID(id)
+	if err != nil {
+		return 0, fmt.Errorf("failed to construct PCI device: %v", ret)
+	}
+
+	return Class(device.Class), nil
+}
+
 // VisitDevices visits each top-level device and invokes a callback function for it
 func (d *devicelib) VisitDevices(visit func(int, Device) error) error {
 	count, ret := d.nvml.DeviceGetCount()
@@ -195,10 +250,19 @@ func (d *devicelib) VisitDevices(visit func(int, Device) error) error {
 		if ret != nvml.SUCCESS {
 			return fmt.Errorf("error getting device handle for index '%v': %v", i, ret)
 		}
-		dev, err := d.NewDevice(device)
+		dev, err := d.newDevice(device)
 		if err != nil {
 			return fmt.Errorf("error creating new device wrapper: %v", err)
 		}
+
+		class, err := dev.getClass()
+		if err != nil {
+			return fmt.Errorf("error getting PCI device class for device: %v", err)
+		}
+		if !d.classIsSelected(class) {
+			continue
+		}
+
 		err = visit(i, dev)
 		if err != nil {
 			return fmt.Errorf("error visiting device: %v", err)
