@@ -35,8 +35,8 @@ type Interface interface {
 }
 
 type devicelib struct {
-	nvml                  nvml.Interface
-	selectedDeviceClasses map[Class]struct{}
+	nvml           nvml.Interface
+	skippedDevices map[string]struct{}
 }
 
 var _ Interface = &devicelib{}
@@ -50,10 +50,8 @@ func New(opts ...Option) Interface {
 	if d.nvml == nil {
 		d.nvml = nvml.New()
 	}
-	if d.selectedDeviceClasses == nil {
-		d.selectedDeviceClasses = map[Class]struct{}{
-			ClassCompute: {},
-		}
+	if d.skippedDevices == nil {
+		WithSkippedDevices("NVIDIA DGX Display")(d)
 	}
 	return d
 }
@@ -65,14 +63,14 @@ func WithNvml(nvml nvml.Interface) Option {
 	}
 }
 
-// WithSelectedDeviceClasses selects the specified device classes when filtering devices
-func WithSelectedDeviceClasses(classes ...Class) Option {
+// WithSkippedDevices provides an Option to set devices to be skipped by model name
+func WithSkippedDevices(names ...string) Option {
 	return func(d *devicelib) {
-		if d.selectedDeviceClasses == nil {
-			d.selectedDeviceClasses = make(map[Class]struct{})
+		if d.skippedDevices == nil {
+			d.skippedDevices = make(map[string]struct{})
 		}
-		for _, c := range classes {
-			d.selectedDeviceClasses[c] = struct{}{}
+		for _, name := range names {
+			d.skippedDevices[name] = struct{}{}
 		}
 	}
 }
