@@ -43,6 +43,11 @@ var _ Device = &device{}
 
 // NewDevice builds a new Device from an nvml.Device
 func (d *devicelib) NewDevice(dev nvml.Device) (Device, error) {
+	return d.newDevice(dev)
+}
+
+// newDevice creates a device from an nvml.Device
+func (d *devicelib) newDevice(dev nvml.Device) (*device, error) {
 	return &device{dev, d}, nil
 }
 
@@ -183,6 +188,20 @@ func (d *device) GetMigProfiles() ([]MigProfile, error) {
 	return profiles, nil
 }
 
+// isSkipped checks whether the device should be skipped.
+func (d *device) isSkipped() (bool, error) {
+	name, ret := d.GetName()
+	if ret != nvml.SUCCESS {
+		return false, fmt.Errorf("error getting device name: %v", ret)
+	}
+
+	if _, exists := d.lib.skippedDevices[name]; exists {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 // VisitDevices visits each top-level device and invokes a callback function for it
 func (d *devicelib) VisitDevices(visit func(int, Device) error) error {
 	count, ret := d.nvml.DeviceGetCount()
@@ -195,10 +214,19 @@ func (d *devicelib) VisitDevices(visit func(int, Device) error) error {
 		if ret != nvml.SUCCESS {
 			return fmt.Errorf("error getting device handle for index '%v': %v", i, ret)
 		}
-		dev, err := d.NewDevice(device)
+		dev, err := d.newDevice(device)
 		if err != nil {
 			return fmt.Errorf("error creating new device wrapper: %v", err)
 		}
+
+		isSkipped, err := dev.isSkipped()
+		if err != nil {
+			return fmt.Errorf("error checking whether device is skipped: %v", err)
+		}
+		if isSkipped {
+			continue
+		}
+
 		err = visit(i, dev)
 		if err != nil {
 			return fmt.Errorf("error visiting device: %v", err)
