@@ -48,7 +48,7 @@ Please note that:
 
 The list of prerequisites for running the NVIDIA device plugin is described below:
 * NVIDIA drivers ~= 384.81
-* nvidia-docker >= 2.0 || nvidia-container-toolkit >= 1.7.0
+* nvidia-docker >= 2.0 || nvidia-container-toolkit >= 1.7.0 (>= 1.11.0 to use integrated GPUs on Tegra-based systems)
 * nvidia-container-runtime configured as the default low-level runtime
 * Kubernetes version >= 1.10
 
@@ -124,7 +124,7 @@ Once you have configured the options above on all the GPU nodes in your
 cluster, you can enable GPU support by deploying the following Daemonset:
 
 ```shell
-$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.12.3/nvidia-device-plugin.yml
+$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.13.0/nvidia-device-plugin.yml
 ```
 
 **Note:** This is a simple static daemonset meant to demonstrate the basic
@@ -462,11 +462,11 @@ $ helm repo add nvdp https://nvidia.github.io/k8s-device-plugin
 $ helm repo update
 ```
 
-Then verify that the latest release (`v0.12.3`) of the plugin is available:
+Then verify that the latest release (`v0.13.0`) of the plugin is available:
 ```
 $ helm search repo nvdp --devel
 NAME                     	  CHART VERSION  APP VERSION	DESCRIPTION
-nvdp/nvidia-device-plugin	  0.12.3         0.12.3         A Helm chart for ...
+nvdp/nvidia-device-plugin	  0.13.0	 0.13.0		A Helm chart for ...
 ```
 
 Once this repo is updated, you can begin installing packages from it to deploy
@@ -477,7 +477,7 @@ The most basic installation command without any options is then:
 helm upgrade -i nvdp nvdp/nvidia-device-plugin \
   --namespace nvidia-device-plugin \
   --create-namespace \
-  --version 0.12.3
+  --version 0.13.0
 ```
 
 **Note:** You only need the to pass the `--devel` flag to `helm search repo`
@@ -486,7 +486,7 @@ version (e.g. `<version>-rc.1`). Full releases will be listed without this.
 
 ### Configuring the device plugin's `helm` chart
 
-The `helm` chart for the latest release of the plugin (`v0.12.3`) includes
+The `helm` chart for the latest release of the plugin (`v0.13.0`) includes
 a number of customizable values.
 
 Prior to `v0.12.0` the most commonly used values were those that had direct
@@ -496,7 +496,7 @@ case of the original values is then to override an option from the `ConfigMap`
 if desired. Both methods are discussed in more detail below.
 
 The full set of values that can be set are found here:
-[here](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.12.3/deployments/helm/nvidia-device-plugin/values.yaml).
+[here](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.13.0/deployments/helm/nvidia-device-plugin/values.yaml).
 
 #### Passing configuration to the plugin via a `ConfigMap`.
 
@@ -535,7 +535,7 @@ EOF
 And deploy the device plugin via helm (pointing it at this config file and giving it a name):
 ```
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.12.3 \
+    --version=0.13.0 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set-file config.map.config=/tmp/dp-example-config0.yaml
@@ -557,7 +557,7 @@ $ kubectl create cm -n nvidia-device-plugin nvidia-plugin-configs \
 ```
 ```
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.12.3 \
+    --version=0.13.0 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set config.name=nvidia-plugin-configs
@@ -585,7 +585,7 @@ EOF
 And redeploy the device plugin via helm (pointing it at both configs with a specified default).
 ```
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.12.3 \
+    --version=0.13.0 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set config.default=config0 \
@@ -604,7 +604,7 @@ $ kubectl create cm -n nvidia-device-plugin nvidia-plugin-configs \
 ```
 ```
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.12.3 \
+    --version=0.13.0 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set config.default=config0 \
@@ -690,7 +690,7 @@ chart values that are commonly overridden are:
 ```
 
 Please take a look in the
-[`values.yaml`](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.12.3/deployments/helm/nvidia-device-plugin/values.yaml)
+[`values.yaml`](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.13.0/deployments/helm/nvidia-device-plugin/values.yaml)
 file to see the full set of overridable parameters for the device plugin.
 
 Examples of setting these options include:
@@ -699,7 +699,7 @@ Enabling compatibility with the `CPUManager` and running with a request for
 100ms of CPU time and a limit of 512MB of memory.
 ```shell
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.12.3 \
+    --version=0.13.0 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set compatWithCPUManager=true \
@@ -710,7 +710,7 @@ $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
 Using the legacy Daemonset API (only available on Kubernetes < `v1.16`):
 ```shell
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.12.3 \
+    --version=0.13.0 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set legacyDaemonsetAPI=true
@@ -719,7 +719,7 @@ $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
 Enabling compatibility with the `CPUManager` and the `mixed` `migStrategy`
 ```shell
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.12.3 \
+    --version=0.13.0 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set compatWithCPUManager=true \
@@ -738,7 +738,7 @@ Discovery to perform this labeling.
 To enable it, simply set `gfd.enabled=true` during helm install.
 ```
 helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.12.3 \
+    --version=0.13.0 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set gfd.enabled=true
@@ -758,7 +758,7 @@ described [above](#shared-access-to-gpus-with-cuda-time-slicing).
 nvidia.com/<resource-name>.replicas = <num-replicas>
 ```
 
-Additionally, the `nvidia.com/<resource-name>.product` will be modified as follows if 
+Additionally, the `nvidia.com/<resource-name>.product` will be modified as follows if
 `renameByDefault=false`.
 ```
 nvidia.com/<resource-name>.product = <product name>-SHARED
@@ -793,14 +793,14 @@ Using the default values for the flags:
 $ helm upgrade -i nvdp \
     --namespace nvidia-device-plugin \
     --create-namespace \
-    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.12.3.tgz
+    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.13.0.tgz
 ```
 
 ## Building and Running Locally
 
 The next sections are focused on building the device plugin locally and running it.
 It is intended purely for development and testing, and not required by most users.
-It assumes you are pinning to the latest release tag (i.e. `v0.12.3`), but can
+It assumes you are pinning to the latest release tag (i.e. `v0.13.0`), but can
 easily be modified to work with any available tag or branch.
 
 ### With Docker
@@ -808,8 +808,8 @@ easily be modified to work with any available tag or branch.
 #### Build
 Option 1, pull the prebuilt image from [Docker Hub](https://hub.docker.com/r/nvidia/k8s-device-plugin):
 ```shell
-$ docker pull nvcr.io/nvidia/k8s-device-plugin:v0.12.3
-$ docker tag nvcr.io/nvidia/k8s-device-plugin:v0.12.3 nvcr.io/nvidia/k8s-device-plugin:devel
+$ docker pull nvcr.io/nvidia/k8s-device-plugin:v0.13.0
+$ docker tag nvcr.io/nvidia/k8s-device-plugin:v0.13.0 nvcr.io/nvidia/k8s-device-plugin:devel
 ```
 
 Option 2, build without cloning the repository:
@@ -817,7 +817,7 @@ Option 2, build without cloning the repository:
 $ docker build \
     -t nvcr.io/nvidia/k8s-device-plugin:devel \
     -f deployments/container/Dockerfile.ubuntu \
-    https://github.com/NVIDIA/k8s-device-plugin.git#v0.12.3
+    https://github.com/NVIDIA/k8s-device-plugin.git#v0.13.0
 ```
 
 Option 3, if you want to modify the code:
@@ -870,6 +870,39 @@ $ ./k8s-device-plugin --pass-device-specs
 ```
 
 ## Changelog
+
+### Version v0.13.0
+
+- Promote v0.13.0-rc.3 to v0.13.0
+- Fail on startup if no valid resources are detected
+- Ensure that display adapaters are skipped when enumerating devices
+- Bump GFD subchart to version 0.7.0
+
+### Version v0.13.0-rc.3
+
+- Use `nodeAffinity` instead of `nodeSelector` by default in daemonsets
+- Mount `/sys` instead of `/sys/class/dmi/id/product_name` in GPU Feature Discovery daemonset
+- Bump GFD subchart to version 0.7.0-rc.3
+
+### Version v0.13.0-rc.2
+
+- Bump cuda base image to 11.8.0
+- Use consistent indendation in YAML manifests
+- Fix bug from v0.13.0-rc.1 when using mig-strategy="mixed"
+- Add logged error message if setting up health checks fails
+- Support MIG devices with 1g.10gb+me profile
+- Distribute replicas evenly across GPUs during allocation
+- Bump GFD subchart to version 0.7.0-rc.2
+
+### Version v0.13.0-rc.1
+
+- Improve health checks to detect errors when waiting on device events
+- Log ECC error events detected during health check
+- Add the GIT sha to version information for the CLI and container images
+- Use NVML interfaces from go-nvlib to query devices
+- Refactor plugin creation from resources
+- Add a CUDA-based resource manager that can be used to expose integrated devices on Tegra-based systems
+- Bump GFD subchart to version 0.7.0-rc.1
 
 ### Version v0.12.3
 
