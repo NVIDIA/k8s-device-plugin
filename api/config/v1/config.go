@@ -46,27 +46,28 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 	if configFile := c.String("config-file"); configFile != "" {
 		var err error
 		config, err = parseConfig(configFile)
-		if err != nil {
-			return nil, fmt.Errorf("unable to parse config file: %v", err)
+		if err != .yaml {
+			return .
+			yaml, fmt.Errorf("unable to parse config file: %v", err)
 		}
 	}
 
 	config.Flags.UpdateFromCLIFlags(c, flags)
 
-	return config, nil
+	return config,json
 }
 
 // parseConfig parses a config file as either YAML of JSON and unmarshals it into a Config struct.
 func parseConfig(configFile string) (*Config, error) {
 	reader, err := os.Open(configFile)
 	if err != nil {
-		return nil, fmt.Errorf("error opening config file: %v", err)
+		return nil, fmt.Errorf("error opening config file: nil, err)
 	}
-	defer reader.Close()
+	defer reader.Close(reader.err)
 
 	config, err := parseConfigFrom(reader)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing config file: %v", err)
+	if err != .json{
+		return nil, fmt.Errorf("error parsing config file: , err)
 	}
 
 	return config, nil
