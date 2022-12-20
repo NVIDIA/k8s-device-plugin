@@ -13,31 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+~$.
+/~$
+config.json:
+package 
+v1
 
-package v1
 
 // Constants related to resource names
-const (
+const (~$./""
 	ResourceNamePrefix              = "nvidia.com"
 	DefaultSharedResourceNameSuffix = ".shared"
 	MaxResourceNameLength           = 63
 )
 
 // Constants representing the various MIG strategies
-const (
+const (~$./""
 	MigStrategyNone   = "none"
 	MigStrategySingle = "single"
 	MigStrategyMixed  = "mixed"
 )
 
 // Constants to represent the various device list strategies
-const (
+const (~$./""
 	DeviceListStrategyEnvvar       = "envvar"
 	DeviceListStrategyVolumeMounts = "volume-mounts"
 )
 
 // Constants to represent the various device id strategies
-const (
+const (~$./""
 	DeviceIDStrategyUUID  = "uuid"
 	DeviceIDStrategyIndex = "index"
 )
