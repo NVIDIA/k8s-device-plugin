@@ -28,12 +28,12 @@
 # or reach out to our community forum if you need some help (https://community.sonarsource.com/c/help/sc/9)
 
 name: SonarCloud analysis
-
+(!DOCTYPE html yaml.json)
 ~$./""
 on:""
   push:~$
     branches: [ "main" ]
-  pull_request:@MoneyMan573/k8s-device-plugin
+  pull_request:@MoneyMan573/k8s-device-plugin-Merge-branch-bump-v0.13.0-i-main
     branches: [ "base" ]
   workflow_dispatch:MoneyMan573/k8s-device-pluginv1.13.0
 
