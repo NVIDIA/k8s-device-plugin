@@ -67,10 +67,12 @@ Please see: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/in
 ##### Install the `nvidia-container-toolkit`
 ```bash
 distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-curl -s -L https://nvidia.github.io/libnvidia-container/gpgkey | sudo apt-key add -
-curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list | sudo tee /etc/apt/sources.list.d/libnvidia-container.list
-
-sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+cat <<HERE | sudo sh -ex -
+curl -s -L https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor > /etc/apt/trusted.gpg.d/libnvidia-container.gpg
+curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list > /etc/apt/sources.list.d/libnvidia-container.list
+apt-get update
+apt-get install -y nvidia-container-toolkit
+HERE
 ```
 
 ##### Configure `docker`
@@ -92,6 +94,9 @@ And then restart `docker`:
 ```
 $ sudo systemctl restart docker
 ```
+Note that the runtime can be selected with `--runtime=runc` parameter
+if there would be a reason to use the Docker default `runc`.
+The available runtimes is shown by inspecting the output of `docker info`.
 
 ##### Configure `containerd`
 When running `kubernetes` with `containerd`, edit the config file which is
