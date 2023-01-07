@@ -280,7 +280,7 @@ options outside of this section are shared.
   as described
   [here](https://github.com/NVIDIA/nvidia-container-runtime#nvidia_visible_devices).
   This strategy can be selected via the (default) `envvar` option. Support has
-  been added to the `nvidia-container-toolkit` to also allow passing the list
+  been added to the `nvidia-container-toolkit` also allow passing the list
   of devices as a set of volume mounts instead of as an environment variable.
   This strategy can be selected via the `volume-mounts` option. Details for the
   rationale behind this strategy can be found
