@@ -42,3 +42,8 @@ const (
 	DeviceIDStrategyUUID  = "uuid"
 	DeviceIDStrategyIndex = "index"
 )
+
+// Constants related to generating CDI specifications
+const (
+	DefaultNvidiaCTKPath = "/usr/bin/nvidia-ctk"
+)

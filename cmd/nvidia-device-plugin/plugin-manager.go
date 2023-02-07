@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 )
@@ -41,15 +42,34 @@ func NewPluginManager(config *spec.Config) (PluginManager, error) {
 
 	nvmllib := nvml.New()
 
+	cdiHandler, err := cdi.New(
+		config.Flags,
+		cdi.WithDriverRoot(*config.Flags.NvidiaDriverRoot),
+		cdi.WithNvidiaCTKPath(*config.Flags.Plugin.NvidiaCTKPath),
+		cdi.WithNvml(nvmllib),
+		cdi.WithDeviceIDStrategy(*config.Flags.Plugin.DeviceIDStrategy),
+		cdi.WithVendor("k8s.device-plugin.nvidia.com"),
+		cdi.WithClass("gpu"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create cdi handler: %v", err)
+	}
+
+	if err := cdiHandler.CreateSpecFile(); err != nil {
+		return nil, fmt.Errorf("unable to create cdi spec file: %v", err)
+	}
+
 	m := pluginManager{
 		nvml:   nvmllib,
 		config: config,
+		cdi:    cdiHandler,
 	}
 	return &m, nil
 }
 
 type pluginManager struct {
 	nvml   nvml.Interface
+	cdi    cdi.Interface
 	config *spec.Config
 }
 
@@ -62,7 +82,7 @@ func (s *pluginManager) GetPlugins() ([]*NvidiaDevicePlugin, error) {
 
 	var plugins []*NvidiaDevicePlugin
 	for _, r := range rms {
-		plugins = append(plugins, NewNvidiaDevicePlugin(s.config, r))
+		plugins = append(plugins, NewNvidiaDevicePlugin(s.config, r, s.cdi))
 	}
 	return plugins, nil
 }

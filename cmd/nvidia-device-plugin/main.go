@@ -97,6 +97,12 @@ func main() {
 			Destination: &configFile,
 			EnvVars:     []string{"CONFIG_FILE"},
 		},
+		&cli.StringFlag{
+			Name:    "nvidia-ctk-path",
+			Value:   spec.DefaultNvidiaCTKPath,
+			Usage:   "The path to use for the nvidia-ctk in the generated CDI specification.",
+			EnvVars: []string{"NVIDIA_CTK_PATH"},
+		},
 	}
 
 	err := c.Run(os.Args)
