@@ -18,12 +18,12 @@ package rm
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
 
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -58,7 +58,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 	defer func() {
 		ret := r.nvml.Shutdown()
 		if ret != nvml.SUCCESS {
-			log.Printf("Error shutting down NVML: %v", ret)
+			klog.Infof("Error shutting down NVML: %v", ret)
 		}
 	}()
 
@@ -96,7 +96,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 	for _, d := range devices {
 		uuid, gi, ci, err := r.getDevicePlacement(d)
 		if err != nil {
-			log.Printf("Warning: could not determine device placement for %v: %v; Marking it unhealthy.", d.ID, err)
+			klog.Warningf("Could not determine device placement for %v: %v; Marking it unhealthy.", d.ID, err)
 			unhealthy <- d
 			continue
 		}
@@ -106,24 +106,24 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 
 		gpu, ret := r.nvml.DeviceGetHandleByUUID(uuid)
 		if ret != nvml.SUCCESS {
-			log.Printf("unable to get device handle from UUID: %v; marking it as unhealthy", ret)
+			klog.Infof("unable to get device handle from UUID: %v; marking it as unhealthy", ret)
 			unhealthy <- d
 			continue
 		}
 
 		supportedEvents, ret := gpu.GetSupportedEventTypes()
 		if ret != nvml.SUCCESS {
-			log.Printf("unabled to determine the supported events for %v: %v; marking it as unhealthy", d.ID, ret)
+			klog.Infof("Unable to determine the supported events for %v: %v; marking it as unhealthy", d.ID, ret)
 			unhealthy <- d
 			continue
 		}
 
 		ret = gpu.RegisterEvents(eventMask&supportedEvents, eventSet)
 		if ret == nvml.ERROR_NOT_SUPPORTED {
-			log.Printf("Warning: Device %v is too old to support healthchecking.", d.ID)
+			klog.Warningf("Device %v is too old to support healthchecking.", d.ID)
 		}
 		if ret != nvml.SUCCESS {
-			log.Printf("Marking device %v as unhealthy: %v", d.ID, ret)
+			klog.Infof("Marking device %v as unhealthy: %v", d.ID, ret)
 			unhealthy <- d
 		}
 	}
@@ -140,7 +140,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 			continue
 		}
 		if ret != nvml.SUCCESS {
-			log.Printf("Error waiting for event: %v; Marking all devices as unhealthy", ret)
+			klog.Infof("Error waiting for event: %v; Marking all devices as unhealthy", ret)
 			for _, d := range devices {
 				unhealthy <- d
 			}
@@ -148,20 +148,20 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		}
 
 		if e.EventType != nvml.EventTypeXidCriticalError {
-			log.Printf("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
+			klog.Infof("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
 			continue
 		}
 
 		if skippedXids[e.EventData] {
-			log.Printf("Skipping event %+v", e)
+			klog.Infof("Skipping event %+v", e)
 			continue
 		}
 
-		log.Printf("Processing event %+v", e)
+		klog.Infof("Processing event %+v", e)
 		eventUUID, ret := e.Device.GetUUID()
 		if ret != nvml.SUCCESS {
 			// If we cannot reliably determine the device UUID, we mark all devices as unhealthy.
-			log.Printf("Failed to determine uuid for event %v: %v; Marking all devices as unhealthy.", e, ret)
+			klog.Infof("Failed to determine uuid for event %v: %v; Marking all devices as unhealthy.", e, ret)
 			for _, d := range devices {
 				unhealthy <- d
 			}
@@ -170,7 +170,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 
 		d, exists := parentToDeviceMap[eventUUID]
 		if !exists {
-			log.Printf("Ignoring event for unexpected device: %v", eventUUID)
+			klog.Infof("Ignoring event for unexpected device: %v", eventUUID)
 			continue
 		}
 
@@ -180,10 +180,10 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 			if !(uint32(gi) == e.GpuInstanceId && uint32(ci) == e.ComputeInstanceId) {
 				continue
 			}
-			log.Printf("Event for mig device %v (gi=%v, ci=%v)", d.ID, gi, ci)
+			klog.Infof("Event for mig device %v (gi=%v, ci=%v)", d.ID, gi, ci)
 		}
 
-		log.Printf("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
+		klog.Infof("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
 		unhealthy <- d
 	}
 }
@@ -204,7 +204,7 @@ func getAdditionalXids(input string) []uint64 {
 		}
 		xid, err := strconv.ParseUint(trimmed, 10, 64)
 		if err != nil {
-			log.Printf("Ignoring malformed Xid value %v: %v", trimmed, err)
+			klog.Infof("Ignoring malformed Xid value %v: %v", trimmed, err)
 			continue
 		}
 		additionalXids = append(additionalXids, xid)
