@@ -1,6 +1,6 @@
 module github.com/NVIDIA/k8s-device-plugin
 
-go 1.18
+go 1.20
 
 replace (
 	k8s.io/api => k8s.io/api v0.19.1
@@ -31,7 +31,6 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/google/uuid v1.1.1
 	github.com/prometheus/procfs v0.1.3
-	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli/v2 v2.4.0
 	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20221121203940-a27e593595a0
@@ -40,6 +39,7 @@ require (
 	k8s.io/api v0.19.1
 	k8s.io/apimachinery v0.19.1
 	k8s.io/client-go v0.19.1
+	k8s.io/klog/v2 v2.2.0
 	k8s.io/kubelet v0.0.0
 	sigs.k8s.io/yaml v1.2.0
 )
@@ -58,7 +58,6 @@ require (
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/imdario/mergo v0.3.5 // indirect
 	github.com/json-iterator/go v1.1.10 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -75,7 +74,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
-	k8s.io/klog/v2 v2.2.0 // indirect
 	k8s.io/utils v0.0.0-20200729134348-d5654de09c73 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.0.1 // indirect
 )
