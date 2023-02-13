@@ -90,8 +90,8 @@ func (d ReplicatedDeviceRef) IsGpuUUID() bool {
 
 // IsMigUUID checks if a ReplicatedDeviceRef is a MIG UUID
 // A MIG UUID can be of one of two forms:
-//    - MIG-b1028956-cfa2-0990-bf4a-5da9abb51763
-//    - MIG-GPU-b1028956-cfa2-0990-bf4a-5da9abb51763/3/0
+//   - MIG-b1028956-cfa2-0990-bf4a-5da9abb51763
+//   - MIG-GPU-b1028956-cfa2-0990-bf4a-5da9abb51763/3/0
 func (d ReplicatedDeviceRef) IsMigUUID() bool {
 	if !strings.HasPrefix(string(d), "MIG-") {
 		return false

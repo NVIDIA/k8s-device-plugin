@@ -18,13 +18,13 @@ package rm
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
+	"k8s.io/klog/v2"
 )
 
 // resourceManager forms the base type for specific resource manager implementations
@@ -51,7 +51,7 @@ func NewResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]Resourc
 		if !is {
 			tag = "non-" + tag
 		}
-		log.Printf("Detected %v platform: %v", tag, reason)
+		klog.Infof("Detected %v platform: %v", tag, reason)
 		return is
 	}
 
@@ -61,11 +61,11 @@ func NewResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]Resourc
 	isTegra := logWithReason(infolib.IsTegraSystem, "Tegra")
 
 	if !hasNVML && !isTegra {
-		log.Printf("Incompatible platform detected")
-		log.Printf("If this is a GPU node, did you configure the NVIDIA Container Toolkit?")
-		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
-		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
-		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
+		klog.Error("Incompatible platform detected")
+		klog.Error("If this is a GPU node, did you configure the NVIDIA Container Toolkit?")
+		klog.Error("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
+		klog.Error("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
+		klog.Error("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
 		if *config.Flags.FailOnInitError {
 			return nil, fmt.Errorf("platform detection failed")
 		}
@@ -74,7 +74,7 @@ func NewResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]Resourc
 
 	// The NVIDIA container stack does not yet support the use of integrated AND discrete GPUs on the same node.
 	if hasNVML && isTegra {
-		log.Printf("WARNING: Disabling Tegra-based resources on NVML system")
+		klog.Warning("Disabling Tegra-based resources on NVML system")
 		isTegra = false
 	}
 
@@ -118,8 +118,8 @@ func AddDefaultResourcesToConfig(config *spec.Config) error {
 	case spec.MigStrategyMixed:
 		hasNVML, reason := info.New().HasNvml()
 		if !hasNVML {
-			log.Printf("WARNING: mig-strategy=%q is only supported with NVML", spec.MigStrategyMixed)
-			log.Printf("NVML not detected: %v", reason)
+			klog.Warningf("mig-strategy=%q is only supported with NVML", spec.MigStrategyMixed)
+			klog.Warningf("NVML not detected: %v", reason)
 			return nil
 		}
 
@@ -134,7 +134,7 @@ func AddDefaultResourcesToConfig(config *spec.Config) error {
 		defer func() {
 			ret := nvmllib.Shutdown()
 			if ret != nvml.SUCCESS {
-				log.Printf("Error shutting down NVML: %v", ret)
+				klog.Errorf("Error shutting down NVML: %v", ret)
 			}
 		}()
 

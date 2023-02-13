@@ -5,8 +5,9 @@ package mig
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
+
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -76,7 +77,7 @@ func GetMigCapabilityDevicePaths() (map[string]string, error) {
 	for scanner.Scan() {
 		capPath, migMinor, err := processLine(scanner.Text())
 		if err != nil {
-			log.Printf("Skipping line in MIG minors file: %v", err)
+			klog.Errorf("Skipping line in MIG minors file: %v", err)
 			continue
 		}
 		capsDevicePaths[capPath] = fmt.Sprintf(nvcapsDevicePath+"/nvidia-cap%d", migMinor)

@@ -18,11 +18,10 @@ package rm
 
 import (
 	"fmt"
-	"log"
-	"os"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
+	"k8s.io/klog/v2"
 )
 
 type nvmlResourceManager struct {
@@ -36,13 +35,12 @@ var _ ResourceManager = (*nvmlResourceManager)(nil)
 func NewNVMLResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]ResourceManager, error) {
 	ret := nvmllib.Init()
 	if ret != nvml.SUCCESS {
-		log.SetOutput(os.Stderr)
-		log.Printf("Failed to initialize NVML: %v.", ret)
-		log.Printf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
-		log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
-		log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
-		log.Printf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
-		log.SetOutput(os.Stdout)
+		klog.Errorf("Failed to initialize NVML: %v.", ret)
+		klog.Errorf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
+		klog.Errorf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
+		klog.Errorf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
+		klog.Errorf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
+
 		if *config.Flags.FailOnInitError {
 			return nil, fmt.Errorf("failed to initialize NVML: %v", ret)
 		}
@@ -51,7 +49,7 @@ func NewNVMLResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]Res
 	defer func() {
 		ret := nvmllib.Shutdown()
 		if ret != nvml.SUCCESS {
-			log.Printf("Error shutting down NVML: %v", ret)
+			klog.Infof("Error shutting down NVML: %v", ret)
 		}
 	}()
 

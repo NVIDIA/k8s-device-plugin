@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"path"
@@ -30,6 +29,8 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+
+	"k8s.io/klog/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
@@ -94,24 +95,24 @@ func (plugin *NvidiaDevicePlugin) Start() error {
 
 	err := plugin.Serve()
 	if err != nil {
-		log.Printf("Could not start device plugin for '%s': %s", plugin.rm.Resource(), err)
+		klog.Infof("Could not start device plugin for '%s': %s", plugin.rm.Resource(), err)
 		plugin.cleanup()
 		return err
 	}
-	log.Printf("Starting to serve '%s' on %s", plugin.rm.Resource(), plugin.socket)
+	klog.Infof("Starting to serve '%s' on %s", plugin.rm.Resource(), plugin.socket)
 
 	err = plugin.Register()
 	if err != nil {
-		log.Printf("Could not register device plugin: %s", err)
+		klog.Infof("Could not register device plugin: %s", err)
 		plugin.Stop()
 		return err
 	}
-	log.Printf("Registered device plugin for '%s' with Kubelet", plugin.rm.Resource())
+	klog.Infof("Registered device plugin for '%s' with Kubelet", plugin.rm.Resource())
 
 	go func() {
 		err := plugin.rm.CheckHealth(plugin.stop, plugin.health)
 		if err != nil {
-			log.Printf("Failed to start health check: %v; continuing with health checks disabled", err)
+			klog.Infof("Failed to start health check: %v; continuing with health checks disabled", err)
 		}
 	}()
 
@@ -123,7 +124,7 @@ func (plugin *NvidiaDevicePlugin) Stop() error {
 	if plugin == nil || plugin.server == nil {
 		return nil
 	}
-	log.Printf("Stopping to serve '%s' on %s", plugin.rm.Resource(), plugin.socket)
+	klog.Infof("Stopping to serve '%s' on %s", plugin.rm.Resource(), plugin.socket)
 	plugin.server.Stop()
 	if err := os.Remove(plugin.socket); err != nil && !os.IsNotExist(err) {
 		return err
@@ -146,19 +147,19 @@ func (plugin *NvidiaDevicePlugin) Serve() error {
 		lastCrashTime := time.Now()
 		restartCount := 0
 		for {
-			log.Printf("Starting GRPC server for '%s'", plugin.rm.Resource())
+			klog.Infof("Starting GRPC server for '%s'", plugin.rm.Resource())
 			err := plugin.server.Serve(sock)
 			if err == nil {
 				break
 			}
 
-			log.Printf("GRPC server for '%s' crashed with error: %v", plugin.rm.Resource(), err)
+			klog.Infof("GRPC server for '%s' crashed with error: %v", plugin.rm.Resource(), err)
 
 			// restart if it has not been too often
 			// i.e. if server has crashed more than 5 times and it didn't last more than one hour each time
 			if restartCount > 5 {
 				// quit
-				log.Fatalf("GRPC server for '%s' has repeatedly crashed recently. Quitting", plugin.rm.Resource())
+				klog.Fatalf("GRPC server for '%s' has repeatedly crashed recently. Quitting", plugin.rm.Resource())
 			}
 			timeSinceLastCrash := time.Since(lastCrashTime).Seconds()
 			lastCrashTime = time.Now()
@@ -226,7 +227,7 @@ func (plugin *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.D
 		case d := <-plugin.health:
 			// FIXME: there is no way to recover from the Unhealthy state.
 			d.Health = pluginapi.Unhealthy
-			log.Printf("'%s' device marked unhealthy: %s", plugin.rm.Resource(), d.ID)
+			klog.Infof("'%s' device marked unhealthy: %s", plugin.rm.Resource(), d.ID)
 			s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()})
 		}
 	}
