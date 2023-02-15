@@ -46,6 +46,15 @@ func (d *devicelib) NewDevice(dev nvml.Device) (Device, error) {
 	return d.newDevice(dev)
 }
 
+// NewDeviceByUUID builds a new Device from a UUID
+func (d *devicelib) NewDeviceByUUID(uuid string) (Device, error) {
+	dev, ret := d.nvml.DeviceGetHandleByUUID(uuid)
+	if ret != nvml.SUCCESS {
+		return nil, fmt.Errorf("error getting device handle for uuid '%v': %v", uuid, ret)
+	}
+	return d.newDevice(dev)
+}
+
 // newDevice creates a device from an nvml.Device
 func (d *devicelib) newDevice(dev nvml.Device) (*device, error) {
 	return &device{dev, d}, nil
