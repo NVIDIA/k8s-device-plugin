@@ -17,27 +17,19 @@
 package cdi
 
 import (
-	"log"
+	"fmt"
 
-	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info"
 )
 
 // New is a factory method that creates a CDI handler for creating CDI specs.
-func New(flags spec.Flags, opts ...Option) (Interface, error) {
-	if *flags.Plugin.DeviceListStrategy != spec.DeviceListStrategyCDIAnnotations {
-		log.Println("CDI is not enabled; using an empty CDI handler")
-		return newNullHandler(), nil
-	}
-
+func New(opts ...Option) (Interface, error) {
 	infolib := info.New()
 
 	hasNVML, _ := infolib.HasNvml()
-	if hasNVML {
-		log.Println("Creating a CDI handler")
-		return newHandler(opts...)
+	if !hasNVML {
+		return nil, fmt.Errorf("no valid resources detected")
 	}
 
-	log.Println("No valid resources detected; using an empty CDI handler")
-	return newNullHandler(), nil
+	return newHandler(opts...)
 }

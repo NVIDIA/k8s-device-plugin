@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
@@ -32,6 +33,7 @@ type PluginManager interface {
 
 // NewPluginManager creates an NVML-based plugin manager
 func NewPluginManager(config *spec.Config) (PluginManager, error) {
+	var err error
 	switch *config.Flags.MigStrategy {
 	case spec.MigStrategyNone:
 	case spec.MigStrategySingle:
@@ -42,21 +44,26 @@ func NewPluginManager(config *spec.Config) (PluginManager, error) {
 
 	nvmllib := nvml.New()
 
-	cdiHandler, err := cdi.New(
-		config.Flags,
-		cdi.WithDriverRoot(*config.Flags.NvidiaDriverRoot),
-		cdi.WithNvidiaCTKPath(*config.Flags.Plugin.NvidiaCTKPath),
-		cdi.WithNvml(nvmllib),
-		cdi.WithDeviceIDStrategy(*config.Flags.Plugin.DeviceIDStrategy),
-		cdi.WithVendor("k8s.device-plugin.nvidia.com"),
-		cdi.WithClass("gpu"),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create cdi handler: %v", err)
-	}
+	cdiHandler := cdi.NewNullHandler()
 
-	if err := cdiHandler.CreateSpecFile(); err != nil {
-		return nil, fmt.Errorf("unable to create cdi spec file: %v", err)
+	if *config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyCDIAnnotations {
+		log.Println("Creating a CDI handler")
+		cdiHandler, err = cdi.New(
+			cdi.WithDriverRoot(*config.Flags.NvidiaDriverRoot),
+			cdi.WithNvidiaCTKPath(*config.Flags.Plugin.NvidiaCTKPath),
+			cdi.WithNvml(nvmllib),
+			cdi.WithDeviceIDStrategy(*config.Flags.Plugin.DeviceIDStrategy),
+			cdi.WithVendor("k8s.device-plugin.nvidia.com"),
+			cdi.WithClass("gpu"),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create cdi handler: %v", err)
+		}
+
+		log.Println("Creating CDI specification")
+		if err := cdiHandler.CreateSpecFile(); err != nil {
+			return nil, fmt.Errorf("unable to create cdi spec file: %v", err)
+		}
 	}
 
 	m := pluginManager{

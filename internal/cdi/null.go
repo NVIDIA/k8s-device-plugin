@@ -16,22 +16,29 @@
 
 package cdi
 
+import (
+	"fmt"
+	"log"
+)
+
 type null struct{}
 
 var _ Interface = &null{}
 
-// newNullHandler returns an instance of the 'cdi' interface that can
+// NewNullHandler returns an instance of the 'cdi' interface that can
 // be used when CDI specs are not required.
-func newNullHandler() Interface {
+func NewNullHandler() Interface {
 	return &null{}
 }
 
-// CreateSpecFile is a no-op for the null handler
+// CreateSpecFile returns an error as it never should be called for the null handler
 func (n *null) CreateSpecFile() error {
-	return nil
+	return fmt.Errorf("cannot create a CDI specification with the null CDI handler")
 }
 
-// QualifiedName is a no-op for the null handler
+// QualifiedName is a no-op for the null handler. A error message is logged
+// inidicating this should never be called for the null handler.
 func (n *null) QualifiedName(id string) string {
+	log.Println("ERROR: cannot return a qualified CDI device name with the null CDI handler")
 	return ""
 }
