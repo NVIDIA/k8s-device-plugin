@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"path"
@@ -330,11 +329,11 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDIAnnotations(responseI
 		devices = append(devices, "nvidia.com/mofed=all")
 	}
 
-	var err error
 	if len(devices) > 0 {
+		var err error
 		response.Annotations, err = cdiapi.UpdateAnnotations(map[string]string{}, "nvidia-device-plugin", responseID, devices)
 		if err != nil {
-			log.Printf("Failed to add CDI annotations: %v", err)
+			klog.Errorf("Failed to add CDI annotations: %v", err)
 		}
 	}
 

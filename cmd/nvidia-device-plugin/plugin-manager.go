@@ -18,12 +18,13 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
+
+	"k8s.io/klog/v2"
 )
 
 // PluginManager provides an interface for building the set of plugins required to implement a given MIG strategy
@@ -47,7 +48,7 @@ func NewPluginManager(config *spec.Config) (PluginManager, error) {
 	cdiHandler := cdi.NewNullHandler()
 
 	if *config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyCDIAnnotations {
-		log.Println("Creating a CDI handler")
+		klog.Info("Creating a CDI handler")
 		cdiHandler, err = cdi.New(
 			cdi.WithDriverRoot(*config.Flags.NvidiaDriverRoot),
 			cdi.WithNvidiaCTKPath(*config.Flags.Plugin.NvidiaCTKPath),
@@ -60,7 +61,7 @@ func NewPluginManager(config *spec.Config) (PluginManager, error) {
 			return nil, fmt.Errorf("unable to create cdi handler: %v", err)
 		}
 
-		log.Println("Creating CDI specification")
+		klog.Info("Creating CDI specification")
 		if err := cdiHandler.CreateSpecFile(); err != nil {
 			return nil, fmt.Errorf("unable to create cdi spec file: %v", err)
 		}

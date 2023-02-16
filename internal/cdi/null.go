@@ -18,7 +18,8 @@ package cdi
 
 import (
 	"fmt"
-	"log"
+
+	"k8s.io/klog/v2"
 )
 
 type null struct{}
@@ -39,6 +40,6 @@ func (n *null) CreateSpecFile() error {
 // QualifiedName is a no-op for the null handler. A error message is logged
 // inidicating this should never be called for the null handler.
 func (n *null) QualifiedName(id string) string {
-	log.Println("ERROR: cannot return a qualified CDI device name with the null CDI handler")
+	klog.Error("cannot return a qualified CDI device name with the null CDI handler")
 	return ""
 }
