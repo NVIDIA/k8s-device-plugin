@@ -18,4 +18,6 @@ RUN go install golang.org/x/lint/golint@latest && \
     go install github.com/gordonklaus/ineffassign@latest && \
     go install github.com/client9/misspell/cmd/misspell@latest
 
+RUN go install github.com/matryer/moq@latest
+
 RUN mkdir -p /var/lib/kubelet/device-plugins/

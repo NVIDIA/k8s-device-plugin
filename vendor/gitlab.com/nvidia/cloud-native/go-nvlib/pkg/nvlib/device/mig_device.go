@@ -48,6 +48,15 @@ func (d *devicelib) NewMigDevice(handle nvml.Device) (MigDevice, error) {
 	return &migdevice{handle, d, nil}, nil
 }
 
+// NewMigDeviceByUUID builds a new MigDevice from a UUID
+func (d *devicelib) NewMigDeviceByUUID(uuid string) (MigDevice, error) {
+	dev, ret := d.nvml.DeviceGetHandleByUUID(uuid)
+	if ret != nvml.SUCCESS {
+		return nil, fmt.Errorf("error getting device handle for uuid '%v': %v", uuid, ret)
+	}
+	return d.NewMigDevice(dev)
+}
+
 // GetProfile returns the MIG profile associated with a MIG device
 func (m *migdevice) GetProfile() (MigProfile, error) {
 	if m.profile != nil {

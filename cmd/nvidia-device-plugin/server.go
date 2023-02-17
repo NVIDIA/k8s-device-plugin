@@ -26,7 +26,10 @@ import (
 	"time"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
+	cdiapi "github.com/container-orchestrated-devices/container-device-interface/pkg/cdi"
+
 	"github.com/google/uuid"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -48,13 +51,15 @@ type NvidiaDevicePlugin struct {
 	deviceListEnvvar string
 	socket           string
 
+	cdi cdi.Interface
+
 	server *grpc.Server
 	health chan *rm.Device
 	stop   chan interface{}
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, cdi cdi.Interface) *NvidiaDevicePlugin {
 	_, name := resourceManager.Resource().Split()
 
 	return &NvidiaDevicePlugin{
@@ -62,6 +67,7 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 		config:           config,
 		deviceListEnvvar: "NVIDIA_VISIBLE_DEVICES",
 		socket:           pluginapi.DevicePluginPath + "nvidia-" + name + ".sock",
+		cdi:              cdi,
 
 		// These will be reinitialized every
 		// time the plugin server is restarted.
@@ -309,17 +315,11 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) *plug
 // getAllocateResponseForCDIAnnotations returns the allocate response for the specified device IDs.
 // This response contains the annotations required to trigger CDI injection in the container engine or nvidia-container-runtime.
 func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDIAnnotations(responseID string, deviceIDs []string) *pluginapi.ContainerAllocateResponse {
-	const (
-		// AnnotationPrefix is the prefix for CDI container annotation keys.
-		AnnotationPrefix = "cdi.k8s.io/"
-		cdiKind          = spec.ResourceNamePrefix + "/gpu"
-	)
-
 	response := pluginapi.ContainerAllocateResponse{}
 
 	var devices []string
 	for _, id := range deviceIDs {
-		devices = append(devices, fmt.Sprintf("%s=%s", cdiKind, id))
+		devices = append(devices, plugin.cdi.QualifiedName(id))
 	}
 
 	if *plugin.config.Flags.GDSEnabled {
@@ -330,9 +330,11 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDIAnnotations(responseI
 	}
 
 	if len(devices) > 0 {
-		response.Annotations = make(map[string]string)
-		key := AnnotationPrefix + "nvidia-device-plugin_" + responseID
-		response.Annotations[key] = strings.Join(devices, ",")
+		var err error
+		response.Annotations, err = cdiapi.UpdateAnnotations(map[string]string{}, "nvidia-device-plugin", responseID, devices)
+		if err != nil {
+			klog.Errorf("Failed to add CDI annotations: %v", err)
+		}
 	}
 
 	return &response

@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	v1 "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/stretchr/testify/require"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
@@ -93,6 +94,11 @@ func TestCDIAllocateResponse(t *testing.T) {
 							GDSEnabled:   &tc.GDSEnabled,
 							MOFEDEnabled: &tc.MOFEDEnabled,
 						},
+					},
+				},
+				cdi: &cdi.InterfaceMock{
+					QualifiedNameFunc: func(s string) string {
+						return "nvidia.com/gpu=" + s
 					},
 				},
 			}
