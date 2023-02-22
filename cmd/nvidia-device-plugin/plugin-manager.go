@@ -50,7 +50,8 @@ func NewPluginManager(config *spec.Config) (PluginManager, error) {
 	if *config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyCDIAnnotations {
 		klog.Info("Creating a CDI handler")
 		cdiHandler, err = cdi.New(
-			cdi.WithDriverRoot(*config.Flags.NvidiaDriverRoot),
+			cdi.WithDriverRoot("/host-driver"),
+			cdi.WithTargetDriverRoot(*config.Flags.NvidiaDriverRoot),
 			cdi.WithNvidiaCTKPath(*config.Flags.Plugin.NvidiaCTKPath),
 			cdi.WithNvml(nvmllib),
 			cdi.WithDeviceIDStrategy(*config.Flags.Plugin.DeviceIDStrategy),

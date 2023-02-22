@@ -30,6 +30,13 @@ func WithDriverRoot(root string) Option {
 	}
 }
 
+// WithTargetDriverRoot provides an Option to set the target driver root used by the 'cdi' interface
+func WithTargetDriverRoot(root string) Option {
+	return func(c *cdiHandler) {
+		c.targetDriverRoot = root
+	}
+}
+
 // WithNvidiaCTKPath provides an Option to set the nvidia-ctk path used by the 'cdi' interface
 func WithNvidiaCTKPath(path string) Option {
 	return func(c *cdiHandler) {
