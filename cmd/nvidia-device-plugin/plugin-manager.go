@@ -21,19 +21,14 @@ import (
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
-	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
+	"github.com/NVIDIA/k8s-device-plugin/internal/plugin/manager"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 
 	"k8s.io/klog/v2"
 )
 
-// PluginManager provides an interface for building the set of plugins required to implement a given MIG strategy
-type PluginManager interface {
-	GetPlugins() ([]*NvidiaDevicePlugin, error)
-}
-
 // NewPluginManager creates an NVML-based plugin manager
-func NewPluginManager(config *spec.Config) (PluginManager, error) {
+func NewPluginManager(config *spec.Config) (manager.Interface, error) {
 	var err error
 	switch *config.Flags.MigStrategy {
 	case spec.MigStrategyNone:
@@ -61,37 +56,21 @@ func NewPluginManager(config *spec.Config) (PluginManager, error) {
 		if err != nil {
 			return nil, fmt.Errorf("unable to create cdi handler: %v", err)
 		}
-
-		klog.Info("Creating CDI specification")
-		if err := cdiHandler.CreateSpecFile(); err != nil {
-			return nil, fmt.Errorf("unable to create cdi spec file: %v", err)
-		}
 	}
 
-	m := pluginManager{
-		nvml:   nvmllib,
-		config: config,
-		cdi:    cdiHandler,
-	}
-	return &m, nil
-}
-
-type pluginManager struct {
-	nvml   nvml.Interface
-	cdi    cdi.Interface
-	config *spec.Config
-}
-
-// GetPlugins returns the plugins associated with the NVML resources available on the node
-func (s *pluginManager) GetPlugins() ([]*NvidiaDevicePlugin, error) {
-	rms, err := rm.NewResourceManagers(s.nvml, s.config)
+	m, err := manager.New(
+		manager.WithNVML(nvmllib),
+		manager.WithCDIHandler(cdiHandler),
+		manager.WithConfig(config),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to load resource managers to manage plugin devices: %v", err)
+		return nil, fmt.Errorf("unable to create plugin manager: %v", err)
 	}
 
-	var plugins []*NvidiaDevicePlugin
-	for _, r := range rms {
-		plugins = append(plugins, NewNvidiaDevicePlugin(s.config, r, s.cdi))
+	klog.Info("Creating CDI specification")
+	if err := m.CreateSpecFile(); err != nil {
+		return nil, fmt.Errorf("unable to create cdi spec file: %v", err)
 	}
-	return plugins, nil
+
+	return m, nil
 }
