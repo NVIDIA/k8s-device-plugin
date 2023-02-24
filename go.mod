@@ -50,7 +50,7 @@ require (
 )
 
 require (
-	github.com/NVIDIA/go-nvml v0.11.6-0.0.20220823120812-7e2082095e82 // indirect
+	github.com/NVIDIA/go-nvml v0.12.0-0 // indirect
 	github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201222072828-352eb4c503a7 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
