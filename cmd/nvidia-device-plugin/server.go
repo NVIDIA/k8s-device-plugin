@@ -261,6 +261,7 @@ func (plugin *NvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r 
 // Allocate which return list of devices.
 func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	responses := pluginapi.AllocateResponse{}
+	useIndexAsDeviceID := *plugin.config.Flags.Plugin.DeviceIDStrategy == spec.DeviceIDStrategyIndex
 	for _, req := range reqs.ContainerRequests {
 		// If the devices being allocated are replicas, then (conditionally)
 		// error out if more than one resource is being allocated.
@@ -271,7 +272,7 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.
 		}
 
 		for _, id := range req.DevicesIDs {
-			if !plugin.rm.Devices().Contains(id) {
+			if !useIndexAsDeviceID && !plugin.rm.Devices().Contains(id) {
 				return nil, fmt.Errorf("invalid allocation request for '%s': unknown device: %s", plugin.rm.Resource(), id)
 			}
 		}
@@ -367,13 +368,14 @@ func (plugin *NvidiaDevicePlugin) deviceIDsFromAnnotatedDeviceIDs(ids []string) 
 		deviceIDs = rm.AnnotatedIDs(ids).GetIDs()
 	}
 	if *plugin.config.Flags.Plugin.DeviceIDStrategy == spec.DeviceIDStrategyIndex {
-		deviceIDs = plugin.rm.Devices().Subset(ids).GetIndices()
+		deviceIDs = ids
 	}
 	return deviceIDs
 }
 
 func (plugin *NvidiaDevicePlugin) apiDevices() []*pluginapi.Device {
-	return plugin.rm.Devices().GetPluginDevices()
+	useIndexAsDeviceID := *plugin.config.Flags.Plugin.DeviceIDStrategy == spec.DeviceIDStrategyIndex
+	return plugin.rm.Devices().GetPluginDevices(useIndexAsDeviceID)
 }
 
 func (plugin *NvidiaDevicePlugin) apiEnvs(envvar string, deviceIDs []string) map[string]string {

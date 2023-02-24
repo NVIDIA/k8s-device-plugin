@@ -29,6 +29,7 @@ type Device struct {
 	pluginapi.Device
 	Paths []string
 	Index string
+	UUID  string
 }
 
 // deviceInfo defines the information the required to construct a Device
@@ -150,9 +151,13 @@ func (ds Devices) GetIDs() []string {
 }
 
 // GetPluginDevices returns the plugin Devices from all devices in the Devices
-func (ds Devices) GetPluginDevices() []*pluginapi.Device {
+func (ds Devices) GetPluginDevices(useIndexAsDeviceID bool) []*pluginapi.Device {
 	var res []*pluginapi.Device
 	for _, d := range ds {
+		if useIndexAsDeviceID {
+			d.UUID = d.Device.ID
+			d.Device.ID = d.Index
+		}
 		res = append(res, &d.Device)
 	}
 	return res

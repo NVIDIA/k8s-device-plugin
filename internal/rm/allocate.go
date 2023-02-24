@@ -19,8 +19,10 @@ package rm
 import (
 	"fmt"
 	"sort"
+	"strconv"
 
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 var alignedAllocationPolicy = gpuallocator.NewBestEffortPolicy()
@@ -43,12 +45,14 @@ func (r *resourceManager) getPreferredAllocation(available, required []string, s
 func (r *resourceManager) alignedAlloc(available, required []string, size int) ([]string, error) {
 	var devices []string
 
-	availableDevices, err := gpuallocator.NewDevicesFrom(available)
+	useIndexAsDeviceID := *r.config.Flags.Plugin.DeviceIDStrategy == spec.DeviceIDStrategyIndex
+
+	availableDevices, err := newDevicesFrom(useIndexAsDeviceID, available)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve list of available devices: %v", err)
 	}
 
-	requiredDevices, err := gpuallocator.NewDevicesFrom(required)
+	requiredDevices, err := newDevicesFrom(useIndexAsDeviceID, required)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve list of required devices: %v", err)
 	}
@@ -60,6 +64,48 @@ func (r *resourceManager) alignedAlloc(available, required []string, size int) (
 	}
 
 	return devices, nil
+}
+
+func newDevicesFrom(useIndexAsDeviceID bool, ids []string) ([]*gpuallocator.Device, error) {
+	devices, err := gpuallocator.NewDevices()
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := []*gpuallocator.Device{}
+
+	if useIndexAsDeviceID {
+		for _, idx := range ids {
+			index, err := strconv.Atoi(idx)
+			if err != nil {
+				return nil, fmt.Errorf("wrong index value: %s", idx)
+			}
+			for i, device := range devices {
+				if i == index {
+					filtered = append(filtered, device)
+					break
+				}
+			}
+			if len(filtered) == 0 {
+				return nil, fmt.Errorf("no device with index: %d", index)
+			}
+		}
+		return filtered, nil
+	}
+
+	for _, uuid := range ids {
+		for _, device := range devices {
+			if device.UUID == uuid {
+				filtered = append(filtered, device)
+				break
+			}
+		}
+		if len(filtered) == 0 || filtered[len(filtered)-1].UUID != uuid {
+			return nil, fmt.Errorf("no device with uuid: %v", uuid)
+		}
+	}
+
+	return filtered, nil
 }
 
 // distributedAlloc returns a list of devices such that any replicated

@@ -218,7 +218,11 @@ func getAdditionalXids(input string) []uint64 {
 // For a full device the returned 3-tuple is the device's uuid and 0xFFFFFFFF for the other two elements.
 func (r *nvmlResourceManager) getDevicePlacement(d *Device) (string, int, int, error) {
 	if !d.IsMigDevice() {
-		return d.GetUUID(), 0xFFFFFFFF, 0xFFFFFFFF, nil
+		uuid := d.GetUUID()
+		if d.UUID != "" {
+			uuid = d.UUID
+		}
+		return uuid, 0xFFFFFFFF, 0xFFFFFFFF, nil
 	}
 	return r.getMigDeviceParts(d)
 }
@@ -228,8 +232,10 @@ func (r *nvmlResourceManager) getMigDeviceParts(d *Device) (string, int, int, er
 	if !d.IsMigDevice() {
 		return "", 0, 0, fmt.Errorf("cannot get GI and CI of full device")
 	}
-
 	uuid := d.GetUUID()
+	if d.UUID != "" {
+		uuid = AnnotatedID(d.UUID).GetID()
+	}
 	// For older driver versions, the call to DeviceGetHandleByUUID will fail for MIG devices.
 	mig, ret := r.nvml.DeviceGetHandleByUUID(uuid)
 	if ret == nvml.SUCCESS {
