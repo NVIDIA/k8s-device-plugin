@@ -125,11 +125,9 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 	cdi.logger.Infof("Using minimum required CDI spec version: %s", minVersion)
 	spec.Version = minVersion
 
-	if cdi.driverRoot != cdi.targetDriverRoot {
-		err = transform.NewDriverRootTransform(cdi.driverRoot, cdi.targetDriverRoot).Apply(spec)
-		if err != nil {
-			return fmt.Errorf("failed to transform spec: %v", err)
-		}
+	err = transform.NewRootTransformer(cdi.driverRoot, cdi.targetDriverRoot).Transform(spec)
+	if err != nil {
+		return fmt.Errorf("failed to transform driver root in CDI spec: %v", err)
 	}
 
 	specName, err := cdiapi.GenerateNameForSpec(spec)
