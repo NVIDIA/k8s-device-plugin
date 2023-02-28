@@ -8,11 +8,12 @@ github.com/NVIDIA/go-nvml/pkg/nvml
 # github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201222072828-352eb4c503a7
 ## explicit; go 1.14
 github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml
-# github.com/NVIDIA/nvidia-container-toolkit v1.12.1-0.20230215081319-b4ab95f00c3d
+# github.com/NVIDIA/nvidia-container-toolkit v1.13.0-rc.1.0.20230228180429-1e9b7883cf0d
 ## explicit; go 1.18
 github.com/NVIDIA/nvidia-container-toolkit/internal/config/image
 github.com/NVIDIA/nvidia-container-toolkit/internal/discover
 github.com/NVIDIA/nvidia-container-toolkit/internal/discover/csv
+github.com/NVIDIA/nvidia-container-toolkit/internal/dxcore
 github.com/NVIDIA/nvidia-container-toolkit/internal/edits
 github.com/NVIDIA/nvidia-container-toolkit/internal/info/drm
 github.com/NVIDIA/nvidia-container-toolkit/internal/info/proc
@@ -21,6 +22,7 @@ github.com/NVIDIA/nvidia-container-toolkit/internal/lookup
 github.com/NVIDIA/nvidia-container-toolkit/internal/nvcaps
 github.com/NVIDIA/nvidia-container-toolkit/internal/oci
 github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi
+github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform
 # github.com/container-orchestrated-devices/container-device-interface v0.5.4-0.20230111111500-5b3b5d81179a
 ## explicit; go 1.17
 github.com/container-orchestrated-devices/container-device-interface/internal/multierror
@@ -123,7 +125,7 @@ github.com/syndtr/gocapability/capability
 # github.com/urfave/cli/v2 v2.4.0
 ## explicit; go 1.11
 github.com/urfave/cli/v2
-# gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230119114711-6fe07bb33342
+# gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230209143738-95328d8c4438
 ## explicit; go 1.16
 gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device
 gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info
