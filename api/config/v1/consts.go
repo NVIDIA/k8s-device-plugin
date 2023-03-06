@@ -45,5 +45,6 @@ const (
 
 // Constants related to generating CDI specifications
 const (
-	DefaultNvidiaCTKPath = "/usr/bin/nvidia-ctk"
+	DefaultNvidiaCTKPath     = "/usr/bin/nvidia-ctk"
+	DefaultDriverRootCtrPath = "/driver-root"
 )

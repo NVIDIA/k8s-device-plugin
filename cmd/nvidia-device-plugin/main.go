@@ -100,8 +100,14 @@ func main() {
 		&cli.StringFlag{
 			Name:    "nvidia-ctk-path",
 			Value:   spec.DefaultNvidiaCTKPath,
-			Usage:   "The path to use for the nvidia-ctk in the generated CDI specification.",
+			Usage:   "the path to use for the nvidia-ctk in the generated CDI specification",
 			EnvVars: []string{"NVIDIA_CTK_PATH"},
+		},
+		&cli.StringFlag{
+			Name:    "driver-root-ctr-path",
+			Value:   spec.DefaultDriverRootCtrPath,
+			Usage:   "the path where the NVIDIA driver root is mounted in the container; used for generating CDI specifications",
+			EnvVars: []string{"DRIVER_ROOT_CTR_PATH"},
 		},
 	}
 

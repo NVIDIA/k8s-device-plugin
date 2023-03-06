@@ -28,7 +28,7 @@ replace (
 
 require (
 	github.com/NVIDIA/go-gpuallocator v0.2.3
-	github.com/NVIDIA/nvidia-container-toolkit v1.12.1-0.20230215081319-b4ab95f00c3d
+	github.com/NVIDIA/nvidia-container-toolkit v1.13.0-rc.1.0.20230228180429-1e9b7883cf0d
 	github.com/container-orchestrated-devices/container-device-interface v0.5.4-0.20230111111500-5b3b5d81179a
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/google/uuid v1.3.0
@@ -36,7 +36,7 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli/v2 v2.4.0
-	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230119114711-6fe07bb33342
+	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230209143738-95328d8c4438
 	golang.org/x/net v0.7.0
 	golang.org/x/sys v0.5.0
 	google.golang.org/grpc v1.29.0

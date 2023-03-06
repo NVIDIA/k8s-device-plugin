@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi"
+	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
 	cdiapi "github.com/container-orchestrated-devices/container-device-interface/pkg/cdi"
 	cdispec "github.com/container-orchestrated-devices/container-device-interface/specs-go"
 	"github.com/sirupsen/logrus"
@@ -38,6 +39,7 @@ type cdiHandler struct {
 	nvml             nvml.Interface
 	nvdevice         nvdevice.Interface
 	driverRoot       string
+	targetDriverRoot string
 	nvidiaCTKPath    string
 	cdiRoot          string
 	cdilib           nvcdi.Interface
@@ -65,6 +67,12 @@ func newHandler(opts ...Option) (Interface, error) {
 	}
 	if c.deviceIDStrategy == "" {
 		c.deviceIDStrategy = "uuid"
+	}
+	if c.driverRoot == "" {
+		c.driverRoot = "/"
+	}
+	if c.targetDriverRoot == "" {
+		c.targetDriverRoot = c.driverRoot
 	}
 
 	deviceNamer, err := nvcdi.NewDeviceNamer(c.deviceIDStrategy)
@@ -116,6 +124,11 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 	}
 	cdi.logger.Infof("Using minimum required CDI spec version: %s", minVersion)
 	spec.Version = minVersion
+
+	err = transform.NewRootTransformer(cdi.driverRoot, cdi.targetDriverRoot).Transform(spec)
+	if err != nil {
+		return fmt.Errorf("failed to transform driver root in CDI spec: %v", err)
+	}
 
 	specName, err := cdiapi.GenerateNameForSpec(spec)
 	if err != nil {
