@@ -20,7 +20,7 @@ var _ Interface = &InterfaceMock{}
 //			CreateSpecFileFunc: func() error {
 //				panic("mock out the CreateSpecFile method")
 //			},
-//			QualifiedNameFunc: func(s string) string {
+//			QualifiedNameFunc: func(s1 string, s2 string) string {
 //				panic("mock out the QualifiedName method")
 //			},
 //		}
@@ -34,7 +34,7 @@ type InterfaceMock struct {
 	CreateSpecFileFunc func() error
 
 	// QualifiedNameFunc mocks the QualifiedName method.
-	QualifiedNameFunc func(s string) string
+	QualifiedNameFunc func(s1 string, s2 string) string
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -43,8 +43,10 @@ type InterfaceMock struct {
 		}
 		// QualifiedName holds details about calls to the QualifiedName method.
 		QualifiedName []struct {
-			// S is the s argument value.
-			S string
+			// S1 is the s1 argument value.
+			S1 string
+			// S2 is the s2 argument value.
+			S2 string
 		}
 	}
 	lockCreateSpecFile sync.RWMutex
@@ -82,11 +84,13 @@ func (mock *InterfaceMock) CreateSpecFileCalls() []struct {
 }
 
 // QualifiedName calls QualifiedNameFunc.
-func (mock *InterfaceMock) QualifiedName(s string) string {
+func (mock *InterfaceMock) QualifiedName(s1 string, s2 string) string {
 	callInfo := struct {
-		S string
+		S1 string
+		S2 string
 	}{
-		S: s,
+		S1: s1,
+		S2: s2,
 	}
 	mock.lockQualifiedName.Lock()
 	mock.calls.QualifiedName = append(mock.calls.QualifiedName, callInfo)
@@ -97,7 +101,7 @@ func (mock *InterfaceMock) QualifiedName(s string) string {
 		)
 		return sOut
 	}
-	return mock.QualifiedNameFunc(s)
+	return mock.QualifiedNameFunc(s1, s2)
 }
 
 // QualifiedNameCalls gets all the calls that were made to QualifiedName.
@@ -105,10 +109,12 @@ func (mock *InterfaceMock) QualifiedName(s string) string {
 //
 //	len(mockedInterface.QualifiedNameCalls())
 func (mock *InterfaceMock) QualifiedNameCalls() []struct {
-	S string
+	S1 string
+	S2 string
 } {
 	var calls []struct {
-		S string
+		S1 string
+		S2 string
 	}
 	mock.lockQualifiedName.RLock()
 	calls = mock.calls.QualifiedName

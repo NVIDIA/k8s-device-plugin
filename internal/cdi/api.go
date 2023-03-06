@@ -21,5 +21,5 @@ package cdi
 //go:generate moq -stub -out api_mock.go . Interface
 type Interface interface {
 	CreateSpecFile() error
-	QualifiedName(string) string
+	QualifiedName(string, string) string
 }

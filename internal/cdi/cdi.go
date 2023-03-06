@@ -140,6 +140,6 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 
 // QualifiedName constructs a CDI qualified device name for the specified resources.
 // Note: This assumes that the specified id matches the device name returned by the naming strategy.
-func (cdi *cdiHandler) QualifiedName(id string) string {
-	return cdiapi.QualifiedName(cdi.vendor, cdi.class, id)
+func (cdi *cdiHandler) QualifiedName(class string, id string) string {
+	return cdiapi.QualifiedName(cdi.vendor, class, id)
 }

@@ -322,14 +322,14 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDI(responseID string, d
 
 	var devices []string
 	for _, id := range deviceIDs {
-		devices = append(devices, plugin.cdiHandler.QualifiedName(id))
+		devices = append(devices, plugin.cdiHandler.QualifiedName("gpu", id))
 	}
 
 	if *plugin.config.Flags.GDSEnabled {
-		devices = append(devices, "nvidia.com/gds=all")
+		devices = append(devices, plugin.cdiHandler.QualifiedName("gds", "all"))
 	}
 	if *plugin.config.Flags.MOFEDEnabled {
-		devices = append(devices, "nvidia.com/mofed=all")
+		devices = append(devices, plugin.cdiHandler.QualifiedName("mofed", "all"))
 	}
 
 	if len(devices) > 0 {
