@@ -58,13 +58,6 @@ func WithDeviceIDStrategy(strategy string) Option {
 	}
 }
 
-// WithClass provides an Option to set the vendor used by the 'cdi' interface
-func WithClass(class string) Option {
-	return func(c *cdiHandler) {
-		c.class = class
-	}
-}
-
 // WithVendor provides an Option to set the vendor used by the 'cdi' interface
 func WithVendor(vendor string) Option {
 	return func(c *cdiHandler) {

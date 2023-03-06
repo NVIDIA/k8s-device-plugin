@@ -51,7 +51,6 @@ func NewPluginManager(config *spec.Config) (manager.Interface, error) {
 			cdi.WithNvml(nvmllib),
 			cdi.WithDeviceIDStrategy(*config.Flags.Plugin.DeviceIDStrategy),
 			cdi.WithVendor("k8s.device-plugin.nvidia.com"),
-			cdi.WithClass("gpu"),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create cdi handler: %v", err)

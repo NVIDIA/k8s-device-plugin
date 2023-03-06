@@ -43,7 +43,6 @@ type cdiHandler struct {
 	cdiRoot          string
 	cdilib           nvcdi.Interface
 	vendor           string
-	class            string
 	deviceIDStrategy string
 }
 
