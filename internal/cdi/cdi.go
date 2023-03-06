@@ -23,7 +23,6 @@ import (
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi"
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
 	cdiapi "github.com/container-orchestrated-devices/container-device-interface/pkg/cdi"
-	cdispec "github.com/container-orchestrated-devices/container-device-interface/specs-go"
 	"github.com/sirupsen/logrus"
 	nvdevice "gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
@@ -102,40 +101,22 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 	}
 	defer cdi.nvml.Shutdown()
 
-	deviceSpecs, err := cdi.cdilib.GetAllDeviceSpecs()
+	spec, err := cdi.cdilib.GetSpec()
 	if err != nil {
-		return fmt.Errorf("failed to get CDI device specs: %v", err)
+		return fmt.Errorf("failed to get CDI spec: %v", err)
 	}
 
-	edits, err := cdi.cdilib.GetCommonEdits()
-	if err != nil {
-		return fmt.Errorf("failed to get common CDI spec edits: %v", err)
-	}
-
-	spec := &cdispec.Spec{
-		Kind:           cdi.vendor + "/" + cdi.class,
-		Devices:        deviceSpecs,
-		ContainerEdits: *edits.ContainerEdits,
-	}
-
-	minVersion, err := cdiapi.MinimumRequiredVersion(spec)
-	if err != nil {
-		return fmt.Errorf("failed to get minimum required CDI spec version: %v", err)
-	}
-	cdi.logger.Infof("Using minimum required CDI spec version: %s", minVersion)
-	spec.Version = minVersion
-
-	err = transform.NewRootTransformer(cdi.driverRoot, cdi.targetDriverRoot).Transform(spec)
+	err = transform.NewRootTransformer(cdi.driverRoot, cdi.targetDriverRoot).Transform(spec.Raw())
 	if err != nil {
 		return fmt.Errorf("failed to transform driver root in CDI spec: %v", err)
 	}
 
-	specName, err := cdiapi.GenerateNameForSpec(spec)
+	specName, err := cdiapi.GenerateNameForSpec(spec.Raw())
 	if err != nil {
 		return fmt.Errorf("failed to generate spec name: %v", err)
 	}
 
-	return (*cdiSpec)(spec).write(filepath.Join(cdiRoot, specName+".json"))
+	return spec.Save(filepath.Join(cdiRoot, specName+".json"))
 }
 
 // QualifiedName constructs a CDI qualified device name for the specified resources.
