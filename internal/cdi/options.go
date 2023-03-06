@@ -64,3 +64,17 @@ func WithVendor(vendor string) Option {
 		c.vendor = vendor
 	}
 }
+
+// WithGdsEnabled provides and option to set whether a GDS CDI spec should be generated
+func WithGdsEnabled(enabled bool) Option {
+	return func(c *cdiHandler) {
+		c.gdsEnabled = enabled
+	}
+}
+
+// WithMofedEnabled provides and option to set whether a MOFED CDI spec should be generated
+func WithMofedEnabled(enabled bool) Option {
+	return func(c *cdiHandler) {
+		c.mofedEnabled = enabled
+	}
+}

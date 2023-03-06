@@ -44,6 +44,9 @@ type cdiHandler struct {
 	vendor           string
 	deviceIDStrategy string
 
+	gdsEnabled   bool
+	mofedEnabled bool
+
 	cdilibs map[string]nvcdi.Interface
 }
 
@@ -91,6 +94,25 @@ func newHandler(opts ...Option) (Interface, error) {
 		nvcdi.WithVendor(c.vendor),
 		nvcdi.WithClass("gpu"),
 	)
+
+	var additionalModes []string
+	if c.gdsEnabled {
+		additionalModes = append(additionalModes, "gds")
+	}
+	if c.mofedEnabled {
+		additionalModes = append(additionalModes, "mofed")
+	}
+
+	for _, mode := range additionalModes {
+		lib := nvcdi.New(
+			nvcdi.WithLogger(c.logger),
+			nvcdi.WithNVIDIACTKPath(c.nvidiaCTKPath),
+			nvcdi.WithDriverRoot(c.driverRoot),
+			nvcdi.WithVendor(c.vendor),
+			nvcdi.WithMode(mode),
+		)
+		c.cdilibs[mode] = lib
+	}
 
 	return c, nil
 }
