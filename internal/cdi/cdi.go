@@ -41,9 +41,10 @@ type cdiHandler struct {
 	targetDriverRoot string
 	nvidiaCTKPath    string
 	cdiRoot          string
-	cdilib           nvcdi.Interface
 	vendor           string
 	deviceIDStrategy string
+
+	cdilibs map[string]nvcdi.Interface
 }
 
 var _ Interface = &cdiHandler{}
@@ -78,13 +79,17 @@ func newHandler(opts ...Option) (Interface, error) {
 		return nil, err
 	}
 
-	c.cdilib = nvcdi.New(
+	c.cdilibs = make(map[string]nvcdi.Interface)
+
+	c.cdilibs["gpu"] = nvcdi.New(
 		nvcdi.WithLogger(c.logger),
 		nvcdi.WithNvmlLib(c.nvml),
 		nvcdi.WithDeviceLib(c.nvdevice),
 		nvcdi.WithNVIDIACTKPath(c.nvidiaCTKPath),
 		nvcdi.WithDriverRoot(c.driverRoot),
 		nvcdi.WithDeviceNamer(deviceNamer),
+		nvcdi.WithVendor(c.vendor),
+		nvcdi.WithClass("gpu"),
 	)
 
 	return c, nil
@@ -92,30 +97,39 @@ func newHandler(opts ...Option) (Interface, error) {
 
 // CreateSpecFile creates a CDI spec file for the specified devices.
 func (cdi *cdiHandler) CreateSpecFile() error {
-	cdi.logger.Infof("Generating CDI spec for resource: %s/%s", cdi.vendor, cdi.class)
+	for class, cdilib := range cdi.cdilibs {
+		cdi.logger.Infof("Generating CDI spec for resource: %s/%s", cdi.vendor, class)
 
-	ret := cdi.nvml.Init()
-	if ret != nvml.SUCCESS {
-		return fmt.Errorf("failed to initialize NVML: %v", ret)
+		if class == "gpu" {
+			ret := cdi.nvml.Init()
+			if ret != nvml.SUCCESS {
+				return fmt.Errorf("failed to initialize NVML: %v", ret)
+			}
+			defer cdi.nvml.Shutdown()
+		}
+
+		spec, err := cdilib.GetSpec()
+		if err != nil {
+			return fmt.Errorf("failed to get CDI spec: %v", err)
+		}
+
+		err = transform.NewRootTransformer(cdi.driverRoot, cdi.targetDriverRoot).Transform(spec.Raw())
+		if err != nil {
+			return fmt.Errorf("failed to transform driver root in CDI spec: %v", err)
+		}
+
+		specName, err := cdiapi.GenerateNameForSpec(spec.Raw())
+		if err != nil {
+			return fmt.Errorf("failed to generate spec name: %v", err)
+		}
+
+		err = spec.Save(filepath.Join(cdiRoot, specName+".json"))
+		if err != nil {
+			return fmt.Errorf("failed to save CDI spec: %v", err)
+		}
 	}
-	defer cdi.nvml.Shutdown()
 
-	spec, err := cdi.cdilib.GetSpec()
-	if err != nil {
-		return fmt.Errorf("failed to get CDI spec: %v", err)
-	}
-
-	err = transform.NewRootTransformer(cdi.driverRoot, cdi.targetDriverRoot).Transform(spec.Raw())
-	if err != nil {
-		return fmt.Errorf("failed to transform driver root in CDI spec: %v", err)
-	}
-
-	specName, err := cdiapi.GenerateNameForSpec(spec.Raw())
-	if err != nil {
-		return fmt.Errorf("failed to generate spec name: %v", err)
-	}
-
-	return spec.Save(filepath.Join(cdiRoot, specName+".json"))
+	return nil
 }
 
 // QualifiedName constructs a CDI qualified device name for the specified resources.
