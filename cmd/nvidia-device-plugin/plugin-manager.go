@@ -47,7 +47,7 @@ func NewPluginManager(config *spec.Config) (PluginManager, error) {
 
 	cdiHandler := cdi.NewNullHandler()
 
-	if *config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyCDIAnnotations {
+	if *config.Flags.Plugin.CDIEnabled {
 		klog.Info("Creating a CDI handler")
 		cdiHandler, err = cdi.New(
 			cdi.WithDriverRoot(*config.Flags.Plugin.DriverRootCtrPath),

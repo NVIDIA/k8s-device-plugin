@@ -97,6 +97,12 @@ func main() {
 			Destination: &configFile,
 			EnvVars:     []string{"CONFIG_FILE"},
 		},
+		&cli.BoolFlag{
+			Name:    "cdi-enabled",
+			Value:   false,
+			Usage:   "enable the generation of a CDI specification; use CDI annotations when passing the device list to the underlying runtime",
+			EnvVars: []string{"CDI_ENABLED"},
+		},
 		&cli.StringFlag{
 			Name:    "nvidia-ctk-path",
 			Value:   spec.DefaultNvidiaCTKPath,
