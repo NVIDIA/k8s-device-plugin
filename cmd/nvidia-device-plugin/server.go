@@ -286,12 +286,9 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.
 func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) *pluginapi.ContainerAllocateResponse {
 	deviceIDs := plugin.deviceIDsFromAnnotatedDeviceIDs(requestIds)
 
-	if *plugin.config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyCDIAnnotations {
-		responseID := uuid.New().String()
-		return plugin.getAllocateResponseForCDIAnnotations(responseID, deviceIDs)
-	}
+	responseID := uuid.New().String()
+	response := plugin.getAllocateResponseForCDI(responseID, deviceIDs)
 
-	response := pluginapi.ContainerAllocateResponse{}
 	if *plugin.config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyEnvvar {
 		response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, deviceIDs)
 	}
@@ -312,10 +309,14 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) *plug
 	return &response
 }
 
-// getAllocateResponseForCDIAnnotations returns the allocate response for the specified device IDs.
+// getAllocateResponseForCDI returns the allocate response for the specified device IDs.
 // This response contains the annotations required to trigger CDI injection in the container engine or nvidia-container-runtime.
-func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDIAnnotations(responseID string, deviceIDs []string) *pluginapi.ContainerAllocateResponse {
+func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDI(responseID string, deviceIDs []string) pluginapi.ContainerAllocateResponse {
 	response := pluginapi.ContainerAllocateResponse{}
+
+	if !*plugin.config.Flags.Plugin.CDIEnabled {
+		return response
+	}
 
 	var devices []string
 	for _, id := range deviceIDs {
@@ -340,7 +341,7 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDIAnnotations(responseI
 		response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, []string{"void"})
 	}
 
-	return &response
+	return response
 }
 
 // PreStartContainer is unimplemented for this plugin

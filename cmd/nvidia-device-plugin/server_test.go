@@ -29,16 +29,24 @@ func TestCDIAllocateResponse(t *testing.T) {
 	testCases := []struct {
 		description      string
 		deviceIds        []string
+		CDIEnabled       bool
 		GDSEnabled       bool
 		MOFEDEnabled     bool
 		expectedResponse pluginapi.ContainerAllocateResponse
 	}{
 		{
 			description: "empty device list has empty response",
+			CDIEnabled:  true,
+		},
+		{
+			description: "CDI disabled has empty response",
+			deviceIds:   []string{"gpu0"},
+			CDIEnabled:  false,
 		},
 		{
 			description: "single device is added to annotations",
 			deviceIds:   []string{"gpu0"},
+			CDIEnabled:  true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gpu=gpu0",
@@ -51,6 +59,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 		{
 			description: "multiple devices are added to annotations",
 			deviceIds:   []string{"gpu0", "gpu1"},
+			CDIEnabled:  true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gpu=gpu0,nvidia.com/gpu=gpu1",
@@ -62,6 +71,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 		},
 		{
 			description:  "mofed devices are selected if configured",
+			CDIEnabled:   true,
 			MOFEDEnabled: true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
@@ -74,6 +84,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 		},
 		{
 			description: "gds devices are selected if configured",
+			CDIEnabled:  true,
 			GDSEnabled:  true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
@@ -87,6 +98,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 		{
 			description:  "gds and mofed devices are included with device ids",
 			deviceIds:    []string{"gpu0"},
+			CDIEnabled:   true,
 			GDSEnabled:   true,
 			MOFEDEnabled: true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
@@ -108,6 +120,9 @@ func TestCDIAllocateResponse(t *testing.T) {
 						CommandLineFlags: v1.CommandLineFlags{
 							GDSEnabled:   &tc.GDSEnabled,
 							MOFEDEnabled: &tc.MOFEDEnabled,
+							Plugin: &v1.PluginCommandLineFlags{
+								CDIEnabled: &tc.CDIEnabled,
+							},
 						},
 					},
 				},
@@ -119,9 +134,9 @@ func TestCDIAllocateResponse(t *testing.T) {
 				deviceListEnvvar: "NVIDIA_VISIBLE_DEVICES",
 			}
 
-			response := plugin.getAllocateResponseForCDIAnnotations("uuid", tc.deviceIds)
+			response := plugin.getAllocateResponseForCDI("uuid", tc.deviceIds)
 
-			require.EqualValues(t, &tc.expectedResponse, response)
+			require.EqualValues(t, &tc.expectedResponse, &response)
 		})
 	}
 }
