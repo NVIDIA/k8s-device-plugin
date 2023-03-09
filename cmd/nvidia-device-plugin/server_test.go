@@ -51,9 +51,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gpu=gpu0",
 				},
-				Envs: map[string]string{
-					"NVIDIA_VISIBLE_DEVICES": "void",
-				},
 			},
 		},
 		{
@@ -63,9 +60,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gpu=gpu0,nvidia.com/gpu=gpu1",
-				},
-				Envs: map[string]string{
-					"NVIDIA_VISIBLE_DEVICES": "void",
 				},
 			},
 		},
@@ -77,9 +71,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/mofed=all",
 				},
-				Envs: map[string]string{
-					"NVIDIA_VISIBLE_DEVICES": "void",
-				},
 			},
 		},
 		{
@@ -89,9 +80,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gds=all",
-				},
-				Envs: map[string]string{
-					"NVIDIA_VISIBLE_DEVICES": "void",
 				},
 			},
 		},
@@ -104,9 +92,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gpu=gpu0,nvidia.com/gds=all,nvidia.com/mofed=all",
-				},
-				Envs: map[string]string{
-					"NVIDIA_VISIBLE_DEVICES": "void",
 				},
 			},
 		},
@@ -131,7 +116,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 						return "nvidia.com/gpu=" + s
 					},
 				},
-				deviceListEnvvar: "NVIDIA_VISIBLE_DEVICES",
 			}
 
 			response := plugin.getAllocateResponseForCDI("uuid", tc.deviceIds)

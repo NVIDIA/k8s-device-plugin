@@ -336,9 +336,6 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDI(responseID string, d
 		if err != nil {
 			klog.Errorf("Failed to add CDI annotations: %v", err)
 		}
-
-		// Unset NVIDIA_VISIBLE_DEVICES envvar to ensure devices are only injected using container annotations
-		response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, []string{"void"})
 	}
 
 	return response
