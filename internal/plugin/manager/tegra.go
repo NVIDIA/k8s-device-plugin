@@ -40,7 +40,7 @@ func (m *tegramanager) GetPlugins() ([]plugin.Interface, error) {
 
 }
 
-// CreateSpecFile creates the spec is a no-op for the tegra plugin
-func (m *tegramanager) CreateSpecFile() error {
+// CreateCDISpecFile creates the spec is a no-op for the tegra plugin
+func (m *tegramanager) CreateCDISpecFile() error {
 	return nil
 }

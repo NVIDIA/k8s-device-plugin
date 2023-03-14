@@ -27,7 +27,7 @@ func (m *null) GetPlugins() ([]plugin.Interface, error) {
 	return nil, nil
 }
 
-// CreateSpecFile creates the spec is a no-op for the null plugin
-func (m *null) CreateSpecFile() error {
+// CreateCDISpecFile creates the spec is a no-op for the null plugin
+func (m *null) CreateCDISpecFile() error {
 	return nil
 }

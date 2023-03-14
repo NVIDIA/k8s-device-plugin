@@ -69,7 +69,7 @@ func NewPluginManager(config *spec.Config) (manager.Interface, error) {
 	}
 
 	klog.Info("Creating CDI specification")
-	if err := m.CreateSpecFile(); err != nil {
+	if err := m.CreateCDISpecFile(); err != nil {
 		return nil, fmt.Errorf("unable to create cdi spec file: %v", err)
 	}
 

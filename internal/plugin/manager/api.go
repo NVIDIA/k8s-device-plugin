@@ -21,5 +21,5 @@ import "github.com/NVIDIA/k8s-device-plugin/internal/plugin"
 // Interface defines the API for the plugin manager package
 type Interface interface {
 	GetPlugins() ([]plugin.Interface, error)
-	CreateSpecFile() error
+	CreateCDISpecFile() error
 }
