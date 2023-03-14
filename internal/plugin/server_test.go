@@ -14,7 +14,7 @@
 # limitations under the License.
 **/
 
-package main
+package plugin
 
 import (
 	"testing"
@@ -105,17 +105,15 @@ func TestCDIAllocateResponse(t *testing.T) {
 						CommandLineFlags: v1.CommandLineFlags{
 							GDSEnabled:   &tc.GDSEnabled,
 							MOFEDEnabled: &tc.MOFEDEnabled,
-							Plugin: &v1.PluginCommandLineFlags{
-								CDIEnabled: &tc.CDIEnabled,
-							},
 						},
 					},
 				},
-				cdi: &cdi.InterfaceMock{
+				cdiHandler: &cdi.InterfaceMock{
 					QualifiedNameFunc: func(s string) string {
 						return "nvidia.com/gpu=" + s
 					},
 				},
+				cdiEnabled: tc.CDIEnabled,
 			}
 
 			response := plugin.getAllocateResponseForCDI("uuid", tc.deviceIds)

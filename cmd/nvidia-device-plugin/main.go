@@ -25,6 +25,7 @@ import (
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
+	"github.com/NVIDIA/k8s-device-plugin/internal/plugin"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/fsnotify/fsnotify"
 	cli "github.com/urfave/cli/v2"
@@ -165,7 +166,7 @@ func start(c *cli.Context, flags []cli.Flag) error {
 
 	var restarting bool
 	var restartTimeout <-chan time.Time
-	var plugins []*NvidiaDevicePlugin
+	var plugins []plugin.Interface
 restart:
 	// If we are restarting, stop plugins from previous run.
 	if restarting {
@@ -231,7 +232,7 @@ exit:
 	return nil
 }
 
-func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]*NvidiaDevicePlugin, bool, error) {
+func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]plugin.Interface, bool, error) {
 	// Load the configuration file
 	klog.Info("Loading configuration.")
 	config, err := loadConfig(c, flags)
@@ -292,7 +293,7 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]*NvidiaD
 	return plugins, false, nil
 }
 
-func stopPlugins(plugins []*NvidiaDevicePlugin) error {
+func stopPlugins(plugins []plugin.Interface) error {
 	klog.Info("Stopping plugins.")
 	for _, p := range plugins {
 		p.Stop()

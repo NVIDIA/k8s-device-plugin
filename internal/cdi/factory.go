@@ -17,9 +17,9 @@
 package cdi
 
 import (
-	"fmt"
-
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info"
+
+	"k8s.io/klog/v2"
 )
 
 // New is a factory method that creates a CDI handler for creating CDI specs.
@@ -28,7 +28,8 @@ func New(opts ...Option) (Interface, error) {
 
 	hasNVML, _ := infolib.HasNvml()
 	if !hasNVML {
-		return nil, fmt.Errorf("no valid resources detected")
+		klog.Warning("No valid resources detected, creating a null CDI handler")
+		return NewNullHandler(), nil
 	}
 
 	return newHandler(opts...)
