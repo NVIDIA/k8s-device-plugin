@@ -97,6 +97,12 @@ func main() {
 			Destination: &configFile,
 			EnvVars:     []string{"CONFIG_FILE"},
 		},
+		&cli.BoolFlag{
+			Name:    "cdi-enabled",
+			Value:   false,
+			Usage:   "enable the generation of a CDI specification; use CDI annotations when passing the device list to the underlying runtime",
+			EnvVars: []string{"CDI_ENABLED"},
+		},
 		&cli.StringFlag{
 			Name:    "nvidia-ctk-path",
 			Value:   spec.DefaultNvidiaCTKPath,
@@ -120,9 +126,8 @@ func main() {
 
 func validateFlags(config *spec.Config) error {
 	allowedDeviceListStrategy := map[string]bool{
-		spec.DeviceListStrategyEnvvar:         true,
-		spec.DeviceListStrategyVolumeMounts:   true,
-		spec.DeviceListStrategyCDIAnnotations: true,
+		spec.DeviceListStrategyEnvvar:       true,
+		spec.DeviceListStrategyVolumeMounts: true,
 	}
 	if !allowedDeviceListStrategy[*config.Flags.Plugin.DeviceListStrategy] {
 		return fmt.Errorf("invalid --device-list-strategy option: %v", *config.Flags.Plugin.DeviceListStrategy)
