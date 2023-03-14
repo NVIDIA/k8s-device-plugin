@@ -22,6 +22,7 @@ import (
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 )
 
+// Option is a function that configures a manager
 type Option func(*manager)
 
 // WithCDIHandler sets the CDI handler for the manager

@@ -38,6 +38,7 @@ type manager struct {
 	infolib    info.Interface
 }
 
+// New creates a new plugin manager with the supplied options.
 func New(opts ...Option) (Interface, error) {
 	m := &manager{}
 	for _, opt := range opts {

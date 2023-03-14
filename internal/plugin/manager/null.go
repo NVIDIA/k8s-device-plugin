@@ -23,7 +23,7 @@ import (
 type null struct{}
 
 // GetPlugins returns an empty set of Plugins for the null manager
-func (n *null) GetPlugins() ([]plugin.Interface, error) {
+func (m *null) GetPlugins() ([]plugin.Interface, error) {
 	return nil, nil
 }
 
