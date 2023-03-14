@@ -37,7 +37,6 @@ func (m *tegramanager) GetPlugins() ([]plugin.Interface, error) {
 		plugins = append(plugins, plugin.NewNvidiaDevicePlugin(m.config, r, m.cdiHandler, m.cdiEnabled))
 	}
 	return plugins, nil
-
 }
 
 // CreateCDISpecFile creates the spec is a no-op for the tegra plugin
