@@ -1,7 +1,7 @@
 # github.com/NVIDIA/go-gpuallocator v0.2.3
 ## explicit; go 1.15
 github.com/NVIDIA/go-gpuallocator/gpuallocator
-# github.com/NVIDIA/go-nvml v0.12.0-0
+# github.com/NVIDIA/go-nvml v0.12.0-1
 ## explicit; go 1.15
 github.com/NVIDIA/go-nvml/pkg/dl
 github.com/NVIDIA/go-nvml/pkg/nvml
@@ -125,7 +125,7 @@ github.com/syndtr/gocapability/capability
 # github.com/urfave/cli/v2 v2.4.0
 ## explicit; go 1.11
 github.com/urfave/cli/v2
-# gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230209143738-95328d8c4438
+# gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230314181732-4ea7dac0fae0
 ## explicit; go 1.16
 gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device
 gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info
