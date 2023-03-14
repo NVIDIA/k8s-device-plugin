@@ -41,8 +41,5 @@ func (m *nvmlmanager) GetPlugins() ([]plugin.Interface, error) {
 
 // CreateCDISpecFile creates forwards the request to the CDI handler
 func (m *nvmlmanager) CreateCDISpecFile() error {
-	if !m.cdiEnabled {
-		return nil
-	}
 	return m.cdiHandler.CreateSpecFile()
 }
