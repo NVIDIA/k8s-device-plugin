@@ -44,6 +44,7 @@ type cdiHandler struct {
 	vendor           string
 	deviceIDStrategy string
 
+	enabled      bool
 	gdsEnabled   bool
 	mofedEnabled bool
 
@@ -58,6 +59,11 @@ func newHandler(opts ...Option) (Interface, error) {
 	for _, opt := range opts {
 		opt(c)
 	}
+
+	if !c.enabled {
+		return &null{}, nil
+	}
+
 	if c.logger == nil {
 		c.logger = logrus.StandardLogger()
 	}

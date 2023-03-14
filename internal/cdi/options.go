@@ -23,6 +23,13 @@ import (
 // Option defines a function for passing options to the New() call
 type Option func(*cdiHandler)
 
+// WithEnabled provides an Option to set the enabled flag used by the 'cdi' interface
+func WithEnabled(enabled bool) Option {
+	return func(c *cdiHandler) {
+		c.enabled = enabled
+	}
+}
+
 // WithDriverRoot provides an Option to set the driver root used by the 'cdi' interface
 func WithDriverRoot(root string) Option {
 	return func(c *cdiHandler) {
