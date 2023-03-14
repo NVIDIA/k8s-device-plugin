@@ -34,12 +34,15 @@ func (m *nvmlmanager) GetPlugins() ([]plugin.Interface, error) {
 
 	var plugins []plugin.Interface
 	for _, r := range rms {
-		plugins = append(plugins, plugin.NewNvidiaDevicePlugin(m.config, r, m.cdiHandler))
+		plugins = append(plugins, plugin.NewNvidiaDevicePlugin(m.config, r, m.cdiHandler, m.cdiEnabled))
 	}
 	return plugins, nil
 }
 
 // CreateSpecFile creates forwards the request to the CDI handler
 func (m *nvmlmanager) CreateSpecFile() error {
+	if !m.cdiEnabled {
+		return nil
+	}
 	return m.cdiHandler.CreateSpecFile()
 }

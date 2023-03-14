@@ -51,7 +51,8 @@ type NvidiaDevicePlugin struct {
 	deviceListEnvvar string
 	socket           string
 
-	cdi cdi.Interface
+	cdiHandler cdi.Interface
+	cdiEnabled bool
 
 	server *grpc.Server
 	health chan *rm.Device
@@ -59,7 +60,7 @@ type NvidiaDevicePlugin struct {
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, cdi cdi.Interface) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, cdiHandler cdi.Interface, cdiEnabled bool) *NvidiaDevicePlugin {
 	_, name := resourceManager.Resource().Split()
 
 	return &NvidiaDevicePlugin{
@@ -67,7 +68,8 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 		config:           config,
 		deviceListEnvvar: "NVIDIA_VISIBLE_DEVICES",
 		socket:           pluginapi.DevicePluginPath + "nvidia-" + name + ".sock",
-		cdi:              cdi,
+		cdiHandler:       cdiHandler,
+		cdiEnabled:       cdiEnabled,
 
 		// These will be reinitialized every
 		// time the plugin server is restarted.
@@ -314,13 +316,13 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) *plug
 func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDI(responseID string, deviceIDs []string) pluginapi.ContainerAllocateResponse {
 	response := pluginapi.ContainerAllocateResponse{}
 
-	if !*plugin.config.Flags.Plugin.CDIEnabled {
+	if !plugin.cdiEnabled {
 		return response
 	}
 
 	var devices []string
 	for _, id := range deviceIDs {
-		devices = append(devices, plugin.cdi.QualifiedName(id))
+		devices = append(devices, plugin.cdiHandler.QualifiedName(id))
 	}
 
 	if *plugin.config.Flags.GDSEnabled {

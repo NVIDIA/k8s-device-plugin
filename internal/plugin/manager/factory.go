@@ -33,6 +33,7 @@ type manager struct {
 	nvmllib         nvml.Interface
 
 	cdiHandler cdi.Interface
+	cdiEnabled bool
 	config     *spec.Config
 	infolib    info.Interface
 }
@@ -77,6 +78,7 @@ func New(opts ...Option) (Interface, error) {
 		}
 		defer m.nvmllib.Shutdown()
 
+		m.cdiEnabled = *m.config.Flags.Plugin.CDIEnabled
 		return (*nvmlmanager)(m), nil
 	case "tegra":
 		return (*tegramanager)(m), nil
