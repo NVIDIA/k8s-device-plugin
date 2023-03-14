@@ -36,7 +36,7 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli/v2 v2.4.0
-	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230209143738-95328d8c4438
+	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230314181732-4ea7dac0fae0
 	golang.org/x/net v0.7.0
 	golang.org/x/sys v0.5.0
 	google.golang.org/grpc v1.29.0
@@ -50,7 +50,7 @@ require (
 )
 
 require (
-	github.com/NVIDIA/go-nvml v0.12.0-0 // indirect
+	github.com/NVIDIA/go-nvml v0.12.0-1 // indirect
 	github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201222072828-352eb4c503a7 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
