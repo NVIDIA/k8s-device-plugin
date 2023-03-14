@@ -49,12 +49,7 @@ func New(opts ...Option) (Interface, error) {
 		klog.Warning("no config provided, returning a null manager")
 		return &null{}, nil
 	}
-	m.failOnInitError = *m.config.Flags.FailOnInitError
-	m.migStrategy = *m.config.Flags.MigStrategy
 
-	if m.nvmllib == nil {
-		m.nvmllib = nvml.New()
-	}
 	if m.infolib == nil {
 		m.infolib = info.New()
 	}
@@ -67,8 +62,16 @@ func New(opts ...Option) (Interface, error) {
 		return nil, err
 	}
 
+	if mode != "nvml" && m.cdiEnabled {
+		klog.Warning("CDI is not supported; disabling CDI.")
+		m.cdiEnabled = false
+	}
+
 	switch mode {
 	case "nvml":
+		if m.nvmllib == nil {
+			m.nvmllib = nvml.New()
+		}
 		ret := m.nvmllib.Init()
 		if ret != nvml.SUCCESS {
 			klog.Errorf("Failed to initialize NVML: %v.", ret)
@@ -84,7 +87,6 @@ func New(opts ...Option) (Interface, error) {
 		}
 		defer m.nvmllib.Shutdown()
 
-		m.cdiEnabled = *m.config.Flags.Plugin.CDIEnabled
 		return (*nvmlmanager)(m), nil
 	case "tegra":
 		return (*tegramanager)(m), nil

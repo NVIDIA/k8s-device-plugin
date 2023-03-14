@@ -61,8 +61,10 @@ func NewPluginManager(config *spec.Config) (manager.Interface, error) {
 
 	m, err := manager.New(
 		manager.WithNVML(nvmllib),
+		manager.WithCDIEnabled(*config.Flags.Plugin.CDIEnabled),
 		manager.WithCDIHandler(cdiHandler),
-		manager.WithConfig(config),
+		manager.WithFailOnInitError(*config.Flags.FailOnInitError),
+		manager.WithMigStrategy(*config.Flags.MigStrategy),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create plugin manager: %v", err)
