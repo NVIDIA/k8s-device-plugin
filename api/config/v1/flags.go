@@ -57,12 +57,12 @@ type CommandLineFlags struct {
 
 // PluginCommandLineFlags holds the list of command line flags specific to the device plugin.
 type PluginCommandLineFlags struct {
-	PassDeviceSpecs    *bool   `json:"passDeviceSpecs"             yaml:"passDeviceSpecs"`
-	DeviceListStrategy *string `json:"deviceListStrategy"          yaml:"deviceListStrategy"`
-	DeviceIDStrategy   *string `json:"deviceIDStrategy"            yaml:"deviceIDStrategy"`
-	CDIEnabled         *bool   `json:"CDIEnabled"                  yaml:"CDIEnabled"`
-	NvidiaCTKPath      *string `json:"nvidiaCTKPath"               yaml:"nvidiaCTKPath"`
-	DriverRootCtrPath  *string `json:"driverRootCtrPath,omitempty" yaml:"driverRootCtrPath,omitempty"`
+	PassDeviceSpecs    *bool   `json:"passDeviceSpecs"    yaml:"passDeviceSpecs"`
+	DeviceListStrategy *string `json:"deviceListStrategy" yaml:"deviceListStrategy"`
+	DeviceIDStrategy   *string `json:"deviceIDStrategy"   yaml:"deviceIDStrategy"`
+	CDIEnabled         *bool   `json:"CDIEnabled"         yaml:"CDIEnabled"`
+	NvidiaCTKPath      *string `json:"nvidiaCTKPath"      yaml:"nvidiaCTKPath"`
+	DriverRootCtrPath  *string `json:"driverRootCtrPath"  yaml:"driverRootCtrPath"`
 }
 
 // GFDCommandLineFlags holds the list of command line flags specific to GFD.
