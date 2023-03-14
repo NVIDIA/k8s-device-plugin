@@ -71,6 +71,11 @@ func New(opts ...Option) (Interface, error) {
 	case "nvml":
 		ret := m.nvmllib.Init()
 		if ret != nvml.SUCCESS {
+			klog.Errorf("Failed to initialize NVML: %v.", ret)
+			klog.Errorf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
+			klog.Errorf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
+			klog.Errorf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
+			klog.Errorf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
 			if m.failOnInitError {
 				return nil, fmt.Errorf("nvml init failed: %v", ret)
 			}
