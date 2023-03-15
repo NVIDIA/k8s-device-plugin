@@ -23,6 +23,13 @@ import (
 // Option defines a function for passing options to the New() call
 type Option func(*cdiHandler)
 
+// WithEnabled provides an Option to set the enabled flag used by the 'cdi' interface
+func WithEnabled(enabled bool) Option {
+	return func(c *cdiHandler) {
+		c.enabled = enabled
+	}
+}
+
 // WithDriverRoot provides an Option to set the driver root used by the 'cdi' interface
 func WithDriverRoot(root string) Option {
 	return func(c *cdiHandler) {
@@ -58,16 +65,23 @@ func WithDeviceIDStrategy(strategy string) Option {
 	}
 }
 
-// WithClass provides an Option to set the vendor used by the 'cdi' interface
-func WithClass(class string) Option {
-	return func(c *cdiHandler) {
-		c.class = class
-	}
-}
-
 // WithVendor provides an Option to set the vendor used by the 'cdi' interface
 func WithVendor(vendor string) Option {
 	return func(c *cdiHandler) {
 		c.vendor = vendor
+	}
+}
+
+// WithGdsEnabled provides and option to set whether a GDS CDI spec should be generated
+func WithGdsEnabled(enabled bool) Option {
+	return func(c *cdiHandler) {
+		c.gdsEnabled = enabled
+	}
+}
+
+// WithMofedEnabled provides and option to set whether a MOFED CDI spec should be generated
+func WithMofedEnabled(enabled bool) Option {
+	return func(c *cdiHandler) {
+		c.mofedEnabled = enabled
 	}
 }

@@ -23,8 +23,6 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/plugin/manager"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
-
-	"k8s.io/klog/v2"
 )
 
 // NewPluginManager creates an NVML-based plugin manager
@@ -40,35 +38,33 @@ func NewPluginManager(config *spec.Config) (manager.Interface, error) {
 
 	nvmllib := nvml.New()
 
-	cdiHandler := cdi.NewNullHandler()
-
-	if *config.Flags.Plugin.CDIEnabled {
-		klog.Info("Creating a CDI handler")
-		cdiHandler, err = cdi.New(
-			cdi.WithDriverRoot(*config.Flags.Plugin.DriverRootCtrPath),
-			cdi.WithTargetDriverRoot(*config.Flags.NvidiaDriverRoot),
-			cdi.WithNvidiaCTKPath(*config.Flags.Plugin.NvidiaCTKPath),
-			cdi.WithNvml(nvmllib),
-			cdi.WithDeviceIDStrategy(*config.Flags.Plugin.DeviceIDStrategy),
-			cdi.WithVendor("k8s.device-plugin.nvidia.com"),
-			cdi.WithClass("gpu"),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("unable to create cdi handler: %v", err)
-		}
+	cdiHandler, err := cdi.New(
+		cdi.WithEnabled(*config.Flags.Plugin.CDIEnabled),
+		cdi.WithDriverRoot(*config.Flags.Plugin.DriverRootCtrPath),
+		cdi.WithTargetDriverRoot(*config.Flags.NvidiaDriverRoot),
+		cdi.WithNvidiaCTKPath(*config.Flags.Plugin.NvidiaCTKPath),
+		cdi.WithNvml(nvmllib),
+		cdi.WithDeviceIDStrategy(*config.Flags.Plugin.DeviceIDStrategy),
+		cdi.WithVendor("k8s.device-plugin.nvidia.com"),
+		cdi.WithGdsEnabled(*config.Flags.GDSEnabled),
+		cdi.WithMofedEnabled(*config.Flags.MOFEDEnabled),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create cdi handler: %v", err)
 	}
 
 	m, err := manager.New(
 		manager.WithNVML(nvmllib),
+		manager.WithCDIEnabled(*config.Flags.Plugin.CDIEnabled),
 		manager.WithCDIHandler(cdiHandler),
-		manager.WithConfig(config),
+		manager.WithFailOnInitError(*config.Flags.FailOnInitError),
+		manager.WithMigStrategy(*config.Flags.MigStrategy),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create plugin manager: %v", err)
 	}
 
-	klog.Info("Creating CDI specification")
-	if err := m.CreateSpecFile(); err != nil {
+	if err := m.CreateCDISpecFile(); err != nil {
 		return nil, fmt.Errorf("unable to create cdi spec file: %v", err)
 	}
 

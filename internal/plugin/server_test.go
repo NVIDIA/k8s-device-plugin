@@ -109,8 +109,8 @@ func TestCDIAllocateResponse(t *testing.T) {
 					},
 				},
 				cdiHandler: &cdi.InterfaceMock{
-					QualifiedNameFunc: func(s string) string {
-						return "nvidia.com/gpu=" + s
+					QualifiedNameFunc: func(c string, s string) string {
+						return "nvidia.com/" + c + "=" + s
 					},
 				},
 				cdiEnabled: tc.CDIEnabled,

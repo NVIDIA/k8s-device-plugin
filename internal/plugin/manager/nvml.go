@@ -39,10 +39,7 @@ func (m *nvmlmanager) GetPlugins() ([]plugin.Interface, error) {
 	return plugins, nil
 }
 
-// CreateSpecFile creates forwards the request to the CDI handler
-func (m *nvmlmanager) CreateSpecFile() error {
-	if !m.cdiEnabled {
-		return nil
-	}
+// CreateCDISpecFile creates forwards the request to the CDI handler
+func (m *nvmlmanager) CreateCDISpecFile() error {
 	return m.cdiHandler.CreateSpecFile()
 }

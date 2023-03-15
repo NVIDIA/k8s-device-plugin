@@ -28,7 +28,7 @@ replace (
 
 require (
 	github.com/NVIDIA/go-gpuallocator v0.2.3
-	github.com/NVIDIA/nvidia-container-toolkit v1.13.0-rc.1.0.20230228180429-1e9b7883cf0d
+	github.com/NVIDIA/nvidia-container-toolkit v1.13.0-rc.1.0.20230306111649-f36c514f1fc9
 	github.com/container-orchestrated-devices/container-device-interface v0.5.4-0.20230111111500-5b3b5d81179a
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/google/uuid v1.3.0

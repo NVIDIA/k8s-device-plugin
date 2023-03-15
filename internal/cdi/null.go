@@ -39,7 +39,7 @@ func (n *null) CreateSpecFile() error {
 
 // QualifiedName is a no-op for the null handler. A error message is logged
 // inidicating this should never be called for the null handler.
-func (n *null) QualifiedName(id string) string {
+func (n *null) QualifiedName(class string, id string) string {
 	klog.Error("cannot return a qualified CDI device name with the null CDI handler")
 	return ""
 }

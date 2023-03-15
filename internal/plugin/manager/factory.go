@@ -38,6 +38,7 @@ type manager struct {
 	infolib    info.Interface
 }
 
+// New creates a new plugin manager with the supplied options.
 func New(opts ...Option) (Interface, error) {
 	m := &manager{}
 	for _, opt := range opts {
@@ -48,12 +49,7 @@ func New(opts ...Option) (Interface, error) {
 		klog.Warning("no config provided, returning a null manager")
 		return &null{}, nil
 	}
-	m.failOnInitError = *m.config.Flags.FailOnInitError
-	m.migStrategy = *m.config.Flags.MigStrategy
 
-	if m.nvmllib == nil {
-		m.nvmllib = nvml.New()
-	}
 	if m.infolib == nil {
 		m.infolib = info.New()
 	}
@@ -66,10 +62,23 @@ func New(opts ...Option) (Interface, error) {
 		return nil, err
 	}
 
+	if mode != "nvml" && m.cdiEnabled {
+		klog.Warning("CDI is not supported; disabling CDI.")
+		m.cdiEnabled = false
+	}
+
 	switch mode {
 	case "nvml":
+		if m.nvmllib == nil {
+			m.nvmllib = nvml.New()
+		}
 		ret := m.nvmllib.Init()
 		if ret != nvml.SUCCESS {
+			klog.Errorf("Failed to initialize NVML: %v.", ret)
+			klog.Errorf("If this is a GPU node, did you set the docker default runtime to `nvidia`?")
+			klog.Errorf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
+			klog.Errorf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
+			klog.Errorf("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
 			if m.failOnInitError {
 				return nil, fmt.Errorf("nvml init failed: %v", ret)
 			}
@@ -78,7 +87,6 @@ func New(opts ...Option) (Interface, error) {
 		}
 		defer m.nvmllib.Shutdown()
 
-		m.cdiEnabled = *m.config.Flags.Plugin.CDIEnabled
 		return (*nvmlmanager)(m), nil
 	case "tegra":
 		return (*tegramanager)(m), nil
