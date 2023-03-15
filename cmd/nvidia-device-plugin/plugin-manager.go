@@ -23,8 +23,6 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/plugin/manager"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
-
-	"k8s.io/klog/v2"
 )
 
 // NewPluginManager creates an NVML-based plugin manager
@@ -66,7 +64,6 @@ func NewPluginManager(config *spec.Config) (manager.Interface, error) {
 		return nil, fmt.Errorf("unable to create plugin manager: %v", err)
 	}
 
-	klog.Info("Creating CDI specification")
 	if err := m.CreateCDISpecFile(); err != nil {
 		return nil, fmt.Errorf("unable to create cdi spec file: %v", err)
 	}
