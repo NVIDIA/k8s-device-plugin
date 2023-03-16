@@ -17,6 +17,7 @@
 package manager
 
 import (
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 )
@@ -56,5 +57,12 @@ func WithFailOnInitError(failOnInitError bool) Option {
 func WithMigStrategy(migStrategy string) Option {
 	return func(m *manager) {
 		m.migStrategy = migStrategy
+	}
+}
+
+// WithConfig sets the config reference for the manager
+func WithConfig(config *spec.Config) Option {
+	return func(m *manager) {
+		m.config = config
 	}
 }
