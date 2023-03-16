@@ -57,6 +57,7 @@ func NewPluginManager(config *spec.Config) (manager.Interface, error) {
 		manager.WithNVML(nvmllib),
 		manager.WithCDIEnabled(*config.Flags.Plugin.CDIEnabled),
 		manager.WithCDIHandler(cdiHandler),
+		manager.WithConfig(config),
 		manager.WithFailOnInitError(*config.Flags.FailOnInitError),
 		manager.WithMigStrategy(*config.Flags.MigStrategy),
 	)
