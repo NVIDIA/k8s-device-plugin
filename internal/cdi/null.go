@@ -17,8 +17,6 @@
 package cdi
 
 import (
-	"fmt"
-
 	"k8s.io/klog/v2"
 )
 
@@ -32,9 +30,9 @@ func NewNullHandler() Interface {
 	return &null{}
 }
 
-// CreateSpecFile returns an error as it never should be called for the null handler
+// CreateSpecFile is a no-op for the null handler.
 func (n *null) CreateSpecFile() error {
-	return fmt.Errorf("cannot create a CDI specification with the null CDI handler")
+	return nil
 }
 
 // QualifiedName is a no-op for the null handler. A error message is logged
