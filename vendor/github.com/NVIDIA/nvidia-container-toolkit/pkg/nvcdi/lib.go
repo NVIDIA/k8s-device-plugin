@@ -73,6 +73,11 @@ func New(opts ...Option) Interface {
 
 	var lib Interface
 	switch l.resolveMode() {
+	case ModeManagement:
+		if l.vendor == "" {
+			l.vendor = "management.nvidia.com"
+		}
+		lib = (*managementlib)(l)
 	case ModeNvml:
 		if l.nvmllib == nil {
 			l.nvmllib = nvml.New()
@@ -84,6 +89,16 @@ func New(opts ...Option) Interface {
 		lib = (*nvmllib)(l)
 	case ModeWsl:
 		lib = (*wsllib)(l)
+	case ModeGds:
+		if l.class == "" {
+			l.class = "gds"
+		}
+		lib = (*gdslib)(l)
+	case ModeMofed:
+		if l.class == "" {
+			l.class = "mofed"
+		}
+		lib = (*mofedlib)(l)
 	default:
 		// TODO: We would like to return an error here instead of panicking
 		panic("Unknown mode")
