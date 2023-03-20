@@ -146,18 +146,6 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 			return fmt.Errorf("failed to transform driver root in CDI spec: %v", err)
 		}
 
-		// TODO: This is a temporary workaround for nvidia-persistenced and nvidia-fabricmanager sockets being detected at the wrong
-		// host path.
-		// The only paths affected should be: /var/run/nvidia-persistenced/socket and /var/run/nvidia-fabricmanager/socket
-		// Once the CDI API is updated to prefer /run over /var/run (which is a symlink) this can be removed.
-		// See https://gitlab.com/nvidia/container-toolkit/container-toolkit/-/merge_requests/347
-		err = transform.NewRootTransformer(
-			filepath.Join(cdi.targetDriverRoot, "var/run/"),
-			filepath.Join(cdi.targetDriverRoot, "run/"),
-		).Transform(spec.Raw())
-		if err != nil {
-			return fmt.Errorf("failed to transform var/run path in CDI spec: %v", err)
-		}
 		specName, err := cdiapi.GenerateNameForSpec(spec.Raw())
 		if err != nil {
 			return fmt.Errorf("failed to generate spec name: %v", err)

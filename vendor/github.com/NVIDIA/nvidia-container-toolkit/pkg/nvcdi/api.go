@@ -30,6 +30,12 @@ const (
 	ModeNvml = "nvml"
 	// ModeWsl configures the CDI spec generator to generate a WSL spec.
 	ModeWsl = "wsl"
+	// ModeManagement configures the CDI spec generator to generate a management spec.
+	ModeManagement = "management"
+	// ModeGds configures the CDI spec generator to generate a GDS spec.
+	ModeGds = "gds"
+	// ModeMofed configures the CDI spec generator to generate a MOFED spec.
+	ModeMofed = "mofed"
 )
 
 // Interface defines the API for the nvcdi package
