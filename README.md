@@ -43,6 +43,7 @@ Please note that:
     - ...
 - Support will only be provided for the official NVIDIA device plugin (and not
   for forks or other variants of this plugin).
+- This is currently a read-only mirror of https://gitlab.com/nvidia/kubernetes/device-plugin and as such an MR should be created there instead.
 
 ## Prerequisites
 
