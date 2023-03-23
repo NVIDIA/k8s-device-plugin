@@ -59,11 +59,12 @@ type CommandLineFlags struct {
 
 // PluginCommandLineFlags holds the list of command line flags specific to the device plugin.
 type PluginCommandLineFlags struct {
-	PassDeviceSpecs    *bool     `json:"passDeviceSpecs"    yaml:"passDeviceSpecs"`
-	DeviceListStrategy *[]string `json:"deviceListStrategy" yaml:"deviceListStrategy"`
-	DeviceIDStrategy   *string   `json:"deviceIDStrategy"   yaml:"deviceIDStrategy"`
-	NvidiaCTKPath      *string   `json:"nvidiaCTKPath"      yaml:"nvidiaCTKPath"`
-	DriverRootCtrPath  *string   `json:"driverRootCtrPath"  yaml:"driverRootCtrPath"`
+	PassDeviceSpecs     *bool     `json:"passDeviceSpecs"     yaml:"passDeviceSpecs"`
+	DeviceListStrategy  *[]string `json:"deviceListStrategy"  yaml:"deviceListStrategy"`
+	DeviceIDStrategy    *string   `json:"deviceIDStrategy"    yaml:"deviceIDStrategy"`
+	CDIAnnotationPrefix *string   `json:"cdiAnnotationPrefix" yaml:"cdiAnnotationPrefix"`
+	NvidiaCTKPath       *string   `json:"nvidiaCTKPath"       yaml:"nvidiaCTKPath"`
+	DriverRootCtrPath   *string   `json:"driverRootCtrPath"   yaml:"driverRootCtrPath"`
 }
 
 // GFDCommandLineFlags holds the list of command line flags specific to GFD.
@@ -103,6 +104,8 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.Plugin.DeviceListStrategy, c, n)
 			case "device-id-strategy":
 				updateFromCLIFlag(&f.Plugin.DeviceIDStrategy, c, n)
+			case "cdi-annotation-prefix":
+				updateFromCLIFlag(&f.Plugin.CDIAnnotationPrefix, c, n)
 			case "nvidia-ctk-path":
 				updateFromCLIFlag(&f.Plugin.NvidiaCTKPath, c, n)
 			case "driver-root-ctr-path":
