@@ -60,7 +60,6 @@ type PluginCommandLineFlags struct {
 	PassDeviceSpecs    *bool   `json:"passDeviceSpecs"    yaml:"passDeviceSpecs"`
 	DeviceListStrategy *string `json:"deviceListStrategy" yaml:"deviceListStrategy"`
 	DeviceIDStrategy   *string `json:"deviceIDStrategy"   yaml:"deviceIDStrategy"`
-	CDIEnabled         *bool   `json:"CDIEnabled"         yaml:"CDIEnabled"`
 	NvidiaCTKPath      *string `json:"nvidiaCTKPath"      yaml:"nvidiaCTKPath"`
 	DriverRootCtrPath  *string `json:"driverRootCtrPath"  yaml:"driverRootCtrPath"`
 }
@@ -102,8 +101,6 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.Plugin.DeviceListStrategy, c, n)
 			case "device-id-strategy":
 				updateFromCLIFlag(&f.Plugin.DeviceIDStrategy, c, n)
-			case "cdi-enabled":
-				updateFromCLIFlag(&f.Plugin.CDIEnabled, c, n)
 			case "nvidia-ctk-path":
 				updateFromCLIFlag(&f.Plugin.NvidiaCTKPath, c, n)
 			case "driver-root-ctr-path":

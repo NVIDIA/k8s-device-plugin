@@ -38,8 +38,9 @@ func NewPluginManager(config *spec.Config) (manager.Interface, error) {
 
 	nvmllib := nvml.New()
 
+	// TODO: enable CDI when a device-list-strategy has 'cdi=*' as a prefix
 	cdiHandler, err := cdi.New(
-		cdi.WithEnabled(*config.Flags.Plugin.CDIEnabled),
+		cdi.WithEnabled(false),
 		cdi.WithDriverRoot(*config.Flags.Plugin.DriverRootCtrPath),
 		cdi.WithTargetDriverRoot(*config.Flags.NvidiaDriverRoot),
 		cdi.WithNvidiaCTKPath(*config.Flags.Plugin.NvidiaCTKPath),
@@ -53,9 +54,10 @@ func NewPluginManager(config *spec.Config) (manager.Interface, error) {
 		return nil, fmt.Errorf("unable to create cdi handler: %v", err)
 	}
 
+	// TODO: enable CDI when a device-list-strategy has 'cdi=*' as a prefix
 	m, err := manager.New(
 		manager.WithNVML(nvmllib),
-		manager.WithCDIEnabled(*config.Flags.Plugin.CDIEnabled),
+		manager.WithCDIEnabled(false),
 		manager.WithCDIHandler(cdiHandler),
 		manager.WithConfig(config),
 		manager.WithFailOnInitError(*config.Flags.FailOnInitError),
