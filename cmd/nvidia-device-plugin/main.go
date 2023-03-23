@@ -70,9 +70,9 @@ func main() {
 			Usage:   "pass the list of DeviceSpecs to the kubelet on Allocate()",
 			EnvVars: []string{"PASS_DEVICE_SPECS"},
 		},
-		&cli.StringFlag{
+		&cli.StringSliceFlag{
 			Name:    "device-list-strategy",
-			Value:   spec.DeviceListStrategyEnvvar,
+			Value:   cli.NewStringSlice(string(spec.DeviceListStrategyEnvvar)),
 			Usage:   "the desired strategy for passing the device list to the underlying runtime:\n\t\t[envvar | volume-mounts]",
 			EnvVars: []string{"DEVICE_LIST_STRATEGY"},
 		},
@@ -120,12 +120,9 @@ func main() {
 }
 
 func validateFlags(config *spec.Config) error {
-	allowedDeviceListStrategy := map[string]bool{
-		spec.DeviceListStrategyEnvvar:       true,
-		spec.DeviceListStrategyVolumeMounts: true,
-	}
-	if !allowedDeviceListStrategy[*config.Flags.Plugin.DeviceListStrategy] {
-		return fmt.Errorf("invalid --device-list-strategy option: %v", *config.Flags.Plugin.DeviceListStrategy)
+	_, err := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
+	if err != nil {
+		return fmt.Errorf("invalid --device-list-strategy option: %v", err)
 	}
 
 	if *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyUUID && *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyIndex {

@@ -31,6 +31,8 @@ func updateFromCLIFlag[T any](pflag **T, c *cli.Context, flagName string) {
 		switch flag := any(pflag).(type) {
 		case **string:
 			*flag = ptr(c.String(flagName))
+		case **[]string:
+			*flag = ptr(c.StringSlice(flagName))
 		case **bool:
 			*flag = ptr(c.Bool(flagName))
 		case **Duration:
@@ -57,11 +59,11 @@ type CommandLineFlags struct {
 
 // PluginCommandLineFlags holds the list of command line flags specific to the device plugin.
 type PluginCommandLineFlags struct {
-	PassDeviceSpecs    *bool   `json:"passDeviceSpecs"    yaml:"passDeviceSpecs"`
-	DeviceListStrategy *string `json:"deviceListStrategy" yaml:"deviceListStrategy"`
-	DeviceIDStrategy   *string `json:"deviceIDStrategy"   yaml:"deviceIDStrategy"`
-	NvidiaCTKPath      *string `json:"nvidiaCTKPath"      yaml:"nvidiaCTKPath"`
-	DriverRootCtrPath  *string `json:"driverRootCtrPath"  yaml:"driverRootCtrPath"`
+	PassDeviceSpecs    *bool     `json:"passDeviceSpecs"    yaml:"passDeviceSpecs"`
+	DeviceListStrategy *[]string `json:"deviceListStrategy" yaml:"deviceListStrategy"`
+	DeviceIDStrategy   *string   `json:"deviceIDStrategy"   yaml:"deviceIDStrategy"`
+	NvidiaCTKPath      *string   `json:"nvidiaCTKPath"      yaml:"nvidiaCTKPath"`
+	DriverRootCtrPath  *string   `json:"driverRootCtrPath"  yaml:"driverRootCtrPath"`
 }
 
 // GFDCommandLineFlags holds the list of command line flags specific to GFD.
