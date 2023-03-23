@@ -16,7 +16,10 @@
 
 package v1
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // DeviceListStrategies defines which strategies are enabled and should
 // be used when passing the device list to the container runtime.
@@ -25,8 +28,9 @@ type DeviceListStrategies map[string]bool
 // NewDeviceListStrategies constructs a new DeviceListStrategy
 func NewDeviceListStrategies(strategies []string) (DeviceListStrategies, error) {
 	ret := map[string]bool{
-		DeviceListStrategyEnvvar:       false,
-		DeviceListStrategyVolumeMounts: false,
+		DeviceListStrategyEnvvar:         false,
+		DeviceListStrategyVolumeMounts:   false,
+		DeviceListStrategyCDIAnnotations: false,
 	}
 	for _, s := range strategies {
 		if _, ok := ret[s]; !ok {
@@ -41,4 +45,14 @@ func NewDeviceListStrategies(strategies []string) (DeviceListStrategies, error) 
 // Includes returns whether the given strategy is present in the set of strategies.
 func (s DeviceListStrategies) Includes(strategy string) bool {
 	return s[strategy]
+}
+
+// IsCDIEnabled returns whether any of the strategies being used require CDI.
+func (s DeviceListStrategies) IsCDIEnabled() bool {
+	for k, v := range s {
+		if strings.HasPrefix(k, "cdi-") && v {
+			return true
+		}
+	}
+	return false
 }

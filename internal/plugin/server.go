@@ -336,7 +336,11 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDI(responseID string, d
 		devices = append(devices, plugin.cdiHandler.QualifiedName("mofed", "all"))
 	}
 
-	if len(devices) > 0 {
+	if len(devices) == 0 {
+		return response
+	}
+
+	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyCDIAnnotations) {
 		var err error
 		response.Annotations, err = cdiapi.UpdateAnnotations(map[string]string{}, "nvidia-device-plugin", responseID, devices)
 		if err != nil {
