@@ -32,8 +32,9 @@ const (
 
 // Constants to represent the various device list strategies
 const (
-	DeviceListStrategyEnvvar       = "envvar"
-	DeviceListStrategyVolumeMounts = "volume-mounts"
+	DeviceListStrategyEnvvar         = "envvar"
+	DeviceListStrategyVolumeMounts   = "volume-mounts"
+	DeviceListStrategyCDIAnnotations = "cdi-annotations"
 )
 
 // Constants to represent the various device id strategies
