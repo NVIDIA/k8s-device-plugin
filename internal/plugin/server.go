@@ -26,6 +26,7 @@ import (
 	"time"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	hook "github.com/NVIDIA/k8s-device-plugin/cmd/nvidia-device-plugin"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	cdiapi "github.com/container-orchestrated-devices/container-device-interface/pkg/cdi"
@@ -33,6 +34,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	"k8s.io/klog/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
@@ -54,9 +56,10 @@ type NvidiaDevicePlugin struct {
 	cdiHandler cdi.Interface
 	cdiEnabled bool
 
-	server *grpc.Server
-	health chan *rm.Device
-	stop   chan interface{}
+	server       *grpc.Server
+	health       chan *rm.Device
+	stop         chan interface{}
+	preStartHook *hook.PreStartHook
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
@@ -73,9 +76,10 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 
 		// These will be reinitialized every
 		// time the plugin server is restarted.
-		server: nil,
-		health: nil,
-		stop:   nil,
+		server:       nil,
+		health:       nil,
+		stop:         nil,
+		preStartHook: nil,
 	}
 }
 
@@ -90,6 +94,10 @@ func (plugin *NvidiaDevicePlugin) cleanup() {
 	plugin.server = nil
 	plugin.health = nil
 	plugin.stop = nil
+}
+
+func (m *NvidiaDevicePlugin) SetPreStartHook(hook *hook.PreStartHook) {
+	m.preStartHook = hook
 }
 
 // Devices returns the full set of devices associated with the plugin.
@@ -207,6 +215,7 @@ func (plugin *NvidiaDevicePlugin) Register() error {
 		ResourceName: string(plugin.rm.Resource()),
 		Options: &pluginapi.DevicePluginOptions{
 			GetPreferredAllocationAvailable: true,
+			PreStartRequired:                plugin.preStartRequired(),
 		},
 	}
 
@@ -215,6 +224,13 @@ func (plugin *NvidiaDevicePlugin) Register() error {
 		return err
 	}
 	return nil
+}
+
+func (m *NvidiaDevicePlugin) preStartRequired() bool {
+	if m.preStartHook != nil {
+		return true
+	}
+	return false
 }
 
 // GetDevicePluginOptions returns the values of the optional settings for this plugin
@@ -343,8 +359,14 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDI(responseID string, d
 	return response
 }
 
-// PreStartContainer is unimplemented for this plugin
-func (plugin *NvidiaDevicePlugin) PreStartContainer(context.Context, *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {
+func (plugin *NvidiaDevicePlugin) PreStartContainer(ctx context.Context, r *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {
+	if plugin.preStartRequired() {
+		timeoutCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+		defer cancel()
+		if err := plugin.preStartHook.TryHandlePreStartContainer(timeoutCtx, r.DevicesIDs, plugin.rm.Devices(), plugin.health); err != nil {
+			return &pluginapi.PreStartContainerResponse{}, grpc.Errorf(codes.FailedPrecondition, fmt.Sprintf("GPU device plugin pre-start hook failed: %v", err))
+		}
+	}
 	return &pluginapi.PreStartContainerResponse{}, nil
 }
 

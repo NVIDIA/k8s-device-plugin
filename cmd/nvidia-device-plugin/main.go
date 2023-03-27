@@ -110,6 +110,11 @@ func main() {
 			Usage:   "the path to use for the nvidia-ctk in the generated CDI specification",
 			EnvVars: []string{"NVIDIA_CTK_PATH"},
 		},
+		&cli.StringSliceFlag{
+			Name:    "pre-start-command",
+			Usage:   "command to run to initialize device (repeat this arg for command and each argument)",
+			EnvVars: []string{"PRE_START_CMD"},
+		},
 		&cli.StringFlag{
 			Name:    "driver-root-ctr-path",
 			Value:   spec.DefaultDriverRootCtrPath,
@@ -266,11 +271,21 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]plugin.I
 		return nil, false, fmt.Errorf("error getting plugins: %v", err)
 	}
 
+	// If needed, get prestart hook.
+	var preStartHook *PreStartHook = nil
+	preStartCommand := *config.Flags.Plugin.PreStartCommands
+	if len(preStartCommand) > 0 {
+		preStartHook = NewPreStartHook(preStartCommand)
+	}
+
 	// Loop through all plugins, starting them if they have any devices
 	// to serve. If even one plugin fails to start properly, try
 	// starting them all again.
 	started := 0
 	for _, p := range plugins {
+
+		p.SetPreStartHook(preStartHook)
+
 		// Just continue if there are no devices to serve for plugin p.
 		if len(p.Devices()) == 0 {
 			continue
