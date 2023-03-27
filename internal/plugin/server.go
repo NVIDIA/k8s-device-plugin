@@ -46,10 +46,11 @@ const (
 
 // NvidiaDevicePlugin implements the Kubernetes device plugin API
 type NvidiaDevicePlugin struct {
-	rm               rm.ResourceManager
-	config           *spec.Config
-	deviceListEnvvar string
-	socket           string
+	rm                   rm.ResourceManager
+	config               *spec.Config
+	deviceListEnvvar     string
+	deviceListStrategies spec.DeviceListStrategies
+	socket               string
 
 	cdiHandler cdi.Interface
 	cdiEnabled bool
@@ -63,13 +64,16 @@ type NvidiaDevicePlugin struct {
 func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, cdiHandler cdi.Interface, cdiEnabled bool) *NvidiaDevicePlugin {
 	_, name := resourceManager.Resource().Split()
 
+	deviceListStrategies, _ := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
+
 	return &NvidiaDevicePlugin{
-		rm:               resourceManager,
-		config:           config,
-		deviceListEnvvar: "NVIDIA_VISIBLE_DEVICES",
-		socket:           pluginapi.DevicePluginPath + "nvidia-" + name + ".sock",
-		cdiHandler:       cdiHandler,
-		cdiEnabled:       cdiEnabled,
+		rm:                   resourceManager,
+		config:               config,
+		deviceListEnvvar:     "NVIDIA_VISIBLE_DEVICES",
+		deviceListStrategies: deviceListStrategies,
+		socket:               pluginapi.DevicePluginPath + "nvidia-" + name + ".sock",
+		cdiHandler:           cdiHandler,
+		cdiEnabled:           cdiEnabled,
 
 		// These will be reinitialized every
 		// time the plugin server is restarted.
@@ -291,10 +295,10 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) *plug
 	responseID := uuid.New().String()
 	response := plugin.getAllocateResponseForCDI(responseID, deviceIDs)
 
-	if *plugin.config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyEnvvar {
+	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyEnvvar) {
 		response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, deviceIDs)
 	}
-	if *plugin.config.Flags.Plugin.DeviceListStrategy == spec.DeviceListStrategyVolumeMounts {
+	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyVolumeMounts) {
 		response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, []string{deviceListAsVolumeMountsContainerPathRoot})
 		response.Mounts = plugin.apiMounts(deviceIDs)
 	}
@@ -332,7 +336,11 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDI(responseID string, d
 		devices = append(devices, plugin.cdiHandler.QualifiedName("mofed", "all"))
 	}
 
-	if len(devices) > 0 {
+	if len(devices) == 0 {
+		return response
+	}
+
+	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyCDIAnnotations) {
 		var err error
 		response.Annotations, err = cdiapi.UpdateAnnotations(map[string]string{}, "nvidia-device-plugin", responseID, devices)
 		if err != nil {
