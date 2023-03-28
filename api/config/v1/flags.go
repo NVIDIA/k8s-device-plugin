@@ -31,6 +31,8 @@ func updateFromCLIFlag[T any](pflag **T, c *cli.Context, flagName string) {
 		switch flag := any(pflag).(type) {
 		case **string:
 			*flag = ptr(c.String(flagName))
+		case **[]string:
+			*flag = ptr(c.StringSlice(flagName))
 		case **bool:
 			*flag = ptr(c.Bool(flagName))
 		case **Duration:
@@ -57,12 +59,12 @@ type CommandLineFlags struct {
 
 // PluginCommandLineFlags holds the list of command line flags specific to the device plugin.
 type PluginCommandLineFlags struct {
-	PassDeviceSpecs    *bool   `json:"passDeviceSpecs"    yaml:"passDeviceSpecs"`
-	DeviceListStrategy *string `json:"deviceListStrategy" yaml:"deviceListStrategy"`
-	DeviceIDStrategy   *string `json:"deviceIDStrategy"   yaml:"deviceIDStrategy"`
-	CDIEnabled         *bool   `json:"CDIEnabled"         yaml:"CDIEnabled"`
-	NvidiaCTKPath      *string `json:"nvidiaCTKPath"      yaml:"nvidiaCTKPath"`
-	DriverRootCtrPath  *string `json:"driverRootCtrPath"  yaml:"driverRootCtrPath"`
+	PassDeviceSpecs     *bool     `json:"passDeviceSpecs"     yaml:"passDeviceSpecs"`
+	DeviceListStrategy  *[]string `json:"deviceListStrategy"  yaml:"deviceListStrategy"`
+	DeviceIDStrategy    *string   `json:"deviceIDStrategy"    yaml:"deviceIDStrategy"`
+	CDIAnnotationPrefix *string   `json:"cdiAnnotationPrefix" yaml:"cdiAnnotationPrefix"`
+	NvidiaCTKPath       *string   `json:"nvidiaCTKPath"       yaml:"nvidiaCTKPath"`
+	ContainerDriverRoot *string   `json:"containerDriverRoot" yaml:"containerDriverRoot"`
 }
 
 // GFDCommandLineFlags holds the list of command line flags specific to GFD.
@@ -102,12 +104,12 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.Plugin.DeviceListStrategy, c, n)
 			case "device-id-strategy":
 				updateFromCLIFlag(&f.Plugin.DeviceIDStrategy, c, n)
-			case "cdi-enabled":
-				updateFromCLIFlag(&f.Plugin.CDIEnabled, c, n)
+			case "cdi-annotation-prefix":
+				updateFromCLIFlag(&f.Plugin.CDIAnnotationPrefix, c, n)
 			case "nvidia-ctk-path":
 				updateFromCLIFlag(&f.Plugin.NvidiaCTKPath, c, n)
-			case "driver-root-ctr-path":
-				updateFromCLIFlag(&f.Plugin.DriverRootCtrPath, c, n)
+			case "container-driver-root":
+				updateFromCLIFlag(&f.Plugin.ContainerDriverRoot, c, n)
 			}
 			// GFD specific flags
 			if f.GFD == nil {
