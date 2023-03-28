@@ -36,11 +36,9 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli/v2 v2.4.0
-	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230314181732-4ea7dac0fae0
+	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230327171225-18ad7cd513cf
 	golang.org/x/net v0.7.0
-	golang.org/x/sys v0.5.0
 	google.golang.org/grpc v1.29.0
-	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.19.1
 	k8s.io/apimachinery v0.19.1
 	k8s.io/client-go v0.19.1
@@ -75,6 +73,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220314234659-1baeb1ce4c0b // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/oauth2 v0.0.0-20191202225959-858c2ad4c8b6 // indirect
+	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/term v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
@@ -82,6 +81,7 @@ require (
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/utils v0.0.0-20200729134348-d5654de09c73 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.0.1 // indirect
