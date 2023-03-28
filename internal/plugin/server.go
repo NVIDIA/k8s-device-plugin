@@ -52,8 +52,9 @@ type NvidiaDevicePlugin struct {
 	deviceListStrategies spec.DeviceListStrategies
 	socket               string
 
-	cdiHandler cdi.Interface
-	cdiEnabled bool
+	cdiHandler          cdi.Interface
+	cdiEnabled          bool
+	cdiAnnotationPrefix string
 
 	server *grpc.Server
 	health chan *rm.Device
@@ -74,6 +75,7 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 		socket:               pluginapi.DevicePluginPath + "nvidia-" + name + ".sock",
 		cdiHandler:           cdiHandler,
 		cdiEnabled:           cdiEnabled,
+		cdiAnnotationPrefix:  *config.Flags.Plugin.CDIAnnotationPrefix,
 
 		// These will be reinitialized every
 		// time the plugin server is restarted.
@@ -282,18 +284,24 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.
 			}
 		}
 
-		response := plugin.getAllocateResponse(req.DevicesIDs)
+		response, err := plugin.getAllocateResponse(req.DevicesIDs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get allocate response: %v", err)
+		}
 		responses.ContainerResponses = append(responses.ContainerResponses, response)
 	}
 
 	return &responses, nil
 }
 
-func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) *pluginapi.ContainerAllocateResponse {
+func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*pluginapi.ContainerAllocateResponse, error) {
 	deviceIDs := plugin.deviceIDsFromAnnotatedDeviceIDs(requestIds)
 
 	responseID := uuid.New().String()
-	response := plugin.getAllocateResponseForCDI(responseID, deviceIDs)
+	response, err := plugin.getAllocateResponseForCDI(responseID, deviceIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get allocate response for CDI: %v", err)
+	}
 
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyEnvvar) {
 		response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, deviceIDs)
@@ -312,16 +320,16 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) *plug
 		response.Envs["NVIDIA_MOFED"] = "enabled"
 	}
 
-	return &response
+	return &response, nil
 }
 
 // getAllocateResponseForCDI returns the allocate response for the specified device IDs.
 // This response contains the annotations required to trigger CDI injection in the container engine or nvidia-container-runtime.
-func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDI(responseID string, deviceIDs []string) pluginapi.ContainerAllocateResponse {
+func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDI(responseID string, deviceIDs []string) (pluginapi.ContainerAllocateResponse, error) {
 	response := pluginapi.ContainerAllocateResponse{}
 
 	if !plugin.cdiEnabled {
-		return response
+		return response, nil
 	}
 
 	var devices []string
@@ -337,18 +345,38 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDI(responseID string, d
 	}
 
 	if len(devices) == 0 {
-		return response
+		return response, nil
 	}
 
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyCDIAnnotations) {
-		var err error
-		response.Annotations, err = cdiapi.UpdateAnnotations(map[string]string{}, "nvidia-device-plugin", responseID, devices)
+		annotations, err := plugin.getCDIDeviceAnnotations(responseID, devices)
 		if err != nil {
-			klog.Errorf("Failed to add CDI annotations: %v", err)
+			return response, err
 		}
+		response.Annotations = annotations
 	}
 
-	return response
+	return response, nil
+}
+
+func (plugin *NvidiaDevicePlugin) getCDIDeviceAnnotations(id string, devices []string) (map[string]string, error) {
+	annotations, err := cdiapi.UpdateAnnotations(map[string]string{}, "nvidia-device-plugin", id, devices)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add CDI annotations: %v", err)
+	}
+
+	if plugin.cdiAnnotationPrefix == spec.DefaultCDIAnnotationPrefix {
+		return annotations, nil
+	}
+
+	// update annotations if a custom CDI prefix is configured
+	updatedAnnotations := make(map[string]string)
+	for k, v := range annotations {
+		newKey := plugin.cdiAnnotationPrefix + strings.TrimPrefix(k, spec.DefaultCDIAnnotationPrefix)
+		updatedAnnotations[newKey] = v
+	}
+
+	return updatedAnnotations, nil
 }
 
 // PreStartContainer is unimplemented for this plugin

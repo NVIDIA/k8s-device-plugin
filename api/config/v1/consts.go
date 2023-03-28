@@ -16,6 +16,10 @@
 
 package v1
 
+import (
+	cdiapi "github.com/container-orchestrated-devices/container-device-interface/pkg/cdi"
+)
+
 // Constants related to resource names
 const (
 	ResourceNamePrefix              = "nvidia.com"
@@ -45,6 +49,7 @@ const (
 
 // Constants related to generating CDI specifications
 const (
-	DefaultNvidiaCTKPath     = "/usr/bin/nvidia-ctk"
-	DefaultDriverRootCtrPath = "/driver-root"
+	DefaultCDIAnnotationPrefix = cdiapi.AnnotationPrefix
+	DefaultNvidiaCTKPath       = "/usr/bin/nvidia-ctk"
+	DefaultDriverRootCtrPath   = "/driver-root"
 )

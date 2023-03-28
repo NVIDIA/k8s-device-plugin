@@ -99,6 +99,12 @@ func main() {
 			EnvVars:     []string{"CONFIG_FILE"},
 		},
 		&cli.StringFlag{
+			Name:    "cdi-annotation-prefix",
+			Value:   spec.DefaultCDIAnnotationPrefix,
+			Usage:   "the prefix to use for CDI container annotation keys",
+			EnvVars: []string{"CDI_ANNOTATION_PREFIX"},
+		},
+		&cli.StringFlag{
 			Name:    "nvidia-ctk-path",
 			Value:   spec.DefaultNvidiaCTKPath,
 			Usage:   "the path to use for the nvidia-ctk in the generated CDI specification",
