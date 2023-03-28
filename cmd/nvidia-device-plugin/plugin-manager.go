@@ -47,7 +47,7 @@ func NewPluginManager(config *spec.Config) (manager.Interface, error) {
 
 	cdiHandler, err := cdi.New(
 		cdi.WithEnabled(cdiEnabled),
-		cdi.WithDriverRoot(*config.Flags.Plugin.DriverRootCtrPath),
+		cdi.WithDriverRoot(*config.Flags.Plugin.ContainerDriverRoot),
 		cdi.WithTargetDriverRoot(*config.Flags.NvidiaDriverRoot),
 		cdi.WithNvidiaCTKPath(*config.Flags.Plugin.NvidiaCTKPath),
 		cdi.WithNvml(nvmllib),

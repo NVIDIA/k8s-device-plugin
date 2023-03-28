@@ -64,7 +64,7 @@ type PluginCommandLineFlags struct {
 	DeviceIDStrategy    *string   `json:"deviceIDStrategy"    yaml:"deviceIDStrategy"`
 	CDIAnnotationPrefix *string   `json:"cdiAnnotationPrefix" yaml:"cdiAnnotationPrefix"`
 	NvidiaCTKPath       *string   `json:"nvidiaCTKPath"       yaml:"nvidiaCTKPath"`
-	DriverRootCtrPath   *string   `json:"driverRootCtrPath"   yaml:"driverRootCtrPath"`
+	ContainerDriverRoot *string   `json:"containerDriverRoot" yaml:"containerDriverRoot"`
 }
 
 // GFDCommandLineFlags holds the list of command line flags specific to GFD.
@@ -108,8 +108,8 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.Plugin.CDIAnnotationPrefix, c, n)
 			case "nvidia-ctk-path":
 				updateFromCLIFlag(&f.Plugin.NvidiaCTKPath, c, n)
-			case "driver-root-ctr-path":
-				updateFromCLIFlag(&f.Plugin.DriverRootCtrPath, c, n)
+			case "container-driver-root":
+				updateFromCLIFlag(&f.Plugin.ContainerDriverRoot, c, n)
 			}
 			// GFD specific flags
 			if f.GFD == nil {
