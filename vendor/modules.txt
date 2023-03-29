@@ -8,7 +8,7 @@ github.com/NVIDIA/go-nvml/pkg/nvml
 # github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201222072828-352eb4c503a7
 ## explicit; go 1.14
 github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml
-# github.com/NVIDIA/nvidia-container-toolkit v1.13.0-rc.2.0.20230320080859-1962fd68df0e
+# github.com/NVIDIA/nvidia-container-toolkit v1.13.0-rc.2.0.20230328200512-f6983969ad5d
 ## explicit; go 1.18
 github.com/NVIDIA/nvidia-container-toolkit/internal/config/image
 github.com/NVIDIA/nvidia-container-toolkit/internal/discover
@@ -19,6 +19,7 @@ github.com/NVIDIA/nvidia-container-toolkit/internal/info/drm
 github.com/NVIDIA/nvidia-container-toolkit/internal/info/proc
 github.com/NVIDIA/nvidia-container-toolkit/internal/ldcache
 github.com/NVIDIA/nvidia-container-toolkit/internal/lookup
+github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/cuda
 github.com/NVIDIA/nvidia-container-toolkit/internal/nvcaps
 github.com/NVIDIA/nvidia-container-toolkit/internal/oci
 github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi

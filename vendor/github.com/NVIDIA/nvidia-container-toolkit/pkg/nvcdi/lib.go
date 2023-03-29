@@ -17,6 +17,8 @@
 package nvcdi
 
 import (
+	"fmt"
+
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/spec"
 	"github.com/sirupsen/logrus"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
@@ -47,7 +49,7 @@ type nvcdilib struct {
 }
 
 // New creates a new nvcdi library
-func New(opts ...Option) Interface {
+func New(opts ...Option) (Interface, error) {
 	l := &nvcdilib{}
 	for _, opt := range opts {
 		opt(l)
@@ -100,8 +102,7 @@ func New(opts ...Option) Interface {
 		}
 		lib = (*mofedlib)(l)
 	default:
-		// TODO: We would like to return an error here instead of panicking
-		panic("Unknown mode")
+		return nil, fmt.Errorf("unknown mode %q", l.mode)
 	}
 
 	w := wrapper{
@@ -109,7 +110,7 @@ func New(opts ...Option) Interface {
 		vendor:    l.vendor,
 		class:     l.class,
 	}
-	return &w
+	return &w, nil
 }
 
 // GetSpec combines the device specs and common edits from the wrapped Interface to a single spec.Interface.
@@ -150,4 +151,25 @@ func (l *nvcdilib) resolveMode() (rmode string) {
 	}
 
 	return ModeNvml
+}
+
+// getCudaVersion returns the CUDA version of the current system.
+func (l *nvcdilib) getCudaVersion() (string, error) {
+	if hasNVML, reason := l.infolib.HasNvml(); !hasNVML {
+		return "", fmt.Errorf("nvml not detected: %v", reason)
+	}
+	if l.nvmllib == nil {
+		return "", fmt.Errorf("nvml library not initialized")
+	}
+	r := l.nvmllib.Init()
+	if r != nvml.SUCCESS {
+		return "", fmt.Errorf("failed to initialize nvml: %v", r)
+	}
+	defer l.nvmllib.Shutdown()
+
+	version, r := l.nvmllib.SystemGetDriverVersion()
+	if r != nvml.SUCCESS {
+		return "", fmt.Errorf("failed to get driver version: %v", r)
+	}
+	return version, nil
 }
