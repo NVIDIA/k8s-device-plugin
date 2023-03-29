@@ -90,7 +90,7 @@ func newHandler(opts ...Option) (Interface, error) {
 
 	c.cdilibs = make(map[string]nvcdi.Interface)
 
-	c.cdilibs["gpu"] = nvcdi.New(
+	c.cdilibs["gpu"], err = nvcdi.New(
 		nvcdi.WithLogger(c.logger),
 		nvcdi.WithNvmlLib(c.nvml),
 		nvcdi.WithDeviceLib(c.nvdevice),
@@ -100,6 +100,9 @@ func newHandler(opts ...Option) (Interface, error) {
 		nvcdi.WithVendor(c.vendor),
 		nvcdi.WithClass("gpu"),
 	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create nvcdi library: %v", err)
+	}
 
 	var additionalModes []string
 	if c.gdsEnabled {
@@ -110,13 +113,16 @@ func newHandler(opts ...Option) (Interface, error) {
 	}
 
 	for _, mode := range additionalModes {
-		lib := nvcdi.New(
+		lib, err := nvcdi.New(
 			nvcdi.WithLogger(c.logger),
 			nvcdi.WithNVIDIACTKPath(c.nvidiaCTKPath),
 			nvcdi.WithDriverRoot(c.driverRoot),
 			nvcdi.WithVendor(c.vendor),
 			nvcdi.WithMode(mode),
 		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create nvcdi library: %v", err)
+		}
 		c.cdilibs[mode] = lib
 	}
 
