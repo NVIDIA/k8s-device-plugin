@@ -22,7 +22,6 @@ import (
 
 // Constants related to resource names
 const (
-	ResourceNamePrefix              = "nvidia.com"
 	DefaultSharedResourceNameSuffix = ".shared"
 	MaxResourceNameLength           = 63
 )
