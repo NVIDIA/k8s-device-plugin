@@ -1,105 +1,34 @@
-# Copyright (c) 2021-2022, NVIDIA CORPORATION.  All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+default:
+  retry: 2
+  image:
+    name: $KANIKO_IMAGE
+    entrypoint: [""]
+  tags:
+    - ord1-tenant
 
-include:
-  - .common-ci.yml
+stages:
+  - build
 
-build-dev-image:
-  stage: image
-  script:
-    - apk --no-cache add make bash
-    - make .build-image
-    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-    - make .push-build-image
+variables:
+  KANIKO_IMAGE: gcr.io/kaniko-project/executor:v1.9.1-debug
+  # cache
+  CACHE_REGISTRY_HOST: "kaniko-cache-docker-registry.kaniko.svc"
+  CACHE_REGISTRY_PORT: "5000"
+  CACHE_REGISTRY_REPO: "${CACHE_REGISTRY_HOST}:${CACHE_REGISTRY_PORT}/${CI_PROJECT_NAME}/${CI_JOB_NAME}/cache"
+  CACHE_PROXY: "http://193.25.126.17:3128"
+  KANIKO_ADDTL_ARGS: "--cache=true --cache-run-layers=true --cache-repo=${CACHE_REGISTRY_REPO} --skip-tls-verify --skip-unused-stages=true --insecure"
 
-.requires-build-image:
-  image: "${BUILDIMAGE}"
-
-.go-check:
-  extends:
-    - .requires-build-image
-  stage: go-checks
-
-fmt:
-  extends:
-    - .go-check
-  script:
-    - make assert-fmt
-
-vet:
-  extends:
-    - .go-check
-  script:
-    - make vet
-
-lint:
-  extends:
-    - .go-check
-  script:
-    - make lint
-  allow_failure: true
-
-ineffassign:
-  extends:
-    - .go-check
-  script:
-    - make ineffassign
-  allow_failure: true
-
-misspell:
-  extends:
-    - .go-check
-  script:
-    - make misspell
-
-go-build:
-  extends:
-    - .requires-build-image
-  stage: go-build
-  script:
-    - make build
-
-unit-tests:
-  extends:
-    - .requires-build-image
-  stage: unit-tests
-  script:
-    - make coverage
-
-
-# Define the image build targets
-.image-build:
-  stage: image-build
-  variables:
-    IMAGE_NAME: "${CI_REGISTRY_IMAGE}/k8s-device-plugin"
-    VERSION: "${CI_COMMIT_SHORT_SHA}"
-    PUSH_ON_BUILD: "true"
+build:
+  stage: build
+  rules:
+    - if: '$CI_COMMIT_BRANCH != "master" && $CI_COMMIT_TAG == null'
   before_script:
-    - !reference [.buildx-setup, before_script]
-
-    - apk add --no-cache bash make
-    - 'echo "Logging in to CI registry ${CI_REGISTRY}"'
-    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    - export HTTP_PROXY=${CACHE_PROXY}
+    - export NO_PROXY=${CACHE_REGISTRY_HOST}
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
   script:
-    - make -f deployments/container/Makefile build-${DIST}
-
-image-ubi8:
-  extends:
-    - .image-build
-    - .dist-ubi8
-
-image-ubuntu20.04:
-  extends:
-    - .image-build
-    - .dist-ubuntu20.04
+    - /kaniko/executor $KANIKO_ADDTL_ARGS
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/deployment/Dockerfile.ubuntu"
+      --destination "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
