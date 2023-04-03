@@ -1,0 +1,16 @@
+name: Mirror to Gitlab
+
+on: [push]
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: yesolutions/mirror-action@v0.6.0
+        with:
+          REMOTE: 'https://gitlab.com/${{ github.repository }}'
+          GIT_USERNAME: ${{ secrets.ORG_GITLAB_SYNC_UN }}
+          GIT_PASSWORD: ${{ secrets.ORG_GITLAB_SYNC_PW }}
