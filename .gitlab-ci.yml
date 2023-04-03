@@ -30,5 +30,5 @@ build:
   script:
     - /kaniko/executor $KANIKO_ADDTL_ARGS
       --context "${CI_PROJECT_DIR}"
-      --dockerfile "${CI_PROJECT_DIR}/deployment/Dockerfile.ubuntu"
+      --dockerfile "${CI_PROJECT_DIR}/deployments/container/Dockerfile.ubuntu"
       --destination "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
