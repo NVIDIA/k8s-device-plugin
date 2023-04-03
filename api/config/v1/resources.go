@@ -19,6 +19,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 
@@ -43,11 +44,16 @@ type Resources struct {
 	MIGs []Resource `json:"mig,omitempty"  yaml:"mig,omitempty"`
 }
 
+var resourceNamePrefix = os.Getenv("RESOURCE_PREFIX")
+
 // NewResourceName builds a resource name from the standard prefix and a name.
 // An error is returned if the format is incorrect.
 func NewResourceName(n string) (ResourceName, error) {
-	if !strings.HasPrefix(n, ResourceNamePrefix+"/") {
-		n = ResourceNamePrefix + "/" + n
+	if resourceNamePrefix == "" {
+		resourceNamePrefix = "nvidia.com"
+	}
+	if !strings.HasPrefix(n, resourceNamePrefix+"/") {
+		n = resourceNamePrefix + "/" + n
 	}
 
 	if len(n) > MaxResourceNameLength {

@@ -18,6 +18,7 @@ package rm
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
@@ -109,12 +110,17 @@ func (r *resourceManager) Devices() Devices {
 	return r.devices
 }
 
+var resourceNameSuffix = os.Getenv("RESOURCE_SUFFIX")
+
 // AddDefaultResourcesToConfig adds default resource matching rules to config.Resources
 func AddDefaultResourcesToConfig(config *spec.Config) error {
-	config.Resources.AddGPUResource("*", "gpu")
+	if resourceNameSuffix == "" {
+		resourceNameSuffix = "gpu"
+	}
+	config.Resources.AddGPUResource("*", resourceNameSuffix)
 	switch *config.Flags.MigStrategy {
 	case spec.MigStrategySingle:
-		return config.Resources.AddMIGResource("*", "gpu")
+		return config.Resources.AddMIGResource("*", resourceNameSuffix)
 	case spec.MigStrategyMixed:
 		hasNVML, reason := info.New().HasNvml()
 		if !hasNVML {
