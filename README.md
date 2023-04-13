@@ -241,7 +241,7 @@ options outside of this section are shared.
   daemonset with the plugin on all nodes in your cluster, whether they have GPUs
   on them or not, without encountering an error.  However, doing so means that
   there is no way to detect an actual error on nodes that are supposed to have
-  GPUs on them. Failing if an initilization error is encountered is now the
+  GPUs on them. Failing if an initialization error is encountered is now the
   default and should be adopted by all new deployments.
 
 **`NVIDIA_DRIVER_ROOT`**:
@@ -644,7 +644,7 @@ reconfiguration. If it is ever unset, it will fallback to the default.
 
 #### Setting other helm chart values
 
-As mentiond previously, the device plugin's helm chart continues to provide
+As mentioned previously, the device plugin's helm chart continues to provide
 direct values to set the configuration options of the plugin without using a
 `ConfigMap`. These should only be used to set globally applicable options
 (which should then never be embedded in the set of config files provided by the
@@ -901,7 +901,7 @@ $ ./k8s-device-plugin --pass-device-specs
 
 - Promote v0.13.0-rc.3 to v0.13.0
 - Fail on startup if no valid resources are detected
-- Ensure that display adapaters are skipped when enumerating devices
+- Ensure that display adapters are skipped when enumerating devices
 - Bump GFD subchart to version 0.7.0
 
 ### Version v0.13.0-rc.3
@@ -913,7 +913,7 @@ $ ./k8s-device-plugin --pass-device-specs
 ### Version v0.13.0-rc.2
 
 - Bump cuda base image to 11.8.0
-- Use consistent indendation in YAML manifests
+- Use consistent indentation in YAML manifests
 - Fix bug from v0.13.0-rc.1 when using mig-strategy="mixed"
 - Add logged error message if setting up health checks fails
 - Support MIG devices with 1g.10gb+me profile

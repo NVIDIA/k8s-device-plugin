@@ -469,7 +469,7 @@ func fileExists(filename string) (bool, error) {
 func getConfigFileNameMap(f *Flags) (map[string]bool, error) {
 	files, err := os.ReadDir(f.ConfigFileSrcdir)
 	if err != nil {
-		return nil, fmt.Errorf("errorr reading directory: %v", err)
+		return nil, fmt.Errorf("error reading directory: %v", err)
 	}
 
 	filemap := make(map[string]bool)

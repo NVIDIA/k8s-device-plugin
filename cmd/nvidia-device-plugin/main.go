@@ -190,7 +190,7 @@ restart:
 	// some messages, trigger a restart of the plugins, or exit the program.
 	for {
 		select {
-		// If the restart timout has expired, then restart the plugins
+		// If the restart timeout has expired, then restart the plugins
 		case <-restartTimeout:
 			goto restart
 
@@ -253,7 +253,7 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]plugin.I
 	klog.Infof("\nRunning with config:\n%v", string(configJSON))
 
 	// Get the set of plugins.
-	klog.Info("Retreiving plugins.")
+	klog.Info("Retrieving plugins.")
 	pluginManager, err := NewPluginManager(config)
 	if err != nil {
 		return nil, false, fmt.Errorf("error creating plugin manager: %v", err)

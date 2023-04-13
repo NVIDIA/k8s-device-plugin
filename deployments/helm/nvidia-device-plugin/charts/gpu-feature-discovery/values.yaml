@@ -24,7 +24,7 @@ affinity:
     requiredDuringSchedulingIgnoredDuringExecution:
       nodeSelectorTerms:
       - matchExpressions:
-        # On discrete-GPU based systems NFD adds the following lable where 10de is te NVIDIA PCI vendor ID
+        # On discrete-GPU based systems NFD adds the following label where 10de is the NVIDIA PCI vendor ID
         - key: feature.node.kubernetes.io/pci-10de.present
           operator: In
           values:
