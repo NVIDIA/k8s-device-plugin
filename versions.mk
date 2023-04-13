@@ -14,12 +14,12 @@
 
 MODULE := github.com/NVIDIA/k8s-device-plugin
 
-VERSION  ?= v0.13.0
+VERSION  ?= v0.14.0
 
 # vVERSION represents the version with a guaranteed v-prefix
 vVERSION := v$(VERSION:v%=%)
 
 CUDA_VERSION ?= 12.1.0
-GOLANG_VERSION ?= 1.20.1
+GOLANG_VERSION ?= 1.20.2
 
 GIT_COMMIT ?= $(shell git describe --match="" --dirty --long --always --abbrev=40 2> /dev/null || echo "")
