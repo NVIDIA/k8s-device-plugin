@@ -26,7 +26,7 @@ type wslDevice nvmlDevice
 
 var _ deviceInfo = (*wslDevice)(nil)
 
-func newWSLDevice(i int, gpu nvml.Device) (string, wslDevice) {
+func newWSLDevice(i int, gpu nvml.Device) (string, deviceInfo) {
 	return fmt.Sprintf("%v", i), wslDevice{gpu}
 }
 

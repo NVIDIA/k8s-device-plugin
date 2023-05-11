@@ -44,7 +44,7 @@ type nvmlMigDevice nvmlDevice
 var _ deviceInfo = (*nvmlDevice)(nil)
 var _ deviceInfo = (*nvmlMigDevice)(nil)
 
-func newGPUDevice(i int, gpu nvml.Device) (string, nvmlDevice) {
+func newGPUDevice(i int, gpu nvml.Device) (string, deviceInfo) {
 	return fmt.Sprintf("%v", i), nvmlDevice{gpu}
 }
 

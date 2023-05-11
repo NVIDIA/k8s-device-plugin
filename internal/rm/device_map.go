@@ -18,12 +18,12 @@ package rm
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
+	"k8s.io/klog/v2"
 )
 
 type deviceMapBuilder struct {
@@ -95,44 +95,35 @@ func (b *deviceMapBuilder) buildDeviceMapFromConfigResources() (DeviceMap, error
 func (b *deviceMapBuilder) buildGPUDeviceMap() (DeviceMap, error) {
 	devices := make(DeviceMap)
 
-	if _, err := os.Stat("/dev/dxg"); err == nil {
-		log.Printf("Detected GPU in WSL")
+	var newDevice func(i int, gpu nvml.Device) (string, deviceInfo)
 
-		b.VisitDevices(func(i int, gpu device.Device) error {
-			name, ret := gpu.GetName()
-			if ret != nvml.SUCCESS {
-				return fmt.Errorf("error getting product name for WSL GPU: %v", ret)
-			}
-			for _, resource := range b.config.Resources.GPUs {
-				if resource.Pattern.Matches(name) {
-					index, info := newWSLDevice(i, gpu)
-					return devices.setEntry(resource.Name, index, info)
-				}
-			}
-			return fmt.Errorf("GPU name '%v' does not match any resource patterns", name)
-		})
+	if _, err := os.Stat("/dev/dxg"); err == nil {
+		klog.Infof("Detected GPU in WSL")
+		newDevice = newWSLDevice
 	} else {
-		b.VisitDevices(func(i int, gpu device.Device) error {
-			name, ret := gpu.GetName()
-			if ret != nvml.SUCCESS {
-				return fmt.Errorf("error getting product name for GPU: %v", ret)
-			}
-			migEnabled, err := gpu.IsMigEnabled()
-			if err != nil {
-				return fmt.Errorf("error checking if MIG is enabled on GPU: %v", err)
-			}
-			if migEnabled && *b.config.Flags.MigStrategy != spec.MigStrategyNone {
-				return nil
-			}
-			for _, resource := range b.config.Resources.GPUs {
-				if resource.Pattern.Matches(name) {
-					index, info := newGPUDevice(i, gpu)
-					return devices.setEntry(resource.Name, index, info)
-				}
-			}
-			return fmt.Errorf("GPU name '%v' does not match any resource patterns", name)
-		})
+		newDevice = newGPUDevice
 	}
+
+	b.VisitDevices(func(i int, gpu device.Device) error {
+		name, ret := gpu.GetName()
+		if ret != nvml.SUCCESS {
+			return fmt.Errorf("error getting product name for GPU: %v", ret)
+		}
+		migEnabled, err := gpu.IsMigEnabled()
+		if err != nil {
+			return fmt.Errorf("error checking if MIG is enabled on GPU: %v", err)
+		}
+		if migEnabled && *b.config.Flags.MigStrategy != spec.MigStrategyNone {
+			return nil
+		}
+		for _, resource := range b.config.Resources.GPUs {
+			if resource.Pattern.Matches(name) {
+				index, info := newDevice(i, gpu)
+				return devices.setEntry(resource.Name, index, info)
+			}
+		}
+		return fmt.Errorf("GPU name '%v' does not match any resource patterns", name)
+	})
 
 	return devices, nil
 }
