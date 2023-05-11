@@ -30,7 +30,7 @@ var alignedAllocationPolicy = gpuallocator.NewBestEffortPolicy()
 func (r *resourceManager) getPreferredAllocation(available, required []string, size int) ([]string, error) {
 	// If all of the available devices are full GPUs without replicas, then
 	// calculate an aligned allocation across those devices.
-	if !r.Devices().ContainsMigDevices() && !AnnotatedIDs(available).AnyHasAnnotations() {
+	if r.Devices().AlignedAllocationSupported() && !AnnotatedIDs(available).AnyHasAnnotations() {
 		return r.alignedAlloc(available, required, size)
 	}
 
