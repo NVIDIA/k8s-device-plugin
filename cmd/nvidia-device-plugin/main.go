@@ -154,7 +154,7 @@ func start(c *cli.Context, flags []cli.Flag) error {
 	klog.Info("Starting FS watcher.")
 	watcher, err := newFSWatcher(pluginapi.DevicePluginPath)
 	if err != nil {
-		return fmt.Errorf("failed to create FS watcher: %v", err)
+		return fmt.Errorf("failed to create FS watcher for %s: %v", pluginapi.DevicePluginPath, err)
 	}
 	defer watcher.Close()
 
