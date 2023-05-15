@@ -16,19 +16,9 @@
 
 package rm
 
-import (
-	"fmt"
-
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
-)
-
 type wslDevice nvmlDevice
 
 var _ deviceInfo = (*wslDevice)(nil)
-
-func newWSLDevice(i int, gpu nvml.Device) (string, deviceInfo) {
-	return fmt.Sprintf("%v", i), wslDevice{gpu}
-}
 
 // GetUUID returns the UUID of the device
 func (d wslDevice) GetUUID() (string, error) {

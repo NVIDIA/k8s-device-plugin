@@ -18,12 +18,10 @@ package rm
 
 import (
 	"fmt"
-	"os"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
-	"k8s.io/klog/v2"
 )
 
 type deviceMapBuilder struct {
@@ -95,15 +93,6 @@ func (b *deviceMapBuilder) buildDeviceMapFromConfigResources() (DeviceMap, error
 func (b *deviceMapBuilder) buildGPUDeviceMap() (DeviceMap, error) {
 	devices := make(DeviceMap)
 
-	var newDevice func(i int, gpu nvml.Device) (string, deviceInfo)
-
-	if _, err := os.Stat("/dev/dxg"); err == nil {
-		klog.Infof("Detected GPU in WSL")
-		newDevice = newWSLDevice
-	} else {
-		newDevice = newGPUDevice
-	}
-
 	b.VisitDevices(func(i int, gpu device.Device) error {
 		name, ret := gpu.GetName()
 		if ret != nvml.SUCCESS {
@@ -118,7 +107,7 @@ func (b *deviceMapBuilder) buildGPUDeviceMap() (DeviceMap, error) {
 		}
 		for _, resource := range b.config.Resources.GPUs {
 			if resource.Pattern.Matches(name) {
-				index, info := newDevice(i, gpu)
+				index, info := newGPUDevice(i, gpu)
 				return devices.setEntry(resource.Name, index, info)
 			}
 		}
