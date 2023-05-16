@@ -19,6 +19,7 @@ package plugin
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -186,6 +187,21 @@ func (plugin *NvidiaDevicePlugin) Serve() error {
 				restartCount++
 			}
 		}
+	}()
+
+	go func() {
+		http.HandleFunc("/health", func(writer http.ResponseWriter, request *http.Request) {
+			for _, d := range plugin.Devices() {
+				if d.GetHealth() == pluginapi.Unhealthy &&
+					plugin.config.Flags.RestartOnDeviceUnhealthy != nil &&
+					*plugin.config.Flags.RestartOnDeviceUnhealthy {
+					writer.WriteHeader(500)
+					return
+				}
+			}
+			writer.Write([]byte("OK"))
+		})
+		klog.Fatal(http.ListenAndServe(":5000", nil))
 	}()
 
 	// Wait for server to start by launching a blocking connexion

@@ -144,6 +144,10 @@ spec:
           - name: FAIL_ON_INIT_ERROR
             value: "{{ .Values.failOnInitError }}"
         {{- end }}
+        {{- if typeIs "bool" .Values.restartOnDeviceUnhealthy }}
+        - name: RESTART_ON_DEVICE_UNHEALTHY
+          value: "{{ .Values.restartOnDeviceUnhealthy }}"
+        {{- end }}
         {{- if typeIs "bool" .Values.compatWithCPUManager }}
           - name: PASS_DEVICE_SPECS
             value: "{{ .Values.compatWithCPUManager }}"
@@ -191,6 +195,12 @@ spec:
         resources:
           {{- toYaml . | nindent 10 }}
         {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 3
+          periodSeconds: 3
       volumes:
         - name: device-plugin
           hostPath:

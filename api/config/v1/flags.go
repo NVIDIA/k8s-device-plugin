@@ -48,13 +48,14 @@ type Flags struct {
 
 // CommandLineFlags holds the list of command line flags used to configure the device plugin and GFD.
 type CommandLineFlags struct {
-	MigStrategy      *string                 `json:"migStrategy"                yaml:"migStrategy"`
-	FailOnInitError  *bool                   `json:"failOnInitError"            yaml:"failOnInitError"`
-	NvidiaDriverRoot *string                 `json:"nvidiaDriverRoot,omitempty" yaml:"nvidiaDriverRoot,omitempty"`
-	GDSEnabled       *bool                   `json:"gdsEnabled"                 yaml:"gdsEnabled"`
-	MOFEDEnabled     *bool                   `json:"mofedEnabled"               yaml:"mofedEnabled"`
-	Plugin           *PluginCommandLineFlags `json:"plugin,omitempty"           yaml:"plugin,omitempty"`
-	GFD              *GFDCommandLineFlags    `json:"gfd,omitempty"              yaml:"gfd,omitempty"`
+	MigStrategy              *string                 `json:"migStrategy"                yaml:"migStrategy"`
+	FailOnInitError          *bool                   `json:"failOnInitError"            yaml:"failOnInitError"`
+	RestartOnDeviceUnhealthy *bool                   `json:"restartOnDeviceUnhealthy"   yaml:"restartOnDeviceUnhealthy"`
+	NvidiaDriverRoot         *string                 `json:"nvidiaDriverRoot,omitempty" yaml:"nvidiaDriverRoot,omitempty"`
+	GDSEnabled               *bool                   `json:"gdsEnabled"                 yaml:"gdsEnabled"`
+	MOFEDEnabled             *bool                   `json:"mofedEnabled"               yaml:"mofedEnabled"`
+	Plugin                   *PluginCommandLineFlags `json:"plugin,omitempty"           yaml:"plugin,omitempty"`
+	GFD                      *GFDCommandLineFlags    `json:"gfd,omitempty"              yaml:"gfd,omitempty"`
 }
 
 // PluginCommandLineFlags holds the list of command line flags specific to the device plugin.
@@ -86,6 +87,8 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.MigStrategy, c, n)
 			case "fail-on-init-error":
 				updateFromCLIFlag(&f.FailOnInitError, c, n)
+			case "restart-on-device-unhealthy":
+				updateFromCLIFlag(&f.RestartOnDeviceUnhealthy, c, n)
 			case "nvidia-driver-root":
 				updateFromCLIFlag(&f.NvidiaDriverRoot, c, n)
 			case "gds-enabled":

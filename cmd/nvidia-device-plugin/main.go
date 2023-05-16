@@ -58,6 +58,12 @@ func main() {
 			Usage:   "fail the plugin if an error is encountered during initialization, otherwise block indefinitely",
 			EnvVars: []string{"FAIL_ON_INIT_ERROR"},
 		},
+		&cli.BoolFlag{
+			Name:    "restart-on-device-unhealthy",
+			Value:   false,
+			Usage:   "trigger the plugin container restart if at least one device is unhealthy",
+			EnvVars: []string{"RESTART_ON_DEVICE_UNHEALTHY"},
+		},
 		&cli.StringFlag{
 			Name:    "nvidia-driver-root",
 			Value:   "/",

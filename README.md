@@ -182,15 +182,16 @@ deploying the plugin via `helm`.
 
 ### As command line flags or envvars
 
-| Flag                     | Envvar                  | Default Value   |
-|--------------------------|-------------------------|-----------------|
-| `--mig-strategy`         | `$MIG_STRATEGY`         | `"none"`        |
-| `--fail-on-init-error`   | `$FAIL_ON_INIT_ERROR`   | `true`          |
-| `--nvidia-driver-root`   | `$NVIDIA_DRIVER_ROOT`   | `"/"`           |
-| `--pass-device-specs`    | `$PASS_DEVICE_SPECS`    | `false`         |
-| `--device-list-strategy` | `$DEVICE_LIST_STRATEGY` | `"envvar"`      |
-| `--device-id-strategy`   | `$DEVICE_ID_STRATEGY`   | `"uuid"`        |
-| `--config-file`          | `$CONFIG_FILE`          | `""`            |
+| Flag                            | Envvar                         | Default Value |
+|---------------------------------|--------------------------------|---------------|
+| `--mig-strategy`                | `$MIG_STRATEGY`                | `"none"`      |
+| `--fail-on-init-error`          | `$FAIL_ON_INIT_ERROR`          | `true`        |
+| `--restart-on-device-unhealthy` | `$RESTART_ON_DEVICE_UNHEALTHY` | `false`       |
+| `--nvidia-driver-root`          | `$NVIDIA_DRIVER_ROOT`          | `"/"`         |
+| `--pass-device-specs`           | `$PASS_DEVICE_SPECS`           | `false`       |
+| `--device-list-strategy`        | `$DEVICE_LIST_STRATEGY`        | `"envvar"`    |
+| `--device-id-strategy`          | `$DEVICE_ID_STRATEGY`          | `"uuid"`      |
+| `--config-file`                 | `$CONFIG_FILE`                 | `""`          |
 
 ### As a configuration file
 ```
@@ -198,6 +199,7 @@ version: v1
 flags:
   migStrategy: "none"
   failOnInitError: true
+  restartOnDeviceUnhealthy: false
   nvidiaDriverRoot: "/"
   plugin:
     passDeviceSpecs: false
@@ -524,6 +526,7 @@ version: v1
 flags:
   migStrategy: "none"
   failOnInitError: true
+  restartOnDeviceUnhealthy: false
   nvidiaDriverRoot: "/"
   plugin:
     passDeviceSpecs: false
@@ -574,6 +577,7 @@ version: v1
 flags:
   migStrategy: "mixed" # Only change from config0.yaml
   failOnInitError: true
+  restartOnDeviceUnhealthy: false
   nvidiaDriverRoot: "/"
   plugin:
     passDeviceSpecs: false
@@ -658,6 +662,10 @@ These values are as follows:
   failOnInitError:
       fail the plugin if an error is encountered during initialization, otherwise block indefinitely
       (default 'true')
+  restartOnDeviceUnhealthy:
+      trigger plugin k8s container health check failure (and, as a consequence, container restart)
+      if at least one device is marked as unhealthy
+      (default 'false')
   compatWithCPUManager:
       run with escalated privileges to be compatible with the static CPUManager policy
       (default 'false')

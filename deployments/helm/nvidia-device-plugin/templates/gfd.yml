@@ -138,6 +138,10 @@ spec:
             - name: GFD_FAIL_ON_INIT_ERROR
               value: "{{ $root.Values.failOnInitError }}"
           {{- end }}
+          {{- if typeIs "bool" $root.Values.restartOnDeviceUnhealthy }}
+            - name: RESTART_ON_DEVICE_UNHEALTHY
+              value: "{{ .Values.restartOnDeviceUnhealthy }}"
+          {{- end }}
           {{- if typeIs "string" $root.Values.migStrategy }}
             - name: GFD_MIG_STRATEGY
               value: "{{ $root.Values.migStrategy }}"
@@ -175,6 +179,12 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 3
+            periodSeconds: 3
       volumes:
         - name: output-dir
           hostPath:
