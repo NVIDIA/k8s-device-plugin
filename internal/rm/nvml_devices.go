@@ -47,11 +47,11 @@ var _ deviceInfo = (*nvmlMigDevice)(nil)
 
 func newGPUDevice(i int, gpu nvml.Device) (string, deviceInfo) {
 	index := fmt.Sprintf("%v", i)
-        isWsl, _ := info.New().HasDXCore()
+	isWsl, _ := info.New().HasDXCore()
 	if isWsl {
 		return index, wslDevice{gpu}
 	}
-	
+
 	return index, nvmlDevice{gpu}
 }
 
