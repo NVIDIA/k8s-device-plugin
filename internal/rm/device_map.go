@@ -113,7 +113,6 @@ func (b *deviceMapBuilder) buildGPUDeviceMap() (DeviceMap, error) {
 		}
 		return fmt.Errorf("GPU name '%v' does not match any resource patterns", name)
 	})
-
 	return devices, nil
 }
 
