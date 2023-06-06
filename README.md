@@ -871,6 +871,9 @@ $ ./k8s-device-plugin --pass-device-specs
 
 ## Changelog
 
+### Version v0.14.1
+
+- Fix parsing of `deviceListStrategy` in config file
 ### Version v0.14.0
 
 - Promote v0.14.0-rc.3 to v0.14.0
