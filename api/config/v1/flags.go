@@ -17,6 +17,9 @@
 package v1
 
 import (
+	"encoding/json"
+	"fmt"
+
 	cli "github.com/urfave/cli/v2"
 )
 
@@ -59,12 +62,35 @@ type CommandLineFlags struct {
 
 // PluginCommandLineFlags holds the list of command line flags specific to the device plugin.
 type PluginCommandLineFlags struct {
-	PassDeviceSpecs     *bool     `json:"passDeviceSpecs"     yaml:"passDeviceSpecs"`
-	DeviceListStrategy  *[]string `json:"deviceListStrategy"  yaml:"deviceListStrategy"`
-	DeviceIDStrategy    *string   `json:"deviceIDStrategy"    yaml:"deviceIDStrategy"`
-	CDIAnnotationPrefix *string   `json:"cdiAnnotationPrefix" yaml:"cdiAnnotationPrefix"`
-	NvidiaCTKPath       *string   `json:"nvidiaCTKPath"       yaml:"nvidiaCTKPath"`
-	ContainerDriverRoot *string   `json:"containerDriverRoot" yaml:"containerDriverRoot"`
+	PassDeviceSpecs     *bool                   `json:"passDeviceSpecs"     yaml:"passDeviceSpecs"`
+	DeviceListStrategy  *deviceListStrategyFlag `json:"deviceListStrategy"  yaml:"deviceListStrategy"`
+	DeviceIDStrategy    *string                 `json:"deviceIDStrategy"    yaml:"deviceIDStrategy"`
+	CDIAnnotationPrefix *string                 `json:"cdiAnnotationPrefix" yaml:"cdiAnnotationPrefix"`
+	NvidiaCTKPath       *string                 `json:"nvidiaCTKPath"       yaml:"nvidiaCTKPath"`
+	ContainerDriverRoot *string                 `json:"containerDriverRoot" yaml:"containerDriverRoot"`
+}
+
+// deviceListStrategyFlag is a custom type for parsing the deviceListStrategy flag.
+type deviceListStrategyFlag []string
+
+// UnmarshalJSON implements the custom unmarshaler for the deviceListStrategyFlag type.
+// Since this option allows a single string or a list of strings to be specified,
+// we need to handle both cases.
+func (f *deviceListStrategyFlag) UnmarshalJSON(b []byte) error {
+	var single string
+	err := json.Unmarshal(b, &single)
+	if err == nil {
+		*f = []string{single}
+		return nil
+	}
+
+	var multi []string
+	if err := json.Unmarshal(b, &multi); err == nil {
+		*f = multi
+		return nil
+	}
+
+	return fmt.Errorf("invalid deviceListStrategy: %v", string(b))
 }
 
 // GFDCommandLineFlags holds the list of command line flags specific to GFD.
