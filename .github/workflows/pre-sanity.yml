@@ -1,6 +1,6 @@
 name: Run pre sanity
 
-# run this workflow for each commit
+## run this workflow for each commit
 on: [pull_request]
 
 jobs:
