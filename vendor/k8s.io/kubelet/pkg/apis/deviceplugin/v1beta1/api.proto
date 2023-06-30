@@ -1,7 +1,8 @@
-// To regenerate api.pb.go run hack/update-generated-device-plugin.sh
-syntax = 'proto3';
+// To regenerate api.pb.go run `hack/update-codegen.sh protobindings`
+syntax = "proto3";
 
 package v1beta1;
+option go_package = "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1";
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
@@ -94,9 +95,9 @@ message NUMANode {
 * struct Device {
 *    ID: "GPU-fef8089b-4820-abfc-e83e-94318197576e",
 *    Health: "Healthy",
-*    Topology: 
-*      Node: 
-*        ID: 1 
+*    Topology:
+*      Node:
+*        ID: 1
 *} */
 message Device {
 	// A unique ID assigned by the device plugin used
@@ -114,7 +115,7 @@ message Device {
 // - PreStartContainer allows Device Plugin to run device specific operations on
 //   the Devices requested
 message PreStartContainerRequest {
-	repeated string devicesIDs = 1;
+	repeated string devices_ids = 1 [(gogoproto.customname) = "DevicesIDs"];
 }
 
 // PreStartContainerResponse will be send by plugin in response to PreStartContainerRequest
@@ -160,7 +161,7 @@ message AllocateRequest {
 }
 
 message ContainerAllocateRequest {
-	repeated string devicesIDs = 1;
+	repeated string devices_ids = 1 [(gogoproto.customname) = "DevicesIDs"];
 }
 
 // AllocateResponse includes the artifacts that needs to be injected into
