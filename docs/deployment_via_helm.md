@@ -11,7 +11,7 @@ $ helm repo add nvdp https://nvidia.github.io/k8s-device-plugin
 $ helm repo update
 ```
 
-Then verify that the latest release (`v0.14.1`) of the plugin is available:
+Then verify that the latest release (`v0.14.0`) of the plugin is available:
 ```
 $ helm search repo nvdp --devel
 NAME                     	  CHART VERSION  APP VERSION	DESCRIPTION
@@ -27,10 +27,10 @@ The most basic installation command without any options is then:
 helm upgrade -i nvdp nvdp/nvidia-device-plugin \
   --namespace nvidia-device-plugin \
   --create-namespace \
-  --version 0.14.1
+  --version 0.14.0
 ```
 
-**Note:** As os `v0.14.1`, by default helm will install `NFD` , 
+**Note:** As os `v0.14.0`, by default helm will install `NFD` , 
 `gpu-feature-discovery` and `nvidia-device-plugin` in the 
 `nvidia-device-plugin` namespace. If you want to install them in a different 
 namespace, you can use the `--namespace` flag. You can turn off the 
@@ -62,7 +62,7 @@ overridable parameters for both the top-level `gpu-feature-discovery` chart and
 the `node-feature-discovery` subchart.
 
 The full set of values that can be set are found here:
-[here](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.14.1/deployments/helm/nvidia-device-plugin/values.yaml).
+[here](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.14.0/deployments/helm/nvidia-device-plugin/values.yaml).
 
 #### Passing configuration to the plugin via a `ConfigMap`.
 
