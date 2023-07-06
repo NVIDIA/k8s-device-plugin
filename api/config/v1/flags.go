@@ -40,6 +40,10 @@ func updateFromCLIFlag[T any](pflag **T, c *cli.Context, flagName string) {
 			*flag = ptr(c.Bool(flagName))
 		case **Duration:
 			*flag = ptr(Duration(c.Duration(flagName)))
+		case **deviceListStrategyFlag:
+			*flag = ptr((deviceListStrategyFlag)(c.StringSlice(flagName)))
+		default:
+			panic(fmt.Errorf("unsupported flag type for %v: %T", flagName, flag))
 		}
 	}
 }
