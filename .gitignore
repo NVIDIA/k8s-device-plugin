@@ -2,3 +2,5 @@
 /releases
 deployments/helm/gpu-feature-discovery
 *.tgz
+/config-manager
+/gpu-feature-discovery
