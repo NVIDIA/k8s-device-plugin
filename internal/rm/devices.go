@@ -82,16 +82,6 @@ func BuildDevice(index string, d deviceInfo) (*Device, error) {
 	return &dev, nil
 }
 
-// ContainsMigDevices checks if Devices contains any MIG devices or not
-func (ds Devices) ContainsMigDevices() bool {
-	for _, d := range ds {
-		if d.IsMigDevice() {
-			return true
-		}
-	}
-	return false
-}
-
 // Contains checks if Devices contains devices matching all ids.
 func (ds Devices) Contains(ids ...string) bool {
 	for _, id := range ids {
@@ -174,6 +164,31 @@ func (ds Devices) GetPaths() []string {
 		res = append(res, d.Paths...)
 	}
 	return res
+}
+
+// AlignedAllocationSupported checks whether all devices support an alligned allocation
+func (ds Devices) AlignedAllocationSupported() bool {
+	for _, d := range ds {
+		if !d.AlignedAllocationSupported() {
+			return false
+		}
+	}
+	return true
+}
+
+// AlignedAllocationSupported checks whether the device supports an alligned allocation
+func (d Device) AlignedAllocationSupported() bool {
+	if d.IsMigDevice() {
+		return false
+	}
+
+	for _, p := range d.Paths {
+		if p == "/dev/dxg" {
+			return false
+		}
+	}
+
+	return true
 }
 
 // IsMigDevice returns checks whether d is a MIG device or not.
