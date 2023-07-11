@@ -4,6 +4,6 @@ dependencies:
   version: 0.12.1
 - name: gpu-feature-discovery
   repository: ""
-  version: 0.8.0
-digest: sha256:5d8a4c5f04fd3c2a71fbe49b580c89964c3a3049dee5b792e7a50eef0ddf7a7d
-generated: "2023-03-31T11:32:52.478579-07:00"
+  version: 0.8.1
+digest: sha256:b97936b404f08db493c74b75054446913081637b1d12f65be517beb550018485
+generated: "2023-07-11T16:54:18.815451+02:00"
