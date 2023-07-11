@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gpu-feature-discovery
+  labels:
+    app.kubernetes.io/name: gpu-feature-discovery
+    app.kubernetes.io/version: 0.8.1
+    app.kubernetes.io/part-of: nvidia-gpu
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gpu-feature-discovery
+      app.kubernetes.io/part-of: nvidia-gpu
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gpu-feature-discovery
+        app.kubernetes.io/version: 0.8.1
+        app.kubernetes.io/part-of: nvidia-gpu
+    spec:
+      containers:
+        - image: nvcr.io/nvidia/gpu-feature-discovery:v0.8.1
+          name: gpu-feature-discovery
+          volumeMounts:
+            - name: output-dir
+              mountPath: "/etc/kubernetes/node-feature-discovery/features.d"
+            - name: host-sys
+              mountPath: "/sys"
+          securityContext:
+            privileged: true
+          env:
+            - name: MIG_STRATEGY
+              value: none
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              # On discrete-GPU based systems NFD adds the following lable where 10de is te NVIDIA PCI vendor ID
+              - key: feature.node.kubernetes.io/pci-10de.present
+                operator: In
+                values:
+                - "true"
+            - matchExpressions:
+              # On some Tegra-based systems NFD detects the CPU vendor ID as NVIDIA
+              - key: feature.node.kubernetes.io/cpu-model.vendor_id
+                operator: In
+                values:
+                - "NVIDIA"
+            - matchExpressions:
+              # We allow a GFD deployment to be forced by setting the following label to "true"
+              - key: "nvidia.com/gpu.present"
+                operator: In
+                values:
+                - "true"
+      volumes:
+        - name: output-dir
+          hostPath:
+            path: "/etc/kubernetes/node-feature-discovery/features.d"
+        - name: host-sys
+          hostPath:
+            path: "/sys"

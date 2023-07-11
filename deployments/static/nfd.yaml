@@ -1,0 +1,111 @@
+# This template contains an example of running nfd-master and nfd-worker in the
+# same pod.
+#
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: node-feature-discovery # NFD namespace
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nfd-master
+  namespace: node-feature-discovery
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: nfd-master
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: nfd-master
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: nfd-master
+subjects:
+- kind: ServiceAccount
+  name: nfd-master
+  namespace: node-feature-discovery
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: nfd
+  name: nfd
+  namespace: node-feature-discovery
+spec:
+  selector:
+    matchLabels:
+      app: nfd
+  template:
+    metadata:
+      labels:
+        app: nfd
+    spec:
+      serviceAccount: nfd-master
+      containers:
+        - env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          image: quay.io/kubernetes_incubator/node-feature-discovery:v0.6.0
+          name: nfd-master
+          command:
+            - "nfd-master"
+          args:
+            - "--extra-label-ns=nvidia.com"
+        - env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          image: quay.io/kubernetes_incubator/node-feature-discovery:v0.6.0
+          name: nfd-worker
+          command:
+            - "nfd-worker"
+          args:
+            - "--sleep-interval=60s"
+            - "--options={\"sources\": {\"pci\": { \"deviceLabelFields\": [\"vendor\"] }}}"
+          volumeMounts:
+            - name: host-boot
+              mountPath: "/host-boot"
+              readOnly: true
+            - name: host-os-release
+              mountPath: "/host-etc/os-release"
+              readOnly: true
+            - name: host-sys
+              mountPath: "/host-sys"
+            - name: source-d
+              mountPath: "/etc/kubernetes/node-feature-discovery/source.d/"
+            - name: features-d
+              mountPath: "/etc/kubernetes/node-feature-discovery/features.d/"
+      volumes:
+        - name: host-boot
+          hostPath:
+            path: "/boot"
+        - name: host-os-release
+          hostPath:
+            path: "/etc/os-release"
+        - name: host-sys
+          hostPath:
+            path: "/sys"
+        - name: source-d
+          hostPath:
+            path: "/etc/kubernetes/node-feature-discovery/source.d/"
+        - name: features-d
+          hostPath:
+            path: "/etc/kubernetes/node-feature-discovery/features.d/"
