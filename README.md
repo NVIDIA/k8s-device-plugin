@@ -873,7 +873,11 @@ $ ./k8s-device-plugin --pass-device-specs
 
 ### Version v0.14.1
 
-- Fix parsing of `deviceListStrategy` in config file
+- Fix parsing of `deviceListStrategy` in config file to correctly support strings as well as slices.
+- Update GFD subchart to v0.8.1
+- Bumped CUDA base images version to 12.2.0
+
+
 ### Version v0.14.0
 
 - Promote v0.14.0-rc.3 to v0.14.0
