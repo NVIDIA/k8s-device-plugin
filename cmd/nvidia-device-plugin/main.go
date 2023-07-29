@@ -19,16 +19,18 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"syscall"
 	"time"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
+	"github.com/NVIDIA/k8s-device-plugin/internal/plugin"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/fsnotify/fsnotify"
 	cli "github.com/urfave/cli/v2"
+
+	"k8s.io/klog/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
@@ -68,10 +70,10 @@ func main() {
 			Usage:   "pass the list of DeviceSpecs to the kubelet on Allocate()",
 			EnvVars: []string{"PASS_DEVICE_SPECS"},
 		},
-		&cli.StringFlag{
+		&cli.StringSliceFlag{
 			Name:    "device-list-strategy",
-			Value:   spec.DeviceListStrategyEnvvar,
-			Usage:   "the desired strategy for passing the device list to the underlying runtime:\n\t\t[envvar | volume-mounts]",
+			Value:   cli.NewStringSlice(string(spec.DeviceListStrategyEnvvar)),
+			Usage:   "the desired strategy for passing the device list to the underlying runtime:\n\t\t[envvar | volume-mounts | cdi-annotations]",
 			EnvVars: []string{"DEVICE_LIST_STRATEGY"},
 		},
 		&cli.StringFlag{
@@ -96,19 +98,37 @@ func main() {
 			Destination: &configFile,
 			EnvVars:     []string{"CONFIG_FILE"},
 		},
+		&cli.StringFlag{
+			Name:    "cdi-annotation-prefix",
+			Value:   spec.DefaultCDIAnnotationPrefix,
+			Usage:   "the prefix to use for CDI container annotation keys",
+			EnvVars: []string{"CDI_ANNOTATION_PREFIX"},
+		},
+		&cli.StringFlag{
+			Name:    "nvidia-ctk-path",
+			Value:   spec.DefaultNvidiaCTKPath,
+			Usage:   "the path to use for the nvidia-ctk in the generated CDI specification",
+			EnvVars: []string{"NVIDIA_CTK_PATH"},
+		},
+		&cli.StringFlag{
+			Name:    "container-driver-root",
+			Value:   spec.DefaultContainerDriverRoot,
+			Usage:   "the path where the NVIDIA driver root is mounted in the container; used for generating CDI specifications",
+			EnvVars: []string{"CONTAINER_DRIVER_ROOT"},
+		},
 	}
 
 	err := c.Run(os.Args)
 	if err != nil {
-		log.SetOutput(os.Stderr)
-		log.Printf("Error: %v", err)
+		klog.Error(err)
 		os.Exit(1)
 	}
 }
 
 func validateFlags(config *spec.Config) error {
-	if *config.Flags.Plugin.DeviceListStrategy != spec.DeviceListStrategyEnvvar && *config.Flags.Plugin.DeviceListStrategy != spec.DeviceListStrategyVolumeMounts {
-		return fmt.Errorf("invalid --device-list-strategy option: %v", *config.Flags.Plugin.DeviceListStrategy)
+	_, err := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
+	if err != nil {
+		return fmt.Errorf("invalid --device-list-strategy option: %v", err)
 	}
 
 	if *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyUUID && *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyIndex {
@@ -131,19 +151,19 @@ func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 }
 
 func start(c *cli.Context, flags []cli.Flag) error {
-	log.Println("Starting FS watcher.")
+	klog.Info("Starting FS watcher.")
 	watcher, err := newFSWatcher(pluginapi.DevicePluginPath)
 	if err != nil {
 		return fmt.Errorf("failed to create FS watcher: %v", err)
 	}
 	defer watcher.Close()
 
-	log.Println("Starting OS watcher.")
+	klog.Info("Starting OS watcher.")
 	sigs := newOSWatcher(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	var restarting bool
 	var restartTimeout <-chan time.Time
-	var plugins []*NvidiaDevicePlugin
+	var plugins []plugin.Interface
 restart:
 	// If we are restarting, stop plugins from previous run.
 	if restarting {
@@ -153,14 +173,14 @@ restart:
 		}
 	}
 
-	log.Println("Starting Plugins.")
+	klog.Info("Starting Plugins.")
 	plugins, restartPlugins, err := startPlugins(c, flags, restarting)
 	if err != nil {
 		return fmt.Errorf("error starting plugins: %v", err)
 	}
 
 	if restartPlugins {
-		log.Printf("Failed to start one or more plugins. Retrying in 30s...")
+		klog.Infof("Failed to start one or more plugins. Retrying in 30s...")
 		restartTimeout = time.After(30 * time.Second)
 	}
 
@@ -170,7 +190,7 @@ restart:
 	// some messages, trigger a restart of the plugins, or exit the program.
 	for {
 		select {
-		// If the restart timout has expired, then restart the plugins
+		// If the restart timeout has expired, then restart the plugins
 		case <-restartTimeout:
 			goto restart
 
@@ -179,13 +199,13 @@ restart:
 		// restarting all of the plugins in the process.
 		case event := <-watcher.Events:
 			if event.Name == pluginapi.KubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
-				log.Printf("inotify: %s created, restarting.", pluginapi.KubeletSocket)
+				klog.Infof("inotify: %s created, restarting.", pluginapi.KubeletSocket)
 				goto restart
 			}
 
 		// Watch for any other fs errors and log them.
 		case err := <-watcher.Errors:
-			log.Printf("inotify: %s", err)
+			klog.Infof("inotify: %s", err)
 
 		// Watch for any signals from the OS. On SIGHUP, restart this loop,
 		// restarting all of the plugins in the process. On all other
@@ -193,10 +213,10 @@ restart:
 		case s := <-sigs:
 			switch s {
 			case syscall.SIGHUP:
-				log.Println("Received SIGHUP, restarting.")
+				klog.Info("Received SIGHUP, restarting.")
 				goto restart
 			default:
-				log.Printf("Received signal \"%v\", shutting down.", s)
+				klog.Infof("Received signal \"%v\", shutting down.", s)
 				goto exit
 			}
 		}
@@ -209,9 +229,9 @@ exit:
 	return nil
 }
 
-func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]*NvidiaDevicePlugin, bool, error) {
+func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]plugin.Interface, bool, error) {
 	// Load the configuration file
-	log.Println("Loading configuration.")
+	klog.Info("Loading configuration.")
 	config, err := loadConfig(c, flags)
 	if err != nil {
 		return nil, false, fmt.Errorf("unable to load config: %v", err)
@@ -219,7 +239,7 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]*NvidiaD
 	disableResourceRenamingInConfig(config)
 
 	// Update the configuration file with default resources.
-	log.Println("Updating config with default resource matching patterns.")
+	klog.Info("Updating config with default resource matching patterns.")
 	err = rm.AddDefaultResourcesToConfig(config)
 	if err != nil {
 		return nil, false, fmt.Errorf("unable to add default resources to config: %v", err)
@@ -230,10 +250,10 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]*NvidiaD
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to marshal config to JSON: %v", err)
 	}
-	log.Printf("\nRunning with config:\n%v", string(configJSON))
+	klog.Infof("\nRunning with config:\n%v", string(configJSON))
 
 	// Get the set of plugins.
-	log.Println("Retreiving plugins.")
+	klog.Info("Retrieving plugins.")
 	pluginManager, err := NewPluginManager(config)
 	if err != nil {
 		return nil, false, fmt.Errorf("error creating plugin manager: %v", err)
@@ -255,25 +275,23 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]*NvidiaD
 
 		// Start the gRPC server for plugin p and connect it with the kubelet.
 		if err := p.Start(); err != nil {
-			log.SetOutput(os.Stderr)
-			log.Println("Could not contact Kubelet. Did you enable the device plugin feature gate?")
-			log.Printf("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
-			log.Printf("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
-			log.SetOutput(os.Stdout)
+			klog.Error("Could not contact Kubelet. Did you enable the device plugin feature gate?")
+			klog.Error("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
+			klog.Error("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
 			return plugins, true, nil
 		}
 		started++
 	}
 
 	if started == 0 {
-		log.Println("No devices found. Waiting indefinitely.")
+		klog.Info("No devices found. Waiting indefinitely.")
 	}
 
 	return plugins, false, nil
 }
 
-func stopPlugins(plugins []*NvidiaDevicePlugin) error {
-	log.Println("Stopping plugins.")
+func stopPlugins(plugins []plugin.Interface) error {
+	klog.Info("Stopping plugins.")
 	for _, p := range plugins {
 		p.Stop()
 	}
@@ -285,7 +303,7 @@ func stopPlugins(plugins []*NvidiaDevicePlugin) error {
 func disableResourceRenamingInConfig(config *spec.Config) {
 	// Disable resource renaming through config.Resource
 	if len(config.Resources.GPUs) > 0 || len(config.Resources.MIGs) > 0 {
-		log.Printf("Customizing the 'resources' field is not yet supported in the config. Ignoring...")
+		klog.Infof("Customizing the 'resources' field is not yet supported in the config. Ignoring...")
 	}
 	config.Resources.GPUs = nil
 	config.Resources.MIGs = nil
@@ -311,9 +329,9 @@ func disableResourceRenamingInConfig(config *spec.Config) {
 		}
 	}
 	if setsNonDefaultRename {
-		log.Printf("Setting the 'rename' field in sharing.timeSlicing.resources is not yet supported in the config. Ignoring...")
+		klog.Warning("Setting the 'rename' field in sharing.timeSlicing.resources is not yet supported in the config. Ignoring...")
 	}
 	if setsDevices {
-		log.Printf("Customizing the 'devices' field in sharing.timeSlicing.resources is not yet supported in the config. Ignoring...")
+		klog.Warning("Customizing the 'devices' field in sharing.timeSlicing.resources is not yet supported in the config. Ignoring...")
 	}
 }

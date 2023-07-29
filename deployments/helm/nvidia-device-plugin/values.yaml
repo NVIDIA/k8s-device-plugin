@@ -81,11 +81,13 @@ runtimeClassName: null
 # Subcharts
 nfd:
   nameOverride: node-feature-discovery
+  enableNodeFeatureApi: false
   master:
-    extraLabelNs:
-      - nvidia.com
     serviceAccount:
       name: node-feature-discovery
+      create: true
+    config: 
+      extraLabelNs: ["nvidia.com"]
 
   worker:
     tolerations:

@@ -20,17 +20,14 @@ import (
 	"fmt"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
-	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
+	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
+	"github.com/NVIDIA/k8s-device-plugin/internal/plugin/manager"
 	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 )
 
-// PluginManager provides an interface for building the set of plugins required to implement a given MIG strategy
-type PluginManager interface {
-	GetPlugins() ([]*NvidiaDevicePlugin, error)
-}
-
 // NewPluginManager creates an NVML-based plugin manager
-func NewPluginManager(config *spec.Config) (PluginManager, error) {
+func NewPluginManager(config *spec.Config) (manager.Interface, error) {
+	var err error
 	switch *config.Flags.MigStrategy {
 	case spec.MigStrategyNone:
 	case spec.MigStrategySingle:
@@ -41,28 +38,43 @@ func NewPluginManager(config *spec.Config) (PluginManager, error) {
 
 	nvmllib := nvml.New()
 
-	m := pluginManager{
-		nvml:   nvmllib,
-		config: config,
-	}
-	return &m, nil
-}
-
-type pluginManager struct {
-	nvml   nvml.Interface
-	config *spec.Config
-}
-
-// GetPlugins returns the plugins associated with the NVML resources available on the node
-func (s *pluginManager) GetPlugins() ([]*NvidiaDevicePlugin, error) {
-	rms, err := rm.NewResourceManagers(s.nvml, s.config)
+	deviceListStrategies, err := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
 	if err != nil {
-		return nil, fmt.Errorf("unable to load resource managers to manage plugin devices: %v", err)
+		return nil, fmt.Errorf("invalid device list strategy: %v", err)
 	}
 
-	var plugins []*NvidiaDevicePlugin
-	for _, r := range rms {
-		plugins = append(plugins, NewNvidiaDevicePlugin(s.config, r))
+	cdiEnabled := deviceListStrategies.IsCDIEnabled()
+
+	cdiHandler, err := cdi.New(
+		cdi.WithEnabled(cdiEnabled),
+		cdi.WithDriverRoot(*config.Flags.Plugin.ContainerDriverRoot),
+		cdi.WithTargetDriverRoot(*config.Flags.NvidiaDriverRoot),
+		cdi.WithNvidiaCTKPath(*config.Flags.Plugin.NvidiaCTKPath),
+		cdi.WithNvml(nvmllib),
+		cdi.WithDeviceIDStrategy(*config.Flags.Plugin.DeviceIDStrategy),
+		cdi.WithVendor("k8s.device-plugin.nvidia.com"),
+		cdi.WithGdsEnabled(*config.Flags.GDSEnabled),
+		cdi.WithMofedEnabled(*config.Flags.MOFEDEnabled),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create cdi handler: %v", err)
 	}
-	return plugins, nil
+
+	m, err := manager.New(
+		manager.WithNVML(nvmllib),
+		manager.WithCDIEnabled(cdiEnabled),
+		manager.WithCDIHandler(cdiHandler),
+		manager.WithConfig(config),
+		manager.WithFailOnInitError(*config.Flags.FailOnInitError),
+		manager.WithMigStrategy(*config.Flags.MigStrategy),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create plugin manager: %v", err)
+	}
+
+	if err := m.CreateCDISpecFile(); err != nil {
+		return nil, fmt.Errorf("unable to create cdi spec file: %v", err)
+	}
+
+	return m, nil
 }

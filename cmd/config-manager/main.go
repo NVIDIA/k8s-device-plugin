@@ -25,14 +25,14 @@ import (
 	"syscall"
 
 	"github.com/prometheus/procfs"
-	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -205,8 +205,7 @@ func main() {
 
 	err := c.Run(os.Args)
 	if err != nil {
-		log.SetOutput(os.Stderr)
-		log.Printf("Error: %v", err)
+		klog.Error(err)
 		os.Exit(1)
 	}
 }
@@ -244,9 +243,9 @@ func start(c *cli.Context, f *Flags) error {
 	defer close(stop)
 
 	for {
-		log.Infof("Waiting for change to '%s' label", f.NodeLabel)
+		klog.Infof("Waiting for change to '%s' label", f.NodeLabel)
 		config := config.Get()
-		log.Infof("Label change detected: %s=%s", f.NodeLabel, config)
+		klog.Infof("Label change detected: %s=%s", f.NodeLabel, config)
 		err := updateConfig(config, f)
 		if f.Oneshot || err != nil {
 			return err
@@ -296,9 +295,9 @@ func updateConfig(config string, f *Flags) error {
 	}
 
 	if config == "" {
-		log.Infof("Updating to empty config")
+		klog.Infof("Updating to empty config")
 	} else {
-		log.Infof("Updating to config: %s", config)
+		klog.Infof("Updating to config: %s", config)
 	}
 
 	updated, err := updateSymlink(config, f)
@@ -306,23 +305,23 @@ func updateConfig(config string, f *Flags) error {
 		return err
 	}
 	if !updated {
-		log.Infof("Already configured. Skipping update...")
+		klog.Infof("Already configured. Skipping update...")
 		return nil
 	}
 
 	if config == "" {
-		log.Infof("Successfully updated to empty config")
+		klog.Infof("Successfully updated to empty config")
 	} else {
-		log.Infof("Successfully updated to config: %s", config)
+		klog.Infof("Successfully updated to config: %s", config)
 	}
 
 	if f.SendSignal {
-		log.Infof("Sending signal '%s' to '%s'", syscall.Signal(f.Signal), f.ProcessToSignal)
+		klog.Infof("Sending signal '%s' to '%s'", syscall.Signal(f.Signal), f.ProcessToSignal)
 		err := signalProcess(f)
 		if err != nil {
 			return err
 		}
-		log.Infof("Successfully sent signal")
+		klog.Infof("Successfully sent signal")
 	}
 
 	return nil
@@ -354,7 +353,7 @@ func updateConfigName(config string, f *Flags) (string, error) {
 
 	// Otherwise, if an explicit default is set, check to see if it is available.
 	if f.DefaultConfig != "" {
-		log.Infof("No value set. Selecting default name: %v", f.DefaultConfig)
+		klog.Infof("No value set. Selecting default name: %v", f.DefaultConfig)
 		if !files[f.DefaultConfig] {
 			return "", fmt.Errorf("specified config %v does not exist", config)
 		}
@@ -362,23 +361,23 @@ func updateConfigName(config string, f *Flags) (string, error) {
 	}
 
 	// Otherwise, if no explicit default is set, step through the configured fallbacks.
-	log.Infof("No value set and no default set. Attempting fallback strategies: %v", f.FallbackStrategies.Value())
+	klog.Infof("No value set and no default set. Attempting fallback strategies: %v", f.FallbackStrategies.Value())
 	for _, fallback := range f.FallbackStrategies.Value() {
 		switch fallback {
 		case FallbackStrategyNamedConfig:
-			log.Infof("Attempting to find config named: %v", NamedConfigFallback)
+			klog.Infof("Attempting to find config named: %v", NamedConfigFallback)
 			if files[NamedConfigFallback] {
 				return NamedConfigFallback, nil
 			}
-			log.Infof("No configuration named '%v' was found", NamedConfigFallback)
+			klog.Infof("No configuration named '%v' was found", NamedConfigFallback)
 		case FallbackStrategySingleConfig:
-			log.Infof("Attempting to see if only a single config is available...")
+			klog.Infof("Attempting to see if only a single config is available...")
 			if len(filenames) == 1 {
 				return filenames[0], nil
 			}
-			log.Infof("More than one configuration was found: %v", filenames)
+			klog.Infof("More than one configuration was found: %v", filenames)
 		case FallbackStrategyEmptyConfig:
-			log.Infof("Falling back to an empty configuration")
+			klog.Infof("Falling back to an empty configuration")
 			return "", nil
 		default:
 			return "", fmt.Errorf("unknown fallback strategy: %v", fallback)
@@ -470,7 +469,7 @@ func fileExists(filename string) (bool, error) {
 func getConfigFileNameMap(f *Flags) (map[string]bool, error) {
 	files, err := os.ReadDir(f.ConfigFileSrcdir)
 	if err != nil {
-		return nil, fmt.Errorf("errorr reading directory: %v", err)
+		return nil, fmt.Errorf("error reading directory: %v", err)
 	}
 
 	filemap := make(map[string]bool)

@@ -12,11 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG GOLANG_VERSION=1.18.2
+ARG GOLANG_VERSION=1.20.5
 ARG CUDA_IMAGE=cuda
-ARG CUDA_VERSION=11.6.1
+ARG CUDA_VERSION=12.2.0
 ARG BASE_DIST=ubi8
-FROM golang:${GOLANG_VERSION} as build
+FROM nvidia/cuda:${CUDA_VERSION}-base-${BASE_DIST} as build
+
+RUN yum install -y \
+    wget make git gcc \
+     && \
+    rm -rf /var/cache/yum/*
+
+ARG GOLANG_VERSION=x.x.x
+RUN set -eux; \
+    \
+    arch="$(uname -m)"; \
+    case "${arch##*-}" in \
+        x86_64 | amd64) ARCH='amd64' ;; \
+        ppc64el | ppc64le) ARCH='ppc64le' ;; \
+        aarch64) ARCH='arm64' ;; \
+        *) echo "unsupported architecture" ; exit 1 ;; \
+    esac; \
+    wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${ARCH}.tar.gz \
+    | tar -C /usr/local -xz
+
+
+ENV GOPATH /go
+ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
 
 WORKDIR /build
 COPY . .

@@ -16,6 +16,10 @@
 
 package v1
 
+import (
+	cdiapi "github.com/container-orchestrated-devices/container-device-interface/pkg/cdi"
+)
+
 // Constants related to resource names
 const (
 	ResourceNamePrefix              = "nvidia.com"
@@ -32,12 +36,20 @@ const (
 
 // Constants to represent the various device list strategies
 const (
-	DeviceListStrategyEnvvar       = "envvar"
-	DeviceListStrategyVolumeMounts = "volume-mounts"
+	DeviceListStrategyEnvvar         = "envvar"
+	DeviceListStrategyVolumeMounts   = "volume-mounts"
+	DeviceListStrategyCDIAnnotations = "cdi-annotations"
 )
 
 // Constants to represent the various device id strategies
 const (
 	DeviceIDStrategyUUID  = "uuid"
 	DeviceIDStrategyIndex = "index"
+)
+
+// Constants related to generating CDI specifications
+const (
+	DefaultCDIAnnotationPrefix = cdiapi.AnnotationPrefix
+	DefaultNvidiaCTKPath       = "/usr/bin/nvidia-ctk"
+	DefaultContainerDriverRoot = "/driver-root"
 )

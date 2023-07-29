@@ -39,12 +39,16 @@ type Interface interface {
 //
 //go:generate moq -out device_mock.go . Device
 type Device interface {
+	CreateGpuInstanceWithPlacement(*GpuInstanceProfileInfo, *GpuInstancePlacement) (GpuInstance, Return)
+	GetArchitecture() (DeviceArchitecture, Return)
 	GetAttributes() (DeviceAttributes, Return)
+	GetBrand() (BrandType, Return)
 	GetComputeInstanceId() (int, Return)
 	GetCudaComputeCapability() (int, int, Return)
 	GetDeviceHandleFromMigDeviceHandle() (Device, Return)
 	GetGpuInstanceById(ID int) (GpuInstance, Return)
 	GetGpuInstanceId() (int, Return)
+	GetGpuInstancePossiblePlacements(*GpuInstanceProfileInfo) ([]GpuInstancePlacement, Return)
 	GetGpuInstanceProfileInfo(Profile int) (GpuInstanceProfileInfo, Return)
 	GetGpuInstances(Info *GpuInstanceProfileInfo) ([]GpuInstance, Return)
 	GetIndex() (int, Return)
@@ -134,3 +138,9 @@ type ComputeInstancePlacement nvml.ComputeInstancePlacement
 
 // DeviceAttributes stores information about MIG devices
 type DeviceAttributes nvml.DeviceAttributes
+
+// DeviceArchitecture represents the hardware architecture of a GPU device
+type DeviceArchitecture nvml.DeviceArchitecture
+
+// BrandType represents the brand of a GPU device
+type BrandType nvml.BrandType

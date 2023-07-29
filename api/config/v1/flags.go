@@ -17,6 +17,9 @@
 package v1
 
 import (
+	"encoding/json"
+	"fmt"
+
 	cli "github.com/urfave/cli/v2"
 )
 
@@ -31,10 +34,16 @@ func updateFromCLIFlag[T any](pflag **T, c *cli.Context, flagName string) {
 		switch flag := any(pflag).(type) {
 		case **string:
 			*flag = ptr(c.String(flagName))
+		case **[]string:
+			*flag = ptr(c.StringSlice(flagName))
 		case **bool:
 			*flag = ptr(c.Bool(flagName))
 		case **Duration:
 			*flag = ptr(Duration(c.Duration(flagName)))
+		case **deviceListStrategyFlag:
+			*flag = ptr((deviceListStrategyFlag)(c.StringSlice(flagName)))
+		default:
+			panic(fmt.Errorf("unsupported flag type for %v: %T", flagName, flag))
 		}
 	}
 }
@@ -57,9 +66,35 @@ type CommandLineFlags struct {
 
 // PluginCommandLineFlags holds the list of command line flags specific to the device plugin.
 type PluginCommandLineFlags struct {
-	PassDeviceSpecs    *bool   `json:"passDeviceSpecs"    yaml:"passDeviceSpecs"`
-	DeviceListStrategy *string `json:"deviceListStrategy" yaml:"deviceListStrategy"`
-	DeviceIDStrategy   *string `json:"deviceIDStrategy"   yaml:"deviceIDStrategy"`
+	PassDeviceSpecs     *bool                   `json:"passDeviceSpecs"     yaml:"passDeviceSpecs"`
+	DeviceListStrategy  *deviceListStrategyFlag `json:"deviceListStrategy"  yaml:"deviceListStrategy"`
+	DeviceIDStrategy    *string                 `json:"deviceIDStrategy"    yaml:"deviceIDStrategy"`
+	CDIAnnotationPrefix *string                 `json:"cdiAnnotationPrefix" yaml:"cdiAnnotationPrefix"`
+	NvidiaCTKPath       *string                 `json:"nvidiaCTKPath"       yaml:"nvidiaCTKPath"`
+	ContainerDriverRoot *string                 `json:"containerDriverRoot" yaml:"containerDriverRoot"`
+}
+
+// deviceListStrategyFlag is a custom type for parsing the deviceListStrategy flag.
+type deviceListStrategyFlag []string
+
+// UnmarshalJSON implements the custom unmarshaler for the deviceListStrategyFlag type.
+// Since this option allows a single string or a list of strings to be specified,
+// we need to handle both cases.
+func (f *deviceListStrategyFlag) UnmarshalJSON(b []byte) error {
+	var single string
+	err := json.Unmarshal(b, &single)
+	if err == nil {
+		*f = []string{single}
+		return nil
+	}
+
+	var multi []string
+	if err := json.Unmarshal(b, &multi); err == nil {
+		*f = multi
+		return nil
+	}
+
+	return fmt.Errorf("invalid deviceListStrategy: %v", string(b))
 }
 
 // GFDCommandLineFlags holds the list of command line flags specific to GFD.
@@ -99,6 +134,12 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.Plugin.DeviceListStrategy, c, n)
 			case "device-id-strategy":
 				updateFromCLIFlag(&f.Plugin.DeviceIDStrategy, c, n)
+			case "cdi-annotation-prefix":
+				updateFromCLIFlag(&f.Plugin.CDIAnnotationPrefix, c, n)
+			case "nvidia-ctk-path":
+				updateFromCLIFlag(&f.Plugin.NvidiaCTKPath, c, n)
+			case "container-driver-root":
+				updateFromCLIFlag(&f.Plugin.ContainerDriverRoot, c, n)
 			}
 			// GFD specific flags
 			if f.GFD == nil {
