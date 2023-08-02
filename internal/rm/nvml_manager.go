@@ -83,10 +83,7 @@ func (r *nvmlResourceManager) GetDevicePaths(ids []string) []string {
 		"/dev/nvidia-modeset",
 	}
 
-	for _, p := range r.Devices().Subset(ids).GetPaths() {
-		paths = append(paths, p)
-	}
-
+	paths = append(paths, r.Devices().Subset(ids).GetPaths()...)
 	return paths
 }
 
