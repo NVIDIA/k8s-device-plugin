@@ -19,7 +19,7 @@ package testing
 import (
 	"fmt"
 
-	"github.com/NVIDIA/gpu-feature-discovery/internal/resource"
+	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 )
 
 // DeviceMock provides an alias that allows for additional functions to be defined.

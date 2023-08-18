@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/NVIDIA/gpu-feature-discovery/internal/info"
-	"github.com/NVIDIA/gpu-feature-discovery/internal/lm"
-	"github.com/NVIDIA/gpu-feature-discovery/internal/resource"
-	"github.com/NVIDIA/gpu-feature-discovery/internal/vgpu"
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/info"
+	"github.com/NVIDIA/k8s-device-plugin/internal/lm"
+	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
+	"github.com/NVIDIA/k8s-device-plugin/internal/vgpu"
 
 	"github.com/urfave/cli/v2"
 	"k8s.io/klog/v2"

@@ -17,7 +17,7 @@
 package mig
 
 import (
-	"github.com/NVIDIA/gpu-feature-discovery/internal/resource"
+	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 )
 
 // DeviceInfo stores information about all devices on the node

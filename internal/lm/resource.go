@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/NVIDIA/gpu-feature-discovery/internal/resource"
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 )
 
 const fullGPUResourceName = "nvidia.com/gpu"

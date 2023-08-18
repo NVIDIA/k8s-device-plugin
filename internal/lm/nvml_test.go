@@ -3,8 +3,8 @@ package lm
 import (
 	"testing"
 
-	"github.com/NVIDIA/gpu-feature-discovery/internal/resource"
-	rt "github.com/NVIDIA/gpu-feature-discovery/internal/resource/testing"
+	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
+	rt "github.com/NVIDIA/k8s-device-plugin/internal/resource/testing"
 	"github.com/stretchr/testify/require"
 )
 

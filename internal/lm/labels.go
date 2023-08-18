@@ -26,7 +26,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	k8s "github.com/NVIDIA/gpu-feature-discovery/internal/kubernetes"
+	k8s "github.com/NVIDIA/k8s-device-plugin/internal/kubernetes"
 
 	nfdv1alpha1 "sigs.k8s.io/node-feature-discovery/pkg/apis/nfd/v1alpha1"
 
