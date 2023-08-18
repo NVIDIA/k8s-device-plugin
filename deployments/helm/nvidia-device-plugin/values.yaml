@@ -99,6 +99,9 @@ priorityClassName: "system-node-critical"
 
 runtimeClassName: null
 
+devicePlugin:
+  enabled: true
+
 # Subcharts
 nfd:
   nameOverride: node-feature-discovery
