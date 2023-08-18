@@ -202,19 +202,11 @@ spec:
         - name: config
           emptyDir: {}
         {{- end }}
-      {{- $nodeSelector := .Values.nodeSelector }}
-      {{- if and (empty $nodeSelector) .Subcharts.gfd }}
-      {{- $nodeSelector = .Subcharts.gfd.Values.nodeSelector }}
-      {{- end }}
-      {{- with $nodeSelector }}
+      {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- $affinity := .Values.affinity }}
-      {{- if and (empty $affinity) .Subcharts.gfd }}
-      {{- $affinity = .Subcharts.gfd.Values.affinity }}
-      {{- end }}
-      {{- with $affinity }}
+      {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}

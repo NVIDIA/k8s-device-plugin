@@ -189,19 +189,11 @@ spec:
         - name: config
           emptyDir: {}
       {{- end }}
-      {{- $nodeSelector := $root.Values.nodeSelector }}
-      {{- if empty $nodeSelector }}
-      {{- $nodeSelector = .Values.nodeSelector }}
-      {{- end }}
-      {{- with $nodeSelector }}
+      {{- with $root.Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- $affinity := $root.Values.affinity }}
-      {{- if empty $affinity }}
-      {{- $affinity = .Values.affinity }}
-      {{- end }}
-      {{- with $affinity }}
+      {{- with $root.Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
