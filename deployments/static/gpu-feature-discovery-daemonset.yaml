@@ -4,7 +4,7 @@ metadata:
   name: gpu-feature-discovery
   labels:
     app.kubernetes.io/name: gpu-feature-discovery
-    app.kubernetes.io/version: 0.8.1
+    app.kubernetes.io/version: 0.14.1
     app.kubernetes.io/part-of: nvidia-gpu
 spec:
   selector:
@@ -15,12 +15,13 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: gpu-feature-discovery
-        app.kubernetes.io/version: 0.8.1
+        app.kubernetes.io/version: 0.14.1
         app.kubernetes.io/part-of: nvidia-gpu
     spec:
       containers:
-        - image: nvcr.io/nvidia/gpu-feature-discovery:v0.8.1
+        - image: nvcr.io/nvidia/k8s-device-plugin:v0.14.1
           name: gpu-feature-discovery
+          command: ["/usr/bin/gpu-feature-discovery"]
           volumeMounts:
             - name: output-dir
               mountPath: "/etc/kubernetes/node-feature-discovery/features.d"

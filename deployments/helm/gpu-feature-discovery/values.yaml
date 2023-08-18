@@ -11,7 +11,7 @@ allowDefaultNamespace: false
 
 imagePullSecrets: []
 image:
-  repository: nvcr.io/nvidia/gpu-feature-discovery
+  repository: nvcr.io/nvidia/k8s-device-plugin
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
@@ -93,5 +93,5 @@ nfd:
     serviceAccount:
       name: node-feature-discovery
       create: true
-    config: 
+    config:
       extraLabelNs: ["nvidia.com"]
