@@ -1,8 +1,15 @@
 `".$_-0/build_bitbucket.org/bertimus9/systemstat.js
-v0.0.0-20180207000608-0eeff89b0690/go.mod 
-h1:Ulb78X89vxKYgdL24HMTiXYHlyHEvruOj1ZPlqeNEZM=
-cloud.google.com/go v0.26.0/go.mod 
-h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
+v0.0.0
+-20180207000608
+'''
+go.sum.js  
+Ulb78X89vxKYgdL24HMTiXYHlyHEvruOj1ZPlqeNEZM=
+cloud.google.com/go 
+v0.26.0
+client-ready-go.sum.js 
+# h1 #
+'''
+aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod 
 h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod
@@ -1625,25 +1632,62 @@ k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9/go.mod h1:jPW/WVKK9YHAvNhRxK0md/
 k8s.io/utils v0.0.0-20230209194617-a36077c30491 h1:r0BAOLElQnnFhE/ApUsg3iHdVYYPBjNSSOMowRZxxsY=
 k8s.io/utils v0.0.0-20230209194617-a36077c30491/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
 modernc.org/cc v1.0.0/go.mod h1:1Sk4//wdnYJiUIxnW8ddKpaOJCF37yAdqYnkxUpaYxw=
-modernc.org/golex v1.0.0/go.mod h1:b/QX9oBD/LhixY6NDh+IdGv17hgB+51fET1i2kPSmvk=
-modernc.org/mathutil v1.0.0/go.mod h1:wU0vUrJsVWBZ4P6e7xtFJEhFSNsfRLJ8H458uRjg03k=
-modernc.org/strutil v1.0.0/go.mod h1:lstksw84oURvj9y3tn8lGvRxyRC1S2+g5uuIzNfIOBs=
-modernc.org/xc v1.0.0/go.mod h1:mRNCo0bvLjGhHO9WsyuKVU4q0ceiDDDoEeWDJHrNx8I=
-mvdan.cc/interfacer v0.0.0-20180901003855-c20040233aed/go.mod h1:Xkxe497xwlCKkIaQYRfC7CSLworTXY9RMqwhhCm+8Nc=
-mvdan.cc/lint v0.0.0-20170908181259-adc824a0674b/go.mod h1:2odslEg/xrtNQqCYg2/jCoyKnw3vv5biOc3JnIcYfL4=
-mvdan.cc/unparam v0.0.0-20190209190245-fbb59629db34/go.mod h1:H6SUd1XjIs+qQCyskXg5OFSrilMRUkD8ePJpHKDPaeY=
-rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
-rsc.io/pdf v0.1.1/go.mod h1:n8OzWcQ6Sp37PL01nO98y4iUCRdTGarVfzxY20ICaU4=
-rsc.io/quote/v3 v3.1.0/go.mod h1:yEA65RcK8LyAZtP9Kv3t0HmxON59tX3rD+tICJqUlj0=
-rsc.io/sampler v1.3.0/go.mod h1:T1hPZKmBbMNahiBKFy5HrXp6adAjACjK9JXDnKaTXpA=
-sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.1.2/go.mod h1:+qG7ISXqCDVVcyO8hLn12AKVYYUjM7ftlqsqmrhMZE0=
-sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd h1:EDPBXCAspyGV4jQlpZSudPeMmr1bNJefnuqLsRAsHZo=
-sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd/go.mod h1:B8JuhiUyNFVKdsE8h686QcCxMaH6HrOAZj4vswFpcB0=
-sigs.k8s.io/kustomize v2.0.3+incompatible/go.mod h1:MkjgH3RdOWrievjo6c9T245dYlB5QeXV4WCbnt/PEpU=
-sigs.k8s.io/kustomize/api v0.13.2/go.mod h1:DUp325VVMFVcQSq+ZxyDisA8wtldwHxLZbr1g94UHsw=
-sigs.k8s.io/kustomize/cmd/config v0.11.1/go.mod h1:z1I4ubecg4py5Jn4+04p4A/vmnqUjxjxDCEyYEjQu/0=
-sigs.k8s.io/kustomize/kustomize/v5 v5.0.1/go.mod h1:Q8o+soB41Pn1y26eXzG9cniuECDpTJe2eKOA1fENCU8=
-sigs.k8s.io/kustomize/kyaml v0.14.1/go.mod h1:AN1/IpawKilWD7V+YvQwRGUvuUOOWpjsHu6uHwonSF4=
+modernc.org/golex 
+v1.0.0/go.mod 
+h1:b/QX9oBD/LhixY6NDh+IdGv17hgB+51fET1i2kPSmvk=
+modernc.org/mathutil 
+v1.0.0/go.mod 
+h1:wU0vUrJsVWBZ4P6e7xtFJEhFSNsfRLJ8H458uRjg03k=
+modernc.org/strutil v1.0.0/go.mod 
+h1:lstksw84oURvj9y3tn8lGvRxyRC1S2+g5uuIzNfIOBs=
+modernc.org/xc 
+v1.0.0/go.mod 
+h1:mRNCo0bvLjGhHO9WsyuKVU4q0ceiDDDoEeWDJHrNx8I=
+mvdan.cc/interfacer 
+v0.0.0-20180901003855-c20040233aed/go.mod 
+h1:Xkxe497xwlCKkIaQYRfC7CSLworTXY9RMqwhhCm+8Nc=
+mvdan.cc/lint 
+v0.0.0-20170908181259-adc824a0674b/go.mod 
+h1:2odslEg/xrtNQqCYg2/jCoyKnw3vv5biOc3JnIcYfL4=
+mvdan.cc/unparam 
+v0.0.0-20190209190245-fbb59629db34/go.mod 
+h1:H6SUd1XjIs+qQCyskXg5OFSrilMRUkD8ePJpHKDPaeY=
+rsc.io/binaryregexp 
+v0.2.0/go.mod 
+h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
+rsc.io/pdf 
+v0.1.1/go.mod 
+h1:n8OzWcQ6Sp37PL01nO98y4iUCRdTGarVfzxY20ICaU4=
+rsc.io/quote/v3 
+v3.1.0/go.mod 
+h1:yEA65RcK8LyAZtP9Kv3t0HmxON59tX3rD+tICJqUlj0=
+rsc.io/sampler 
+v1.3.0/go.mod 
+h1:T1hPZKmBbMNahiBKFy5HrXp6adAjACjK9JXDnKaTXpA=
+sigs.k8s.io/server-network-proxy/Connectivity-client 
+v0.1.2/go.mod 
+h1:+qG7ISXqCDVVcyO8hLn12AKVYYUjM7ftlqsqmrhMZE0=
+sigs.k8s.io/json 
+v0.0.0-20221116044647-bc3834ca7abd 
+h1:EDPBXCAspyGV4jQlpZSudPeMmr1bNJefnuqLsRAsHZo=
+sigs.k8s.io/json 
+v0.0.0-20221116044647-bc3834ca7abd/go.mod 
+h1:B8JuhiUyNFVKdsE8h686QcCxMaH6HrOAZj4vswFpcB0=
+sigs.k8s.io/kustomize 
+v2.0.3+incompatible/go.mod 
+h1:MkjgH3RdOWrievjo6c9T245dYlB5QeXV4WCbnt/PEpU=
+sigs.k8s.io/kustomize/api 
+v0.13.2/go.mod 
+h1:DUp325VVMFVcQSq+ZxyDisA8wtldwHxLZbr1g94UHsw=
+sigs.k8s.io/kustomize/cmd/config 
+v0.11.1/go.mod 
+h1:z1I4ubecg4py5Jn4+04p4A/vmnqUjxjxDCEyYEjQu/0=
+sigs.k8s.io/kustomize/kustomize/v5 
+v5.0.1/go.mod 
+h1:Q8o+soB41Pn1y26eXzG9cniuECDpTJe2eKOA1fENCU8=
+sigs.k8s.io/kustomize/kyaml 
+v0.14.1/go.mod 
+h1:AN1/IpawKilWD7V+YvQwRGUvuUOOWpjsHu6uHwonSF4=
 sigs.k8s.io/structured-merge-diff/v3 v3.0.0-20200116222232-67a7b8c61874/go.mod h1:PlARxl6Hbt/+BC80dRLi1qAmnMqwqDg62YvvVkZjemw=
 sigs.k8s.io/structured-merge-diff/v4 v4.2.3 h1:PRbqxJClWWYMNV1dhaG4NsibJbArud9kFxnAMREiWFE=
 sigs.k8s.io/structured-merge-diff/v4 v4.2.3/go.mod h1:qjx8mGObPmV2aSZepjQjbmb2ihdVs8cGKBraizNC69E=
@@ -1652,3 +1696,60 @@ sigs.k8s.io/yaml v1.2.0/go.mod h1:yfXDCHCao9+ENCvLSE62v9VSji2MKu5jeNfTrofGhJc=
 sigs.k8s.io/yaml v1.3.0 h1:a2VclLzOGrwOHDiV8EfBGhvjHvP46CtW5j6POvhYGGo=
 sigs.k8s.io/yaml v1.3.0/go.mod h1:GeOyir5tyXNByN85N/dRIT9es5UQNerPYEKK56eTBm8=
 sourcegraph.com/sqs/pbtypes v0.0.0-20180604144634-d3ebe8f20ae4/go.mod h1:ketZ/q3QxT9HOBeFhu6RdvsftgpsbFHBF5Cas6cDKZ0"`
+---==='
+  "-" "-" "-" 
+  "-"
+'===---`
+  - ".$_-0/build_bitbucket.org/bertimus9/systemstat.js
+  - v6.0.8
+-*"2018"
+-*"02"
+-*"07"
+-*"000"
+-*"608"
+'''  
+  ```
+-*".go_sum_js_Ulb78X89vxKYgdL24HMTiXYHlyHEvruOj1ZPlqeNEZM_cloud_google_com_go"
+v0.26.0
+-*"client-ready-go.sum.js" 
+# h1 #
+'''
+["                       ###   ----------------------------------------GO-SUM-CHART-JS--------------------------------------------   ###                                 
+|       
+|     |
+|-(0-0)   
+|=
+|-|225|  
+|=
+|-(686)
+|=
+|-|35627270|
+|=
+|-(792)
+|=
+|-|38|
+|=
+|-(379)
+|=
+|-|3UYH|
+|_                                                                                                                                                             =
+| \_(I0BJ)
+|   \_
+|     \_|30W5Y9U2|
+|       \_
+|         \_
+|           \_
+|             \_
+|               \_
+|                 \_
+|                   \_
+|                     \_
+|                       \_
+|                         \_
+|                           \_
+|                             \_
+|                               \_
+|                                 \_
+|                                   \_
+|_____________________________________\_                                                                                                                      ]"`
+  
