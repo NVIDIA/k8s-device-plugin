@@ -21,7 +21,10 @@
       - [Updating Per-Node Configuration With a Node Label](#updating-per-node-configuration-with-a-node-label)
     + [Setting other helm chart values](#setting-other-helm-chart-values)
     + [Deploying with gpu-feature-discovery for automatic node labels](#deploying-with-gpu-feature-discovery-for-automatic-node-labels)
+<!--
+TODO: We are still in the process of migrating GFD to this repo. Once this is ready we can uncomment this section.
     + [Deploying gpu-feature-discovery in standalone mode](#deploying-gpu-feature-discovery-in-standalone-mode)
+-->
   * [Deploying via `helm install` with a direct URL to the `helm` package](#deploying-via-helm-install-with-a-direct-url-to-the-helm-package)
 - [Building and Running Locally](#building-and-running-locally)
 - [Changelog](#changelog)
@@ -781,12 +784,14 @@ product name, e.g.:
 ```
 nvidia.com/gpu.product = A100-SXM4-40GB-MIG-1g.5gb-SHARED
 ```
+<!--
+TODO: We are still in the process of migrating GFD to this repo. Once this is ready we can uncomment this section.
 #### Deploying gpu-feature-discovery in standalone mode
 
-As of `v0.14.0`, the device plugin's helm chart has integrated support to deploy
+As of `v0.15.0`, the device plugin's helm chart has integrated support to deploy
 [`gpu-feature-discovery`](https://gitlab.com/nvidia/kubernetes/gpu-feature-discovery/-/tree/main)
 
-When gpu-feature-discovery in deploying standalone, begin by setting up the 
+When gpu-feature-discovery in deploying standalone, begin by setting up the
 plugin's `helm` repository and updating it at follows:
 
 ```shell
@@ -794,13 +799,13 @@ $ helm repo add nvdp https://nvidia.github.io/k8s-device-plugin
 $ helm repo update
 ```
 
-Then verify that the latest release (`v0.14.0`) of the plugin is available 
+Then verify that the latest release (`v0.15.0`) of the plugin is available
 (Note that this includes the GFD chart):
 
 ```shell
 $ helm search repo nvdp --devel
 NAME                     	  CHART VERSION  APP VERSION	DESCRIPTION
-nvdp/nvidia-device-plugin	  0.14.0	 0.14.0		A Helm chart for ...
+nvdp/nvidia-device-plugin	  0.15.0	 0.15.0		A Helm chart for ...
 ```
 
 Once this repo is updated, you can begin installing packages from it to deploy
@@ -809,7 +814,7 @@ the `gpu-feature-discovery` component in standalone mode.
 The most basic installation command without any options is then:
 ```
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-  --version 0.14.0 \
+  --version 0.15.0 \
   --namespace gpu-feature-discovery \
   --create-namespace \
   --set devicePlugin.enabled=false
@@ -820,7 +825,7 @@ the default namespace.
 
 ```shell
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.0 \
+    --version=0.15.0 \
     --set allowDefaultNamespace=true \
     --set nfd.enabled=false \
     --set migStrategy=mixed \
@@ -845,7 +850,7 @@ $ helm upgrade -i nvdp \
     --create-namespace \
     https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.14.1.tgz
 ```
-
+-->
 ## Building and Running Locally
 
 The next sections are focused on building the device plugin locally and running it.
