@@ -873,6 +873,8 @@ $ ./k8s-device-plugin --pass-device-specs
 
 ### Version v0.14.2
 
+- Update GFD subchart to v0.8.2
+- Bumped CUDA base images version to 12.2.2
 
 ### Version v0.14.1
 
