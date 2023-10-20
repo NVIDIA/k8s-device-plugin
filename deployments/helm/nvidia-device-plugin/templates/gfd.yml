@@ -14,16 +14,14 @@
 
 {{- if .Values.gfd.enabled }}
 
-{{- $root := . }}
 {{- $hasConfigMap := (include "nvidia-device-plugin.hasConfigMap" .) | trim }}
 {{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}
 {{- $migStrategiesAreAllNone := (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) | trim }}
-
-{{- with .Subcharts.gfd }}
+{{- $daemonsetName := printf "%s-gpu-feature-discovery" (include "nvidia-device-plugin.fullname" .) | trunc 63 | trimSuffix "-" }}
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: {{ include "nvidia-device-plugin.fullname" . }}
+  name: {{ $daemonsetName }}
   namespace: {{ include "nvidia-device-plugin.namespace" . }}
   labels:
     {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
@@ -31,7 +29,7 @@ spec:
   selector:
     matchLabels:
       {{- include "nvidia-device-plugin.selectorLabels" . | nindent 6 }}
-  {{- with $root.Values.updateStrategy }}
+  {{- with .Values.updateStrategy }}
   updateStrategy:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -40,13 +38,13 @@ spec:
       labels:
         {{- include "nvidia-device-plugin.templateLabels" . | nindent 8 }}
       annotations:
-        {{- include "nvidia-device-plugin.podAnnotations" (dict "local" . "root" $root) | nindent 8 }}
+        {{- include "nvidia-device-plugin.podAnnotations" (dict "local" . "root" .) | nindent 8 }}
     spec:
-      {{- if $root.Values.priorityClassName }}
-      priorityClassName: {{ $root.Values.priorityClassName }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
       {{- end }}
-      {{- if $root.Values.runtimeClassName }}
-      runtimeClassName: {{ $root.Values.runtimeClassName }}
+      {{- if .Values.runtimeClassName }}
+      runtimeClassName: {{ .Values.runtimeClassName }}
       {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -55,10 +53,10 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- if eq $hasConfigMap "true" }}
-      serviceAccountName: {{ include "nvidia-device-plugin.fullname" $root }}-service-account
+      serviceAccountName: {{ include "nvidia-device-plugin.fullname" . }}-service-account
       shareProcessNamespace: true
       initContainers:
-      - image: {{ include "nvidia-device-plugin.fullimage" $root }}
+      - image: {{ include "nvidia-device-plugin.fullimage" . }}
         name: gpu-feature-discovery-init
         command: ["config-manager"]
         env:
@@ -77,9 +75,9 @@ spec:
         - name: CONFIG_FILE_DST
           value: "/config/config.yaml"
         - name: DEFAULT_CONFIG
-          value: "{{ $root.Values.config.default }}"
+          value: "{{ .Values.config.default }}"
         - name: FALLBACK_STRATEGIES
-          value: "{{ join "," $root.Values.config.fallbackStrategies }}"
+          value: "{{ join "," .Values.config.fallbackStrategies }}"
         - name: SEND_SIGNAL
           value: "false"
         - name: SIGNAL
@@ -94,7 +92,7 @@ spec:
       {{- end }}
       containers:
       {{- if eq $hasConfigMap "true" }}
-        - image: {{ include "nvidia-device-plugin.fullimage" $root }}
+        - image: {{ include "nvidia-device-plugin.fullimage" . }}
           name: gpu-feature-discovery-sidecar
           command: ["config-manager"]
           env:
@@ -113,9 +111,9 @@ spec:
           - name: CONFIG_FILE_DST
             value: "/config/config.yaml"
           - name: DEFAULT_CONFIG
-            value: "{{ $root.Values.config.default }}"
+            value: "{{ .Values.config.default }}"
           - name: FALLBACK_STRATEGIES
-            value: "{{ join "," $root.Values.config.fallbackStrategies }}"
+            value: "{{ join "," .Values.config.fallbackStrategies }}"
           - name: SEND_SIGNAL
             value: "true"
           - name: SIGNAL
@@ -128,27 +126,28 @@ spec:
             - name: config
               mountPath: /config
           securityContext:
-            {{- include "gpu-feature-discovery.securityContext" $root | nindent 12 }}
+            {{- include "gpu-feature-discovery.securityContext" . | nindent 12 }}
       {{- end }}
         - image: {{ include "nvidia-device-plugin.fullimage" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           name: gpu-feature-discovery-ctr
+          command: ["/usr/bin/gpu-feature-discovery"]
           env:
-          {{- if typeIs "bool" $root.Values.failOnInitError }}
+          {{- if typeIs "bool" .Values.failOnInitError }}
             - name: GFD_FAIL_ON_INIT_ERROR
-              value: "{{ $root.Values.failOnInitError }}"
+              value: "{{ .Values.failOnInitError }}"
           {{- end }}
-          {{- if typeIs "string" $root.Values.migStrategy }}
+          {{- if typeIs "string" .Values.migStrategy }}
             - name: GFD_MIG_STRATEGY
-              value: "{{ $root.Values.migStrategy }}"
+              value: "{{ .Values.migStrategy }}"
           {{- end }}
-          {{- if typeIs "bool" .Values.noTimestamp }}
+          {{- if typeIs "bool" .Values.gfd.noTimestamp }}
             - name: GFD_NO_TIMESTAMP
-              value: "{{ .Values.noTimestamp}}"
+              value: "{{ .Values.gfd.noTimestamp}}"
           {{- end }}
-          {{- if or (typeIs "string" .Values.sleepInterval) (typeIs "int" .Values.sleepInterval) }}
+          {{- if or (typeIs "string" .Values.gfd.sleepInterval) (typeIs "int" .Values.gfd.sleepInterval) }}
             - name: GFD_SLEEP_INTERVAL
-              value: "{{ .Values.sleepInterval }}"
+              value: "{{ .Values.gfd.sleepInterval }}"
           {{- end }}
           {{- if eq $hasConfigMap "true" }}
             - name: GFD_CONFIG_FILE
@@ -159,7 +158,7 @@ spec:
               value: all
           {{- end }}
           securityContext:
-            {{- include "gpu-feature-discovery.securityContext" $root | nindent 12 }}
+            {{- include "gpu-feature-discovery.securityContext" . | nindent 12 }}
           volumeMounts:
             - name: output-dir
               mountPath: "/etc/kubernetes/node-feature-discovery/features.d"
@@ -189,26 +188,16 @@ spec:
         - name: config
           emptyDir: {}
       {{- end }}
-      {{- $nodeSelector := $root.Values.nodeSelector }}
-      {{- if empty $nodeSelector }}
-      {{- $nodeSelector = .Values.nodeSelector }}
-      {{- end }}
-      {{- with $nodeSelector }}
+      {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- $affinity := $root.Values.affinity }}
-      {{- if empty $affinity }}
-      {{- $affinity = .Values.affinity }}
-      {{- end }}
-      {{- with $affinity }}
+      {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with $root.Values.tolerations }}
+      {{- with .Values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-{{- end }}
-
 {{- end }}
