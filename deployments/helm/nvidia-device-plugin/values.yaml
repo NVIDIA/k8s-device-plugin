@@ -78,6 +78,9 @@ priorityClassName: "system-node-critical"
 
 runtimeClassName: null
 
+# root directory for the kubelet
+kubedir: /var/lib/kubelet
+
 # Subcharts
 nfd:
   nameOverride: node-feature-discovery
