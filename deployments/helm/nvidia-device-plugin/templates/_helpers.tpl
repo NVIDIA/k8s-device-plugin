@@ -108,8 +108,8 @@ capabilities:
 Security context for GFD
 */}}
 {{- define "gpu-feature-discovery.securityContext" -}}
-{{- if ne (len .Subcharts.gfd.Values.securityContext) 0 -}}
-{{ toYaml .Subcharts.gfd.Values.securityContext }}
+{{- if ne (len .Values.gfd.securityContext) 0 -}}
+{{ toYaml .Values.gfd.securityContext }}
 {{- else if ne (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) "true" -}}
 capabilities:
   add:

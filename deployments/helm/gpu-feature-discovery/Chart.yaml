@@ -1,0 +1,15 @@
+apiVersion: v2
+name: gpu-feature-discovery
+type: application
+description: A Helm chart for gpu-feature-discovery on Kubernetes
+version: "0.14.1"
+appVersion: "0.14.1"
+kubeVersion: ">= 1.10.0-0"
+home: https://github.com/NVIDIA/gpu-feature-discovery
+
+dependencies:
+  - name: node-feature-discovery
+    alias: nfd
+    version: "0.13.2"
+    condition: nfd.deploy,nfd.enabled
+    repository: https://kubernetes-sigs.github.io/node-feature-discovery/charts

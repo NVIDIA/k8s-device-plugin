@@ -546,9 +546,13 @@ k8s.io/kube-openapi/pkg/schemamutation
 k8s.io/kube-openapi/pkg/spec3
 k8s.io/kube-openapi/pkg/util/proto
 k8s.io/kube-openapi/pkg/validation/spec
-# k8s.io/kubelet v0.0.0 => k8s.io/kubelet v0.27.3
+# k8s.io/kubelet v0.26.5 => k8s.io/kubelet v0.27.3
 ## explicit; go 1.20
 k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1
+# k8s.io/kubernetes v1.26.5
+## explicit; go 1.19
+k8s.io/kubernetes/pkg/apis/core
+k8s.io/kubernetes/pkg/apis/core/helper
 # k8s.io/utils v0.0.0-20230209194617-a36077c30491
 ## explicit; go 1.18
 k8s.io/utils/buffer
@@ -564,6 +568,14 @@ k8s.io/utils/trace
 ## explicit; go 1.18
 sigs.k8s.io/json
 sigs.k8s.io/json/internal/golang/encoding/json
+# sigs.k8s.io/node-feature-discovery v0.13.2
+## explicit; go 1.20
+sigs.k8s.io/node-feature-discovery/pkg/apis/nfd/v1alpha1
+sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned
+sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned/scheme
+sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned/typed/nfd/v1alpha1
+sigs.k8s.io/node-feature-discovery/pkg/utils
+sigs.k8s.io/node-feature-discovery/pkg/utils/hostpath
 # sigs.k8s.io/structured-merge-diff/v4 v4.2.3
 ## explicit; go 1.13
 sigs.k8s.io/structured-merge-diff/v4/fieldpath

@@ -60,7 +60,28 @@ securityContext: {}
 
 resources: {}
 nodeSelector: {}
-affinity: {}
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        # On discrete-GPU based systems NFD adds the following label where 10de is the NVIDIA PCI vendor ID
+        - key: feature.node.kubernetes.io/pci-10de.present
+          operator: In
+          values:
+          - "true"
+      - matchExpressions:
+        # On some Tegra-based systems NFD detects the CPU vendor ID as NVIDIA
+        - key: feature.node.kubernetes.io/cpu-model.vendor_id
+          operator: In
+          values:
+          - "NVIDIA"
+      - matchExpressions:
+        # We allow a GPU deployment to be forced by setting the following label to "true"
+        - key: "nvidia.com/gpu.present"
+          operator: In
+          values:
+          - "true"
 tolerations:
   # This toleration is deprecated. Kept here for backward compatibility
   # See https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
@@ -78,6 +99,9 @@ priorityClassName: "system-node-critical"
 
 runtimeClassName: null
 
+devicePlugin:
+  enabled: true
+
 # root directory for the kubelet
 kubedir: /var/lib/kubelet
 
@@ -89,7 +113,7 @@ nfd:
     serviceAccount:
       name: node-feature-discovery
       create: true
-    config: 
+    config:
       extraLabelNs: ["nvidia.com"]
 
   worker:
@@ -117,3 +141,9 @@ gfd:
   enabled: false
   nameOverride: gpu-feature-discovery
   namespaceOverride: ""
+  noTimestamp: null
+  sleepInterval: null
+  securityContext:
+    # privileged access is required for the gpu-feature-discovery to access the
+    # vgpu info on a host. This should be optional and detected automatically.
+    privileged: true

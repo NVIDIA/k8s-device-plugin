@@ -1602,6 +1602,8 @@ k8s.io/kubectl v0.27.3/go.mod h1:g9OQNCC2zxT+LT3FS09ZYqnDhlvsKAfFq76oyarBcq4=
 k8s.io/kubelet v0.27.3 h1:5WhTV1iiBu9q/rr+gvy65LQ+K/e7dmgcaYjys5ipLqY=
 k8s.io/kubelet v0.27.3/go.mod h1:Mz42qgZZgWgPmOJEYaR5evmh+EoSwFzEvPBozA2y9mg=
 k8s.io/kubernetes v1.18.2/go.mod h1:z8xjOOO1Ljz+TaHpOxVGC7cxtF32TesIamoQ+BZrVS0=
+k8s.io/kubernetes v1.26.5 h1:hc/lcQCK7J2Q3fOqtU3cD8qJOKpi6oySEHPP39q/R7o=
+k8s.io/kubernetes v1.26.5/go.mod h1:nARWq2FQXUzRa+DQfF6hEp0dgZXu61MnjX+aiQaC8lk=
 k8s.io/legacy-cloud-providers v0.27.3/go.mod h1:jETlQjDct/uspp+xMedTVdre2Oif2cH5/ABi/PzkMS8=
 k8s.io/metrics v0.27.3/go.mod h1:pXj63OTdOjpYgSc95p+88fB3t4krLybM7MOeqIksI6o=
 k8s.io/repo-infra v0.0.1-alpha.1/go.mod h1:wO1t9WaB99V80ljbeENTnayuEEwNZt7gECYh/CEyOJ8=
@@ -1632,6 +1634,8 @@ sigs.k8s.io/kustomize/api v0.13.2/go.mod h1:DUp325VVMFVcQSq+ZxyDisA8wtldwHxLZbr1
 sigs.k8s.io/kustomize/cmd/config v0.11.1/go.mod h1:z1I4ubecg4py5Jn4+04p4A/vmnqUjxjxDCEyYEjQu/0=
 sigs.k8s.io/kustomize/kustomize/v5 v5.0.1/go.mod h1:Q8o+soB41Pn1y26eXzG9cniuECDpTJe2eKOA1fENCU8=
 sigs.k8s.io/kustomize/kyaml v0.14.1/go.mod h1:AN1/IpawKilWD7V+YvQwRGUvuUOOWpjsHu6uHwonSF4=
+sigs.k8s.io/node-feature-discovery v0.13.2 h1:UDycZqEc19a+YqlSvTYGvhEHP6GcDxK+QYOWrlMtdIw=
+sigs.k8s.io/node-feature-discovery v0.13.2/go.mod h1:Ysg08z0cXncc3uyP7grcogTcyfsrdzOs3dDQ3Gz+/Ks=
 sigs.k8s.io/structured-merge-diff/v3 v3.0.0-20200116222232-67a7b8c61874/go.mod h1:PlARxl6Hbt/+BC80dRLi1qAmnMqwqDg62YvvVkZjemw=
 sigs.k8s.io/structured-merge-diff/v4 v4.2.3 h1:PRbqxJClWWYMNV1dhaG4NsibJbArud9kFxnAMREiWFE=
 sigs.k8s.io/structured-merge-diff/v4 v4.2.3/go.mod h1:qjx8mGObPmV2aSZepjQjbmb2ihdVs8cGKBraizNC69E=
