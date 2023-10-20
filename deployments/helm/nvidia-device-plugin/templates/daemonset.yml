@@ -194,7 +194,7 @@ spec:
       volumes:
         - name: device-plugin
           hostPath:
-            path: {{ .Values.kubedir }}/device-plugins
+            path: {{ .Values.hostDir }}/device-plugins
         {{- if eq $hasConfigMap "true" }}
         - name: available-configs
           configMap:

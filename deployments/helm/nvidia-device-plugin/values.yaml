@@ -102,8 +102,8 @@ runtimeClassName: null
 devicePlugin:
   enabled: true
 
-# root directory for the kubelet
-kubedir: /var/lib/kubelet
+# directory location on host
+hostDir: /var/lib/kubelet
 
 # Subcharts
 nfd:
