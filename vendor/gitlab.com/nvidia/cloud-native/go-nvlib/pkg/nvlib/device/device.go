@@ -188,6 +188,14 @@ func (d *device) IsMigEnabled() (bool, error) {
 
 // VisitMigDevices walks a top-level device and invokes a callback function for each MIG device configured on it
 func (d *device) VisitMigDevices(visit func(int, MigDevice) error) error {
+	capable, err := d.IsMigCapable()
+	if err != nil {
+		return fmt.Errorf("error checking if GPU is MIG capable: %v", err)
+	}
+	if !capable {
+		return nil
+	}
+
 	count, ret := nvml.Device(d).GetMaxMigDeviceCount()
 	if ret != nvml.SUCCESS {
 		return fmt.Errorf("error getting max MIG device count: %v", ret)
