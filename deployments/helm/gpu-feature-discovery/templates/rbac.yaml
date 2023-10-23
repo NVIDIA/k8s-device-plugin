@@ -32,6 +32,5 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: gpu-feature-discovery
-  namespace: node-feature-discovery
-
+  namespace: {{ include "gpu-feature-discovery.namespace" . }}
 {{- end }}
