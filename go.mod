@@ -40,7 +40,7 @@ require (
 	github.com/urfave/cli/v2 v2.4.0
 	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230327171225-18ad7cd513cf
 	golang.org/x/net v0.10.0
-	google.golang.org/grpc v1.56.0
+	google.golang.org/grpc v1.56.3
 	k8s.io/api v0.27.3
 	k8s.io/apimachinery v0.27.3
 	k8s.io/client-go v0.27.3
