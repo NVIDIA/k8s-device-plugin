@@ -134,28 +134,28 @@ spec:
           command: ["/usr/bin/gpu-feature-discovery"]
           env:
           {{- if typeIs "bool" .Values.failOnInitError }}
-            - name: GFD_FAIL_ON_INIT_ERROR
+            - name: FAIL_ON_INIT_ERROR
               value: "{{ .Values.failOnInitError }}"
           {{- end }}
           {{- if typeIs "string" .Values.migStrategy }}
-            - name: GFD_MIG_STRATEGY
+            - name: MIG_STRATEGY
               value: "{{ .Values.migStrategy }}"
           {{- end }}
-          {{- if typeIs "bool" .Values.gfd.noTimestamp }}
+          {{- if typeIs "bool" .Values.noTimestamp }}
             - name: GFD_NO_TIMESTAMP
-              value: "{{ .Values.gfd.noTimestamp}}"
+              value: "{{ .Values.noTimestamp}}"
           {{- end }}
-          {{- if or (typeIs "string" .Values.gfd.sleepInterval) (typeIs "int" .Values.gfd.sleepInterval) }}
+          {{- if or (typeIs "string" .Values.sleepInterval) (typeIs "int" .Values.sleepInterval) }}
             - name: GFD_SLEEP_INTERVAL
-              value: "{{ .Values.gfd.sleepInterval }}"
+              value: "{{ .Values.sleepInterval }}"
           {{- end }}
-          {{- if eq $hasConfigMap "true" }}
-            - name: GFD_CONFIG_FILE
-              value: /config/config.yaml
-          {{- end }}
-          {{- if ne $migStrategiesAreAllNone "true" }}
+          {{- if ne .Values.migStrategy "none" }}
             - name: NVIDIA_MIG_MONITOR_DEVICES
               value: all
+          {{- end }}
+          {{- if typeIs "bool" .Values.nfd.enableNodeFeatureApi }}
+            - name: GFD_USE_NODE_FEATURE_API
+              value: "{{ .Values.nfd.enableNodeFeatureApi }}"
           {{- end }}
           securityContext:
             {{- include "gpu-feature-discovery.securityContext" . | nindent 12 }}
