@@ -210,18 +210,15 @@ func (m *MatchExpression) MatchKeys(name string, keys map[string]Nil) (bool, err
 		return false, fmt.Errorf("invalid Op %q when matching keys", m.Op)
 	}
 
-	if klog.V(3).Enabled() {
-		mString := map[bool]string{false: "no match", true: "match found"}[matched]
+	if klogV := klog.V(3); klogV.Enabled() {
+		klogV.InfoS("matched keys", "matchResult", "matched", "matchKey", name, "matchOp", m.Op)
+	} else if klogV := klog.V(4); klogV.Enabled() {
 		k := make([]string, 0, len(keys))
 		for n := range keys {
 			k = append(k, n)
 		}
 		sort.Strings(k)
-		if len(keys) < 10 || klog.V(4).Enabled() {
-			klog.Infof("%s when matching %q %q against %s", mString, name, m.Op, strings.Join(k, " "))
-		} else {
-			klog.Infof("%s when matching %q %q against %s... (list truncated)", mString, name, m.Op, strings.Join(k[0:10], ", "))
-		}
+		klogV.InfoS("matched keys", "matchResult", "matched", "matchKey", name, "matchOp", m.Op, "inputKeys", k)
 	}
 	return matched, nil
 }
@@ -234,25 +231,10 @@ func (m *MatchExpression) MatchValues(name string, values map[string]string) (bo
 		return false, err
 	}
 
-	if klog.V(3).Enabled() {
-		mString := map[bool]string{false: "no match", true: "match found"}[matched]
-
-		keys := make([]string, 0, len(values))
-		for k := range values {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-
-		kv := make([]string, len(keys))
-		for i, k := range keys {
-			kv[i] = k + ":" + values[k]
-		}
-
-		if len(values) < 10 || klog.V(4).Enabled() {
-			klog.Infof("%s when matching %q %q %v against %s", mString, name, m.Op, m.Value, strings.Join(kv, " "))
-		} else {
-			klog.Infof("%s when matching %q %q %v against %s... (list truncated)", mString, name, m.Op, m.Value, strings.Join(kv[0:10], " "))
-		}
+	if klogV := klog.V(3); klogV.Enabled() {
+		klogV.InfoS("matched values", "matchResult", "matched", "matchKey", name, "matchOp", m.Op, "matchValue", m.Value)
+	} else if klogV := klog.V(4); klogV.Enabled() {
+		klogV.InfoS("matched values", "matchResult", "matched", "matchKey", name, "matchOp", m.Op, "matchValue", m.Value, "inputValues", values)
 	}
 
 	return matched, nil

@@ -29,7 +29,8 @@ import (
 	"syscall"
 	"unsafe"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/symlinks"
 )
 
 const ldcachePath = "/etc/ld.so.cache"
@@ -93,11 +94,11 @@ type ldcache struct {
 	entries    []entry2
 
 	root   string
-	logger *log.Logger
+	logger logger.Interface
 }
 
 // New creates a new LDCache with the specified logger and root.
-func New(logger *log.Logger, root string) (LDCache, error) {
+func New(logger logger.Interface, root string) (LDCache, error) {
 	path := filepath.Join(root, ldcachePath)
 
 	logger.Debugf("Opening ld.conf at %v", path)
@@ -288,18 +289,12 @@ func (c *ldcache) resolve(target string) (string, error) {
 
 	c.logger.Debugf("checking %v", string(name))
 
-	info, err := os.Lstat(name)
-	if err != nil {
-		return "", fmt.Errorf("failed to get file info: %v", info)
-	}
-	if info.Mode()&os.ModeSymlink == 0 {
-		c.logger.Debugf("Resolved regular file: %v", name)
-		return name, nil
-	}
-
-	link, err := os.Readlink(name)
+	link, err := symlinks.Resolve(name)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve symlink: %v", err)
+	}
+	if link == name {
+		return name, nil
 	}
 
 	// We return absolute paths for all targets

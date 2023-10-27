@@ -18,10 +18,9 @@ package lookup
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
-	"github.com/sirupsen/logrus"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/symlinks"
 )
 
 type symlinkChain struct {
@@ -33,9 +32,8 @@ type symlink struct {
 }
 
 // NewSymlinkChainLocator creats a locator that can be used for locating files through symlinks.
-// A logger can also be specified.
-func NewSymlinkChainLocator(logger *logrus.Logger, root string) Locator {
-	f := newFileLocator(WithLogger(logger), WithRoot(root))
+func NewSymlinkChainLocator(opts ...Option) Locator {
+	f := newFileLocator(opts...)
 	l := symlinkChain{
 		file: *f,
 	}
@@ -44,9 +42,8 @@ func NewSymlinkChainLocator(logger *logrus.Logger, root string) Locator {
 }
 
 // NewSymlinkLocator creats a locator that can be used for locating files through symlinks.
-// A logger can also be specified.
-func NewSymlinkLocator(logger *logrus.Logger, root string) Locator {
-	f := newFileLocator(WithLogger(logger), WithRoot(root))
+func NewSymlinkLocator(opts ...Option) Locator {
+	f := newFileLocator(opts...)
 	l := symlink{
 		file: *f,
 	}
@@ -74,16 +71,9 @@ func (p symlinkChain) Locate(pattern string) ([]string, error) {
 		}
 		found[candidate] = true
 
-		info, err := os.Lstat(candidate)
+		target, err := symlinks.Resolve(candidate)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get file info: %v", info)
-		}
-		if info.Mode()&os.ModeSymlink == 0 {
-			continue
-		}
-		target, err := os.Readlink(candidate)
-		if err != nil {
-			return nil, fmt.Errorf("error checking symlink: %v", err)
+			return nil, fmt.Errorf("error resolving symlink: %v", err)
 		}
 
 		if !filepath.IsAbs(target) {

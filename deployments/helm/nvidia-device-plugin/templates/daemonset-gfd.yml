@@ -52,8 +52,10 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if eq $hasConfigMap "true" }}
+      {{- if or (include "nvidia-device-plugin.hasConfigMap" .) ( and .Values.gfd.enabled .Values.nfd.enableNodeFeatureApi ) }}
       serviceAccountName: {{ include "nvidia-device-plugin.fullname" . }}-service-account
+      {{- end }}
+      {{- if eq $hasConfigMap "true" }}
       shareProcessNamespace: true
       initContainers:
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
@@ -133,6 +135,11 @@ spec:
           name: gpu-feature-discovery-ctr
           command: ["/usr/bin/gpu-feature-discovery"]
           env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
           {{- if typeIs "bool" .Values.failOnInitError }}
             - name: FAIL_ON_INIT_ERROR
               value: "{{ .Values.failOnInitError }}"
