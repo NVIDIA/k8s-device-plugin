@@ -102,7 +102,19 @@ runtimeClassName: null
 devicePlugin:
   enabled: true
 
-# Subcharts
+gfd:
+  enabled: false
+  nameOverride: gpu-feature-discovery
+  namespaceOverride: ""
+  noTimestamp: null
+  sleepInterval: null
+  securityContext:
+    # privileged access is required for the gpu-feature-discovery to access the
+    # vgpu info on a host. 
+    # TODO: This should be optional and detected automatically.
+    privileged: true
+
+# Helm dependency
 nfd:
   nameOverride: node-feature-discovery
   enableNodeFeatureApi: false
@@ -134,13 +146,3 @@ nfd:
           - "0302"
           deviceLabelFields:
           - vendor
-gfd:
-  enabled: false
-  nameOverride: gpu-feature-discovery
-  namespaceOverride: ""
-  noTimestamp: null
-  sleepInterval: null
-  securityContext:
-    # privileged access is required for the gpu-feature-discovery to access the
-    # vgpu info on a host. This should be optional and detected automatically.
-    privileged: true
