@@ -358,7 +358,7 @@ func (h handle) deviceGetNvLinkRemotePciInfo(link uint) (*string, error) {
 func (h handle) deviceGetAllNvLinkRemotePciInfo() ([]*string, error) {
 	busIds := []*string{}
 
-	for i := uint(0); i < C.NVML_NVLINK_MAX_LINKS; i++ {
+	for i := uint(0); i < 18; i++ {
 		state, err := h.deviceGetNvLinkState(i)
 		if err != nil {
 			return nil, err
