@@ -150,7 +150,7 @@ func (d *PCIDevice) GetVendorSpecificCapability() ([]byte, error) {
 
 // GetByte returns a single byte of data at specified position
 func GetByte(buffer []byte, pos int) uint8 {
-	return uint8(buffer[pos])
+	return buffer[pos]
 }
 
 // GetWord returns 2 bytes of data from specified position

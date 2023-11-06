@@ -119,7 +119,7 @@ func (d *Device) GetInfo() (*Info, error) {
 	for record != 0 && pos < len(d.vGPUCapability) {
 		// find next record
 		recordLength := GetByte(d.vGPUCapability, pos+1)
-		pos = pos + int(recordLength)
+		pos += int(recordLength)
 		record = GetByte(d.vGPUCapability, pos)
 	}
 

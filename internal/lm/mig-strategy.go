@@ -19,10 +19,11 @@ package lm
 import (
 	"fmt"
 
+	"k8s.io/klog/v2"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/mig"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
-	"k8s.io/klog/v2"
 )
 
 // Constants representing different MIG strategies.
