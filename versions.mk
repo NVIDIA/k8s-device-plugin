@@ -19,7 +19,7 @@ VERSION  ?= v0.14.1
 # vVERSION represents the version with a guaranteed v-prefix
 vVERSION := v$(VERSION:v%=%)
 
-CUDA_VERSION ?= 12.2.2
+CUDA_VERSION ?= 12.3.0
 GOLANG_VERSION ?= 1.20.5
 
 GIT_COMMIT ?= $(shell git describe --match="" --dirty --long --always --abbrev=40 2> /dev/null || echo "")
