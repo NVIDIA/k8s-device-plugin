@@ -24,6 +24,7 @@ import (
 )
 
 var alignedAllocationPolicy = gpuallocator.NewBestEffortPolicy()
+var alignedAllocator, _ = gpuallocator.NewAllocator(alignedAllocationPolicy)
 
 // getPreferredAllocation runs an allocation algorithm over the inputs.
 // The algorithm chosen is based both on the incoming set of available devices and various config settings.
