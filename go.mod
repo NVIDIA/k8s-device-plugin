@@ -32,7 +32,8 @@ replace (
 
 require (
 	github.com/NVIDIA/go-gpuallocator v0.2.3
-	github.com/NVIDIA/go-nvml v0.12.0-1
+	github.com/NVIDIA/go-nvlib v0.0.0-20231115170030-b21432a353e1
+	github.com/NVIDIA/go-nvml v0.12.0-1.0.20231020145430-e06766c5e74f
 	github.com/NVIDIA/nvidia-container-toolkit v1.14.3
 	github.com/container-orchestrated-devices/container-device-interface v0.6.1
 	github.com/fsnotify/fsnotify v1.7.0
@@ -44,7 +45,6 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.25.7
-	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20231013150449-486ed3f0c813
 	golang.org/x/net v0.18.0
 	google.golang.org/grpc v1.59.0
 	k8s.io/api v0.28.3
@@ -220,6 +220,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
+	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230818092907-09424fdc8884 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.9 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.9 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.9 // indirect

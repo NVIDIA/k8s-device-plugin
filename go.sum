@@ -666,8 +666,10 @@ github.com/Microsoft/hcsshim v0.11.0 h1:7EFNIY4igHEXUdj1zXgAyU3fLc7QfOKHbkldRVTB
 github.com/Microsoft/hcsshim v0.11.0/go.mod h1:OEthFdQv/AD2RAdzR6Mm1N1KPCztGKDurW1Z8b8VGMM=
 github.com/NVIDIA/go-gpuallocator v0.2.3 h1:YTXxNpHo71u16DPBWSsHpxV/Eac76ElF5B/rDOM9zqc=
 github.com/NVIDIA/go-gpuallocator v0.2.3/go.mod h1:cNlWZtJeN15qXGoOzZnOA9yY3CiJrUtUsfGJHFefiDA=
-github.com/NVIDIA/go-nvml v0.12.0-1 h1:6mdjtlFo+17dWL7VFPfuRMtf0061TF4DKls9pkSw6uM=
-github.com/NVIDIA/go-nvml v0.12.0-1/go.mod h1:hy7HYeQy335x6nEss0Ne3PYqleRa6Ct+VKD9RQ4nyFs=
+github.com/NVIDIA/go-nvlib v0.0.0-20231115170030-b21432a353e1 h1:A+2GAIeZkdID7Jc/aSJ1dq42eippP5uHvRMgO8eN3aM=
+github.com/NVIDIA/go-nvlib v0.0.0-20231115170030-b21432a353e1/go.mod h1:HPFNPAYqQeoos58MKUboWsdZMu71EzSQrbmd+QBRD40=
+github.com/NVIDIA/go-nvml v0.12.0-1.0.20231020145430-e06766c5e74f h1:FTblgO87K1vPB8tcwM5EOFpFf6UpsrlDpErPm25mFWE=
+github.com/NVIDIA/go-nvml v0.12.0-1.0.20231020145430-e06766c5e74f/go.mod h1:7ruy85eOM73muOc/I37euONSwEyFqZsv5ED9AogD4G0=
 github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201109160820-d08ea3cdcce4 h1:6KSetbMgb2MieLm34BNJKiEuiP5Tj9Tr94wTipnlYDA=
 github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201109160820-d08ea3cdcce4/go.mod h1:l0Cq257MSJMvg9URCXUjc8pgKY2SK1oSvIx6qG0bzzc=
 github.com/NVIDIA/nvidia-container-toolkit v1.14.3 h1:rmyMVgsjOWHL74V8FIQO8v+f6DU1p6FQ+McIa2uDEdU=
@@ -1864,8 +1866,8 @@ github.com/yvasiyarov/newrelic_platform_go v0.0.0-20140908184405-b21fdbd4370f h1
 github.com/yvasiyarov/newrelic_platform_go v0.0.0-20140908184405-b21fdbd4370f/go.mod h1:GlGEuHIJweS1mbCqG+7vt2nvWLzLLnRHbXz5JKd/Qbg=
 github.com/zeebo/assert v1.3.0/go.mod h1:Pq9JiuJQpG8JLJdtkwrJESF0Foym2/D9XMU5ciN/wJ0=
 github.com/zeebo/xxh3 v1.0.2/go.mod h1:5NWz9Sef7zIDm2JHfFlcQvNekmcEl9ekUZQQKCYaDcA=
-gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20231013150449-486ed3f0c813 h1:2VJRN/xd3IsR3bJx0mlJRJGJfTHn6YrvtIWAaPidV2M=
-gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20231013150449-486ed3f0c813/go.mod h1:IYJpTTMpaedko3AA7a3rV578q9SDxhSa8E5FvnPC/M0=
+gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230818092907-09424fdc8884 h1:V0LUbfm4kVA1CPG8FgG9AGZqa3ykE5U12Gd3PZgoItA=
+gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230818092907-09424fdc8884/go.mod h1:/x5Ky1ZJNyCjDkgSL1atII0EFKQF5WaIHKeP5nkaQfk=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/bbolt v1.3.3/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/bbolt v1.3.7 h1:j+zJOnnEjF/kyHlDDgGnVL/AIqIJPq8UoB2GSNfkUfQ=
