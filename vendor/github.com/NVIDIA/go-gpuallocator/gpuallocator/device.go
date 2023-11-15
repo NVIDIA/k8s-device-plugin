@@ -7,15 +7,54 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
+	"github.com/NVIDIA/go-gpuallocator/internal/links"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvml"
 )
 
 // Device represents a GPU device as reported by NVML, including all of its
 // Point-to-Point link information.
 type Device struct {
-	*nvml.Device
+	nvlibDevice
 	Index int
 	Links map[int][]P2PLink
+}
+
+type nvlibDevice struct {
+	device.Device
+	// The previous binding implementation used to cache specific device properties.
+	// These should be considered deprecated and the functions associated with device.Device
+	// should be used instead.
+	UUID string
+	PCI  struct {
+		BusID string
+	}
+	CPUAffinity *uint
+}
+
+// newDevice constructs a Device for the specified index and nvml Device.
+func newDevice(i int, d device.Device) (*Device, error) {
+	uuid, ret := d.GetUUID()
+	if ret != nvml.SUCCESS {
+		return nil, fmt.Errorf("failed to get device uuid: %v", ret)
+	}
+	pciInfo, ret := d.GetPciInfo()
+	if ret != nvml.SUCCESS {
+		return nil, fmt.Errorf("failed to get device pci info: %v", ret)
+	}
+
+	device := Device{
+		nvlibDevice: nvlibDevice{
+			Device:      d,
+			UUID:        uuid,
+			PCI:         struct{ BusID string }{BusID: links.PciInfo(pciInfo).BusID()},
+			CPUAffinity: links.PciInfo(pciInfo).CPUAffinity(),
+		},
+		Index: i,
+		Links: make(map[int][]P2PLink),
+	}
+
+	return &device, nil
 }
 
 // P2PLink represents a Point-to-Point link between two GPU devices. The link
@@ -23,46 +62,73 @@ type Device struct {
 // contained in the P2PLink struct itself.
 type P2PLink struct {
 	GPU  *Device
-	Type nvml.P2PLinkType
+	Type links.P2PLinkType
 }
+
+// DeviceList stores an ordered list of devices.
+type DeviceList []*Device
 
 // DeviceSet is used to hold and manipulate a set of unique GPU devices.
 type DeviceSet map[string]*Device
 
-// Create a list of Devices from all available nvml.Devices.
-func NewDevices() ([]*Device, error) {
-	count, err := nvml.GetDeviceCount()
+// NewDevices creates a list of Devices from all available nvml.Devices using the specified options.
+func NewDevices(opts ...Option) (DeviceList, error) {
+	o := &deviceListBuilder{}
+	for _, opt := range opts {
+		opt(o)
+	}
+	if o.nvmllib == nil {
+		o.nvmllib = nvml.New()
+	}
+	if o.devicelib == nil {
+		o.devicelib = device.New(
+			device.WithNvml(o.nvmllib),
+		)
+	}
+
+	return o.build()
+}
+
+// build uses the configured options to build a DeviceList.
+func (o *deviceListBuilder) build() (DeviceList, error) {
+	if err := o.nvmllib.Init(); err != nvml.SUCCESS {
+		return nil, fmt.Errorf("error calling nvml.Init: %v", err)
+	}
+	defer func() {
+		_ = o.nvmllib.Shutdown()
+	}()
+
+	nvmlDevices, err := o.devicelib.GetDevices()
 	if err != nil {
-		return nil, fmt.Errorf("error calling nvml.GetDeviceCount: %v", err)
+		return nil, fmt.Errorf("failed to get devices: %v", err)
 	}
 
-	devices := []*Device{}
-	for i := 0; i < int(count); i++ {
-		device, err := nvml.NewDevice(uint(i))
+	var devices DeviceList
+	for i, d := range nvmlDevices {
+		device, err := newDevice(i, d)
 		if err != nil {
-			return nil, fmt.Errorf("error creating nvml.Device %v: %v", i, err)
+			return nil, fmt.Errorf("failed to construct linked device: %v", err)
 		}
-
-		devices = append(devices, &Device{device, i, make(map[int][]P2PLink)})
+		devices = append(devices, device)
 	}
 
-	for i, d1 := range devices {
-		for j, d2 := range devices {
-			if d1 != d2 {
-				p2plink, err := nvml.GetP2PLink(d1.Device, d2.Device)
+	for i, d1 := range nvmlDevices {
+		for j, d2 := range nvmlDevices {
+			if i != j {
+				p2plink, err := links.GetP2PLink(d1, d2)
 				if err != nil {
 					return nil, fmt.Errorf("error getting P2PLink for devices (%v, %v): %v", i, j, err)
 				}
-				if p2plink != nvml.P2PLinkUnknown {
-					d1.Links[d2.Index] = append(d1.Links[d2.Index], P2PLink{d2, p2plink})
+				if p2plink != links.P2PLinkUnknown {
+					devices[i].Links[j] = append(devices[i].Links[j], P2PLink{devices[j], p2plink})
 				}
 
-				nvlink, err := nvml.GetNVLink(d1.Device, d2.Device)
+				nvlink, err := links.GetNVLink(d1, d2)
 				if err != nil {
 					return nil, fmt.Errorf("error getting NVLink for devices (%v, %v): %v", i, j, err)
 				}
-				if nvlink != nvml.P2PLinkUnknown {
-					d1.Links[d2.Index] = append(d1.Links[d2.Index], P2PLink{d2, nvlink})
+				if nvlink != links.P2PLinkUnknown {
+					devices[i].Links[j] = append(devices[i].Links[j], P2PLink{devices[j], nvlink})
 				}
 			}
 		}
@@ -71,16 +137,26 @@ func NewDevices() ([]*Device, error) {
 	return devices, nil
 }
 
-// Create a list of Devices from the specific set of GPU uuids passed in.
-func NewDevicesFrom(uuids []string) ([]*Device, error) {
+// NewDevicesFrom creates a list of Devices from the specific set of GPU uuids passed in.
+func NewDevicesFrom(uuids []string) (DeviceList, error) {
 	devices, err := NewDevices()
 	if err != nil {
 		return nil, err
 	}
+	return devices.Filter(uuids)
+}
+
+// Filter filters out the selected devices from the list.
+// If the supplied list of uuids is nil, no filtering is performed.
+// Note that the specified uuids must exist in the list of devices.
+func (d DeviceList) Filter(uuids []string) (DeviceList, error) {
+	if uuids == nil {
+		return d, nil
+	}
 
 	filtered := []*Device{}
 	for _, uuid := range uuids {
-		for _, device := range devices {
+		for _, device := range d {
 			if device.UUID == uuid {
 				filtered = append(filtered, device)
 				break

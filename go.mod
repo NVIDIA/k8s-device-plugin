@@ -28,14 +28,14 @@ replace (
 )
 
 require (
-	github.com/NVIDIA/go-gpuallocator v0.2.3
+	github.com/NVIDIA/go-gpuallocator v0.3.1
 	github.com/NVIDIA/nvidia-container-toolkit v1.13.3
 	github.com/container-orchestrated-devices/container-device-interface v0.5.4-0.20230111111500-5b3b5d81179a
 	github.com/fsnotify/fsnotify v1.6.0
-	github.com/google/uuid v1.3.1
+	github.com/google/uuid v1.4.0
 	github.com/prometheus/procfs v0.8.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.4.0
 	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230327171225-18ad7cd513cf
 	golang.org/x/net v0.18.0
@@ -49,8 +49,8 @@ require (
 )
 
 require (
-	github.com/NVIDIA/go-nvml v0.12.0-1 // indirect
-	github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201222072828-352eb4c503a7 // indirect
+	github.com/NVIDIA/go-nvlib v0.0.0-20240109130712-11603560817a // indirect
+	github.com/NVIDIA/go-nvml v0.12.0-1.0.20231020145430-e06766c5e74f // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect

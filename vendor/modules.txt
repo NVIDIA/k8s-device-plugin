@@ -1,13 +1,15 @@
-# github.com/NVIDIA/go-gpuallocator v0.2.3
-## explicit; go 1.15
+# github.com/NVIDIA/go-gpuallocator v0.3.1
+## explicit; go 1.20
 github.com/NVIDIA/go-gpuallocator/gpuallocator
-# github.com/NVIDIA/go-nvml v0.12.0-1
+github.com/NVIDIA/go-gpuallocator/internal/links
+# github.com/NVIDIA/go-nvlib v0.0.0-20240109130712-11603560817a
+## explicit; go 1.20
+github.com/NVIDIA/go-nvlib/pkg/nvlib/device
+github.com/NVIDIA/go-nvlib/pkg/nvml
+# github.com/NVIDIA/go-nvml v0.12.0-1.0.20231020145430-e06766c5e74f
 ## explicit; go 1.15
 github.com/NVIDIA/go-nvml/pkg/dl
 github.com/NVIDIA/go-nvml/pkg/nvml
-# github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201222072828-352eb4c503a7
-## explicit; go 1.14
-github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml
 # github.com/NVIDIA/nvidia-container-toolkit v1.13.3
 ## explicit; go 1.20
 github.com/NVIDIA/nvidia-container-toolkit/internal/config/image
@@ -87,7 +89,7 @@ github.com/google/go-cmp/cmp/internal/value
 # github.com/google/gofuzz v1.1.0
 ## explicit; go 1.12
 github.com/google/gofuzz
-# github.com/google/uuid v1.3.1
+# github.com/google/uuid v1.4.0
 ## explicit
 github.com/google/uuid
 # github.com/imdario/mergo v0.3.6
@@ -141,8 +143,8 @@ github.com/sirupsen/logrus
 # github.com/spf13/pflag v1.0.5
 ## explicit; go 1.12
 github.com/spf13/pflag
-# github.com/stretchr/testify v1.8.2
-## explicit; go 1.13
+# github.com/stretchr/testify v1.8.4
+## explicit; go 1.20
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
 # github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
