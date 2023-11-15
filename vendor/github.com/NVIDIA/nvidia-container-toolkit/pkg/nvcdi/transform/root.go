@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/container-orchestrated-devices/container-device-interface/specs-go"
+	"tags.cncf.io/container-device-interface/specs-go"
 )
 
 type rootTransformer struct {
@@ -54,6 +54,7 @@ func (t rootTransformer) Transform(spec *specs.Spec) error {
 	}
 
 	for _, d := range spec.Devices {
+		d := d
 		if err := t.applyToEdits(&d.ContainerEdits); err != nil {
 			return fmt.Errorf("failed to apply root transform to device %s: %w", d.Name, err)
 		}

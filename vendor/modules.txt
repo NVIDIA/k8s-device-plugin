@@ -128,7 +128,7 @@ github.com/NVIDIA/go-nvml/pkg/nvml
 # github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201109160820-d08ea3cdcce4
 ## explicit; go 1.14
 github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml
-# github.com/NVIDIA/nvidia-container-toolkit v1.14.3
+# github.com/NVIDIA/nvidia-container-toolkit v1.14.4-0.20231115203935-5d7ee25b37e2
 ## explicit; go 1.20
 github.com/NVIDIA/nvidia-container-toolkit/internal/config/image
 github.com/NVIDIA/nvidia-container-toolkit/internal/discover
@@ -893,11 +893,6 @@ github.com/xlab/treeprint
 # github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673
 ## explicit
 github.com/xrash/smetrics
-# gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230818092907-09424fdc8884
-## explicit; go 1.20
-gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device
-gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info
-gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml
 # go.etcd.io/etcd/api/v3 v3.5.9
 ## explicit; go 1.19
 go.etcd.io/etcd/api/v3/authpb
@@ -2623,6 +2618,16 @@ sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.3.0
 ## explicit; go 1.12
 sigs.k8s.io/yaml
+# tags.cncf.io/container-device-interface v0.6.2
+## explicit; go 1.19
+tags.cncf.io/container-device-interface/internal/multierror
+tags.cncf.io/container-device-interface/internal/validation
+tags.cncf.io/container-device-interface/internal/validation/k8s
+tags.cncf.io/container-device-interface/pkg/cdi
+tags.cncf.io/container-device-interface/pkg/parser
+# tags.cncf.io/container-device-interface/specs-go v0.6.0
+## explicit; go 1.19
+tags.cncf.io/container-device-interface/specs-go
 # k8s.io/api => k8s.io/api v0.28.3
 # k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.28.3
 # k8s.io/apimachinery => k8s.io/apimachinery v0.28.3
