@@ -19,8 +19,8 @@ package rm
 import (
 	"fmt"
 
+	"github.com/NVIDIA/go-nvlib/pkg/nvml"
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 	"k8s.io/klog/v2"
 )
 
