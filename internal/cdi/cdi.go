@@ -24,8 +24,8 @@ import (
 	"github.com/NVIDIA/go-nvlib/pkg/nvml"
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi"
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
-	cdiapi "github.com/container-orchestrated-devices/container-device-interface/pkg/cdi"
 	"github.com/sirupsen/logrus"
+	cdiapi "tags.cncf.io/container-device-interface/pkg/cdi"
 )
 
 const (
