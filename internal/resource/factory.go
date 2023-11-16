@@ -17,8 +17,8 @@
 package resource
 
 import (
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info"
 	"k8s.io/klog/v2"
 )
 

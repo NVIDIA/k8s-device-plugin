@@ -19,7 +19,7 @@ package transform
 import (
 	"fmt"
 
-	"github.com/container-orchestrated-devices/container-device-interface/specs-go"
+	"tags.cncf.io/container-device-interface/specs-go"
 )
 
 type remove map[string]bool
@@ -39,6 +39,7 @@ func (r remove) Transform(spec *specs.Spec) error {
 	}
 
 	for _, device := range spec.Devices {
+		device := device
 		if err := r.transformEdits(&device.ContainerEdits); err != nil {
 			return fmt.Errorf("failed to remove edits from device %q: %w", device.Name, err)
 		}

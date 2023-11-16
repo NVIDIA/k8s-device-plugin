@@ -32,9 +32,9 @@ replace (
 
 require (
 	github.com/NVIDIA/go-gpuallocator v0.2.3
-	github.com/NVIDIA/go-nvml v0.12.0-1
-	github.com/NVIDIA/nvidia-container-toolkit v1.14.3
-	github.com/container-orchestrated-devices/container-device-interface v0.6.1
+	github.com/NVIDIA/go-nvlib v0.0.0-20231115170030-b21432a353e1
+	github.com/NVIDIA/go-nvml v0.12.0-1.0.20231020145430-e06766c5e74f
+	github.com/NVIDIA/nvidia-container-toolkit v1.14.4-0.20231115203935-5d7ee25b37e2
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/uuid v1.3.1
 	github.com/mittwald/go-helm-client v0.12.3
@@ -44,7 +44,6 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.25.7
-	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20231013150449-486ed3f0c813
 	golang.org/x/net v0.18.0
 	google.golang.org/grpc v1.59.0
 	k8s.io/api v0.28.3
@@ -57,6 +56,7 @@ require (
 	k8s.io/pod-security-admission v0.28.2
 	sigs.k8s.io/node-feature-discovery v0.14.2
 	sigs.k8s.io/yaml v1.3.0
+	tags.cncf.io/container-device-interface v0.6.2
 )
 
 require (
@@ -283,4 +283,5 @@ require (
 	sigs.k8s.io/kustomize/api v0.13.5-0.20230601165947-6ce0bf390ce3 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.14.3-0.20230601165947-6ce0bf390ce3 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
+	tags.cncf.io/container-device-interface/specs-go v0.6.0 // indirect
 )
