@@ -31,11 +31,6 @@ github.com/NVIDIA/nvidia-container-toolkit/internal/platform-support/tegra/csv
 github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi
 github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/spec
 github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform
-# github.com/container-orchestrated-devices/container-device-interface v0.5.4-0.20230111111500-5b3b5d81179a
-## explicit; go 1.17
-github.com/container-orchestrated-devices/container-device-interface/internal/multierror
-github.com/container-orchestrated-devices/container-device-interface/pkg/cdi
-github.com/container-orchestrated-devices/container-device-interface/specs-go
 # github.com/cpuguy83/go-md2man/v2 v2.0.2
 ## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
@@ -119,9 +114,6 @@ github.com/modern-go/reflect2
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
-# github.com/opencontainers/runc v1.1.7
-## explicit; go 1.17
-github.com/opencontainers/runc/libcontainer/devices
 # github.com/opencontainers/runtime-spec v1.1.0
 ## explicit
 github.com/opencontainers/runtime-spec/specs-go
