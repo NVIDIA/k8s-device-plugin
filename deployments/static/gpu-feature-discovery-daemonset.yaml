@@ -19,7 +19,7 @@ spec:
         app.kubernetes.io/part-of: nvidia-gpu
     spec:
       containers:
-        - image: nvcr.io/nvidia/k8s-device-plugin:v0.14.2
+        - image: nvcr.io/nvidia/k8s-device-plugin:v0.14.3
           name: gpu-feature-discovery
           command: ["/usr/bin/gpu-feature-discovery"]
           volumeMounts:
