@@ -31,8 +31,8 @@ replace (
 )
 
 require (
-	github.com/NVIDIA/go-gpuallocator v0.2.3
-	github.com/NVIDIA/go-nvlib v0.0.0-20231115170030-b21432a353e1
+	github.com/NVIDIA/go-gpuallocator v0.3.0
+	github.com/NVIDIA/go-nvlib v0.0.0-20231116150931-9fd385bace0d
 	github.com/NVIDIA/go-nvml v0.12.0-1.0.20231020145430-e06766c5e74f
 	github.com/NVIDIA/nvidia-container-toolkit v1.14.4-0.20231115203935-5d7ee25b37e2
 	github.com/fsnotify/fsnotify v1.7.0
@@ -84,7 +84,6 @@ require (
 	github.com/Masterminds/squirrel v1.5.4 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/Microsoft/hcsshim v0.11.0 // indirect
-	github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201109160820-d08ea3cdcce4 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230305170008-8188dc5388df // indirect
 	github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e // indirect
