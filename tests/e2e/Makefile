@@ -17,8 +17,8 @@ GO_FMT ?= gofmt
 
 DRIVER_ENABLED ?= true
 
-E2E_IMAGE_REPO ?= nvcr.io/nvidia/gpu-feature-discovery
-E2E_IMAGE_TAG ?= v0.8.2
+E2E_IMAGE_REPO ?= nvcr.io/nvidia/k8s-device-plugin
+E2E_IMAGE_TAG ?= v0.14.3
 E2E_IMAGE_PULL_POLICY ?= Always
 
 HELM_CHART ?= $(CURDIR)/../../deployments/helm/nvidia-device-plugin

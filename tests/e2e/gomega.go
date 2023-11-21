@@ -52,6 +52,16 @@ func MatchLabels(expectedNew map[string]k8sLabels, oldNodes []corev1.Node) gomeg
 	}
 }
 
+// MatchCapacity returns a specialized Gomega matcher for checking if a list of
+// nodes are configured as expected.
+func MatchCapacity(expectedNew map[string]k8sLabels, oldNodes []corev1.Node) gomegatypes.GomegaMatcher {
+	return &nodeListPropertyRegexpMatcher[k8sLabels]{
+		propertyName: "capacity",
+		expected:     expectedNew,
+		oldNodes:     oldNodes,
+	}
+}
+
 // nodeListPropertyRegexpMatcher is a generic Gomega matcher for asserting one property a group of nodes.
 type nodeListPropertyRegexpMatcher[T any] struct {
 	expected map[string]k8sLabels
@@ -70,6 +80,18 @@ func (m *nodeListPropertyRegexpMatcher[T]) Match(actual interface{}) (bool, erro
 		return false, fmt.Errorf("expected []corev1.Node, got: %T", actual)
 	}
 
+	switch m.propertyName {
+	case "labels":
+		return m.matchLabels(nodes), nil
+	case "capacity":
+		return m.matchCapacity(nodes), nil
+	default:
+		return true, nil
+	}
+
+}
+
+func (m *nodeListPropertyRegexpMatcher[T]) matchLabels(nodes []corev1.Node) bool {
 	targetNode := corev1.Node{}
 	for _, node := range nodes {
 		_, ok := m.expected[node.Name]
@@ -81,6 +103,8 @@ func (m *nodeListPropertyRegexpMatcher[T]) Match(actual interface{}) (bool, erro
 		break
 	}
 
+	m.node = &targetNode
+
 	for labelKey, labelValue := range m.expected[targetNode.Name] {
 		// missing key
 		if _, ok := targetNode.Labels[labelKey]; !ok {
@@ -91,11 +115,44 @@ func (m *nodeListPropertyRegexpMatcher[T]) Match(actual interface{}) (bool, erro
 		regexMatcher := regexp.MustCompile(labelValue)
 		if !regexMatcher.MatchString(targetNode.Labels[labelKey]) {
 			m.invalidValue = append(m.invalidValue, fmt.Sprintf("%s: %s", labelKey, targetNode.Labels[labelKey]))
-			return false, fmt.Errorf("node %q label %q value %q does not match %q", targetNode.Name, labelKey, targetNode.Labels[labelKey], labelValue)
+			return false
 		}
 	}
 
-	return true, nil
+	return true
+}
+
+func (m *nodeListPropertyRegexpMatcher[T]) matchCapacity(nodes []corev1.Node) bool {
+	targetNode := corev1.Node{}
+	for _, node := range nodes {
+		_, ok := m.expected[node.Name]
+		if !ok {
+			e2elog.Logf("Skipping node %q as no expected was specified", node.Name)
+			continue
+		}
+		targetNode = node
+		break
+	}
+
+	m.node = &targetNode
+
+	for labelKey, labelValue := range m.expected[targetNode.Name] {
+		// missing key
+		rn := corev1.ResourceName(labelKey)
+		if _, ok := targetNode.Status.Capacity[rn]; !ok {
+			m.missing = append(m.missing, labelKey)
+			continue
+		}
+		// invalid value
+		capacity := targetNode.Status.Capacity[rn]
+		regexMatcher := regexp.MustCompile(labelValue)
+		if !regexMatcher.MatchString(capacity.String()) {
+			m.invalidValue = append(m.invalidValue, fmt.Sprintf("%s: %s", labelKey, capacity.String()))
+			return false
+		}
+	}
+
+	return true
 }
 
 // FailureMessage method of the GomegaMatcher interface.
