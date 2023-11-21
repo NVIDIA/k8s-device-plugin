@@ -1,0 +1,10 @@
+version = "1.0.0"
+
+[[pulse-trufflehog.files]]
+
+file = "vendor/k8s.io/kubernetes/test/e2e/common/node/runtime.go"
+
+  # When adding the credential type and specific masked/redacted secret, add them as exactly seen in the result (if you are running local Pulse-Trufflehog then for NVIDIARaptor detector type you need to use "ExtraData > Key Type" as the credential type)
+  [[pulse-trufflehog.files.secrets]]
+  type = "GCP"
+  values = [ "image-pulling@authenticated-image-pulling.iam.gserviceaccount.com" ]
