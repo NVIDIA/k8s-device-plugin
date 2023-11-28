@@ -23,10 +23,14 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/kubernetes/test/e2e"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/kubernetes/test/e2e/framework/config"
-	"k8s.io/kubernetes/test/e2e/framework/testfiles"
+
+	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/logging"
+	ginkgolog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/logging/ginkgo"
 )
 
 var (
@@ -39,7 +43,6 @@ var (
 
 // handleFlags sets up all flags and parses the command line.
 func handleFlags() {
-	config.CopyFlags(config.Flags, flag.CommandLine)
 	framework.RegisterCommonFlags(flag.CommandLine)
 	framework.RegisterClusterFlags(flag.CommandLine)
 	flag.Parse()
@@ -53,16 +56,7 @@ func TestMain(m *testing.M) {
 
 	// check if flags are set and if not cancel the test run
 	if *ImageRepo == "" || *ImageTag == "" || *HelmChart == "" {
-		framework.Failf("Required flags not set. Please set -gfd.repo, -gfd.tag and -helm-chart")
-	}
-
-	// TODO: Deprecating repo-root over time... instead just use gobindata_util.go , see #23987.
-	// Right now it is still needed, for example by
-	// test/e2e/framework/ingress/ingress_utils.go
-	// for providing the optional secret.yaml file and by
-	// test/e2e/framework/util.go for cluster/log-dump.
-	if framework.TestContext.RepoRoot != "" {
-		testfiles.AddFileSource(testfiles.RootFileSource{Root: framework.TestContext.RepoRoot})
+		ginkgolog.Failf("Required flags not set. Please set -image.repo, -image.tag and -helm-chart")
 	}
 
 	rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -70,5 +64,17 @@ func TestMain(m *testing.M) {
 }
 
 func TestE2E(t *testing.T) {
-	e2e.RunE2ETests(t)
+	logging.InitLogs()
+	defer logging.FlushLogs()
+	klog.EnableContextualLogging(true)
+	gomega.RegisterFailHandler(ginkgo.Fail)
+	// Run tests through the Ginkgo runner with output to console + JUnit for Jenkins
+	suiteConfig, reporterConfig := ginkgo.GinkgoConfiguration()
+	// Randomize specs as well as suites
+	suiteConfig.RandomizeAllSpecs = true
+
+	var runID = uuid.NewUUID()
+
+	klog.Infof("Starting e2e run %q on Ginkgo node %d", runID, suiteConfig.ParallelProcess)
+	ginkgo.RunSpecs(t, "nvidia k8s-device-plugin e2e suite", suiteConfig, reporterConfig)
 }
