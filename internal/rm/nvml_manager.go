@@ -112,6 +112,11 @@ func (r *nvmlResourceManager) getPreferredAllocation(available, required []strin
 // alignedAlloc shells out to the alignedAllocationPolicy that is set in
 // order to calculate the preferred allocation.
 func (r *nvmlResourceManager) alignedAlloc(available, required []string, size int) ([]string, error) {
+	// return all available directly if allocating all available devices
+	if len(available) == size {
+		return available, nil
+	}
+
 	var devices []string
 
 	linkedDevices, err := gpuallocator.NewDevices(
