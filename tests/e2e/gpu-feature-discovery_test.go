@@ -25,19 +25,18 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	helm "github.com/mittwald/go-helm-client"
+	helmValues "github.com/mittwald/go-helm-client/values"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	extclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/kubernetes/test/e2e/framework"
 	admissionapi "k8s.io/pod-security-admission/api"
-
-	helm "github.com/mittwald/go-helm-client"
-	helmValues "github.com/mittwald/go-helm-client/values"
+	nfdclient "sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned"
 
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common"
-
-	nfdclient "sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned"
+	ginkgolog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/logging/ginkgo"
 )
 
 // Actual test suite
@@ -65,7 +64,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 	Context("When deploying GFD", Ordered, func() {
 		// helm-chart is required
 		if *HelmChart == "" {
-			framework.Fail("No helm-chart for GPU-Feature-Discovery specified")
+			Fail("No helm-chart for GPU-Feature-Discovery specified")
 		}
 
 		// Init global suite vars vars
@@ -132,7 +131,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 			// Drop the pod security admission label as nfd-worker and gfd
 			// require host mounts
 			if _, ok := f.Namespace.Labels[admissionapi.EnforceLevelLabel]; ok {
-				framework.Logf("Deleting %s label from the test namespace", admissionapi.EnforceLevelLabel)
+				ginkgolog.Logf("Deleting %s label from the test namespace", admissionapi.EnforceLevelLabel)
 				delete(f.Namespace.Labels, admissionapi.EnforceLevelLabel)
 				_, err := f.ClientSet.CoreV1().Namespaces().Update(ctx, f.Namespace, metav1.UpdateOptions{})
 				Expect(err).NotTo(HaveOccurred())
@@ -177,7 +176,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 					targetNodeName: {
 						"nvidia.com/gfd.timestamp": "[0-9]{10}",
 					}}
-				framework.Logf("verifying labels of node %q...", targetNodeName)
+				ginkgolog.Logf("verifying labels of node %q...", targetNodeName)
 				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(labelChecker, nodes))
 			})
 			Context("and the NodeFeature API is enabled", func() {
@@ -205,13 +204,13 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 						targetNodeName: {
 							"nvidia.com/gfd.timestamp": "[0-9]{10}",
 						}}
-					framework.Logf("verifying labels of node %q...", targetNodeName)
+					ginkgolog.Logf("verifying labels of node %q...", targetNodeName)
 					eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(labelChecker, nodes))
 				})
 			})
 		})
 
-		Context("and NV Driver is intalled", func() {
+		Context("and NV Driver is installed", func() {
 			BeforeEach(func(ctx context.Context) {
 				// Skip test if NVIDIA_DRIVER_ENABLED is not set
 				if !*NVIDIA_DRIVER_ENABLED {
@@ -234,7 +233,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 				By("Check node labels")
 				labelChecker := map[string]k8sLabels{
 					targetNodeName: expectedLabelPatterns}
-				framework.Logf("verifying labels of node %q...", targetNodeName)
+				ginkgolog.Logf("verifying labels of node %q...", targetNodeName)
 				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(labelChecker, nodes))
 			})
 			Context("and the NodeFeature API is enabled", func() {
@@ -260,7 +259,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 					By("Check node labels are created from NodeFeature object")
 					checkForLabels := map[string]k8sLabels{
 						targetNodeName: expectedLabelPatterns}
-					framework.Logf("verifying labels of node %q...", targetNodeName)
+					ginkgolog.Logf("verifying labels of node %q...", targetNodeName)
 					eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(checkForLabels, nodes))
 				})
 			})

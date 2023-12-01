@@ -36,6 +36,7 @@ import (
 	helmValues "github.com/mittwald/go-helm-client/values"
 
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common"
+	ginkgolog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/logging/ginkgo"
 )
 
 // Actual test suite
@@ -45,7 +46,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 	Context("When deploying k8s-device-plugin", Ordered, func() {
 		// helm-chart is required
 		if *HelmChart == "" {
-			framework.Fail("No helm-chart for k8s-device-plugin specified")
+			Fail("No helm-chart for k8s-device-plugin specified")
 		}
 
 		// Init global suite vars vars
@@ -105,7 +106,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 			Expect(err).NotTo(HaveOccurred())
 			// Drop the pod security admission label to enable hostpath mounts
 			if _, ok := f.Namespace.Labels[admissionapi.EnforceLevelLabel]; ok {
-				framework.Logf("Deleting %s label from the test namespace", admissionapi.EnforceLevelLabel)
+				ginkgolog.Logf("Deleting %s label from the test namespace", admissionapi.EnforceLevelLabel)
 				delete(f.Namespace.Labels, admissionapi.EnforceLevelLabel)
 				_, err := f.ClientSet.CoreV1().Namespaces().Update(ctx, f.Namespace, metav1.UpdateOptions{})
 				Expect(err).NotTo(HaveOccurred())
@@ -147,7 +148,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 					targetNodeName: {
 						"nvidia.com/gpu": "^[1-9]$",
 					}}
-				framework.Logf("verifying capacity of node %q...", targetNodeName)
+				ginkgolog.Logf("verifying capacity of node %q...", targetNodeName)
 				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchCapacity(capacityChecker, nodes))
 			})
 			It("it should run GPU jobs", func(ctx context.Context) {
