@@ -25,23 +25,21 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	helm "github.com/mittwald/go-helm-client"
+	helmValues "github.com/mittwald/go-helm-client/values"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	extclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/kubernetes/test/e2e/framework"
-	admissionapi "k8s.io/pod-security-admission/api"
-
-	helm "github.com/mittwald/go-helm-client"
-	helmValues "github.com/mittwald/go-helm-client/values"
 
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common"
-	ginkgolog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/logging/ginkgo"
+	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework"
+	e2elog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework/logs"
 )
 
 // Actual test suite
 var _ = NVDescribe("GPU Device Plugin", func() {
-	f := framework.NewDefaultFramework("k8s-device-plugin")
+	f := framework.NewFramework("k8s-device-plugin")
 
 	Context("When deploying k8s-device-plugin", Ordered, func() {
 		// helm-chart is required
@@ -77,8 +75,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 			// Create clients for apiextensions and our CRD api
 			extClient = extclient.NewForConfigOrDie(f.ClientConfig())
 			helmReleaseName = "nvdp-e2e-test" + rand.String(5)
-			kenv := os.Getenv("KUBECONFIG")
-			kubeconfig, err = os.ReadFile(kenv)
+			kubeconfig, err = os.ReadFile(os.Getenv("KUBECONFIG"))
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -104,13 +101,6 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 			}
 			helmClient, err = helm.NewClientFromKubeConf(opt)
 			Expect(err).NotTo(HaveOccurred())
-			// Drop the pod security admission label to enable hostpath mounts
-			if _, ok := f.Namespace.Labels[admissionapi.EnforceLevelLabel]; ok {
-				ginkgolog.Logf("Deleting %s label from the test namespace", admissionapi.EnforceLevelLabel)
-				delete(f.Namespace.Labels, admissionapi.EnforceLevelLabel)
-				_, err := f.ClientSet.CoreV1().Namespaces().Update(ctx, f.Namespace, metav1.UpdateOptions{})
-				Expect(err).NotTo(HaveOccurred())
-			}
 			_, err = helmClient.InstallChart(ctx, &chartSpec, nil)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -129,7 +119,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 			}
 		})
 
-		Context("and NV Driver is intalled", func() {
+		Context("and NV Driver is installed", func() {
 			It("it should create nvidia.com/gpu resource", func(ctx context.Context) {
 				By("Getting node objects")
 				nodeList, err := f.ClientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
@@ -148,7 +138,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 					targetNodeName: {
 						"nvidia.com/gpu": "^[1-9]$",
 					}}
-				ginkgolog.Logf("verifying capacity of node %q...", targetNodeName)
+				e2elog.Logf("verifying capacity of node %q...", targetNodeName)
 				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchCapacity(capacityChecker, nodes))
 			})
 			It("it should run GPU jobs", func(ctx context.Context) {

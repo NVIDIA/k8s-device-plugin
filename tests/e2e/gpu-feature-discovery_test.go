@@ -31,17 +31,16 @@ import (
 	extclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/kubernetes/test/e2e/framework"
-	admissionapi "k8s.io/pod-security-admission/api"
 	nfdclient "sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned"
 
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common"
-	ginkgolog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/logging/ginkgo"
+	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework"
+	e2elog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework/logs"
 )
 
 // Actual test suite
 var _ = NVDescribe("GPU Feature Discovery", func() {
-	f := framework.NewDefaultFramework("gpu-feature-discovery")
+	f := framework.NewFramework("gpu-feature-discovery")
 
 	expectedLabelPatterns := k8sLabels{
 		"nvidia.com/gfd.timestamp":      "[0-9]{10}",
@@ -101,8 +100,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 			extClient = extclient.NewForConfigOrDie(f.ClientConfig())
 			nfdClient = nfdclient.NewForConfigOrDie(f.ClientConfig())
 			helmReleaseName = "gfd-e2e-test" + rand.String(5)
-			kenv := os.Getenv("KUBECONFIG")
-			kubeconfig, err = os.ReadFile(kenv)
+			kubeconfig, err = os.ReadFile(os.Getenv("KUBECONFIG"))
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -128,14 +126,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 			}
 			helmClient, err = helm.NewClientFromKubeConf(opt)
 			Expect(err).NotTo(HaveOccurred())
-			// Drop the pod security admission label as nfd-worker and gfd
-			// require host mounts
-			if _, ok := f.Namespace.Labels[admissionapi.EnforceLevelLabel]; ok {
-				ginkgolog.Logf("Deleting %s label from the test namespace", admissionapi.EnforceLevelLabel)
-				delete(f.Namespace.Labels, admissionapi.EnforceLevelLabel)
-				_, err := f.ClientSet.CoreV1().Namespaces().Update(ctx, f.Namespace, metav1.UpdateOptions{})
-				Expect(err).NotTo(HaveOccurred())
-			}
+
 			_, err = helmClient.InstallChart(ctx, &chartSpec, nil)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -157,7 +148,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 			}
 		})
 
-		Context("and NV Driver is not intalled", func() {
+		Context("and NV Driver is not installed", func() {
 			It("it should create nvidia.com timestamp label", func(ctx context.Context) {
 				By("Getting node objects")
 				nodeList, err := f.ClientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
@@ -176,7 +167,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 					targetNodeName: {
 						"nvidia.com/gfd.timestamp": "[0-9]{10}",
 					}}
-				ginkgolog.Logf("verifying labels of node %q...", targetNodeName)
+				e2elog.Logf("verifying labels of node %q...", targetNodeName)
 				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(labelChecker, nodes))
 			})
 			Context("and the NodeFeature API is enabled", func() {
@@ -204,7 +195,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 						targetNodeName: {
 							"nvidia.com/gfd.timestamp": "[0-9]{10}",
 						}}
-					ginkgolog.Logf("verifying labels of node %q...", targetNodeName)
+					e2elog.Logf("verifying labels of node %q...", targetNodeName)
 					eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(labelChecker, nodes))
 				})
 			})
@@ -233,7 +224,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 				By("Check node labels")
 				labelChecker := map[string]k8sLabels{
 					targetNodeName: expectedLabelPatterns}
-				ginkgolog.Logf("verifying labels of node %q...", targetNodeName)
+				e2elog.Logf("verifying labels of node %q...", targetNodeName)
 				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(labelChecker, nodes))
 			})
 			Context("and the NodeFeature API is enabled", func() {
@@ -259,7 +250,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 					By("Check node labels are created from NodeFeature object")
 					checkForLabels := map[string]k8sLabels{
 						targetNodeName: expectedLabelPatterns}
-					ginkgolog.Logf("verifying labels of node %q...", targetNodeName)
+					e2elog.Logf("verifying labels of node %q...", targetNodeName)
 					eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(checkForLabels, nodes))
 				})
 			})
