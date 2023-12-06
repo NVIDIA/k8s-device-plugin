@@ -158,7 +158,7 @@ func (b *deviceMapBuilder) assertAllMigDevicesAreValid(uniform bool) error {
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("At least one device with migEnabled=true was not configured correctly: %v", err)
+		return fmt.Errorf("at least one device with migEnabled=true was not configured correctly: %v", err)
 	}
 
 	if !uniform {
