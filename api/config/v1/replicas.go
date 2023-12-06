@@ -25,11 +25,55 @@ import (
 	"github.com/google/uuid"
 )
 
-// TimeSlicing defines the set of replicas to be made for timeSlicing available resources.
-type TimeSlicing struct {
+// ReplicatedResources defines generic options for replicating devices.
+type ReplicatedResources struct {
 	RenameByDefault            bool                 `json:"renameByDefault,omitempty"            yaml:"renameByDefault,omitempty"`
 	FailRequestsGreaterThanOne bool                 `json:"failRequestsGreaterThanOne,omitempty" yaml:"failRequestsGreaterThanOne,omitempty"`
 	Resources                  []ReplicatedResource `json:"resources,omitempty"                  yaml:"resources,omitempty"`
+}
+
+func (rrs *ReplicatedResources) disableResoureRenaming(logger logger, id string) {
+	if rrs == nil {
+		return
+	}
+	renameByDefault := rrs.RenameByDefault
+	setsNonDefaultRename := false
+	setsDevices := false
+	for i, r := range rrs.Resources {
+		if !renameByDefault && r.Rename != "" {
+			setsNonDefaultRename = true
+			rrs.Resources[i].Rename = ""
+		}
+		if renameByDefault && r.Rename != r.Name.DefaultSharedRename() {
+			setsNonDefaultRename = true
+			rrs.Resources[i].Rename = r.Name.DefaultSharedRename()
+		}
+		if !r.Devices.All {
+			setsDevices = true
+			rrs.Resources[i].Devices.All = true
+			rrs.Resources[i].Devices.Count = 0
+			rrs.Resources[i].Devices.List = nil
+		}
+	}
+	if setsNonDefaultRename {
+		logger.Warningf("Setting the 'rename' field in sharing.%s.resources is not yet supported in the config. Ignoring...", id)
+	}
+	if setsDevices {
+		logger.Warningf("Customizing the 'devices' field in sharing.%s.resources is not yet supported in the config. Ignoring...", id)
+	}
+
+}
+
+func (rrs *ReplicatedResources) isReplicated() bool {
+	if rrs == nil {
+		return false
+	}
+	for _, rr := range rrs.Resources {
+		if rr.Replicas > 1 {
+			return true
+		}
+	}
+	return false
 }
 
 // ReplicatedResource represents a resource to be replicated.
@@ -117,8 +161,8 @@ func (d ReplicatedDeviceRef) IsMigUUID() bool {
 	return true
 }
 
-// UnmarshalJSON unmarshals raw bytes into a 'TimeSlicing' struct.
-func (s *TimeSlicing) UnmarshalJSON(b []byte) error {
+// UnmarshalJSON unmarshals raw bytes into a 'ReplicatedResources' struct.
+func (s *ReplicatedResources) UnmarshalJSON(b []byte) error {
 	ts := make(map[string]json.RawMessage)
 	err := json.Unmarshal(b, &ts)
 	if err != nil {

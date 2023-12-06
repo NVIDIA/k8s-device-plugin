@@ -137,6 +137,11 @@ func validateFlags(config *spec.Config) error {
 	if *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyUUID && *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyIndex {
 		return fmt.Errorf("invalid --device-id-strategy option: %v", *config.Flags.Plugin.DeviceIDStrategy)
 	}
+
+	if config.Sharing.SharingStrategy() == spec.SharingStrategyMPS && *config.Flags.MigStrategy == spec.MigStrategyMixed {
+		return fmt.Errorf("using --mig-strategy=mixed is not supported with MPS")
+	}
+
 	return nil
 }
 

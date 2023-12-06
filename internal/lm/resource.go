@@ -48,10 +48,7 @@ func NewGPUResourceLabeler(config *spec.Config, device resource.Device, count in
 		return nil, fmt.Errorf("failed to get memory info for device: %v", err)
 	}
 
-	resourceLabeler := resourceLabeler{
-		resourceName: fullGPUResourceName,
-		config:       config,
-	}
+	resourceLabeler := newResourceLabeler(fullGPUResourceName, config)
 
 	architectureLabels, err := newArchitectureLabels(resourceLabeler, device)
 	if err != nil {
@@ -92,10 +89,7 @@ func NewMIGResourceLabeler(resourceName spec.ResourceName, config *spec.Config, 
 		return nil, fmt.Errorf("failed to get MIG profile name: %v", err)
 	}
 
-	resourceLabeler := resourceLabeler{
-		resourceName: resourceName,
-		config:       config,
-	}
+	resourceLabeler := newResourceLabeler(resourceName, config)
 
 	attributeLabels, err := newMigAttributeLabels(resourceLabeler, device)
 	if err != nil {
@@ -110,9 +104,21 @@ func NewMIGResourceLabeler(resourceName spec.ResourceName, config *spec.Config, 
 	return labelers, nil
 }
 
+func newResourceLabeler(resourceName spec.ResourceName, config *spec.Config) resourceLabeler {
+	var replicatedResources *spec.ReplicatedResources
+	if config != nil {
+		replicatedResources = config.Sharing.ReplicatedResources()
+	}
+	return resourceLabeler{
+		resourceName:        resourceName,
+		replicatedResources: replicatedResources,
+	}
+
+}
+
 type resourceLabeler struct {
-	resourceName spec.ResourceName
-	config       *spec.Config
+	resourceName        spec.ResourceName
+	replicatedResources *spec.ReplicatedResources
 }
 
 // single creates a single label for the resource. The label key is
@@ -191,8 +197,9 @@ func (rl resourceLabeler) replicasLabel() Labeler {
 }
 
 // sharingDisabled checks whether the resourceLabeler has sharing disabled
+// TODO: The nil check here is because we call NewGPUResourceLabeler with a nil config when sharing is disabled.
 func (rl resourceLabeler) sharingDisabled() bool {
-	return rl.config == nil
+	return rl.replicatedResources == nil
 }
 
 // isShared checks whether the resource is shared.
@@ -213,12 +220,11 @@ func (rl resourceLabeler) isRenamed() bool {
 
 // replicationInfo searches the associated config for the resource and returns the replication info
 func (rl resourceLabeler) replicationInfo() *spec.ReplicatedResource {
-	if rl.config == nil {
+	if rl.sharingDisabled() {
 		return nil
 	}
-	name := rl.resourceName
-	for _, r := range rl.config.Sharing.TimeSlicing.Resources {
-		if r.Name == name {
+	for _, r := range rl.replicatedResources.Resources {
+		if r.Name == rl.resourceName {
 			return &r
 		}
 	}

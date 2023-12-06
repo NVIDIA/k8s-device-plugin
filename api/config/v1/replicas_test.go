@@ -371,10 +371,10 @@ func TestUnmarshalReplicatedResource(t *testing.T) {
 	}
 }
 
-func TestUnmarshalTimeSlicing(t *testing.T) {
+func TestUnmarshalReplicatedResources(t *testing.T) {
 	testCases := []struct {
 		input  string
-		output TimeSlicing
+		output ReplicatedResources
 		err    bool
 	}{
 		{
@@ -400,7 +400,7 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 					}
 				]
 			}`,
-			output: TimeSlicing{
+			output: ReplicatedResources{
 				Resources: []ReplicatedResource{
 					{
 						Name:     NoErrorNewResourceName("valid"),
@@ -423,7 +423,7 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 					}
 				]
 			}`,
-			output: TimeSlicing{
+			output: ReplicatedResources{
 				Resources: []ReplicatedResource{
 					{
 						Name:     NoErrorNewResourceName("valid1"),
@@ -453,7 +453,7 @@ func TestUnmarshalTimeSlicing(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("test case %d", i), func(t *testing.T) {
-			var output TimeSlicing
+			var output ReplicatedResources
 			err := output.UnmarshalJSON([]byte(tc.input))
 			if tc.err {
 				require.Error(t, err)
