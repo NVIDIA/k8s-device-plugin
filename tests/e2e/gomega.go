@@ -23,14 +23,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common"
 	. "github.com/onsi/gomega"
 	gomegatypes "github.com/onsi/gomega/types"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	e2elog "k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common"
+	e2elog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework/logs"
 )
 
 type k8sLabels map[string]string

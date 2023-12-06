@@ -28,8 +28,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	taintutils "k8s.io/kubernetes/pkg/util/taints"
-
 	nfdv1alpha1 "sigs.k8s.io/node-feature-discovery/pkg/apis/nfd/v1alpha1"
 	nfdclient "sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned"
 )
@@ -50,7 +48,7 @@ func GetNonControlPlaneNodes(ctx context.Context, cli clientset.Interface) ([]co
 	}
 	out := []corev1.Node{}
 	for _, node := range nodeList.Items {
-		if !taintutils.TaintExists(node.Spec.Taints, &controlPlaneTaint) {
+		if !TaintExists(node.Spec.Taints, &controlPlaneTaint) {
 			out = append(out, node)
 		}
 	}
@@ -114,7 +112,7 @@ func CleanupNode(ctx context.Context, cs clientset.Interface) {
 		// Remove taints
 		for _, taint := range node.Spec.Taints {
 			if strings.HasPrefix(taint.Key, nfdv1alpha1.TaintNs) {
-				newTaints, removed := taintutils.DeleteTaint(node.Spec.Taints, &taint)
+				newTaints, removed := DeleteTaint(node.Spec.Taints, &taint)
 				if removed {
 					node.Spec.Taints = newTaints
 					update = true

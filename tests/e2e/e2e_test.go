@@ -27,10 +27,9 @@ import (
 	"github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/test/e2e/framework"
 
-	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/logging"
-	ginkgolog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/logging/ginkgo"
+	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework"
+	e2elog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework/logs"
 )
 
 var (
@@ -41,22 +40,15 @@ var (
 	ImagePullPolicy       = flag.String("image.pull-policy", "IfNotPresent", "Image pull policy")
 )
 
-// handleFlags sets up all flags and parses the command line.
-func handleFlags() {
-	framework.RegisterCommonFlags(flag.CommandLine)
-	framework.RegisterClusterFlags(flag.CommandLine)
-	flag.Parse()
-}
-
 func TestMain(m *testing.M) {
 	// Register test flags, then parse flags.
-	handleFlags()
-
-	framework.AfterReadingAllFlags(&framework.TestContext)
+	framework.RegisterClusterFlags(flag.CommandLine)
+	flag.Parse()
+	klog.SetOutput(ginkgo.GinkgoWriter)
 
 	// check if flags are set and if not cancel the test run
 	if *ImageRepo == "" || *ImageTag == "" || *HelmChart == "" {
-		ginkgolog.Failf("Required flags not set. Please set -image.repo, -image.tag and -helm-chart")
+		e2elog.Failf("Required flags not set. Please set -image.repo, -image.tag and -helm-chart")
 	}
 
 	rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -64,8 +56,8 @@ func TestMain(m *testing.M) {
 }
 
 func TestE2E(t *testing.T) {
-	logging.InitLogs()
-	defer logging.FlushLogs()
+	e2elog.InitLogs()
+	defer e2elog.FlushLogs()
 	klog.EnableContextualLogging(true)
 	gomega.RegisterFailHandler(ginkgo.Fail)
 	// Run tests through the Ginkgo runner with output to console + JUnit for Jenkins
