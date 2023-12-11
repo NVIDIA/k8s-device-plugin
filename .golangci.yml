@@ -4,6 +4,7 @@ run:
 linters:
   enable:
     - contextcheck
+    - errcheck
     - gocritic
     - gofmt
     - goimports
@@ -14,12 +15,26 @@ linters:
     - misspell
     - staticcheck
     - unconvert
-  disable:
-    - typecheck
+  disable: []
 
 linters-settings:
   goimports:
     local-prefixes: github.com/NVIDIA/k8s-device-plugin
-  gosec:
-    excludes:
-      - G404
+
+issues:
+  exclude-rules:
+  # We use math/rand instead of crypto/rand for unique names in e2e tests.
+  - path: tests/e2e/
+    linters:
+    - gosec
+    text: "G404"
+  # We disable the memory aliasing checks in tests
+  - path: ".*_test.go"
+    linters:
+    - gosec
+    text: "G601: Implicit memory aliasing in for loop"
+  # We create world-readable files in tests.
+  - path: ".*_test.go"
+    linters:
+    - gosec
+    text: "G306: Expect WriteFile permissions to be 0600 or less"
