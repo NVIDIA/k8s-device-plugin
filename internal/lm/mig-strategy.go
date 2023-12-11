@@ -222,7 +222,7 @@ func newMigStrategySingleLabeler(manager resource.Manager, config *spec.Config) 
 		}
 
 		resource, exists := resources[name]
-		// For the first ocurrence we update the device reference and the resource name
+		// For the first occurrence we update the device reference and the resource name
 		if !exists {
 			resource.device = mig
 			resource.name = fullGPUResourceName
@@ -281,7 +281,7 @@ func newMigStrategyMixedLabeler(manager resource.Manager, config *spec.Config) (
 		}
 
 		resource, exists := resources[name]
-		// For the first ocurrence we update the device reference and the resource name
+		// For the first occurrence we update the device reference and the resource name
 		if !exists {
 			resource.device = mig
 			resource.name = spec.ResourceName("nvidia.com/mig-" + name)
