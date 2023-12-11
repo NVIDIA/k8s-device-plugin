@@ -218,7 +218,7 @@ func (rl resourceLabeler) replicationInfo() *spec.ReplicatedResource {
 	}
 	name := rl.resourceName
 	for _, r := range rl.config.Sharing.TimeSlicing.Resources {
-		if r.Name == spec.ResourceName(name) {
+		if r.Name == name {
 			return &r
 		}
 	}

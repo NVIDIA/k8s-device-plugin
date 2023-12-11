@@ -430,7 +430,7 @@ LOOP:
 				continue LOOP
 			}
 		}
-		return fmt.Errorf("line does not match any regexp: %v", string(line))
+		return fmt.Errorf("line does not match any regexp: %v", line)
 	}
 	return nil
 }
