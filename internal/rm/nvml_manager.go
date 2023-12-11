@@ -85,11 +85,7 @@ func (r *nvmlResourceManager) GetDevicePaths(ids []string) []string {
 		"/dev/nvidia-modeset",
 	}
 
-	for _, p := range r.Devices().Subset(ids).GetPaths() {
-		paths = append(paths, p)
-	}
-
-	return paths
+	return append(paths, r.Devices().Subset(ids).GetPaths()...)
 }
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices

@@ -209,10 +209,7 @@ func NewAnnotatedID(id string, replica int) AnnotatedID {
 // HasAnnotations checks if an AnnotatedID has any annotations or not.
 func (r AnnotatedID) HasAnnotations() bool {
 	split := strings.SplitN(string(r), "::", 2)
-	if len(split) != 2 {
-		return false
-	}
-	return true
+	return len(split) == 2
 }
 
 // Split splits a AnnotatedID into its ID and replica number parts.
