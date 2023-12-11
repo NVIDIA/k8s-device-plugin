@@ -160,7 +160,7 @@ func (rl resourceLabeler) productLabel(parts ...string) Labels {
 	var strippedParts []string
 	for _, p := range parts {
 		if p != "" {
-			strippedParts = append(strippedParts, strings.Replace(p, " ", "-", -1))
+			strippedParts = append(strippedParts, strings.ReplaceAll(p, " ", "-"))
 		}
 	}
 
