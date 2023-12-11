@@ -40,7 +40,6 @@ type cdiHandler struct {
 	driverRoot       string
 	targetDriverRoot string
 	nvidiaCTKPath    string
-	cdiRoot          string
 	vendor           string
 	deviceIDStrategy string
 

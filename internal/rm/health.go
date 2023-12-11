@@ -33,9 +33,6 @@ const (
 	// this is in addition to the Application errors that are already ignored.
 	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
 	allHealthChecks        = "xids"
-
-	// maxSuccessiveEventErrorCount sets the number of errors waiting for events before marking all devices as unhealthy.
-	maxSuccessiveEventErrorCount = 3
 )
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
