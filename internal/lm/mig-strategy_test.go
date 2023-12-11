@@ -19,10 +19,11 @@ package lm
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 	rt "github.com/NVIDIA/k8s-device-plugin/internal/resource/testing"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMigStrategyNoneLabels(t *testing.T) {

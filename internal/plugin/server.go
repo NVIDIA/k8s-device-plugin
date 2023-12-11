@@ -25,10 +25,11 @@ import (
 	"strings"
 	"time"
 
+	cdiapi "tags.cncf.io/container-device-interface/pkg/cdi"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
-	cdiapi "tags.cncf.io/container-device-interface/pkg/cdi"
 
 	"github.com/google/uuid"
 	"golang.org/x/net/context"

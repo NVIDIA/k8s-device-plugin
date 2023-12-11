@@ -18,6 +18,7 @@ package manager
 
 import (
 	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 )
