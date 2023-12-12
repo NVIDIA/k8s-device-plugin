@@ -18,6 +18,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"syscall"
@@ -290,10 +291,11 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]plugin.I
 
 func stopPlugins(plugins []plugin.Interface) error {
 	klog.Info("Stopping plugins.")
+	var errs error
 	for _, p := range plugins {
-		_ = p.Stop()
+		errors.Join(errs, p.Stop())
 	}
-	return nil
+	return errs
 }
 
 // disableResourceRenamingInConfig temporarily disable the resource renaming feature of the plugin.
