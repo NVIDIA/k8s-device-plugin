@@ -24,7 +24,7 @@ source "${CURRENT_DIR}/scripts/common.sh"
 
 kubectl label node "${KIND_CLUSTER_NAME}-worker" --overwrite nvidia.com/gpu.present=true
 
-helm upgrade -i --create-namespace --namespace k8s-device-plugin nvidia ${PROJECT_DIR}/deployments/helm/nvidia-device-plugin \
+helm upgrade -i --create-namespace --namespace nvidia-device-plugin nvidia ${PROJECT_DIR}/deployments/helm/nvidia-device-plugin \
     ${NVIDIA_DRIVER_ROOT:+--set nvidiaDriverRoot=${NVIDIA_DRIVER_ROOT}} \
     --set runtimeClassName=nvidia \
     --wait
@@ -32,5 +32,5 @@ helm upgrade -i --create-namespace --namespace k8s-device-plugin nvidia ${PROJEC
 set +x
 printf '\033[0;32m'
 echo "Driver installation complete:"
-kubectl get pod -n nvidia-dra-driver
+kubectl get pod -n nvidia-device-plugin
 printf '\033[0m'
