@@ -275,9 +275,7 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]plugin.I
 
 		// Start the gRPC server for plugin p and connect it with the kubelet.
 		if err := p.Start(); err != nil {
-			klog.Error("Could not contact Kubelet. Did you enable the device plugin feature gate?")
-			klog.Error("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
-			klog.Error("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
+			klog.Errorf("Failed to start plugin: %v", err)
 			return plugins, true, nil
 		}
 		started++
