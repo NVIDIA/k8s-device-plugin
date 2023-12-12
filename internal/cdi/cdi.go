@@ -139,7 +139,9 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 			if ret != nvml.SUCCESS {
 				return fmt.Errorf("failed to initialize NVML: %v", ret)
 			}
-			defer cdi.nvml.Shutdown()
+			defer func() {
+				_ = cdi.nvml.Shutdown()
+			}()
 		}
 
 		spec, err := cdilib.GetSpec()

@@ -30,7 +30,9 @@ func NewNVMLLabeler(manager resource.Manager, config *spec.Config) (Labeler, err
 	if err := manager.Init(); err != nil {
 		return nil, fmt.Errorf("failed to initialize NVML: %v", err)
 	}
-	defer manager.Shutdown()
+	defer func() {
+		_ = manager.Shutdown()
+	}()
 
 	devices, err := manager.GetDevices()
 	if err != nil {

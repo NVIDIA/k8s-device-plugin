@@ -85,7 +85,9 @@ func New(opts ...Option) (Interface, error) {
 			klog.Warningf("nvml init failed: %v", ret)
 			return &null{}, nil
 		}
-		defer m.nvmllib.Shutdown()
+		defer func() {
+			_ = m.nvmllib.Shutdown()
+		}()
 
 		return (*nvmlmanager)(m), nil
 	case "tegra":

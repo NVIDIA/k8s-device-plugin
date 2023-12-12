@@ -112,7 +112,7 @@ func (r *resourceManager) Devices() Devices {
 
 // AddDefaultResourcesToConfig adds default resource matching rules to config.Resources
 func AddDefaultResourcesToConfig(config *spec.Config) error {
-	config.Resources.AddGPUResource("*", "gpu")
+	_ = config.Resources.AddGPUResource("*", "gpu")
 	switch *config.Flags.MigStrategy {
 	case spec.MigStrategySingle:
 		return config.Resources.AddMIGResource("*", "gpu")

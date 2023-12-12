@@ -83,7 +83,9 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 	if ret != nvml.SUCCESS {
 		return fmt.Errorf("failed to create event set: %v", ret)
 	}
-	defer eventSet.Free()
+	defer func() {
+		_ = eventSet.Free()
+	}()
 
 	parentToDeviceMap := make(map[string]*Device)
 	deviceIDToGiMap := make(map[string]int)

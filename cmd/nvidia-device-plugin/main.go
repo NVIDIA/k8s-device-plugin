@@ -293,7 +293,7 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]plugin.I
 func stopPlugins(plugins []plugin.Interface) error {
 	klog.Info("Stopping plugins.")
 	for _, p := range plugins {
-		p.Stop()
+		_ = p.Stop()
 	}
 	return nil
 }

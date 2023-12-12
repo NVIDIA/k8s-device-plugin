@@ -94,7 +94,7 @@ func (b *deviceMapBuilder) buildDeviceMapFromConfigResources() (DeviceMap, error
 func (b *deviceMapBuilder) buildGPUDeviceMap() (DeviceMap, error) {
 	devices := make(DeviceMap)
 
-	b.VisitDevices(func(i int, gpu device.Device) error {
+	err := b.VisitDevices(func(i int, gpu device.Device) error {
 		name, ret := gpu.GetName()
 		if ret != nvml.SUCCESS {
 			return fmt.Errorf("error getting product name for GPU: %v", ret)
@@ -114,7 +114,7 @@ func (b *deviceMapBuilder) buildGPUDeviceMap() (DeviceMap, error) {
 		}
 		return fmt.Errorf("GPU name '%v' does not match any resource patterns", name)
 	})
-	return devices, nil
+	return devices, err
 }
 
 // buildMigDeviceMap builds a map of resource names to MIG devices
