@@ -24,8 +24,7 @@ MKDIR    ?= mkdir
 include $(CURDIR)/versions.mk
 
 ifeq ($(IMAGE_NAME),)
-REGISTRY ?= nvcr.io/nvidia
-IMAGE_NAME := $(REGISTRY)/k8s-device-plugin
+IMAGE_NAME := $(REGISTRY)/$(DRIVER_NAME)
 endif
 
 IMAGE_VERSION := $(VERSION)
@@ -42,11 +41,12 @@ OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 DEFAULT_PUSH_TARGET := ubuntu20.04
 DISTRIBUTIONS = $(DEFAULT_PUSH_TARGET) ubi8
 
+IMAGE_TARGETS := $(patsubst %,image-%,$(DISTRIBUTIONS))
 BUILD_TARGETS := $(patsubst %,build-%,$(DISTRIBUTIONS))
 PUSH_TARGETS := $(patsubst %,push-%,$(DISTRIBUTIONS))
 TEST_TARGETS := $(patsubst %,test-%, $(DISTRIBUTIONS))
 
-.PHONY: $(DISTRIBUTIONS) $(PUSH_TARGETS) $(BUILD_TARGETS) $(TEST_TARGETS)
+.PHONY: $(DISTRIBUTIONS) $(PUSH_TARGETS) $(BUILD_TARGETS) $(TEST_TARGETS) $(BUILD_TARGETS)
 
 ifneq ($(BUILD_MULTI_ARCH_IMAGES),true)
 include $(CURDIR)/deployments/container/native-only.mk
@@ -72,7 +72,7 @@ build-%: DIST = $(*)
 build-%: DOCKERFILE = $(CURDIR)/deployments/container/Dockerfile.$(DOCKERFILE_SUFFIX)
 
 # Use a generic build target to build the relevant images
-$(BUILD_TARGETS): build-%:
+$(IMAGE_TARGETS): image-%:
 	DOCKER_BUILDKIT=1 \
 		$(DOCKER) $(BUILDX) build --pull \
 		$(DOCKER_BUILD_OPTIONS) \
@@ -83,10 +83,27 @@ $(BUILD_TARGETS): build-%:
 		--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
 		--build-arg VERSION="$(VERSION)" \
 		--build-arg GIT_COMMIT="$(GIT_COMMIT)" \
-		--build-arg CVE_UPDATES="$(CVE_UPDATES)" \
+		$(if $(LABEL_IMAGE_SOURCE),--label "org.opencontainers.image.source=$(LABEL_IMAGE_SOURCE)",) \
 		-f $(DOCKERFILE) \
 		$(CURDIR)
 
 build-ubuntu%: DOCKERFILE_SUFFIX := ubuntu
 
 build-ubi8: DOCKERFILE_SUFFIX := ubi8
+
+# Handle the default build target.
+.PHONY: build
+build: $(DEFAULT_PUSH_TARGET)
+$(DEFAULT_PUSH_TARGET): build-$(DEFAULT_PUSH_TARGET)
+$(DEFAULT_PUSH_TARGET): DIST = $(DEFAULT_PUSH_TARGET)
+
+REGCTL ?= regctl
+$(PUSH_TARGETS): push-%:
+	$(REGCTL) \
+	        image copy \
+	        $(IMAGE) $(OUT_IMAGE)
+
+push-short:
+	$(REGCTL) \
+	        image copy \
+	        $(IMAGE) $(OUT_IMAGE_NAME):$(OUT_IMAGE_VERSION)

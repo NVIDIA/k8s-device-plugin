@@ -1,4 +1,7 @@
-# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+#!/usr/bin/env bash
+
+# Copyright 2023 The Kubernetes Authors.
+# Copyright 2023 NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,17 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-DRIVER_NAME := k8s-device-plugin
-MODULE := github.com/NVIDIA/$(DRIVER_NAME)
+# A reference to the current directory where this script is located
+CURRENT_DIR="$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)"
 
-REGISTRY ?= nvcr.io/nvidia
+set -ex
+set -o pipefail
 
-VERSION  ?= v0.14.3
+source "${CURRENT_DIR}/common.sh"
 
-# vVERSION represents the version with a guaranteed v-prefix
-vVERSION := v$(VERSION:v%=%)
-
-CUDA_VERSION ?= 12.3.0
-GOLANG_VERSION ?= 1.20.5
-
-GIT_COMMIT ?= $(shell git describe --match="" --dirty --long --always --abbrev=40 2> /dev/null || echo "")
+kind delete cluster \
+	--name "${KIND_CLUSTER_NAME}"
