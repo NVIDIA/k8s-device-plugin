@@ -281,7 +281,8 @@ func updateDeviceMapWithReplicas(config *spec.Config, oDevices DeviceMap) (Devic
 	}
 
 	// Walk TimeSlicing.Resources and update devices in the device map as appropriate.
-	for _, r := range config.Sharing.TimeSlicing.Resources {
+	for _, resource := range config.Sharing.TimeSlicing.Resources {
+		r := resource
 		// Get the IDs of the devices we want to replicate from oDevices
 		ids, err := oDevices.getIDsOfDevicesToReplicate(&r)
 		if err != nil {

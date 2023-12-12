@@ -142,7 +142,8 @@ func (ds Devices) GetIDs() []string {
 // GetPluginDevices returns the plugin Devices from all devices in the Devices
 func (ds Devices) GetPluginDevices() []*pluginapi.Device {
 	var res []*pluginapi.Device
-	for _, d := range ds {
+	for _, device := range ds {
+		d := device
 		res = append(res, &d.Device)
 	}
 	return res
