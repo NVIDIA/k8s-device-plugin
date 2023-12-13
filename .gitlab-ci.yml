@@ -25,43 +25,20 @@ build-dev-image:
 
 .requires-build-image:
   image: "${BUILDIMAGE}"
+  needs:
+    - job: build-dev-image
 
 .go-check:
   extends:
     - .requires-build-image
   stage: go-checks
 
-fmt:
+check:
   extends:
-    - .go-check
+    - .requires-build-image
+  stage: go-checks
   script:
-    - make assert-fmt
-
-vet:
-  extends:
-    - .go-check
-  script:
-    - make vet
-
-lint:
-  extends:
-    - .go-check
-  script:
-    - make lint
-  allow_failure: true
-
-ineffassign:
-  extends:
-    - .go-check
-  script:
-    - make ineffassign
-  allow_failure: true
-
-misspell:
-  extends:
-    - .go-check
-  script:
-    - make misspell
+    - make check
 
 go-build:
   extends:

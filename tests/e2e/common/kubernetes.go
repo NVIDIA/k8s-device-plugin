@@ -111,6 +111,7 @@ func CleanupNode(ctx context.Context, cs clientset.Interface) {
 
 		// Remove taints
 		for _, taint := range node.Spec.Taints {
+			taint := taint
 			if strings.HasPrefix(taint.Key, nfdv1alpha1.TaintNs) {
 				newTaints, removed := DeleteTaint(node.Spec.Taints, &taint)
 				if removed {

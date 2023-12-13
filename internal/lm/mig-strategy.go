@@ -19,10 +19,11 @@ package lm
 import (
 	"fmt"
 
+	"k8s.io/klog/v2"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/mig"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
-	"k8s.io/klog/v2"
 )
 
 // Constants representing different MIG strategies.
@@ -221,7 +222,7 @@ func newMigStrategySingleLabeler(manager resource.Manager, config *spec.Config) 
 		}
 
 		resource, exists := resources[name]
-		// For the first ocurrence we update the device reference and the resource name
+		// For the first occurrence we update the device reference and the resource name
 		if !exists {
 			resource.device = mig
 			resource.name = fullGPUResourceName
@@ -280,7 +281,7 @@ func newMigStrategyMixedLabeler(manager resource.Manager, config *spec.Config) (
 		}
 
 		resource, exists := resources[name]
-		// For the first ocurrence we update the device reference and the resource name
+		// For the first occurrence we update the device reference and the resource name
 		if !exists {
 			resource.device = mig
 			resource.name = spec.ResourceName("nvidia.com/mig-" + name)

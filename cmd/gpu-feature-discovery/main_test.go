@@ -15,11 +15,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 	rt "github.com/NVIDIA/k8s-device-plugin/internal/resource/testing"
 	"github.com/NVIDIA/k8s-device-plugin/internal/vgpu"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -429,7 +430,7 @@ LOOP:
 				continue LOOP
 			}
 		}
-		return fmt.Errorf("line does not match any regexp: %v", string(line))
+		return fmt.Errorf("line does not match any regexp: %v", line)
 	}
 	return nil
 }

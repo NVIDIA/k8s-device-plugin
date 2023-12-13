@@ -21,8 +21,9 @@ import (
 
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
 	"github.com/NVIDIA/go-nvlib/pkg/nvml"
-	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"k8s.io/klog/v2"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 type nvmlResourceManager struct {
@@ -84,11 +85,7 @@ func (r *nvmlResourceManager) GetDevicePaths(ids []string) []string {
 		"/dev/nvidia-modeset",
 	}
 
-	for _, p := range r.Devices().Subset(ids).GetPaths() {
-		paths = append(paths, p)
-	}
-
-	return paths
+	return append(paths, r.Devices().Subset(ids).GetPaths()...)
 }
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices

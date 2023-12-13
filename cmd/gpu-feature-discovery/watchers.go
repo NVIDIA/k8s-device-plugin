@@ -21,7 +21,7 @@ import (
 	"os/signal"
 )
 
-// newOSWatcher creates a channel for recieving OS signals.
+// newOSWatcher creates a channel for receiving OS signals.
 // TODO: This is currently duplicated from device-plugin
 func newOSWatcher(sigs ...os.Signal) chan os.Signal {
 	sigChan := make(chan os.Signal, 1)

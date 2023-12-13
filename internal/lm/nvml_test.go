@@ -3,9 +3,10 @@ package lm
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 	rt "github.com/NVIDIA/k8s-device-plugin/internal/resource/testing"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMigCapabilityLabeler(t *testing.T) {

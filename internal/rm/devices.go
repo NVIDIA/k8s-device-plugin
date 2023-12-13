@@ -142,7 +142,8 @@ func (ds Devices) GetIDs() []string {
 // GetPluginDevices returns the plugin Devices from all devices in the Devices
 func (ds Devices) GetPluginDevices() []*pluginapi.Device {
 	var res []*pluginapi.Device
-	for _, d := range ds {
+	for _, device := range ds {
+		d := device
 		res = append(res, &d.Device)
 	}
 	return res
@@ -166,7 +167,7 @@ func (ds Devices) GetPaths() []string {
 	return res
 }
 
-// AlignedAllocationSupported checks whether all devices support an alligned allocation
+// AlignedAllocationSupported checks whether all devices support an aligned allocation
 func (ds Devices) AlignedAllocationSupported() bool {
 	for _, d := range ds {
 		if !d.AlignedAllocationSupported() {
@@ -176,7 +177,7 @@ func (ds Devices) AlignedAllocationSupported() bool {
 	return true
 }
 
-// AlignedAllocationSupported checks whether the device supports an alligned allocation
+// AlignedAllocationSupported checks whether the device supports an aligned allocation
 func (d Device) AlignedAllocationSupported() bool {
 	if d.IsMigDevice() {
 		return false
@@ -209,10 +210,7 @@ func NewAnnotatedID(id string, replica int) AnnotatedID {
 // HasAnnotations checks if an AnnotatedID has any annotations or not.
 func (r AnnotatedID) HasAnnotations() bool {
 	split := strings.SplitN(string(r), "::", 2)
-	if len(split) != 2 {
-		return false
-	}
-	return true
+	return len(split) == 2
 }
 
 // Split splits a AnnotatedID into its ID and replica number parts.

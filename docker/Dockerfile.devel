@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ARG GOLANG_VERSION=x.x.x
+ARG GOLANGCI_LINT_VERSION=1.55.2
+
 FROM golang:${GOLANG_VERSION}
 
-RUN go install golang.org/x/lint/golint@latest && \
-    go install github.com/gordonklaus/ineffassign@latest && \
-    go install github.com/client9/misspell/cmd/misspell@latest
-
-RUN go install github.com/matryer/moq@latest
-
-RUN mkdir -p /var/lib/kubelet/device-plugins/
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin ${GOLANGCI_LINT_VERSION} && \
+    go install github.com/matryer/moq@latest && \
+    mkdir -p /var/lib/kubelet/device-plugins/

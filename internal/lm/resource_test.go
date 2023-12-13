@@ -19,9 +19,10 @@ package lm
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	rt "github.com/NVIDIA/k8s-device-plugin/internal/resource/testing"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGPUResourceLabeler(t *testing.T) {

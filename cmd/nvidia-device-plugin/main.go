@@ -23,15 +23,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
+	"github.com/urfave/cli/v2"
+	"k8s.io/klog/v2"
+	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
 	"github.com/NVIDIA/k8s-device-plugin/internal/plugin"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
-	"github.com/fsnotify/fsnotify"
-	cli "github.com/urfave/cli/v2"
-
-	"k8s.io/klog/v2"
-	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
 func main() {
@@ -293,7 +293,7 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]plugin.I
 func stopPlugins(plugins []plugin.Interface) error {
 	klog.Info("Stopping plugins.")
 	for _, p := range plugins {
-		p.Stop()
+		_ = p.Stop()
 	}
 	return nil
 }

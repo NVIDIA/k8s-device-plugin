@@ -282,7 +282,7 @@ func (s *ReplicatedDevices) UnmarshalJSON(b []byte) error {
 
 // MarshalJSON marshals ReplicatedDevices to its raw bytes representation
 func (s *ReplicatedDevices) MarshalJSON() ([]byte, error) {
-	if s.All == true {
+	if s.All {
 		return json.Marshal("all")
 	}
 	if s.Count > 0 {

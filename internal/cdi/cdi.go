@@ -26,6 +26,7 @@ import (
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
 	"github.com/sirupsen/logrus"
 	cdiapi "tags.cncf.io/container-device-interface/pkg/cdi"
+	cdiparser "tags.cncf.io/container-device-interface/pkg/parser"
 )
 
 const (
@@ -40,7 +41,6 @@ type cdiHandler struct {
 	driverRoot       string
 	targetDriverRoot string
 	nvidiaCTKPath    string
-	cdiRoot          string
 	vendor           string
 	deviceIDStrategy string
 
@@ -139,7 +139,9 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 			if ret != nvml.SUCCESS {
 				return fmt.Errorf("failed to initialize NVML: %v", ret)
 			}
-			defer cdi.nvml.Shutdown()
+			defer func() {
+				_ = cdi.nvml.Shutdown()
+			}()
 		}
 
 		spec, err := cdilib.GetSpec()
@@ -169,5 +171,5 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 // QualifiedName constructs a CDI qualified device name for the specified resources.
 // Note: This assumes that the specified id matches the device name returned by the naming strategy.
 func (cdi *cdiHandler) QualifiedName(class string, id string) string {
-	return cdiapi.QualifiedName(cdi.vendor, class, id)
+	return cdiparser.QualifiedName(cdi.vendor, class, id)
 }

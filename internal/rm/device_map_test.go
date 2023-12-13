@@ -19,9 +19,10 @@ package rm
 import (
 	"testing"
 
-	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/stretchr/testify/require"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 func TestDeviceMapInsert(t *testing.T) {

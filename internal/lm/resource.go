@@ -160,7 +160,7 @@ func (rl resourceLabeler) productLabel(parts ...string) Labels {
 	var strippedParts []string
 	for _, p := range parts {
 		if p != "" {
-			strippedParts = append(strippedParts, strings.Replace(p, " ", "-", -1))
+			strippedParts = append(strippedParts, strings.ReplaceAll(p, " ", "-"))
 		}
 	}
 
@@ -218,7 +218,7 @@ func (rl resourceLabeler) replicationInfo() *spec.ReplicatedResource {
 	}
 	name := rl.resourceName
 	for _, r := range rl.config.Sharing.TimeSlicing.Resources {
-		if r.Name == spec.ResourceName(name) {
+		if r.Name == name {
 			return &r
 		}
 	}
