@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 default:
-  image: docker:stable
+  image: docker:24.0.6
   services:
-    - name: docker:dind
+    - name: docker:24.0.6-dind
       command: ["--experimental"]
 
 variables:
