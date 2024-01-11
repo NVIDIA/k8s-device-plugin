@@ -189,6 +189,8 @@ spec:
             mountPath: /driver-root
             readOnly: true
           {{- end }}
+          - name: cdi-root
+            mountPath: /var/run/cdi
           {{- if eq $hasConfigMap "true" }}
           - name: available-configs
             mountPath: /available-configs
@@ -208,6 +210,10 @@ spec:
           hostPath:
             path: {{ .Values.nvidiaDriverRoot }}
         {{- end }}
+        - name: cdi-root
+          hostPath:
+            path: /var/run/cdi
+            type: DirectoryOrCreate
         {{- if eq $hasConfigMap "true" }}
         - name: available-configs
           configMap:
