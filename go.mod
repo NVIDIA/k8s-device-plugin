@@ -31,12 +31,12 @@ replace (
 )
 
 require (
-	github.com/NVIDIA/go-gpuallocator v0.3.0
-	github.com/NVIDIA/go-nvlib v0.0.0-20231116150931-9fd385bace0d
+	github.com/NVIDIA/go-gpuallocator v0.3.1
+	github.com/NVIDIA/go-nvlib v0.0.0-20240109130712-11603560817a
 	github.com/NVIDIA/go-nvml v0.12.0-1.0.20231020145430-e06766c5e74f
 	github.com/NVIDIA/nvidia-container-toolkit v1.14.4-0.20231115203935-5d7ee25b37e2
 	github.com/fsnotify/fsnotify v1.7.0
-	github.com/google/uuid v1.3.1
+	github.com/google/uuid v1.4.0
 	github.com/mittwald/go-helm-client v0.12.3
 	github.com/onsi/ginkgo/v2 v2.13.0
 	github.com/onsi/gomega v1.28.1
@@ -52,7 +52,6 @@ require (
 	k8s.io/client-go v0.28.3
 	k8s.io/klog/v2 v2.100.1
 	k8s.io/kubelet v0.28.2
-	k8s.io/pod-security-admission v0.28.2
 	sigs.k8s.io/node-feature-discovery v0.14.2
 	sigs.k8s.io/yaml v1.3.0
 	tags.cncf.io/container-device-interface v0.6.2

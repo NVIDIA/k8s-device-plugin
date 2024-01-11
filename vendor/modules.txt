@@ -27,11 +27,11 @@ github.com/Masterminds/squirrel
 # github.com/Microsoft/hcsshim v0.11.0
 ## explicit; go 1.18
 github.com/Microsoft/hcsshim/osversion
-# github.com/NVIDIA/go-gpuallocator v0.3.0
+# github.com/NVIDIA/go-gpuallocator v0.3.1
 ## explicit; go 1.20
 github.com/NVIDIA/go-gpuallocator/gpuallocator
 github.com/NVIDIA/go-gpuallocator/internal/links
-# github.com/NVIDIA/go-nvlib v0.0.0-20231116150931-9fd385bace0d
+# github.com/NVIDIA/go-nvlib v0.0.0-20240109130712-11603560817a
 ## explicit; go 1.20
 github.com/NVIDIA/go-nvlib/pkg/nvlib/device
 github.com/NVIDIA/go-nvlib/pkg/nvlib/info
@@ -254,7 +254,7 @@ github.com/google/pprof/profile
 # github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 ## explicit; go 1.13
 github.com/google/shlex
-# github.com/google/uuid v1.3.1
+# github.com/google/uuid v1.4.0
 ## explicit
 github.com/google/uuid
 # github.com/gorilla/mux v1.8.0
@@ -1078,9 +1078,6 @@ k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1
 ## explicit; go 1.20
 k8s.io/kubernetes/pkg/apis/core
 k8s.io/kubernetes/pkg/apis/core/helper
-# k8s.io/pod-security-admission v0.28.2 => k8s.io/pod-security-admission v0.28.3
-## explicit; go 1.20
-k8s.io/pod-security-admission/api
 # k8s.io/utils v0.0.0-20230406110748-d93618cff8a2
 ## explicit; go 1.18
 k8s.io/utils/buffer
