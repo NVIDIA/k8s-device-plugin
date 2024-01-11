@@ -182,6 +182,13 @@ spec:
         volumeMounts:
           - name: device-plugin
             mountPath: /var/lib/kubelet/device-plugins
+          {{- if typeIs "string" .Values.nvidiaDriverRoot }}
+          # We always mount the driver root at /driver-root in the container.
+          # This is required for CDI detection to work correctly.
+          - name: driver-root
+            mountPath: /driver-root
+            readOnly: true
+          {{- end }}
           {{- if eq $hasConfigMap "true" }}
           - name: available-configs
             mountPath: /available-configs
@@ -196,6 +203,11 @@ spec:
         - name: device-plugin
           hostPath:
             path: /var/lib/kubelet/device-plugins
+        {{- if typeIs "string" .Values.nvidiaDriverRoot }}
+        - name: driver-root
+          hostPath:
+            path: {{ .Values.nvidiaDriverRoot }}
+        {{- end }}
         {{- if eq $hasConfigMap "true" }}
         - name: available-configs
           configMap:
