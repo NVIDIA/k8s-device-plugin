@@ -17,9 +17,9 @@
 package manager
 
 import (
+	"github.com/NVIDIA/go-nvlib/pkg/nvml"
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 )
 
 // Option is a function that configures a manager
