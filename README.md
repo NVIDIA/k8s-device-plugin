@@ -122,6 +122,38 @@ And then restart `containerd`:
 $ sudo systemctl restart containerd
 ```
 
+##### Configure `CRI-O`
+When running `kubernetes` with `CRI-O`, add the config file to set the
+`nvidia-container-runtime` as the default low-level OCI runtime under
+`/etc/crio/crio.conf.d/99-nvidia.conf`. This will take priority over the default
+`crun` config file at `/etc/crio/crio.conf.d/10-crun.conf`:
+```
+[crio]
+
+  [crio.runtime]
+    default_runtime = "nvidia"
+
+    [crio.runtime.runtimes]
+
+      [crio.runtime.runtimes.nvidia]
+        runtime_path = "/usr/bin/nvidia-container-runtime"
+        runtime_type = "oci"
+```
+This file can automatically be generated with the nvidia-ctk command:
+```
+$ sudo nvidia-ctk runtime configure --runtime=crio --nvidia-set-as-default --config=/etc/crio/crio.conf.d/99-nvidia.conf
+```
+`CRI-O` uses `crun` as default low-level OCI runtime so `crun` needs to be added
+to the runtimes of the `nvidia-container-runtime` in the config file at `/etc/nvidia-container-runtime/config.toml`:
+```
+[nvidia-container-runtime]
+runtimes = ["crun", "docker-runc", "runc"]
+```
+And then restart `CRI-O`:
+```
+$ sudo systemctl restart crio
+```
+
 ### Enabling GPU Support in Kubernetes
 
 Once you have configured the options above on all the GPU nodes in your
