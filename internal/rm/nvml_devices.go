@@ -166,3 +166,21 @@ func (d nvmlMigDevice) GetNumaNode() (bool, int, error) {
 
 	return nvmlDevice{parent}.GetNumaNode()
 }
+
+// GetTotalMemory returns the total memory available on the device.
+func (d nvmlDevice) GetTotalMemory() (uint64, error) {
+	info, ret := d.Device.GetMemoryInfo()
+	if ret != nvml.SUCCESS {
+		return 0, ret
+	}
+	return info.Total, nil
+}
+
+// GetTotalMemory returns the total memory available on the device.
+func (d nvmlMigDevice) GetTotalMemory() (uint64, error) {
+	info, ret := d.Device.GetMemoryInfo()
+	if ret != nvml.SUCCESS {
+		return 0, ret
+	}
+	return info.Total, nil
+}

@@ -67,3 +67,8 @@ func (d *tegraDevice) GetPaths() ([]string, error) {
 func (d *tegraDevice) GetNumaNode() (bool, int, error) {
 	return false, -1, nil
 }
+
+// GetTotalMemory is unsupported for a Tegra device.
+func (d *tegraDevice) GetTotalMemory() (uint64, error) {
+	return 0, nil
+}
