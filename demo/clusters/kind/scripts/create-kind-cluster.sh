@@ -48,7 +48,6 @@ docker exec -it "${KIND_CLUSTER_NAME}-worker" bash -c " \
 
 # We configure the NVIDIA Container Runtime to only trigger on the nvidia.cdi.k8s.io annotation and enable CDI in containerd.
 docker exec -it "${KIND_CLUSTER_NAME}-worker" bash -c "\
-	&& \
 	nvidia-ctk config --set nvidia-container-runtime.modes.cdi.annotation-prefixes=nvidia.cdi.k8s.io/ \
 	&& \
 	nvidia-ctk runtime configure --runtime=containerd --cdi.enabled \
