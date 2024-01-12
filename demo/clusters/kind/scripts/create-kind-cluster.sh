@@ -47,7 +47,7 @@ docker exec -it "${KIND_CLUSTER_NAME}-worker" bash -c " \
   && apt-get install -y nvidia-container-toolkit"
 
 docker exec -it "${KIND_CLUSTER_NAME}-worker" bash -c "\
-	nvidia-ctk runtime configure --runtime=containerd \
+	nvidia-ctk runtime configure --runtime=containerd --cdi.enabled \
 	&& \
 	systemctl restart containerd"
 
