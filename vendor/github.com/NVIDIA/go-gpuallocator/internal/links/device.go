@@ -56,6 +56,62 @@ const (
 	EighteenNVLINKLinks
 )
 
+// String returns the string representation of the P2PLink type.
+func (l P2PLinkType) String() string {
+	switch l {
+	case P2PLinkCrossCPU:
+		return "P2PLinkCrossCPU"
+	case P2PLinkSameCPU:
+		return "P2PLinkSameCPU"
+	case P2PLinkHostBridge:
+		return "P2PLinkHostBridge"
+	case P2PLinkMultiSwitch:
+		return "P2PLinkMultiSwitch"
+	case P2PLinkSingleSwitch:
+		return "P2PLinkSingleSwitch"
+	case P2PLinkSameBoard:
+		return "P2PLinkSameBoard"
+	case SingleNVLINKLink:
+		return "SingleNVLINKLink"
+	case TwoNVLINKLinks:
+		return "TwoNVLINKLinks"
+	case ThreeNVLINKLinks:
+		return "ThreeNVLINKLinks"
+	case FourNVLINKLinks:
+		return "FourNVLINKLinks"
+	case FiveNVLINKLinks:
+		return "FiveNVLINKLinks"
+	case SixNVLINKLinks:
+		return "SixNVLINKLinks"
+	case SevenNVLINKLinks:
+		return "SevenNVLINKLinks"
+	case EightNVLINKLinks:
+		return "EightNVLINKLinks"
+	case NineNVLINKLinks:
+		return "NineNVLINKLinks"
+	case TenNVLINKLinks:
+		return "TenNVLINKLinks"
+	case ElevenNVLINKLinks:
+		return "ElevenNVLINKLinks"
+	case TwelveNVLINKLinks:
+		return "TwelveNVLINKLinks"
+	case ThirteenNVLINKLinks:
+		return "ThirteenNVLINKLinks"
+	case FourteenNVLINKLinks:
+		return "FourteenNVLINKLinks"
+	case FifteenNVLINKLinks:
+		return "FifteenNVLINKLinks"
+	case SixteenNVLINKLinks:
+		return "SixteenNVLINKLinks"
+	case SeventeenNVLINKLinks:
+		return "SeventeenNVLINKLinks"
+	case EighteenNVLINKLinks:
+		return "EighteenNVLINKLinks"
+	default:
+		return fmt.Sprintf("UNKOWN (%v)", uint(l))
+	}
+}
+
 // GetP2PLink gets the peer-to-peer connectivity between two devices.
 func GetP2PLink(dev1 device.Device, dev2 device.Device) (P2PLinkType, error) {
 	level, ret := dev1.GetTopologyCommonAncestor(dev2)
@@ -97,7 +153,7 @@ func GetNVLink(dev1 device.Device, dev2 device.Device) (P2PLinkType, error) {
 
 	nvlink := P2PLinkUnknown
 	for _, pciInfo := range pciInfos {
-		if pciInfo.BusID() == dev2BusID {
+		if pciInfo.BusID() != dev2BusID {
 			continue
 		}
 		switch nvlink {
@@ -149,23 +205,23 @@ func getAllNvLinkRemotePciInfo(dev device.Device) ([]PciInfo, error) {
 	var pciInfos []PciInfo
 	for i := 0; i < nvml.NVLINK_MAX_LINKS; i++ {
 		state, ret := dev.GetNvLinkState(i)
-		if ret == nvml.ERROR_NOT_SUPPORTED {
+		if ret == nvml.ERROR_NOT_SUPPORTED || ret == nvml.ERROR_INVALID_ARGUMENT {
 			continue
 		}
 		if ret != nvml.SUCCESS {
 			return nil, fmt.Errorf("failed to get nvlink state: %v", ret)
 		}
-
-		if state == nvml.FEATURE_ENABLED {
-			pciInfo, ret := dev.GetNvLinkRemotePciInfo(i)
-			if ret == nvml.ERROR_NOT_SUPPORTED {
-				continue
-			}
-			if ret != nvml.SUCCESS {
-				return nil, fmt.Errorf("failed to get remote pci info: %v", ret)
-			}
-			pciInfos = append(pciInfos, PciInfo(pciInfo))
+		if state != nvml.FEATURE_ENABLED {
+			continue
 		}
+		pciInfo, ret := dev.GetNvLinkRemotePciInfo(i)
+		if ret == nvml.ERROR_NOT_SUPPORTED || ret == nvml.ERROR_INVALID_ARGUMENT {
+			continue
+		}
+		if ret != nvml.SUCCESS {
+			return nil, fmt.Errorf("failed to get remote pci info: %v", ret)
+		}
+		pciInfos = append(pciInfos, PciInfo(pciInfo))
 	}
 
 	return pciInfos, nil

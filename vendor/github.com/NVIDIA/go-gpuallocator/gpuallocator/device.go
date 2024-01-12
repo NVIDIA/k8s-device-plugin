@@ -98,28 +98,29 @@ func (o *deviceListBuilder) build() (DeviceList, error) {
 		_ = o.nvmllib.Shutdown()
 	}()
 
-	var devices DeviceList
-	err := o.devicelib.VisitDevices(func(i int, d device.Device) error {
-		device, err := newDevice(i, d)
-		if err != nil {
-			return fmt.Errorf("failed to construct linked device: %v", err)
-		}
-		devices = append(devices, device)
-		return nil
-	})
+	nvmlDevices, err := o.devicelib.GetDevices()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get devices: %v", err)
 	}
 
-	for i, d1 := range devices {
-		for j, d2 := range devices {
+	var devices DeviceList
+	for i, d := range nvmlDevices {
+		device, err := newDevice(i, d)
+		if err != nil {
+			return nil, fmt.Errorf("failed to construct linked device: %v", err)
+		}
+		devices = append(devices, device)
+	}
+
+	for i, d1 := range nvmlDevices {
+		for j, d2 := range nvmlDevices {
 			if i != j {
 				p2plink, err := links.GetP2PLink(d1, d2)
 				if err != nil {
 					return nil, fmt.Errorf("error getting P2PLink for devices (%v, %v): %v", i, j, err)
 				}
 				if p2plink != links.P2PLinkUnknown {
-					d1.Links[d2.Index] = append(d1.Links[d2.Index], P2PLink{d2, p2plink})
+					devices[i].Links[j] = append(devices[i].Links[j], P2PLink{devices[j], p2plink})
 				}
 
 				nvlink, err := links.GetNVLink(d1, d2)
@@ -127,7 +128,7 @@ func (o *deviceListBuilder) build() (DeviceList, error) {
 					return nil, fmt.Errorf("error getting NVLink for devices (%v, %v): %v", i, j, err)
 				}
 				if nvlink != links.P2PLinkUnknown {
-					d1.Links[d2.Index] = append(d1.Links[d2.Index], P2PLink{d2, nvlink})
+					devices[i].Links[j] = append(devices[i].Links[j], P2PLink{devices[j], nvlink})
 				}
 			}
 		}

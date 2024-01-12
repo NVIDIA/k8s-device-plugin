@@ -68,6 +68,8 @@ type Device interface {
 	IsMigDeviceHandle() (bool, Return)
 	RegisterEvents(uint64, EventSet) Return
 	SetMigMode(Mode int) (Return, Return)
+	// nvmlDeviceHandle returns a pointer to the underlying NVML device.
+	nvmlDeviceHandle() *nvml.Device
 }
 
 // GpuInstance defines the functions implemented by a GpuInstance

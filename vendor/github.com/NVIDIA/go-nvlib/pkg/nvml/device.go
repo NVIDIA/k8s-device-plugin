@@ -22,6 +22,11 @@ type nvmlDevice nvml.Device
 
 var _ Device = (*nvmlDevice)(nil)
 
+// nvmlDeviceHandle returns a pointer to the underlying device.
+func (d nvmlDevice) nvmlDeviceHandle() *nvml.Device {
+	return (*nvml.Device)(&d)
+}
+
 // GetIndex returns the index of a Device
 func (d nvmlDevice) GetIndex() (int, Return) {
 	i, r := nvml.Device(d).GetIndex()
@@ -181,12 +186,12 @@ func (d nvmlDevice) GetSupportedEventTypes() (uint64, Return) {
 
 // GetTopologyCommonAncestor retrieves the common ancestor for two devices.
 func (d nvmlDevice) GetTopologyCommonAncestor(o Device) (GpuTopologyLevel, Return) {
-	other, ok := o.(nvmlDevice)
-	if !ok {
+	other := o.nvmlDeviceHandle()
+	if other == nil {
 		return 0, ERROR_INVALID_ARGUMENT
 	}
 
-	l, r := nvml.Device(d).GetTopologyCommonAncestor(nvml.Device(other))
+	l, r := nvml.Device(d).GetTopologyCommonAncestor(*other)
 	return GpuTopologyLevel(l), Return(r)
 }
 
