@@ -24,6 +24,8 @@ source "${CURRENT_DIR}/scripts/common.sh"
 
 kubectl label node "${KIND_CLUSTER_NAME}-worker" --overwrite nvidia.com/gpu.present=true
 
+: ${NVIDIA_DRIVER_ROOT:=/}
+
 helm upgrade -i --create-namespace --namespace nvidia-device-plugin nvidia ${PROJECT_DIR}/deployments/helm/nvidia-device-plugin \
     ${NVIDIA_DRIVER_ROOT:+--set nvidiaDriverRoot=${NVIDIA_DRIVER_ROOT}} \
     --set runtimeClassName=nvidia \
