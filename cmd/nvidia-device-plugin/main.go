@@ -18,6 +18,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"syscall"
@@ -275,9 +276,7 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]plugin.I
 
 		// Start the gRPC server for plugin p and connect it with the kubelet.
 		if err := p.Start(); err != nil {
-			klog.Error("Could not contact Kubelet. Did you enable the device plugin feature gate?")
-			klog.Error("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
-			klog.Error("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
+			klog.Errorf("Failed to start plugin: %v", err)
 			return plugins, true, nil
 		}
 		started++
@@ -292,10 +291,11 @@ func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]plugin.I
 
 func stopPlugins(plugins []plugin.Interface) error {
 	klog.Info("Stopping plugins.")
+	var errs error
 	for _, p := range plugins {
-		_ = p.Stop()
+		errors.Join(errs, p.Stop())
 	}
-	return nil
+	return errs
 }
 
 // disableResourceRenamingInConfig temporarily disable the resource renaming feature of the plugin.
