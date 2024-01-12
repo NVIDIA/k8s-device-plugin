@@ -56,6 +56,49 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 	return config, nil
 }
 
+// logger is used to issue warning in API functions without requiring an explicit implementation.
+type logger interface {
+	Warning(...interface{})
+}
+
+// DisableResourceNamingInConfig temporarily disable the resource renaming feature of the plugin.
+// This may be reenabled in a future release.
+func DisableResourceNamingInConfig(logger logger, config *Config) {
+	// Disable resource renaming through config.Resource
+	if len(config.Resources.GPUs) > 0 || len(config.Resources.MIGs) > 0 {
+		logger.Warning("Customizing the 'resources' field is not yet supported in the config. Ignoring...")
+	}
+	config.Resources.GPUs = nil
+	config.Resources.MIGs = nil
+
+	// Disable renaming / device selection in Sharing.TimeSlicing.Resources
+	renameByDefault := config.Sharing.TimeSlicing.RenameByDefault
+	setsNonDefaultRename := false
+	setsDevices := false
+	for i, r := range config.Sharing.TimeSlicing.Resources {
+		if !renameByDefault && r.Rename != "" {
+			setsNonDefaultRename = true
+			config.Sharing.TimeSlicing.Resources[i].Rename = ""
+		}
+		if renameByDefault && r.Rename != r.Name.DefaultSharedRename() {
+			setsNonDefaultRename = true
+			config.Sharing.TimeSlicing.Resources[i].Rename = r.Name.DefaultSharedRename()
+		}
+		if !r.Devices.All {
+			setsDevices = true
+			config.Sharing.TimeSlicing.Resources[i].Devices.All = true
+			config.Sharing.TimeSlicing.Resources[i].Devices.Count = 0
+			config.Sharing.TimeSlicing.Resources[i].Devices.List = nil
+		}
+	}
+	if setsNonDefaultRename {
+		logger.Warning("Setting the 'rename' field in sharing.timeSlicing.resources is not yet supported in the config. Ignoring...")
+	}
+	if setsDevices {
+		logger.Warning("Customizing the 'devices' field in sharing.timeSlicing.resources is not yet supported in the config. Ignoring...")
+	}
+}
+
 // parseConfig parses a config file as either YAML of JSON and unmarshals it into a Config struct.
 func parseConfig(configFile string) (*Config, error) {
 	reader, err := os.Open(configFile)

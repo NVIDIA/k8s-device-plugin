@@ -16,6 +16,7 @@ import (
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
 	"github.com/NVIDIA/k8s-device-plugin/internal/lm"
+	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 	"github.com/NVIDIA/k8s-device-plugin/internal/vgpu"
 )
@@ -129,7 +130,7 @@ func start(c *cli.Context, flags []cli.Flag) error {
 		if err != nil {
 			return fmt.Errorf("unable to load config: %v", err)
 		}
-		disableResourceRenamingInConfig(config)
+		spec.DisableResourceNamingInConfig(logger.ToKlog, config)
 
 		// Print the config to the output.
 		configJSON, err := json.MarshalIndent(config, "", "  ")
@@ -237,42 +238,4 @@ func removeOutputFile(path string) error {
 	}
 
 	return nil
-}
-
-// disableResourceRenamingInConfig temporarily disable the resource renaming feature of the plugin.
-// We plan to reeenable this feature in a future release.
-func disableResourceRenamingInConfig(config *spec.Config) {
-	// Disable resource renaming through config.Resource
-	if len(config.Resources.GPUs) > 0 || len(config.Resources.MIGs) > 0 {
-		klog.Info("Customizing the 'resources' field is not yet supported in the config. Ignoring...")
-	}
-	config.Resources.GPUs = nil
-	config.Resources.MIGs = nil
-
-	// Disable renaming / device selection in Sharing.TimeSlicing.Resources
-	renameByDefault := config.Sharing.TimeSlicing.RenameByDefault
-	setsNonDefaultRename := false
-	setsDevices := false
-	for i, r := range config.Sharing.TimeSlicing.Resources {
-		if !renameByDefault && r.Rename != "" {
-			setsNonDefaultRename = true
-			config.Sharing.TimeSlicing.Resources[i].Rename = ""
-		}
-		if renameByDefault && r.Rename != r.Name.DefaultSharedRename() {
-			setsNonDefaultRename = true
-			config.Sharing.TimeSlicing.Resources[i].Rename = r.Name.DefaultSharedRename()
-		}
-		if !r.Devices.All {
-			setsDevices = true
-			config.Sharing.TimeSlicing.Resources[i].Devices.All = true
-			config.Sharing.TimeSlicing.Resources[i].Devices.Count = 0
-			config.Sharing.TimeSlicing.Resources[i].Devices.List = nil
-		}
-	}
-	if setsNonDefaultRename {
-		klog.Info("Setting the 'rename' field in sharing.timeSlicing.resources is not yet supported in the config. Ignoring...")
-	}
-	if setsDevices {
-		klog.Info("Customizing the 'devices' field in sharing.timeSlicing.resources is not yet supported in the config. Ignoring...")
-	}
 }
