@@ -294,7 +294,7 @@ func stopPlugins(plugins []plugin.Interface) error {
 	klog.Info("Stopping plugins.")
 	var errs error
 	for _, p := range plugins {
-		errors.Join(errs, p.Stop())
+		errs = errors.Join(errs, p.Stop())
 	}
 	return errs
 }
