@@ -156,7 +156,11 @@ spec:
             - name: GFD_SLEEP_INTERVAL
               value: "{{ .Values.sleepInterval }}"
           {{- end }}
-          {{- if ne .Values.migStrategy "none" }}
+          {{- if eq $hasConfigMap "true" }}
+            - name: CONFIG_FILE
+              value: /config/config.yaml
+          {{- end }}
+          {{- if ne $migStrategiesAreAllNone "true" }}
             - name: NVIDIA_MIG_MONITOR_DEVICES
               value: all
           {{- end }}
