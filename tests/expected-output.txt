@@ -13,3 +13,4 @@ nvidia\.com\/gpu\.family=[a-z]+
 nvidia\.com\/mig\.capable=[true|false]
 nvidia\.com\/gpu\.compute\.major=[0-9]+
 nvidia\.com\/gpu\.compute\.minor=[0-9]+
+nvidia\.com\/sharing\.mps\.enabled=[true|false]

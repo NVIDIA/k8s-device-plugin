@@ -68,6 +68,7 @@ func NewNVMLLabeler(manager resource.Manager, config *spec.Config) (Labeler, err
 		versionLabeler,
 		migCapabilityLabeler,
 		resourceLabeler,
+		newSharingLabeler(config),
 	)
 
 	return l, nil
@@ -136,4 +137,15 @@ func newMigCapabilityLabeler(manager resource.Manager) (Labeler, error) {
 		"nvidia.com/mig.capable": strconv.FormatBool(isMigCapable),
 	}
 	return labels, nil
+}
+
+func newSharingLabeler(config *spec.Config) Labeler {
+	var mpsEnabled bool
+	if config != nil {
+		mpsEnabled = config.Sharing.SharingStrategy() == spec.SharingStrategyMPS
+	}
+
+	return Labels{
+		"nvidia.com/sharing.mps.enabled": strconv.FormatBool(mpsEnabled),
+	}
 }
