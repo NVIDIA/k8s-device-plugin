@@ -11,29 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-{{- if .Values.devicePlugin.enabled }}
 
+{{- if .Values.devicePlugin.enabled }}
+---
 {{- $hasConfigMap := (include "nvidia-device-plugin.hasConfigMap" .) | trim }}
+{{- $useServiceAccount := eq $hasConfigMap "true" | trim }}
 {{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}
 {{- $migStrategiesAreAllNone := (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) | trim }}
-
-{{- if .Values.legacyDaemonsetAPI }}
-apiVersion: extensions/v1beta1
-{{- else }}
+{{- $daemonsetName := printf "%s" (include "nvidia-device-plugin.fullname" .) | trunc 63 | trimSuffix "-" }}
 apiVersion: apps/v1
-{{- end }}
 kind: DaemonSet
 metadata:
-  name: {{ include "nvidia-device-plugin.fullname" . }}
+  name: {{ $daemonsetName }}
   namespace: {{ include "nvidia-device-plugin.namespace" . }}
   labels:
     {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.legacyDaemonsetAPI }}
   selector:
     matchLabels:
       {{- include "nvidia-device-plugin.selectorLabels" . | nindent 6 }}
-  {{- end }}
   {{- with .Values.updateStrategy }}
   updateStrategy:
     {{- toYaml . | nindent 4 }}
@@ -57,8 +53,10 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if eq $hasConfigMap "true" }}
+      {{- if eg $hasServiceAccount "true" }}
       serviceAccountName: {{ include "nvidia-device-plugin.fullname" . }}-service-account
+      {{- end }}
+      {{- if eq $hasConfigMap "true" }}
       shareProcessNamespace: true
       initContainers:
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
@@ -136,6 +134,7 @@ spec:
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: nvidia-device-plugin-ctr
+        command: ["nvidia-device-plugin"]
         env:
         {{- if typeIs "string" .Values.migStrategy }}
           - name: MIG_STRATEGY
@@ -182,21 +181,21 @@ spec:
         volumeMounts:
           - name: device-plugin
             mountPath: /var/lib/kubelet/device-plugins
-          {{- if typeIs "string" .Values.nvidiaDriverRoot }}
+        {{- if typeIs "string" .Values.nvidiaDriverRoot }}
           # We always mount the driver root at /driver-root in the container.
           # This is required for CDI detection to work correctly.
           - name: driver-root
             mountPath: /driver-root
             readOnly: true
-          {{- end }}
+        {{- end }}
           - name: cdi-root
             mountPath: /var/run/cdi
-          {{- if eq $hasConfigMap "true" }}
+        {{- if eq $hasConfigMap "true" }}
           - name: available-configs
             mountPath: /available-configs
           - name: config
             mountPath: /config
-          {{- end }}
+        {{- end }}
         {{- with .Values.resources }}
         resources:
           {{- toYaml . | nindent 10 }}
@@ -214,13 +213,13 @@ spec:
           hostPath:
             path: /var/run/cdi
             type: DirectoryOrCreate
-        {{- if eq $hasConfigMap "true" }}
+      {{- if eq $hasConfigMap "true" }}
         - name: available-configs
           configMap:
             name: "{{ $configMapName }}"
         - name: config
           emptyDir: {}
-        {{- end }}
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
