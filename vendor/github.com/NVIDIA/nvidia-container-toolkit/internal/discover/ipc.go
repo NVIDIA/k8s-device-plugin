@@ -17,14 +17,14 @@
 package discover
 
 import (
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup"
-	"github.com/sirupsen/logrus"
 )
 
 type ipcMounts mounts
 
 // NewIPCDiscoverer creats a discoverer for NVIDIA IPC sockets.
-func NewIPCDiscoverer(logger *logrus.Logger, driverRoot string) (Discover, error) {
+func NewIPCDiscoverer(logger logger.Interface, driverRoot string) (Discover, error) {
 	sockets := newMounts(
 		logger,
 		lookup.NewFileLocator(
@@ -70,7 +70,7 @@ func (d *ipcMounts) Mounts() ([]Mount, error) {
 	var modifiedMounts []Mount
 	for _, m := range mounts {
 		mount := m
-		mount.Options = append(m.Options, "noexec")
+		mount.Options = append(mount.Options, "noexec")
 		modifiedMounts = append(modifiedMounts, mount)
 	}
 

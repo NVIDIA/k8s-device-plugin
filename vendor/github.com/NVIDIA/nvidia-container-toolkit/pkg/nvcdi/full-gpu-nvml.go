@@ -22,14 +22,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvml"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/edits"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/info/drm"
-	"github.com/container-orchestrated-devices/container-device-interface/pkg/cdi"
-	"github.com/container-orchestrated-devices/container-device-interface/specs-go"
-	"github.com/sirupsen/logrus"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
+	"tags.cncf.io/container-device-interface/pkg/cdi"
+	"tags.cncf.io/container-device-interface/specs-go"
 )
 
 // GetGPUDeviceSpecs returns the CDI device specs for the full GPU represented by 'device'.
@@ -39,7 +39,7 @@ func (l *nvmllib) GetGPUDeviceSpecs(i int, d device.Device) (*specs.Device, erro
 		return nil, fmt.Errorf("failed to get edits for device: %v", err)
 	}
 
-	name, err := l.deviceNamer.GetDeviceName(i, d)
+	name, err := l.deviceNamer.GetDeviceName(i, convert{d})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get device name: %v", err)
 	}
@@ -69,7 +69,7 @@ func (l *nvmllib) GetGPUDeviceEdits(d device.Device) (*cdi.ContainerEdits, error
 
 // byPathHookDiscoverer discovers the entities required for injecting by-path DRM device links
 type byPathHookDiscoverer struct {
-	logger        *logrus.Logger
+	logger        logger.Interface
 	driverRoot    string
 	nvidiaCTKPath string
 	pciBusID      string
@@ -79,7 +79,7 @@ type byPathHookDiscoverer struct {
 var _ discover.Discover = (*byPathHookDiscoverer)(nil)
 
 // newFullGPUDiscoverer creates a discoverer for the full GPU defined by the specified device.
-func newFullGPUDiscoverer(logger *logrus.Logger, driverRoot string, nvidiaCTKPath string, d device.Device) (discover.Discover, error) {
+func newFullGPUDiscoverer(logger logger.Interface, driverRoot string, nvidiaCTKPath string, d device.Device) (discover.Discover, error) {
 	// TODO: The functionality to get device paths should be integrated into the go-nvlib/pkg/device.Device interface.
 	// This will allow reuse here and in other code where the paths are queried such as the NVIDIA device plugin.
 	minor, ret := d.GetMinorNumber()
