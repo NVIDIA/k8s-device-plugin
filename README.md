@@ -686,9 +686,6 @@ Besides these custom configuration options for the plugin, other standard helm
 chart values that are commonly overridden are:
 
 ```
-  legacyDaemonsetAPI:
-      use the legacy daemonset API version 'extensions/v1beta1'
-      (default 'false')
   runtimeClassName:
       the runtimeClassName to use, for use with clusters that have multiple runtimes. (typical value is 'nvidia')
 ```
@@ -709,15 +706,6 @@ $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
     --set compatWithCPUManager=true \
     --set resources.requests.cpu=100m \
     --set resources.limits.memory=512Mi
-```
-
-Using the legacy Daemonset API (only available on Kubernetes < `v1.16`):
-```shell
-$ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.3 \
-    --namespace nvidia-device-plugin \
-    --create-namespace \
-    --set legacyDaemonsetAPI=true
 ```
 
 Enabling compatibility with the `CPUManager` and the `mixed` `migStrategy`
