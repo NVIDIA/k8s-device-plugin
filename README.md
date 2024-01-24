@@ -141,7 +141,7 @@ When running `kubernetes` with `CRI-O`, add the config file to set the
 ```
 This file can automatically be generated with the nvidia-ctk command:
 ```
-$ sudo nvidia-ctk runtime configure --runtime=crio --nvidia-set-as-default --config=/etc/crio/crio.conf.d/99-nvidia.conf
+$ sudo nvidia-ctk runtime configure --runtime=crio --set-as-default --config=/etc/crio/crio.conf.d/99-nvidia.conf
 ```
 `CRI-O` uses `crun` as default low-level OCI runtime so `crun` needs to be added
 to the runtimes of the `nvidia-container-runtime` in the config file at `/etc/nvidia-container-runtime/config.toml`:
