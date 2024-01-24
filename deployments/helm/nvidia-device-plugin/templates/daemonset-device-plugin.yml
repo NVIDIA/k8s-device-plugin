@@ -188,6 +188,11 @@ spec:
             mountPath: /driver-root
             readOnly: true
         {{- end }}
+          # The MPS /dev/shm is needed to allow for MPS daemon health-checking.
+          - name: mps-shm
+            mountPath: /driver-root/dev/shm
+          - name: mps-root
+            mountPath: /driver-root/mps
           - name: cdi-root
             mountPath: /var/run/cdi
         {{- if eq $hasConfigMap "true" }}
@@ -204,7 +209,14 @@ spec:
         - name: device-plugin
           hostPath:
             path: /var/lib/kubelet/device-plugins
-        {{- if typeIs "string" .Values.nvidiaDriverRoot }}
+        - name: mps-root
+          hostPath:
+          # TODO: This should be /var/run/nvidia/mps
+            path: /var/lib/kubelet/device-plugins/mps
+        - name: mps-shm
+          hostPath:
+            path: /var/lib/kubelet/device-plugins/mps/shm
+       {{- if typeIs "string" .Values.nvidiaDriverRoot }}
         - name: driver-root
           hostPath:
             path: {{ .Values.nvidiaDriverRoot }}

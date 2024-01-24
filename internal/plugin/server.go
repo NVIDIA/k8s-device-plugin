@@ -29,6 +29,7 @@ import (
 	cdiapi "tags.cncf.io/container-device-interface/pkg/cdi"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mps"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 
@@ -70,12 +71,15 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 
 	deviceListStrategies, _ := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
 
+	pluginName := "nvidia-" + name
+	pluginPath := filepath.Join(pluginapi.DevicePluginPath, pluginName)
+
 	return &NvidiaDevicePlugin{
 		rm:                   resourceManager,
 		config:               config,
 		deviceListEnvvar:     "NVIDIA_VISIBLE_DEVICES",
 		deviceListStrategies: deviceListStrategies,
-		socket:               pluginapi.DevicePluginPath + "nvidia-" + name + ".sock",
+		socket:               pluginPath + ".sock",
 		cdiHandler:           cdiHandler,
 		cdiEnabled:           cdiEnabled,
 		cdiAnnotationPrefix:  *config.Flags.Plugin.CDIAnnotationPrefix,
@@ -111,6 +115,10 @@ func (plugin *NvidiaDevicePlugin) Devices() rm.Devices {
 func (plugin *NvidiaDevicePlugin) Start() error {
 	plugin.initialize()
 
+	if err := plugin.waitForMPSDaemon(); err != nil {
+		return fmt.Errorf("error waiting for MPS daemon: %w", err)
+	}
+
 	err := plugin.Serve()
 	if err != nil {
 		klog.Infof("Could not start device plugin for '%s': %s", plugin.rm.Resource(), err)
@@ -127,12 +135,25 @@ func (plugin *NvidiaDevicePlugin) Start() error {
 	klog.Infof("Registered device plugin for '%s' with Kubelet", plugin.rm.Resource())
 
 	go func() {
+		// TODO: add MPS health check
 		err := plugin.rm.CheckHealth(plugin.stop, plugin.health)
 		if err != nil {
 			klog.Infof("Failed to start health check: %v; continuing with health checks disabled", err)
 		}
 	}()
 
+	return nil
+}
+
+func (plugin *NvidiaDevicePlugin) waitForMPSDaemon() error {
+	if plugin.config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
+		return nil
+	}
+	// TODO: Check the started file here.
+	// TODO: Have some retry strategy here.
+	if err := mps.NewDaemon(plugin.rm).AssertHealthy(); err != nil {
+		return fmt.Errorf("error checking MPS daemon health: %w", err)
+	}
 	return nil
 }
 
@@ -280,8 +301,7 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.
 	for _, req := range reqs.ContainerRequests {
 		// If the devices being allocated are replicas, then (conditionally)
 		// error out if more than one resource is being allocated.
-		// TODO: This needs to be updated for MPS sharing.
-		if plugin.config.Sharing.TimeSlicing.FailRequestsGreaterThanOne && rm.AnnotatedIDs(req.DevicesIDs).AnyHasAnnotations() {
+		if plugin.config.Sharing.ReplicatedResources().FailRequestsGreaterThanOne && rm.AnnotatedIDs(req.DevicesIDs).AnyHasAnnotations() {
 			if len(req.DevicesIDs) > 1 {
 				return nil, fmt.Errorf("request for '%v: %v' too large: maximum request size for shared resources is 1", plugin.rm.Resource(), len(req.DevicesIDs))
 			}
@@ -327,6 +347,34 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 	}
 	if *plugin.config.Flags.MOFEDEnabled {
 		response.Envs["NVIDIA_MOFED"] = "enabled"
+	}
+	// TODO: We should generate a CDI specification for MPS
+	if plugin.config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
+		if response.Envs == nil {
+			response.Envs = make(map[string]string)
+		}
+		pipeDir := filepath.Join("/mps", string(plugin.rm.Resource()), "pipe")
+		response.Envs["CUDA_MPS_PIPE_DIRECTORY"] = pipeDir
+		response.Mounts = append(response.Mounts,
+			&pluginapi.Mount{
+				ContainerPath: pipeDir,
+				HostPath:      filepath.Join("/var/lib/kubelet/device-plugins", pipeDir),
+			},
+		)
+		logDir := filepath.Join("/mps", string(plugin.rm.Resource()), "log")
+		response.Envs["CUDA_MPS_LOG_DIRECTORY"] = logDir
+		response.Mounts = append(response.Mounts,
+			&pluginapi.Mount{
+				ContainerPath: logDir,
+				HostPath:      filepath.Join("/var/lib/kubelet/device-plugins", logDir),
+			},
+		)
+		response.Mounts = append(response.Mounts,
+			&pluginapi.Mount{
+				ContainerPath: "/dev/shm",
+				HostPath:      "/var/lib/kubelet/device-plugins/mps/shm",
+			},
+		)
 	}
 
 	return &response, nil
