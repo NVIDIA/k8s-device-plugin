@@ -53,7 +53,7 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if eg $hasServiceAccount "true" }}
+      {{- if eq $hasServiceAccount "true" }}
       serviceAccountName: {{ include "nvidia-device-plugin.fullname" . }}-service-account
       {{- end }}
       {{- if eq $hasConfigMap "true" }}
