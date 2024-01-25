@@ -52,6 +52,7 @@ require (
 	k8s.io/client-go v0.28.3
 	k8s.io/klog/v2 v2.100.1
 	k8s.io/kubelet v0.28.2
+	k8s.io/mount-utils v0.25.0
 	sigs.k8s.io/node-feature-discovery v0.14.2
 	sigs.k8s.io/yaml v1.4.0
 	tags.cncf.io/container-device-interface v0.6.2
@@ -132,6 +133,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
+	github.com/moby/sys/mountinfo v0.6.2 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect

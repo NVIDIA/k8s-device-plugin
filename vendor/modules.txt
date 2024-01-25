@@ -359,6 +359,9 @@ github.com/moby/locker
 ## explicit; go 1.13
 github.com/moby/spdystream
 github.com/moby/spdystream/spdy
+# github.com/moby/sys/mountinfo v0.6.2
+## explicit; go 1.16
+github.com/moby/sys/mountinfo
 # github.com/moby/term v0.5.0
 ## explicit; go 1.18
 github.com/moby/term
@@ -1087,6 +1090,9 @@ k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1
 ## explicit; go 1.20
 k8s.io/kubernetes/pkg/apis/core
 k8s.io/kubernetes/pkg/apis/core/helper
+# k8s.io/mount-utils v0.25.0 => k8s.io/mount-utils v0.28.3
+## explicit; go 1.20
+k8s.io/mount-utils
 # k8s.io/utils v0.0.0-20230406110748-d93618cff8a2
 ## explicit; go 1.18
 k8s.io/utils/buffer
@@ -1095,6 +1101,8 @@ k8s.io/utils/clock/testing
 k8s.io/utils/exec
 k8s.io/utils/integer
 k8s.io/utils/internal/third_party/forked/golang/net
+k8s.io/utils/io
+k8s.io/utils/keymutex
 k8s.io/utils/net
 k8s.io/utils/pointer
 k8s.io/utils/strings/slices
