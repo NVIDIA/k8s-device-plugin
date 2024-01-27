@@ -19,7 +19,7 @@ default:
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
-  BUILDIMAGE: "${CI_REGISTRY_IMAGE}/build:${CI_COMMIT_SHORT_SHA}"
+  BUILDIMAGE: "ghcr.io/nvidia/k8s-test-infra:devel-go1.20.5"
   BUILD_MULTI_ARCH_IMAGES: "true"
 
 stages:
