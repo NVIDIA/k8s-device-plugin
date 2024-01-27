@@ -23,6 +23,7 @@ RUN apt-get update && \
     && \
     rm -rf /var/lib/apt/lists/*
 
+ARG GOLANG_VERSION=x.x.x
 RUN set -eux; \
     \
     arch="$(uname -m)"; \
