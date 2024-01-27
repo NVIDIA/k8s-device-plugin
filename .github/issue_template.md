@@ -16,8 +16,6 @@ _**Important Note:  NVIDIA AI Enterprise customers can get support from NVIDIA E
 * Kernel Version:
 * Container Runtime Type/Version(e.g. Containerd, CRI-O, Docker):
 * K8s Flavor/Version(e.g. K8s, OCP, Rancher, GKE, EKS):
-* GPU Operator Version:
-
 
 ### 2. Issue or feature description
 _Briefly explain the issue in terms of expected behavior and current behavior._
@@ -37,4 +35,4 @@ Additional information that might help better understand your environment and re
  - [ ] Any relevant kernel output lines from `dmesg`
  - [ ] NVIDIA packages version from `dpkg -l '*nvidia*'` _or_ `rpm -qa '*nvidia*'`
  - [ ] NVIDIA container library version from `nvidia-container-cli -V`
- - [ ] NVIDIA container library logs (see [troubleshooting](https://github.com/NVIDIA/nvidia-docker/wiki/Troubleshooting))
+

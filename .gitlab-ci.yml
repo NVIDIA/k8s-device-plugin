@@ -15,41 +15,24 @@
 include:
   - .common-ci.yml
 
-build-dev-image:
-  stage: image
-  script:
-    - apk --no-cache add make bash
-    - make .build-image
-    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-    - make .push-build-image
-
-.requires-build-image:
-  image: "${BUILDIMAGE}"
-  needs:
-    - job: build-dev-image
-
 .go-check:
-  extends:
-    - .requires-build-image
+  image: "${BUILDIMAGE}"
   stage: go-checks
 
 check:
-  extends:
-    - .requires-build-image
+  image: "${BUILDIMAGE}"
   stage: go-checks
   script:
     - make check
 
 go-build:
-  extends:
-    - .requires-build-image
+  image: "${BUILDIMAGE}"
   stage: go-build
   script:
     - make build
 
 unit-tests:
-  extends:
-    - .requires-build-image
+  image: "${BUILDIMAGE}"
   stage: unit-tests
   script:
     - make coverage
