@@ -23,9 +23,6 @@ REGISTRY ?= nvidia
 IMAGE_NAME = $(REGISTRY)/k8s-device-plugin
 endif
 
-BUILDIMAGE_TAG ?= golang$(GOLANG_VERSION)
-BUILDIMAGE ?= $(IMAGE_NAME)-build:$(BUILDIMAGE_TAG)
-
 EXAMPLES := $(patsubst ./examples/%/,%,$(sort $(dir $(wildcard ./examples/*/))))
 EXAMPLE_TARGETS := $(patsubst %,example-%, $(EXAMPLES))
 
@@ -112,32 +109,14 @@ coverage: test
 generate:
 	go generate $(MODULE)/...
 
-# Generate an image for containerized builds
-# Note: This image is local only
-.PHONY: .build-image .pull-build-image .push-build-image
-.build-image: docker/Dockerfile.devel
-	if [ x"$(SKIP_IMAGE_BUILD)" = x"" ]; then \
-		$(DOCKER) build \
-			--progress=plain \
-			--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
-			--tag $(BUILDIMAGE) \
-			-f $(^) \
-			docker; \
-	fi
-
-.pull-build-image:
-	$(DOCKER) pull $(BUILDIMAGE)
-
-.push-build-image:
-	$(DOCKER) push $(BUILDIMAGE)
-
-$(DOCKER_TARGETS): docker-%: .build-image
-	@echo "Running 'make $(*)' in docker container $(BUILDIMAGE)"
+$(DOCKER_TARGETS): docker-%:
+	@echo "Running 'make $(*)' in container image $(BUILDIMAGE)"
 	$(DOCKER) run \
 		--rm \
-		-e GOCACHE=/tmp/.cache \
-		-v $(PWD):$(PWD) \
-		-w $(PWD) \
+		-e GOCACHE=/tmp/.cache/go \
+		-e GOMODCACHE=/tmp/.cache/gomod \
+		-v $(PWD):/work \
+		-w /work \
 		--user $$(id -u):$$(id -g) \
 		$(BUILDIMAGE) \
 			make $(*)
@@ -148,8 +127,9 @@ PHONY: .shell
 	$(DOCKER) run \
 		--rm \
 		-ti \
-		-e GOCACHE=/tmp/.cache \
-		-v $(PWD):$(PWD) \
-		-w $(PWD) \
+		-e GOCACHE=/tmp/.cache/go \
+		-e GOMODCACHE=/tmp/.cache/gomod \
+		-v $(PWD):/work \
+		-w /work \
 		--user $$(id -u):$$(id -g) \
 		$(BUILDIMAGE)
