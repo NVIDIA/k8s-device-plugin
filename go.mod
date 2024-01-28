@@ -53,7 +53,7 @@ require (
 	k8s.io/klog/v2 v2.100.1
 	k8s.io/kubelet v0.28.2
 	sigs.k8s.io/node-feature-discovery v0.14.2
-	sigs.k8s.io/yaml v1.3.0
+	sigs.k8s.io/yaml v1.4.0
 	tags.cncf.io/container-device-interface v0.6.2
 )
 
