@@ -28,16 +28,15 @@ replace (
 )
 
 require (
-	github.com/NVIDIA/go-gpuallocator v0.2.3
-	github.com/NVIDIA/nvidia-container-toolkit v1.13.3
-	github.com/container-orchestrated-devices/container-device-interface v0.5.4-0.20230111111500-5b3b5d81179a
+	github.com/NVIDIA/go-gpuallocator v0.3.1
+	github.com/NVIDIA/go-nvlib v0.0.0-20240109130712-11603560817a
+	github.com/NVIDIA/nvidia-container-toolkit v1.14.4-0.20231115203935-5d7ee25b37e2
 	github.com/fsnotify/fsnotify v1.6.0
-	github.com/google/uuid v1.3.1
+	github.com/google/uuid v1.4.0
 	github.com/prometheus/procfs v0.8.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.4.0
-	gitlab.com/nvidia/cloud-native/go-nvlib v0.0.0-20230327171225-18ad7cd513cf
 	golang.org/x/net v0.18.0
 	google.golang.org/grpc v1.59.0
 	k8s.io/api v0.27.3
@@ -46,11 +45,11 @@ require (
 	k8s.io/klog/v2 v2.90.1
 	k8s.io/kubelet v0.0.0
 	sigs.k8s.io/yaml v1.3.0
+	tags.cncf.io/container-device-interface v0.6.2
 )
 
 require (
-	github.com/NVIDIA/go-nvml v0.12.0-1 // indirect
-	github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20201222072828-352eb4c503a7 // indirect
+	github.com/NVIDIA/go-nvml v0.12.0-1.0.20231020145430-e06766c5e74f // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
@@ -70,8 +69,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/opencontainers/runc v1.1.7 // indirect
-	github.com/opencontainers/runtime-spec v1.1.0-rc.2 // indirect
+	github.com/opencontainers/runtime-spec v1.1.0 // indirect
 	github.com/opencontainers/runtime-tools v0.9.1-0.20221107090550-2e043c6bd626 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -93,4 +91,5 @@ require (
 	k8s.io/utils v0.0.0-20230209194617-a36077c30491 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
+	tags.cncf.io/container-device-interface/specs-go v0.6.0 // indirect
 )

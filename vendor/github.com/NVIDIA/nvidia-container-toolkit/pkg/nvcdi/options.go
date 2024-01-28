@@ -17,9 +17,10 @@
 package nvcdi
 
 import (
-	"github.com/sirupsen/logrus"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
+	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
 )
 
 // Option is a function that configures the nvcdilib
@@ -47,7 +48,7 @@ func WithDriverRoot(root string) Option {
 }
 
 // WithLogger sets the logger for the library
-func WithLogger(logger *logrus.Logger) Option {
+func WithLogger(logger logger.Interface) Option {
 	return func(l *nvcdilib) {
 		l.logger = logger
 	}
@@ -85,5 +86,35 @@ func WithVendor(vendor string) Option {
 func WithClass(class string) Option {
 	return func(o *nvcdilib) {
 		o.class = class
+	}
+}
+
+// WithMergedDeviceOptions sets the merged device options for the library
+// If these are not set, no merged device will be generated.
+func WithMergedDeviceOptions(opts ...transform.MergedDeviceOption) Option {
+	return func(o *nvcdilib) {
+		o.mergedDeviceOptions = opts
+	}
+}
+
+// WithCSVFiles sets the CSV files for the library
+func WithCSVFiles(csvFiles []string) Option {
+	return func(o *nvcdilib) {
+		o.csvFiles = csvFiles
+	}
+}
+
+// WithCSVIgnorePatterns sets the ignore patterns for entries in the CSV files.
+func WithCSVIgnorePatterns(csvIgnorePatterns []string) Option {
+	return func(o *nvcdilib) {
+		o.csvIgnorePatterns = csvIgnorePatterns
+	}
+}
+
+// WithLibrarySearchPaths sets the library search paths.
+// This is currently only used for CSV-mode.
+func WithLibrarySearchPaths(paths []string) Option {
+	return func(o *nvcdilib) {
+		o.librarySearchPaths = paths
 	}
 }

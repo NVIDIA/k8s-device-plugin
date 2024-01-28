@@ -19,48 +19,7 @@ package rm
 import (
 	"fmt"
 	"sort"
-
-	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
 )
-
-var alignedAllocationPolicy = gpuallocator.NewBestEffortPolicy()
-
-// getPreferredAllocation runs an allocation algorithm over the inputs.
-// The algorithm chosen is based both on the incoming set of available devices and various config settings.
-func (r *resourceManager) getPreferredAllocation(available, required []string, size int) ([]string, error) {
-	// If all of the available devices are full GPUs without replicas, then
-	// calculate an aligned allocation across those devices.
-	if !r.Devices().ContainsMigDevices() && !AnnotatedIDs(available).AnyHasAnnotations() {
-		return r.alignedAlloc(available, required, size)
-	}
-
-	// Otherwise, distribute them evenly across all replicated GPUs
-	return r.distributedAlloc(available, required, size)
-}
-
-// alignedAlloc shells out to the alignedAllocationPolicy that is set in
-// order to calculate the preferred allocation.
-func (r *resourceManager) alignedAlloc(available, required []string, size int) ([]string, error) {
-	var devices []string
-
-	availableDevices, err := gpuallocator.NewDevicesFrom(available)
-	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve list of available devices: %v", err)
-	}
-
-	requiredDevices, err := gpuallocator.NewDevicesFrom(required)
-	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve list of required devices: %v", err)
-	}
-
-	allocatedDevices := alignedAllocationPolicy.Allocate(availableDevices, requiredDevices, size)
-
-	for _, device := range allocatedDevices {
-		devices = append(devices, device.UUID)
-	}
-
-	return devices, nil
-}
 
 // distributedAlloc returns a list of devices such that any replicated
 // devices are distributed across all replicated GPUs equally. It takes into

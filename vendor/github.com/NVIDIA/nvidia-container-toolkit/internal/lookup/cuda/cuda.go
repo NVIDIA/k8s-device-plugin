@@ -17,14 +17,13 @@
 package cuda
 
 import (
-	"path/filepath"
-
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup"
-	"github.com/sirupsen/logrus"
 )
 
 type cudaLocator struct {
-	logger     *logrus.Logger
+	lookup.Locator
+	logger     logger.Interface
 	driverRoot string
 }
 
@@ -32,7 +31,7 @@ type cudaLocator struct {
 type Options func(*cudaLocator)
 
 // WithLogger is an option that configures the logger used by the locator.
-func WithLogger(logger *logrus.Logger) Options {
+func WithLogger(logger logger.Interface) Options {
 	return func(c *cudaLocator) {
 		c.logger = logger
 	}
@@ -53,52 +52,24 @@ func New(opts ...Options) lookup.Locator {
 	}
 
 	if c.logger == nil {
-		c.logger = logrus.StandardLogger()
+		c.logger = logger.New()
 	}
 	if c.driverRoot == "" {
 		c.driverRoot = "/"
 	}
 
+	// TODO: Do we want to set the Count to 1 here?
+	l, _ := lookup.NewLibraryLocator(
+		c.logger,
+		c.driverRoot,
+	)
+
+	c.Locator = l
 	return c
 }
 
 // Locate returns the path to the libcuda.so.RMVERSION file.
 // libcuda.so is prefixed to the specified pattern.
 func (l *cudaLocator) Locate(pattern string) ([]string, error) {
-	ldcacheLocator, err := lookup.NewLibraryLocator(
-		l.logger,
-		l.driverRoot,
-	)
-	if err != nil {
-		l.logger.Debugf("Failed to create LDCache locator: %v", err)
-	}
-
-	fullPattern := "libcuda.so" + pattern
-
-	candidates, err := ldcacheLocator.Locate("libcuda.so")
-	if err == nil {
-		for _, c := range candidates {
-			if match, err := filepath.Match(fullPattern, filepath.Base(c)); err != nil || !match {
-				l.logger.Debugf("Skipping non-matching candidate %v: %v", c, err)
-				continue
-			}
-			return []string{c}, nil
-		}
-	}
-	l.logger.Debugf("Could not locate %q in LDCache: Checking predefined library paths.", pattern)
-
-	pathLocator := lookup.NewFileLocator(
-		lookup.WithLogger(l.logger),
-		lookup.WithRoot(l.driverRoot),
-		lookup.WithSearchPaths(
-			"/usr/lib64",
-			"/usr/lib/x86_64-linux-gnu",
-			"/usr/lib/aarch64-linux-gnu",
-			"/usr/lib/x86_64-linux-gnu/nvidia/current",
-			"/usr/lib/aarch64-linux-gnu/nvidia/current",
-		),
-		lookup.WithCount(1),
-	)
-
-	return pathLocator.Locate(fullPattern)
+	return l.Locator.Locate("libcuda.so" + pattern)
 }

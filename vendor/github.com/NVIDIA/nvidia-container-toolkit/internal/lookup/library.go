@@ -18,47 +18,67 @@ package lookup
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/ldcache"
-	log "github.com/sirupsen/logrus"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 )
 
-type library struct {
-	logger  *log.Logger
-	symlink Locator
-	cache   ldcache.LDCache
+type ldcacheLocator struct {
+	logger logger.Interface
+	cache  ldcache.LDCache
 }
 
-var _ Locator = (*library)(nil)
+var _ Locator = (*ldcacheLocator)(nil)
 
 // NewLibraryLocator creates a library locator using the specified logger.
-func NewLibraryLocator(logger *log.Logger, root string) (Locator, error) {
+func NewLibraryLocator(logger logger.Interface, root string) (Locator, error) {
+	// We construct a symlink locator for expected library locations.
+	symlinkLocator := NewSymlinkLocator(
+		WithLogger(logger),
+		WithRoot(root),
+		WithSearchPaths([]string{
+			"/",
+			"/usr/lib64",
+			"/usr/lib/x86_64-linux-gnu",
+			"/usr/lib/aarch64-linux-gnu",
+			"/usr/lib/x86_64-linux-gnu/nvidia/current",
+			"/usr/lib/aarch64-linux-gnu/nvidia/current",
+			"/lib64",
+			"/lib/x86_64-linux-gnu",
+			"/lib/aarch64-linux-gnu",
+			"/lib/x86_64-linux-gnu/nvidia/current",
+			"/lib/aarch64-linux-gnu/nvidia/current",
+		}...),
+	)
+
+	l := First(
+		symlinkLocator,
+		newLdcacheLocator(logger, root),
+	)
+	return l, nil
+}
+
+func newLdcacheLocator(logger logger.Interface, root string) Locator {
 	cache, err := ldcache.New(logger, root)
 	if err != nil {
-		return nil, fmt.Errorf("error loading ldcache: %v", err)
+		// If we failed to open the LDCache, we default to a symlink locator.
+		logger.Warningf("Failed to load ldcache: %v", err)
+		return nil
 	}
 
-	l := library{
-		logger:  logger,
-		symlink: NewSymlinkLocator(logger, root),
-		cache:   cache,
+	return ldcacheLocator{
+		logger: logger,
+		cache:  cache,
 	}
-
-	return &l, nil
 }
 
 // Locate finds the specified libraryname.
 // If the input is a library name, the ldcache is searched otherwise the
 // provided path is resolved as a symlink.
-func (l library) Locate(libname string) ([]string, error) {
-	if strings.Contains(libname, "/") {
-		return l.symlink.Locate(libname)
-	}
-
+func (l ldcacheLocator) Locate(libname string) ([]string, error) {
 	paths32, paths64 := l.cache.Lookup(libname)
 	if len(paths32) > 0 {
-		l.logger.Warnf("Ignoring 32-bit libraries for %v: %v", libname, paths32)
+		l.logger.Warningf("Ignoring 32-bit libraries for %v: %v", libname, paths32)
 	}
 
 	if len(paths64) == 0 {
