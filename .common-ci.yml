@@ -19,16 +19,10 @@ default:
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
-  BUILDIMAGE: "ghcr.io/nvidia/k8s-test-infra:devel-go1.20.5"
   BUILD_MULTI_ARCH_IMAGES: "true"
 
 stages:
   - trigger
-  - image
-  - lint
-  - go-checks
-  - go-build
-  - unit-tests
   - package-build
   - image-build
   - test
