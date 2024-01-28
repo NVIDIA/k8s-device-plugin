@@ -15,55 +15,6 @@
 include:
   - .common-ci.yml
 
-.go-check:
-  image: "${BUILDIMAGE}"
-  stage: go-checks
-
-check:
-  image: "${BUILDIMAGE}"
-  stage: go-checks
-  script:
-    - make assert-fmt
-
-vet:
-  extends:
-    - .go-check
-  script:
-    - make vet
-
-lint:
-  extends:
-    - .go-check
-  script:
-    - make lint
-  allow_failure: true
-
-ineffassign:
-  extends:
-    - .go-check
-  script:
-    - make ineffassign
-  allow_failure: true
-
-misspell:
-  extends:
-    - .go-check
-  script:
-    - make misspell
-
-go-build:
-  image: "${BUILDIMAGE}"
-  stage: go-build
-  script:
-    - make build
-
-unit-tests:
-  image: "${BUILDIMAGE}"
-  stage: unit-tests
-  script:
-    - make coverage
-
-
 # Define the image build targets
 .image-build:
   stage: image-build
