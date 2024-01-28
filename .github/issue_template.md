@@ -1,9 +1,24 @@
-_The template below is mostly useful for bug reports and support questions. Feel free to remove anything which doesn't apply to you and add more information where it makes sense._
+---
+name: Device Plugin Bug report
+about: Create a report to help us improve
+title: ''
+labels: ''
+
 ---
 
-### 1. Issue or feature description
+_The template below is mostly useful for bug reports and support questions. Feel free to remove anything which doesn't apply to you and add more information where it makes sense._
 
-### 2. Steps to reproduce the issue
+_**Important Note:  NVIDIA AI Enterprise customers can get support from NVIDIA Enterprise support. Please open a case [here](https://enterprise-support.nvidia.com/s/create-case)**._
+
+
+### 1. Quick Debug Information
+* OS/Version(e.g. RHEL8.6, Ubuntu22.04):
+* Kernel Version:
+* Container Runtime Type/Version(e.g. Containerd, CRI-O, Docker):
+* K8s Flavor/Version(e.g. K8s, OCP, Rancher, GKE, EKS):
+
+### 2. Issue or feature description
+_Briefly explain the issue in terms of expected behavior and current behavior._
 
 ### 3. Information to [attach](https://help.github.com/articles/file-attachments-on-issues-and-pull-requests/) (optional if deemed irrelevant)
 
@@ -20,4 +35,4 @@ Additional information that might help better understand your environment and re
  - [ ] Any relevant kernel output lines from `dmesg`
  - [ ] NVIDIA packages version from `dpkg -l '*nvidia*'` _or_ `rpm -qa '*nvidia*'`
  - [ ] NVIDIA container library version from `nvidia-container-cli -V`
- - [ ] NVIDIA container library logs (see [troubleshooting](https://github.com/NVIDIA/nvidia-docker/wiki/Troubleshooting))
+
