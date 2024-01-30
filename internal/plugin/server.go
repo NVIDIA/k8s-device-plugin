@@ -163,7 +163,15 @@ func (plugin *NvidiaDevicePlugin) Serve() error {
 	go func() {
 		lastCrashTime := time.Now()
 		restartCount := 0
+
 		for {
+			// quite if it has been restarted too often
+			// i.e. if server has crashed more than 5 times and it didn't last more than one hour each time
+			if restartCount > 5 {
+				// quit
+				klog.Fatalf("GRPC server for '%s' has repeatedly crashed recently. Quitting", plugin.rm.Resource())
+			}
+
 			klog.Infof("Starting GRPC server for '%s'", plugin.rm.Resource())
 			err := plugin.server.Serve(sock)
 			if err == nil {
@@ -172,25 +180,19 @@ func (plugin *NvidiaDevicePlugin) Serve() error {
 
 			klog.Infof("GRPC server for '%s' crashed with error: %v", plugin.rm.Resource(), err)
 
-			// restart if it has not been too often
-			// i.e. if server has crashed more than 5 times and it didn't last more than one hour each time
-			if restartCount > 5 {
-				// quit
-				klog.Fatalf("GRPC server for '%s' has repeatedly crashed recently. Quitting", plugin.rm.Resource())
-			}
 			timeSinceLastCrash := time.Since(lastCrashTime).Seconds()
 			lastCrashTime = time.Now()
 			if timeSinceLastCrash > 3600 {
 				// it has been one hour since the last crash.. reset the count
 				// to reflect on the frequency
-				restartCount = 1
+				restartCount = 0
 			} else {
 				restartCount++
 			}
 		}
 	}()
 
-	// Wait for server to start by launching a blocking connexion
+	// Wait for server to start by launching a blocking connection
 	conn, err := plugin.dial(plugin.socket, 5*time.Second)
 	if err != nil {
 		return err
