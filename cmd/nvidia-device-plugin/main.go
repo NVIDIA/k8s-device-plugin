@@ -163,12 +163,12 @@ func start(c *cli.Context, flags []cli.Flag) error {
 	klog.Info("Starting OS watcher.")
 	sigs := newOSWatcher(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	var restarting bool
+	var started bool
 	var restartTimeout <-chan time.Time
 	var plugins []plugin.Interface
 restart:
 	// If we are restarting, stop plugins from previous run.
-	if restarting {
+	if started {
 		err := stopPlugins(plugins)
 		if err != nil {
 			return fmt.Errorf("error stopping plugins from previous run: %v", err)
@@ -176,17 +176,16 @@ restart:
 	}
 
 	klog.Info("Starting Plugins.")
-	plugins, restartPlugins, err := startPlugins(c, flags, restarting)
+	plugins, restartPlugins, err := startPlugins(c, flags)
 	if err != nil {
 		return fmt.Errorf("error starting plugins: %v", err)
 	}
+	started = true
 
 	if restartPlugins {
 		klog.Infof("Failed to start one or more plugins. Retrying in 30s...")
 		restartTimeout = time.After(30 * time.Second)
 	}
-
-	restarting = true
 
 	// Start an infinite loop, waiting for several indicators to either log
 	// some messages, trigger a restart of the plugins, or exit the program.
@@ -231,7 +230,7 @@ exit:
 	return nil
 }
 
-func startPlugins(c *cli.Context, flags []cli.Flag, restarting bool) ([]plugin.Interface, bool, error) {
+func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, bool, error) {
 	// Load the configuration file
 	klog.Info("Loading configuration.")
 	config, err := loadConfig(c, flags)
