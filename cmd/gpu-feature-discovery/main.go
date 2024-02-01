@@ -19,6 +19,7 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 	"github.com/NVIDIA/k8s-device-plugin/internal/vgpu"
+	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
 )
 
 var nodeFeatureAPI bool
@@ -121,7 +122,7 @@ func start(c *cli.Context, flags []cli.Flag) error {
 	}()
 
 	klog.Info("Starting OS watcher.")
-	sigs := newOSWatcher(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	sigs := watch.Signals(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	for {
 		// Load the configuration file
