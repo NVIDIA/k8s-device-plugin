@@ -105,20 +105,20 @@ func NewMIGResourceLabeler(resourceName spec.ResourceName, config *spec.Config, 
 }
 
 func newResourceLabeler(resourceName spec.ResourceName, config *spec.Config) resourceLabeler {
-	var replicatedResources *spec.ReplicatedResources
+	var sharing *spec.Sharing
 	if config != nil {
-		replicatedResources = config.Sharing.ReplicatedResources()
+		sharing = &config.Sharing
 	}
 	return resourceLabeler{
-		resourceName:        resourceName,
-		replicatedResources: replicatedResources,
+		resourceName: resourceName,
+		sharing:      sharing,
 	}
 
 }
 
 type resourceLabeler struct {
-	resourceName        spec.ResourceName
-	replicatedResources *spec.ReplicatedResources
+	resourceName spec.ResourceName
+	sharing      *spec.Sharing
 }
 
 // single creates a single label for the resource. The label key is
@@ -155,14 +155,35 @@ func (rl resourceLabeler) key(suffix string) string {
 
 // baseLabeler generates the product, count, and replicas labels for the resource
 func (rl resourceLabeler) baseLabeler(count int, parts ...string) Labeler {
-	return Merge(
-		rl.productLabel(parts...),
-		rl.countLabel(count),
-		rl.replicasLabel(),
-	)
+	replicas := rl.getReplicas()
+	strategy := spec.SharingStrategyNone
+	if rl.sharing != nil && replicas > 1 {
+		strategy = rl.sharing.SharingStrategy()
+	}
+	rawLabels := map[string]interface{}{
+		"product":          rl.getProductName(parts...),
+		"count":            count,
+		"replicas":         replicas,
+		"sharing-strategy": strategy,
+	}
+
+	labels := make(Labels)
+	for k, v := range rawLabels {
+		labels[rl.key(k)] = fmt.Sprintf("%v", v)
+	}
+	return labels
 }
 
+// Deprecated
 func (rl resourceLabeler) productLabel(parts ...string) Labels {
+	name := rl.getProductName(parts...)
+	if name == "" {
+		return make(Labels)
+	}
+	return rl.single("product", name)
+}
+
+func (rl resourceLabeler) getProductName(parts ...string) string {
 	var strippedParts []string
 	for _, p := range parts {
 		if p != "" {
@@ -171,35 +192,28 @@ func (rl resourceLabeler) productLabel(parts ...string) Labels {
 	}
 
 	if len(strippedParts) == 0 {
-		return make(Labels)
+		return ""
 	}
 
 	if rl.isShared() && !rl.isRenamed() {
 		strippedParts = append(strippedParts, "SHARED")
 	}
-
-	return rl.single("product", strings.Join(strippedParts, "-"))
+	return strings.Join(strippedParts, "-")
 }
 
-func (rl resourceLabeler) countLabel(count int) Labeler {
-	return rl.single("count", count)
-}
-
-func (rl resourceLabeler) replicasLabel() Labeler {
-	replicas := 1
+func (rl resourceLabeler) getReplicas() int {
 	if rl.sharingDisabled() {
-		replicas = 0
-	} else if r := rl.replicationInfo(); r != nil && r.Replicas > 1 {
-		replicas = r.Replicas
+		return 0
+	} else if r := rl.replicationInfo(); r != nil && r.Replicas > 0 {
+		return r.Replicas
 	}
-
-	return rl.single("replicas", replicas)
+	return 1
 }
 
 // sharingDisabled checks whether the resourceLabeler has sharing disabled
 // TODO: The nil check here is because we call NewGPUResourceLabeler with a nil config when sharing is disabled.
 func (rl resourceLabeler) sharingDisabled() bool {
-	return rl.replicatedResources == nil
+	return rl.sharing == nil
 }
 
 // isShared checks whether the resource is shared.
@@ -223,7 +237,7 @@ func (rl resourceLabeler) replicationInfo() *spec.ReplicatedResource {
 	if rl.sharingDisabled() {
 		return nil
 	}
-	for _, r := range rl.replicatedResources.Resources {
+	for _, r := range rl.sharing.ReplicatedResources().Resources {
 		if r.Name == rl.resourceName {
 			return &r
 		}

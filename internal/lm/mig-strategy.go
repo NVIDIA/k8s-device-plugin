@@ -257,6 +257,7 @@ func newInvalidMigStrategyLabeler(device resource.Device, reason string) (Labele
 
 	rl.updateLabel(labels, "count", 0)
 	rl.updateLabel(labels, "replicas", 0)
+	rl.updateLabel(labels, "sharing-strategy", "")
 	rl.updateLabel(labels, "memory", 0)
 
 	return labels, nil

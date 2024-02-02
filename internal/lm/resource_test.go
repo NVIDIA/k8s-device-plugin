@@ -31,7 +31,7 @@ func TestGPUResourceLabeler(t *testing.T) {
 	testCases := []struct {
 		description    string
 		count          int
-		timeSlicing    spec.ReplicatedResources
+		sharing        spec.Sharing
 		expectedLabels Labels
 	}{
 		{
@@ -41,77 +41,160 @@ func TestGPUResourceLabeler(t *testing.T) {
 			description: "no sharing",
 			count:       1,
 			expectedLabels: Labels{
-				"nvidia.com/gpu.count":         "1",
-				"nvidia.com/gpu.replicas":      "1",
-				"nvidia.com/gpu.memory":        "300",
-				"nvidia.com/gpu.product":       "MOCKMODEL",
-				"nvidia.com/gpu.family":        "ampere",
-				"nvidia.com/gpu.compute.major": "8",
-				"nvidia.com/gpu.compute.minor": "0",
+				"nvidia.com/gpu.count":            "1",
+				"nvidia.com/gpu.replicas":         "1",
+				"nvidia.com/gpu.sharing-strategy": "none",
+				"nvidia.com/gpu.memory":           "300",
+				"nvidia.com/gpu.product":          "MOCKMODEL",
+				"nvidia.com/gpu.family":           "ampere",
+				"nvidia.com/gpu.compute.major":    "8",
+				"nvidia.com/gpu.compute.minor":    "0",
 			},
 		},
 		{
-			description: "sharing ignores non-matching resource",
+			description: "time-slicing ignores non-matching resource",
 			count:       1,
-			timeSlicing: spec.ReplicatedResources{
-				Resources: []spec.ReplicatedResource{
-					{
-						Name:     "nvidia.com/not-gpu",
-						Replicas: 2,
+			sharing: spec.Sharing{
+				TimeSlicing: spec.ReplicatedResources{
+					Resources: []spec.ReplicatedResource{
+						{
+							Name:     "nvidia.com/not-gpu",
+							Replicas: 2,
+						},
 					},
 				},
 			},
 			expectedLabels: Labels{
-				"nvidia.com/gpu.count":         "1",
-				"nvidia.com/gpu.replicas":      "1",
-				"nvidia.com/gpu.memory":        "300",
-				"nvidia.com/gpu.product":       "MOCKMODEL",
-				"nvidia.com/gpu.family":        "ampere",
-				"nvidia.com/gpu.compute.major": "8",
-				"nvidia.com/gpu.compute.minor": "0",
+				"nvidia.com/gpu.count":            "1",
+				"nvidia.com/gpu.replicas":         "1",
+				"nvidia.com/gpu.sharing-strategy": "none",
+				"nvidia.com/gpu.memory":           "300",
+				"nvidia.com/gpu.product":          "MOCKMODEL",
+				"nvidia.com/gpu.family":           "ampere",
+				"nvidia.com/gpu.compute.major":    "8",
+				"nvidia.com/gpu.compute.minor":    "0",
 			},
 		},
 		{
-			description: "shared appends suffix and doubles count",
+			description: "time-slicing appends suffix and doubles count",
 			count:       1,
-			timeSlicing: spec.ReplicatedResources{
-				Resources: []spec.ReplicatedResource{
-					{
-						Name:     "nvidia.com/gpu",
-						Replicas: 2,
+			sharing: spec.Sharing{
+				TimeSlicing: spec.ReplicatedResources{
+					Resources: []spec.ReplicatedResource{
+						{
+							Name:     "nvidia.com/gpu",
+							Replicas: 2,
+						},
 					},
 				},
 			},
 			expectedLabels: Labels{
-				"nvidia.com/gpu.count":         "1",
-				"nvidia.com/gpu.replicas":      "2",
-				"nvidia.com/gpu.memory":        "300",
-				"nvidia.com/gpu.product":       "MOCKMODEL-SHARED",
-				"nvidia.com/gpu.family":        "ampere",
-				"nvidia.com/gpu.compute.major": "8",
-				"nvidia.com/gpu.compute.minor": "0",
+				"nvidia.com/gpu.count":            "1",
+				"nvidia.com/gpu.replicas":         "2",
+				"nvidia.com/gpu.sharing-strategy": "time-slicing",
+				"nvidia.com/gpu.memory":           "300",
+				"nvidia.com/gpu.product":          "MOCKMODEL-SHARED",
+				"nvidia.com/gpu.family":           "ampere",
+				"nvidia.com/gpu.compute.major":    "8",
+				"nvidia.com/gpu.compute.minor":    "0",
 			},
 		},
 		{
-			description: "renamed does not append suffix and doubles count",
+			description: "time-slicing renamed does not append suffix and doubles count",
 			count:       1,
-			timeSlicing: spec.ReplicatedResources{
-				Resources: []spec.ReplicatedResource{
-					{
-						Name:     "nvidia.com/gpu",
-						Rename:   "nvidia.com/gpu.shared",
-						Replicas: 2,
+			sharing: spec.Sharing{
+				TimeSlicing: spec.ReplicatedResources{
+					Resources: []spec.ReplicatedResource{
+						{
+							Name:     "nvidia.com/gpu",
+							Rename:   "nvidia.com/gpu.shared",
+							Replicas: 2,
+						},
 					},
 				},
 			},
 			expectedLabels: Labels{
-				"nvidia.com/gpu.count":         "1",
-				"nvidia.com/gpu.replicas":      "2",
-				"nvidia.com/gpu.memory":        "300",
-				"nvidia.com/gpu.product":       "MOCKMODEL",
-				"nvidia.com/gpu.family":        "ampere",
-				"nvidia.com/gpu.compute.major": "8",
-				"nvidia.com/gpu.compute.minor": "0",
+				"nvidia.com/gpu.count":            "1",
+				"nvidia.com/gpu.replicas":         "2",
+				"nvidia.com/gpu.sharing-strategy": "time-slicing",
+				"nvidia.com/gpu.memory":           "300",
+				"nvidia.com/gpu.product":          "MOCKMODEL",
+				"nvidia.com/gpu.family":           "ampere",
+				"nvidia.com/gpu.compute.major":    "8",
+				"nvidia.com/gpu.compute.minor":    "0",
+			},
+		},
+		{
+			description: "mps ignores non-matching resource",
+			count:       1,
+			sharing: spec.Sharing{
+				MPS: &spec.ReplicatedResources{
+					Resources: []spec.ReplicatedResource{
+						{
+							Name:     "nvidia.com/not-gpu",
+							Replicas: 2,
+						},
+					},
+				},
+			},
+			expectedLabels: Labels{
+				"nvidia.com/gpu.count":            "1",
+				"nvidia.com/gpu.replicas":         "1",
+				"nvidia.com/gpu.sharing-strategy": "none",
+				"nvidia.com/gpu.memory":           "300",
+				"nvidia.com/gpu.product":          "MOCKMODEL",
+				"nvidia.com/gpu.family":           "ampere",
+				"nvidia.com/gpu.compute.major":    "8",
+				"nvidia.com/gpu.compute.minor":    "0",
+			},
+		},
+		{
+			description: "mps appends suffix and doubles count",
+			count:       1,
+			sharing: spec.Sharing{
+				MPS: &spec.ReplicatedResources{
+					Resources: []spec.ReplicatedResource{
+						{
+							Name:     "nvidia.com/gpu",
+							Replicas: 2,
+						},
+					},
+				},
+			},
+			expectedLabels: Labels{
+				"nvidia.com/gpu.count":            "1",
+				"nvidia.com/gpu.replicas":         "2",
+				"nvidia.com/gpu.sharing-strategy": "mps",
+				"nvidia.com/gpu.memory":           "300",
+				"nvidia.com/gpu.product":          "MOCKMODEL-SHARED",
+				"nvidia.com/gpu.family":           "ampere",
+				"nvidia.com/gpu.compute.major":    "8",
+				"nvidia.com/gpu.compute.minor":    "0",
+			},
+		},
+		{
+			description: "mps renamed does not append suffix and doubles count",
+			count:       1,
+			sharing: spec.Sharing{
+				MPS: &spec.ReplicatedResources{
+					Resources: []spec.ReplicatedResource{
+						{
+							Name:     "nvidia.com/gpu",
+							Rename:   "nvidia.com/gpu.shared",
+							Replicas: 2,
+						},
+					},
+				},
+			},
+			expectedLabels: Labels{
+				"nvidia.com/gpu.count":            "1",
+				"nvidia.com/gpu.replicas":         "2",
+				"nvidia.com/gpu.sharing-strategy": "mps",
+				"nvidia.com/gpu.memory":           "300",
+				"nvidia.com/gpu.product":          "MOCKMODEL",
+				"nvidia.com/gpu.family":           "ampere",
+				"nvidia.com/gpu.compute.major":    "8",
+				"nvidia.com/gpu.compute.minor":    "0",
 			},
 		},
 	}
@@ -119,9 +202,7 @@ func TestGPUResourceLabeler(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
 			config := &spec.Config{
-				Sharing: spec.Sharing{
-					TimeSlicing: tc.timeSlicing,
-				},
+				Sharing: tc.sharing,
 			}
 			l, err := NewGPUResourceLabeler(config, device, tc.count)
 			require.NoError(t, err)
@@ -155,18 +236,19 @@ func TestMigResourceLabeler(t *testing.T) {
 			resourceName: "nvidia.com/gpu",
 			count:        1,
 			expectedLabels: Labels{
-				"nvidia.com/gpu.count":           "1",
-				"nvidia.com/gpu.replicas":        "1",
-				"nvidia.com/gpu.memory":          "300",
-				"nvidia.com/gpu.product":         "MOCKMODEL-MIG-1g.300gb",
-				"nvidia.com/gpu.multiprocessors": "0",
-				"nvidia.com/gpu.slices.gi":       "1",
-				"nvidia.com/gpu.slices.ci":       "2",
-				"nvidia.com/gpu.engines.copy":    "0",
-				"nvidia.com/gpu.engines.decoder": "0",
-				"nvidia.com/gpu.engines.encoder": "0",
-				"nvidia.com/gpu.engines.jpeg":    "0",
-				"nvidia.com/gpu.engines.ofa":     "0",
+				"nvidia.com/gpu.count":            "1",
+				"nvidia.com/gpu.replicas":         "1",
+				"nvidia.com/gpu.sharing-strategy": "none",
+				"nvidia.com/gpu.memory":           "300",
+				"nvidia.com/gpu.product":          "MOCKMODEL-MIG-1g.300gb",
+				"nvidia.com/gpu.multiprocessors":  "0",
+				"nvidia.com/gpu.slices.gi":        "1",
+				"nvidia.com/gpu.slices.ci":        "2",
+				"nvidia.com/gpu.engines.copy":     "0",
+				"nvidia.com/gpu.engines.decoder":  "0",
+				"nvidia.com/gpu.engines.encoder":  "0",
+				"nvidia.com/gpu.engines.jpeg":     "0",
+				"nvidia.com/gpu.engines.ofa":      "0",
 			},
 		},
 		{
@@ -182,18 +264,19 @@ func TestMigResourceLabeler(t *testing.T) {
 				},
 			},
 			expectedLabels: Labels{
-				"nvidia.com/gpu.count":           "1",
-				"nvidia.com/gpu.replicas":        "2",
-				"nvidia.com/gpu.memory":          "300",
-				"nvidia.com/gpu.product":         "MOCKMODEL-MIG-1g.300gb-SHARED",
-				"nvidia.com/gpu.multiprocessors": "0",
-				"nvidia.com/gpu.slices.gi":       "1",
-				"nvidia.com/gpu.slices.ci":       "2",
-				"nvidia.com/gpu.engines.copy":    "0",
-				"nvidia.com/gpu.engines.decoder": "0",
-				"nvidia.com/gpu.engines.encoder": "0",
-				"nvidia.com/gpu.engines.jpeg":    "0",
-				"nvidia.com/gpu.engines.ofa":     "0",
+				"nvidia.com/gpu.count":            "1",
+				"nvidia.com/gpu.replicas":         "2",
+				"nvidia.com/gpu.sharing-strategy": "time-slicing",
+				"nvidia.com/gpu.memory":           "300",
+				"nvidia.com/gpu.product":          "MOCKMODEL-MIG-1g.300gb-SHARED",
+				"nvidia.com/gpu.multiprocessors":  "0",
+				"nvidia.com/gpu.slices.gi":        "1",
+				"nvidia.com/gpu.slices.ci":        "2",
+				"nvidia.com/gpu.engines.copy":     "0",
+				"nvidia.com/gpu.engines.decoder":  "0",
+				"nvidia.com/gpu.engines.encoder":  "0",
+				"nvidia.com/gpu.engines.jpeg":     "0",
+				"nvidia.com/gpu.engines.ofa":      "0",
 			},
 		},
 		{
@@ -210,18 +293,19 @@ func TestMigResourceLabeler(t *testing.T) {
 				},
 			},
 			expectedLabels: Labels{
-				"nvidia.com/gpu.count":           "1",
-				"nvidia.com/gpu.replicas":        "2",
-				"nvidia.com/gpu.memory":          "300",
-				"nvidia.com/gpu.product":         "MOCKMODEL-MIG-1g.300gb",
-				"nvidia.com/gpu.multiprocessors": "0",
-				"nvidia.com/gpu.slices.gi":       "1",
-				"nvidia.com/gpu.slices.ci":       "2",
-				"nvidia.com/gpu.engines.copy":    "0",
-				"nvidia.com/gpu.engines.decoder": "0",
-				"nvidia.com/gpu.engines.encoder": "0",
-				"nvidia.com/gpu.engines.jpeg":    "0",
-				"nvidia.com/gpu.engines.ofa":     "0",
+				"nvidia.com/gpu.count":            "1",
+				"nvidia.com/gpu.replicas":         "2",
+				"nvidia.com/gpu.sharing-strategy": "time-slicing",
+				"nvidia.com/gpu.memory":           "300",
+				"nvidia.com/gpu.product":          "MOCKMODEL-MIG-1g.300gb",
+				"nvidia.com/gpu.multiprocessors":  "0",
+				"nvidia.com/gpu.slices.gi":        "1",
+				"nvidia.com/gpu.slices.ci":        "2",
+				"nvidia.com/gpu.engines.copy":     "0",
+				"nvidia.com/gpu.engines.decoder":  "0",
+				"nvidia.com/gpu.engines.encoder":  "0",
+				"nvidia.com/gpu.engines.jpeg":     "0",
+				"nvidia.com/gpu.engines.ofa":      "0",
 			},
 		},
 		{
@@ -242,18 +326,19 @@ func TestMigResourceLabeler(t *testing.T) {
 				},
 			},
 			expectedLabels: Labels{
-				"nvidia.com/mig-1g.1gb.count":           "1",
-				"nvidia.com/mig-1g.1gb.replicas":        "2",
-				"nvidia.com/mig-1g.1gb.memory":          "300",
-				"nvidia.com/mig-1g.1gb.product":         "MOCKMODEL-MIG-1g.300gb-SHARED",
-				"nvidia.com/mig-1g.1gb.multiprocessors": "0",
-				"nvidia.com/mig-1g.1gb.slices.gi":       "1",
-				"nvidia.com/mig-1g.1gb.slices.ci":       "2",
-				"nvidia.com/mig-1g.1gb.engines.copy":    "0",
-				"nvidia.com/mig-1g.1gb.engines.decoder": "0",
-				"nvidia.com/mig-1g.1gb.engines.encoder": "0",
-				"nvidia.com/mig-1g.1gb.engines.jpeg":    "0",
-				"nvidia.com/mig-1g.1gb.engines.ofa":     "0",
+				"nvidia.com/mig-1g.1gb.count":            "1",
+				"nvidia.com/mig-1g.1gb.replicas":         "2",
+				"nvidia.com/mig-1g.1gb.sharing-strategy": "time-slicing",
+				"nvidia.com/mig-1g.1gb.memory":           "300",
+				"nvidia.com/mig-1g.1gb.product":          "MOCKMODEL-MIG-1g.300gb-SHARED",
+				"nvidia.com/mig-1g.1gb.multiprocessors":  "0",
+				"nvidia.com/mig-1g.1gb.slices.gi":        "1",
+				"nvidia.com/mig-1g.1gb.slices.ci":        "2",
+				"nvidia.com/mig-1g.1gb.engines.copy":     "0",
+				"nvidia.com/mig-1g.1gb.engines.decoder":  "0",
+				"nvidia.com/mig-1g.1gb.engines.encoder":  "0",
+				"nvidia.com/mig-1g.1gb.engines.jpeg":     "0",
+				"nvidia.com/mig-1g.1gb.engines.ofa":      "0",
 			},
 		},
 		{
@@ -270,18 +355,19 @@ func TestMigResourceLabeler(t *testing.T) {
 				},
 			},
 			expectedLabels: Labels{
-				"nvidia.com/mig-1g.1gb.count":           "1",
-				"nvidia.com/mig-1g.1gb.replicas":        "2",
-				"nvidia.com/mig-1g.1gb.memory":          "300",
-				"nvidia.com/mig-1g.1gb.product":         "MOCKMODEL-MIG-1g.300gb",
-				"nvidia.com/mig-1g.1gb.multiprocessors": "0",
-				"nvidia.com/mig-1g.1gb.slices.gi":       "1",
-				"nvidia.com/mig-1g.1gb.slices.ci":       "2",
-				"nvidia.com/mig-1g.1gb.engines.copy":    "0",
-				"nvidia.com/mig-1g.1gb.engines.decoder": "0",
-				"nvidia.com/mig-1g.1gb.engines.encoder": "0",
-				"nvidia.com/mig-1g.1gb.engines.jpeg":    "0",
-				"nvidia.com/mig-1g.1gb.engines.ofa":     "0",
+				"nvidia.com/mig-1g.1gb.count":            "1",
+				"nvidia.com/mig-1g.1gb.replicas":         "2",
+				"nvidia.com/mig-1g.1gb.sharing-strategy": "time-slicing",
+				"nvidia.com/mig-1g.1gb.memory":           "300",
+				"nvidia.com/mig-1g.1gb.product":          "MOCKMODEL-MIG-1g.300gb",
+				"nvidia.com/mig-1g.1gb.multiprocessors":  "0",
+				"nvidia.com/mig-1g.1gb.slices.gi":        "1",
+				"nvidia.com/mig-1g.1gb.slices.ci":        "2",
+				"nvidia.com/mig-1g.1gb.engines.copy":     "0",
+				"nvidia.com/mig-1g.1gb.engines.decoder":  "0",
+				"nvidia.com/mig-1g.1gb.engines.encoder":  "0",
+				"nvidia.com/mig-1g.1gb.engines.jpeg":     "0",
+				"nvidia.com/mig-1g.1gb.engines.ofa":      "0",
 			},
 		},
 	}

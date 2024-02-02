@@ -7,6 +7,7 @@ nvidia\.com\/cuda\.runtime\.minor=[0-9]+
 nvidia\.com\/gpu\.machine=.*
 nvidia\.com\/gpu\.count=[0-9]+
 nvidia\.com\/gpu\.replicas=[0-9]+
+nvidia\.com\/gpu\.sharing-strategy=[none|mps|time-slicing]
 nvidia\.com\/gpu\.product=[A-Za-z_-]+
 nvidia\.com\/gpu\.memory=[0-9]+
 nvidia\.com\/gpu\.family=[a-z]+
