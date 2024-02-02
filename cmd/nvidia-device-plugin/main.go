@@ -34,6 +34,7 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/plugin"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
+	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
 )
 
 func main() {
@@ -154,14 +155,14 @@ func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 
 func start(c *cli.Context, flags []cli.Flag) error {
 	klog.Info("Starting FS watcher.")
-	watcher, err := newFSWatcher(pluginapi.DevicePluginPath)
+	watcher, err := watch.Files(pluginapi.DevicePluginPath)
 	if err != nil {
-		return fmt.Errorf("failed to create FS watcher: %v", err)
+		return fmt.Errorf("failed to create FS watcher for %s: %v", pluginapi.DevicePluginPath, err)
 	}
 	defer watcher.Close()
 
 	klog.Info("Starting OS watcher.")
-	sigs := newOSWatcher(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	sigs := watch.Signals(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	var started bool
 	var restartTimeout <-chan time.Time

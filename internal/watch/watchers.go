@@ -1,5 +1,5 @@
-/**
-# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+/*
+# Copyright NVIDIA CORPORATION
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,36 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-**/
-
-package main
+*/
+package watch
 
 import (
 	"os"
 	"os/signal"
+
+	"github.com/fsnotify/fsnotify"
 )
 
-// newOSWatcher creates a channel for receiving OS signals.
-// TODO: This is currently duplicated from device-plugin
-func newOSWatcher(sigs ...os.Signal) chan os.Signal {
+// Files creates a Watcher for the specified files.
+func Files(files ...string) (*fsnotify.Watcher, error) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, f := range files {
+		err = watcher.Add(f)
+		if err != nil {
+			watcher.Close()
+			return nil, err
+		}
+	}
+
+	return watcher, nil
+}
+
+// Signals creats a channel for the specified signals.
+func Signals(sigs ...os.Signal) chan os.Signal {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, sigs...)
 

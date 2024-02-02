@@ -21,6 +21,7 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 	rt "github.com/NVIDIA/k8s-device-plugin/internal/resource/testing"
 	"github.com/NVIDIA/k8s-device-plugin/internal/vgpu"
+	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
 )
 
 const (
@@ -184,7 +185,7 @@ func TestRunWithNoTimestamp(t *testing.T) {
 
 func TestRunSleep(t *testing.T) {
 	log.Println("Starting OS watcher.")
-	sigs := newOSWatcher(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	sigs := watch.Signals(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	nvmlMock := NewTestNvmlMock()
 	vgpuMock := NewTestVGPUMock()
