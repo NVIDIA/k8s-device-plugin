@@ -27,8 +27,8 @@ github.com/NVIDIA/go-gpuallocator v0.3.1 h1:Uha6CgoZwkYI8Ds1EhxeQ9X5tij9o+dUMs2W
 github.com/NVIDIA/go-gpuallocator v0.3.1/go.mod h1:KPTQBtJ8wlptOyz5KCONg1Lo/2aIiw34xcqsRixG0nw=
 github.com/NVIDIA/go-nvlib v0.0.0-20240109130712-11603560817a h1:EH7wiaq9+NYDgCBJEcGa3HTO2Sz6dRlmO2y9yMxA5jE=
 github.com/NVIDIA/go-nvlib v0.0.0-20240109130712-11603560817a/go.mod h1:U82N6/xKp6OnoqpALBH0C5SO59Buu4sX1Z3rQtBsBKQ=
-github.com/NVIDIA/go-nvml v0.12.0-1.0.20231020145430-e06766c5e74f h1:FTblgO87K1vPB8tcwM5EOFpFf6UpsrlDpErPm25mFWE=
-github.com/NVIDIA/go-nvml v0.12.0-1.0.20231020145430-e06766c5e74f/go.mod h1:7ruy85eOM73muOc/I37euONSwEyFqZsv5ED9AogD4G0=
+github.com/NVIDIA/go-nvml v0.12.0-2 h1:Sg239yy7jmopu/cuvYauoMj9fOpcGMngxVxxS1EBXeY=
+github.com/NVIDIA/go-nvml v0.12.0-2/go.mod h1:7ruy85eOM73muOc/I37euONSwEyFqZsv5ED9AogD4G0=
 github.com/NVIDIA/nvidia-container-toolkit v1.14.4-0.20231115203935-5d7ee25b37e2 h1:vXcDhtCuiueHliG8jCxmQnaeYECtlyDGqgvUCL4XPho=
 github.com/NVIDIA/nvidia-container-toolkit v1.14.4-0.20231115203935-5d7ee25b37e2/go.mod h1:OLTlrY8PrMQEzfiaTzjIl/ELJ5YeOeqoivDpSEpbrn0=
 github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d h1:UrqY+r/OJnIp5u0s1SbQ8dVfLCZJsnvazdBP5hS4iRs=
