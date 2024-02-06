@@ -27,7 +27,9 @@ import (
 
 type deviceMapBuilder struct {
 	device.Interface
-	config *spec.Config
+	migStrategy         *string
+	resources           *spec.Resources
+	replicatedResources *spec.ReplicatedResources
 }
 
 // DeviceMap stores a set of devices per resource name.
@@ -36,8 +38,10 @@ type DeviceMap map[spec.ResourceName]Devices
 // NewDeviceMap creates a device map for the specified NVML library and config.
 func NewDeviceMap(nvmllib nvml.Interface, config *spec.Config) (DeviceMap, error) {
 	b := deviceMapBuilder{
-		Interface: device.New(device.WithNvml(nvmllib)),
-		config:    config,
+		Interface:           device.New(device.WithNvml(nvmllib)),
+		migStrategy:         config.Flags.MigStrategy,
+		resources:           &config.Resources,
+		replicatedResources: config.Sharing.ReplicatedResources(),
 	}
 	return b.build()
 }
@@ -48,9 +52,9 @@ func (b *deviceMapBuilder) build() (DeviceMap, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error building device map from config.resources: %v", err)
 	}
-	devices, err = updateDeviceMapWithReplicas(b.config, devices)
+	devices, err = updateDeviceMapWithReplicas(b.replicatedResources, devices)
 	if err != nil {
-		return nil, fmt.Errorf("error updating device map with replicas from config.sharing.timeSlicing.resources: %v", err)
+		return nil, fmt.Errorf("error updating device map with replicas from replicatedResources config: %v", err)
 	}
 	return devices, nil
 }
@@ -62,7 +66,7 @@ func (b *deviceMapBuilder) buildDeviceMapFromConfigResources() (DeviceMap, error
 		return nil, fmt.Errorf("error building GPU device map: %v", err)
 	}
 
-	if *b.config.Flags.MigStrategy == spec.MigStrategyNone {
+	if *b.migStrategy == spec.MigStrategyNone {
 		return deviceMap, nil
 	}
 
@@ -72,7 +76,7 @@ func (b *deviceMapBuilder) buildDeviceMapFromConfigResources() (DeviceMap, error
 	}
 
 	var requireUniformMIGDevices bool
-	if *b.config.Flags.MigStrategy == spec.MigStrategySingle {
+	if *b.migStrategy == spec.MigStrategySingle {
 		requireUniformMIGDevices = true
 	}
 
@@ -103,10 +107,10 @@ func (b *deviceMapBuilder) buildGPUDeviceMap() (DeviceMap, error) {
 		if err != nil {
 			return fmt.Errorf("error checking if MIG is enabled on GPU: %v", err)
 		}
-		if migEnabled && *b.config.Flags.MigStrategy != spec.MigStrategyNone {
+		if migEnabled && *b.migStrategy != spec.MigStrategyNone {
 			return nil
 		}
-		for _, resource := range b.config.Resources.GPUs {
+		for _, resource := range b.resources.GPUs {
 			if resource.Pattern.Matches(name) {
 				index, info := newGPUDevice(i, gpu)
 				return devices.setEntry(resource.Name, index, info)
@@ -125,7 +129,7 @@ func (b *deviceMapBuilder) buildMigDeviceMap() (DeviceMap, error) {
 		if err != nil {
 			return fmt.Errorf("error getting MIG profile for MIG device at index '(%v, %v)': %v", i, j, err)
 		}
-		for _, resource := range b.config.Resources.MIGs {
+		for _, resource := range b.resources.MIGs {
 			if resource.Pattern.Matches(migProfile.String()) {
 				index, info := newMigDevice(i, j, mig)
 				return devices.setEntry(resource.Name, index, info)
@@ -263,13 +267,14 @@ func (d DeviceMap) getIDsOfDevicesToReplicate(r *spec.ReplicatedResource) ([]str
 	return nil, fmt.Errorf("unexpected error")
 }
 
-// updateDeviceMapWithReplicas returns an updated map of resource names to devices with replica information from spec.Config.Sharing.TimeSlicing.Resources
-func updateDeviceMapWithReplicas(config *spec.Config, oDevices DeviceMap) (DeviceMap, error) {
+// updateDeviceMapWithReplicas returns an updated map of resource names to devices with replica
+// information from the active replicated resources config.
+func updateDeviceMapWithReplicas(replicatedResources *spec.ReplicatedResources, oDevices DeviceMap) (DeviceMap, error) {
 	devices := make(DeviceMap)
 
-	// Begin by walking config.Sharing.TimeSlicing.Resources and building a map of just the resource names.
+	// Begin by walking replicatedResources.Resources and building a map of just the resource names.
 	names := make(map[spec.ResourceName]bool)
-	for _, r := range config.Sharing.TimeSlicing.Resources {
+	for _, r := range replicatedResources.Resources {
 		names[r.Name] = true
 	}
 
@@ -280,8 +285,8 @@ func updateDeviceMapWithReplicas(config *spec.Config, oDevices DeviceMap) (Devic
 		}
 	}
 
-	// Walk TimeSlicing.Resources and update devices in the device map as appropriate.
-	for _, resource := range config.Sharing.TimeSlicing.Resources {
+	// Walk shared Resources and update devices in the device map as appropriate.
+	for _, resource := range replicatedResources.Resources {
 		r := resource
 		// Get the IDs of the devices we want to replicate from oDevices
 		ids, err := oDevices.getIDsOfDevicesToReplicate(&r)

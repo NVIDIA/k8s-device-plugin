@@ -30,7 +30,7 @@ func TestMigStrategyNoneLabels(t *testing.T) {
 	testCases := []struct {
 		description    string
 		devices        []resource.Device
-		timeSlicing    spec.TimeSlicing
+		timeSlicing    spec.ReplicatedResources
 		expectedError  bool
 		expectedLabels Labels
 	}{
@@ -57,7 +57,7 @@ func TestMigStrategyNoneLabels(t *testing.T) {
 			devices: []resource.Device{
 				rt.NewFullGPU(),
 			},
-			timeSlicing: spec.TimeSlicing{
+			timeSlicing: spec.ReplicatedResources{
 				Resources: []spec.ReplicatedResource{
 					{
 						Name:     "nvidia.com/gpu",
@@ -81,7 +81,7 @@ func TestMigStrategyNoneLabels(t *testing.T) {
 				rt.NewFullGPU(),
 				rt.NewFullGPU(),
 			},
-			timeSlicing: spec.TimeSlicing{
+			timeSlicing: spec.ReplicatedResources{
 				Resources: []spec.ReplicatedResource{
 					{
 						Name:     "nvidia.com/gpu",
@@ -104,7 +104,7 @@ func TestMigStrategyNoneLabels(t *testing.T) {
 			devices: []resource.Device{
 				rt.NewMigEnabledDevice(),
 			},
-			timeSlicing: spec.TimeSlicing{
+			timeSlicing: spec.ReplicatedResources{
 				Resources: []spec.ReplicatedResource{
 					{
 						Name:     "nvidia.com/gpu",
@@ -125,7 +125,7 @@ func TestMigStrategyNoneLabels(t *testing.T) {
 				rt.NewMigEnabledDevice(),
 				rt.NewMigEnabledDevice(),
 			},
-			timeSlicing: spec.TimeSlicing{
+			timeSlicing: spec.ReplicatedResources{
 				Resources: []spec.ReplicatedResource{
 					{
 						Name:     "nvidia.com/gpu",
@@ -146,7 +146,7 @@ func TestMigStrategyNoneLabels(t *testing.T) {
 				rt.NewMigEnabledDevice(),
 				rt.NewFullGPU(),
 			},
-			timeSlicing: spec.TimeSlicing{
+			timeSlicing: spec.ReplicatedResources{
 				Resources: []spec.ReplicatedResource{
 					{
 						Name:     "nvidia.com/gpu",

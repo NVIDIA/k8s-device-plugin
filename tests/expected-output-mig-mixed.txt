@@ -26,3 +26,5 @@ nvidia\.com\/mig-[0-9]+g\.[0-9]+gb\.engines\.jpeg=[0-9]+
 nvidia\.com\/mig-[0-9]+g\.[0-9]+gb\.engines\.ofa=[0-9]+
 nvidia\.com\/mig-[0-9]+g\.[0-9]+gb\.slices\.gi=[0-9]+
 nvidia\.com\/mig-[0-9]+g\.[0-9]+gb\.slices\.ci=[0-9]+
+nvidia\.com\/sharing\.mps\.enabled=[true|false]
+

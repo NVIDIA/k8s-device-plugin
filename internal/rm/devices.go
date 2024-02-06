@@ -27,8 +27,9 @@ import (
 // Device wraps pluginapi.Device with extra metadata and functions.
 type Device struct {
 	pluginapi.Device
-	Paths []string
-	Index string
+	Paths       []string
+	Index       string
+	TotalMemory uint64
 }
 
 // deviceInfo defines the information the required to construct a Device
@@ -36,6 +37,7 @@ type deviceInfo interface {
 	GetUUID() (string, error)
 	GetPaths() ([]string, error)
 	GetNumaNode() (bool, int, error)
+	GetTotalMemory() (uint64, error)
 }
 
 // Devices wraps a map[string]*Device with some functions.
@@ -64,7 +66,14 @@ func BuildDevice(index string, d deviceInfo) (*Device, error) {
 		return nil, fmt.Errorf("error getting device NUMA node: %v", err)
 	}
 
-	dev := Device{}
+	totalMemory, err := d.GetTotalMemory()
+	if err != nil {
+		return nil, fmt.Errorf("error getting device memory: %w", err)
+	}
+
+	dev := Device{
+		TotalMemory: totalMemory,
+	}
 	dev.ID = uuid
 	dev.Index = index
 	dev.Paths = paths
@@ -135,6 +144,21 @@ func (ds Devices) GetIDs() []string {
 	var res []string
 	for _, d := range ds {
 		res = append(res, d.ID)
+	}
+	return res
+}
+
+// GetUUIDs returns the uuids associated with the Device in the set.
+func (ds Devices) GetUUIDs() []string {
+	var res []string
+	seen := make(map[string]bool)
+	for _, d := range ds {
+		uuid := d.GetUUID()
+		if seen[uuid] {
+			continue
+		}
+		seen[uuid] = true
+		res = append(res, uuid)
 	}
 	return res
 }

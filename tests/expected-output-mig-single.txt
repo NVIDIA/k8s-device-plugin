@@ -22,3 +22,4 @@ nvidia\.com\/gpu\.engines\.jpeg=[0-9]+
 nvidia\.com\/gpu\.engines\.ofa=[0-9]+
 nvidia\.com\/gpu\.slices\.gi=[0-9]+
 nvidia\.com\/gpu\.slices\.ci=[0-9]+
+nvidia\.com\/sharing\.mps\.enabled=[true|false]

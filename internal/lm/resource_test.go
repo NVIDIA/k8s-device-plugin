@@ -31,7 +31,7 @@ func TestGPUResourceLabeler(t *testing.T) {
 	testCases := []struct {
 		description    string
 		count          int
-		timeSlicing    spec.TimeSlicing
+		timeSlicing    spec.ReplicatedResources
 		expectedLabels Labels
 	}{
 		{
@@ -53,7 +53,7 @@ func TestGPUResourceLabeler(t *testing.T) {
 		{
 			description: "sharing ignores non-matching resource",
 			count:       1,
-			timeSlicing: spec.TimeSlicing{
+			timeSlicing: spec.ReplicatedResources{
 				Resources: []spec.ReplicatedResource{
 					{
 						Name:     "nvidia.com/not-gpu",
@@ -74,7 +74,7 @@ func TestGPUResourceLabeler(t *testing.T) {
 		{
 			description: "shared appends suffix and doubles count",
 			count:       1,
-			timeSlicing: spec.TimeSlicing{
+			timeSlicing: spec.ReplicatedResources{
 				Resources: []spec.ReplicatedResource{
 					{
 						Name:     "nvidia.com/gpu",
@@ -95,7 +95,7 @@ func TestGPUResourceLabeler(t *testing.T) {
 		{
 			description: "renamed does not append suffix and doubles count",
 			count:       1,
-			timeSlicing: spec.TimeSlicing{
+			timeSlicing: spec.ReplicatedResources{
 				Resources: []spec.ReplicatedResource{
 					{
 						Name:     "nvidia.com/gpu",
@@ -144,7 +144,7 @@ func TestMigResourceLabeler(t *testing.T) {
 		description    string
 		resourceName   spec.ResourceName
 		count          int
-		timeSlicing    spec.TimeSlicing
+		timeSlicing    spec.ReplicatedResources
 		expectedLabels Labels
 	}{
 		{
@@ -173,7 +173,7 @@ func TestMigResourceLabeler(t *testing.T) {
 			description:  "shared appends suffix and doubles count",
 			resourceName: "nvidia.com/gpu",
 			count:        1,
-			timeSlicing: spec.TimeSlicing{
+			timeSlicing: spec.ReplicatedResources{
 				Resources: []spec.ReplicatedResource{
 					{
 						Name:     "nvidia.com/gpu",
@@ -200,7 +200,7 @@ func TestMigResourceLabeler(t *testing.T) {
 			description:  "renamed does not append suffix and doubles count",
 			resourceName: "nvidia.com/gpu",
 			count:        1,
-			timeSlicing: spec.TimeSlicing{
+			timeSlicing: spec.ReplicatedResources{
 				Resources: []spec.ReplicatedResource{
 					{
 						Name:     "nvidia.com/gpu",
@@ -228,7 +228,7 @@ func TestMigResourceLabeler(t *testing.T) {
 			description:  "mig mixed appends shared",
 			resourceName: "nvidia.com/mig-1g.1gb",
 			count:        1,
-			timeSlicing: spec.TimeSlicing{
+			timeSlicing: spec.ReplicatedResources{
 				Resources: []spec.ReplicatedResource{
 					{
 						Name:     "nvidia.com/gpu",
@@ -260,7 +260,7 @@ func TestMigResourceLabeler(t *testing.T) {
 			description:  "mig mixed rename does not append",
 			resourceName: "nvidia.com/mig-1g.1gb",
 			count:        1,
-			timeSlicing: spec.TimeSlicing{
+			timeSlicing: spec.ReplicatedResources{
 				Resources: []spec.ReplicatedResource{
 					{
 						Name:     "nvidia.com/mig-1g.1gb",

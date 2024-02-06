@@ -70,9 +70,10 @@ LABEL description="See summary"
 
 RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
 
-COPY --from=build /artifacts/config-manager       /usr/bin/config-manager
-COPY --from=build /artifacts/nvidia-device-plugin /usr/bin/nvidia-device-plugin
-COPY --from=build /artifacts/gpu-feature-discovery /usr/bin/gpu-feature-discovery
+COPY --from=build /artifacts/config-manager         /usr/bin/config-manager
+COPY --from=build /artifacts/gpu-feature-discovery  /usr/bin/gpu-feature-discovery
+COPY --from=build /artifacts/mps-control-daemon     /usr/bin/mps-control-daemon
+COPY --from=build /artifacts/nvidia-device-plugin   /usr/bin/nvidia-device-plugin
 
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES

@@ -59,6 +59,7 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 // logger is used to issue warning in API functions without requiring an explicit implementation.
 type logger interface {
 	Warning(...interface{})
+	Warningf(string, ...interface{})
 }
 
 // DisableResourceNamingInConfig temporarily disable the resource renaming feature of the plugin.
@@ -72,31 +73,9 @@ func DisableResourceNamingInConfig(logger logger, config *Config) {
 	config.Resources.MIGs = nil
 
 	// Disable renaming / device selection in Sharing.TimeSlicing.Resources
-	renameByDefault := config.Sharing.TimeSlicing.RenameByDefault
-	setsNonDefaultRename := false
-	setsDevices := false
-	for i, r := range config.Sharing.TimeSlicing.Resources {
-		if !renameByDefault && r.Rename != "" {
-			setsNonDefaultRename = true
-			config.Sharing.TimeSlicing.Resources[i].Rename = ""
-		}
-		if renameByDefault && r.Rename != r.Name.DefaultSharedRename() {
-			setsNonDefaultRename = true
-			config.Sharing.TimeSlicing.Resources[i].Rename = r.Name.DefaultSharedRename()
-		}
-		if !r.Devices.All {
-			setsDevices = true
-			config.Sharing.TimeSlicing.Resources[i].Devices.All = true
-			config.Sharing.TimeSlicing.Resources[i].Devices.Count = 0
-			config.Sharing.TimeSlicing.Resources[i].Devices.List = nil
-		}
-	}
-	if setsNonDefaultRename {
-		logger.Warning("Setting the 'rename' field in sharing.timeSlicing.resources is not yet supported in the config. Ignoring...")
-	}
-	if setsDevices {
-		logger.Warning("Customizing the 'devices' field in sharing.timeSlicing.resources is not yet supported in the config. Ignoring...")
-	}
+	config.Sharing.TimeSlicing.disableResoureRenaming(logger, "timeSlicing")
+	// Disable renaming / device selection in Sharing.MPS.Resources
+	config.Sharing.MPS.disableResoureRenaming(logger, "mps")
 }
 
 // parseConfig parses a config file as either YAML of JSON and unmarshals it into a Config struct.

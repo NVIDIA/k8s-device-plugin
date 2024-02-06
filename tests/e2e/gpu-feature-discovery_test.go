@@ -43,21 +43,22 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 	f := framework.NewFramework("gpu-feature-discovery")
 
 	expectedLabelPatterns := k8sLabels{
-		"nvidia.com/gfd.timestamp":      "[0-9]{10}",
-		"nvidia.com/cuda.driver.major":  "[0-9]+",
-		"nvidia.com/cuda.driver.minor":  "[0-9]+",
-		"nvidia.com/cuda.driver.rev":    "[0-9]*",
-		"nvidia.com/cuda.runtime.major": "[0-9]+",
-		"nvidia.com/cuda.runtime.minor": "[0-9]+",
-		"nvidia.com/gpu.machine":        ".*",
-		"nvidia.com/gpu.count":          "[0-9]+",
-		"nvidia.com/gpu.replicas":       "[0-9]+",
-		"nvidia.com/gpu.product":        "[A-Za-z_-]+",
-		"nvidia.com/gpu.memory":         "[0-9]+",
-		"nvidia.com/gpu.family":         "[a-z]+",
-		"nvidia.com/mig.capable":        "[true|false]",
-		"nvidia.com/gpu.compute.major":  "[0-9]+",
-		"nvidia.com/gpu.compute.minor":  "[0-9]+",
+		"nvidia.com/gfd.timestamp":       "[0-9]{10}",
+		"nvidia.com/cuda.driver.major":   "[0-9]+",
+		"nvidia.com/cuda.driver.minor":   "[0-9]+",
+		"nvidia.com/cuda.driver.rev":     "[0-9]*",
+		"nvidia.com/cuda.runtime.major":  "[0-9]+",
+		"nvidia.com/cuda.runtime.minor":  "[0-9]+",
+		"nvidia.com/gpu.machine":         ".*",
+		"nvidia.com/gpu.count":           "[0-9]+",
+		"nvidia.com/gpu.replicas":        "[0-9]+",
+		"nvidia.com/gpu.product":         "[A-Za-z_-]+",
+		"nvidia.com/gpu.memory":          "[0-9]+",
+		"nvidia.com/gpu.family":          "[a-z]+",
+		"nvidia.com/mig.capable":         "[true|false]",
+		"nvidia.com/gpu.compute.major":   "[0-9]+",
+		"nvidia.com/gpu.compute.minor":   "[0-9]+",
+		"nvidia.com/sharing.mps.enabled": "[true|false]",
 	}
 
 	Context("When deploying GFD", Ordered, func() {
