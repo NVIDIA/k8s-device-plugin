@@ -33,7 +33,7 @@ replace (
 require (
 	github.com/NVIDIA/go-gpuallocator v0.3.1
 	github.com/NVIDIA/go-nvlib v0.0.0-20240109130712-11603560817a
-	github.com/NVIDIA/go-nvml v0.12.0-1.0.20231020145430-e06766c5e74f
+	github.com/NVIDIA/go-nvml v0.12.0-2
 	github.com/NVIDIA/nvidia-container-toolkit v1.14.4-0.20231115203935-5d7ee25b37e2
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/uuid v1.4.0
