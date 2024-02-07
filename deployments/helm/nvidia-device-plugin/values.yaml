@@ -145,3 +145,10 @@ nfd:
           - "0302"
           deviceLabelFields:
           - vendor
+
+mps:
+  # root specifies the location where files and folders for managing MPS will
+  # be created. This includes a daemon-specific /dev/shm and pipe and log
+  # directories.
+  # Pipe directories will be created at {{ mps.root }}/{{ .ResourceName }}
+  root: "/run/nvidia/mps"

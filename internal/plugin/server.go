@@ -63,6 +63,9 @@ type NvidiaDevicePlugin struct {
 	server *grpc.Server
 	health chan *rm.Device
 	stop   chan interface{}
+
+	mpsDaemon   *mps.Daemon
+	mpsHostRoot mps.Root
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
@@ -74,6 +77,13 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 	pluginName := "nvidia-" + name
 	pluginPath := filepath.Join(pluginapi.DevicePluginPath, pluginName)
 
+	var mpsDaemon *mps.Daemon
+	var mpsHostRoot mps.Root
+	if config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
+		mpsDaemon = mps.NewDaemon(resourceManager, mps.ContainerRoot)
+		mpsHostRoot = mps.Root(*config.Flags.CommandLineFlags.MpsRoot)
+	}
+
 	return &NvidiaDevicePlugin{
 		rm:                   resourceManager,
 		config:               config,
@@ -82,6 +92,9 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 		socket:               pluginPath + ".sock",
 		cdiHandler:           cdiHandler,
 		cdiAnnotationPrefix:  *config.Flags.Plugin.CDIAnnotationPrefix,
+
+		mpsDaemon:   mpsDaemon,
+		mpsHostRoot: mpsHostRoot,
 
 		// These will be reinitialized every
 		// time the plugin server is restarted.
@@ -148,11 +161,12 @@ func (plugin *NvidiaDevicePlugin) waitForMPSDaemon() error {
 	if plugin.config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
 		return nil
 	}
-	// TODO: Check the started file here.
+	// TODO: Check the .ready file here.
 	// TODO: Have some retry strategy here.
-	if err := mps.NewDaemon(plugin.rm).AssertHealthy(); err != nil {
+	if err := plugin.mpsDaemon.AssertHealthy(); err != nil {
 		return fmt.Errorf("error checking MPS daemon health: %w", err)
 	}
+	klog.InfoS("MPS daemon is healthy", "resource", plugin.rm.Resource())
 	return nil
 }
 
@@ -329,7 +343,6 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 	response := &pluginapi.ContainerAllocateResponse{
 		Envs: make(map[string]string),
 	}
-
 	if plugin.deviceListStrategies.IsCDIEnabled() {
 		responseID := uuid.New().String()
 		if err := plugin.updateResponseForCDI(response, responseID, deviceIDs...); err != nil {
@@ -361,26 +374,24 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 // This includes per-resource pipe and log directories as well as a global daemon-specific shm
 // and assumes that an MPS control daemon has already been started.
 func (plugin NvidiaDevicePlugin) updateResponseForMPS(response *pluginapi.ContainerAllocateResponse) {
-	pipeDir := filepath.Join("/mps", string(plugin.rm.Resource()), "pipe")
-	response.Envs["CUDA_MPS_PIPE_DIRECTORY"] = pipeDir
+	// TODO: We should check that the deviceIDs are shared using MPS.
+	for k, v := range plugin.mpsDaemon.Envvars() {
+		response.Envs[k] = v
+	}
+
+	resourceName := plugin.rm.Resource()
 	response.Mounts = append(response.Mounts,
 		&pluginapi.Mount{
-			ContainerPath: pipeDir,
-			HostPath:      filepath.Join("/var/lib/kubelet/device-plugins", pipeDir),
+			ContainerPath: plugin.mpsDaemon.PipeDir(),
+			HostPath:      plugin.mpsHostRoot.PipeDir(resourceName),
 		},
-	)
-	logDir := filepath.Join("/mps", string(plugin.rm.Resource()), "log")
-	response.Envs["CUDA_MPS_LOG_DIRECTORY"] = logDir
-	response.Mounts = append(response.Mounts,
 		&pluginapi.Mount{
-			ContainerPath: logDir,
-			HostPath:      filepath.Join("/var/lib/kubelet/device-plugins", logDir),
+			ContainerPath: plugin.mpsDaemon.PipeDir(),
+			HostPath:      plugin.mpsHostRoot.LogDir(resourceName),
 		},
-	)
-	response.Mounts = append(response.Mounts,
 		&pluginapi.Mount{
-			ContainerPath: "/dev/shm",
-			HostPath:      "/var/lib/kubelet/device-plugins/mps/shm",
+			ContainerPath: plugin.mpsDaemon.ShmDir(),
+			HostPath:      plugin.mpsHostRoot.ShmDir(resourceName),
 		},
 	)
 }

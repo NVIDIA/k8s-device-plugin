@@ -136,6 +136,8 @@ spec:
         name: nvidia-device-plugin-ctr
         command: ["nvidia-device-plugin"]
         env:
+          - name: MPS_ROOT
+            value: "{{ .Values.mps.root }}"
         {{- if typeIs "string" .Values.migStrategy }}
           - name: MIG_STRATEGY
             value: "{{ .Values.migStrategy }}"
@@ -215,12 +217,11 @@ spec:
             path: /var/lib/kubelet/device-plugins
         - name: mps-root
           hostPath:
-          # TODO: This should be /var/run/nvidia/mps
-            path: /var/lib/kubelet/device-plugins/mps
+            path: {{ .Values.mps.root }}
             type: DirectoryOrCreate
         - name: mps-shm
           hostPath:
-            path: /var/lib/kubelet/device-plugins/mps/shm
+            path: {{ .Values.mps.root }}/shm
        {{- if typeIs "string" .Values.nvidiaDriverRoot }}
         - name: driver-root
           hostPath:

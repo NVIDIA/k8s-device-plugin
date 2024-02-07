@@ -194,12 +194,11 @@ spec:
       volumes:
       - name: mps-root
         hostPath:
-        # TODO: This should be /var/run/nvidia/mps
-          path: /var/lib/kubelet/device-plugins/mps
+          path: {{ .Values.mps.root }}
           type: DirectoryOrCreate
       - name: mps-shm
         hostPath:
-          path: /var/lib/kubelet/device-plugins/mps/shm
+          path: {{ .Values.mps.root }}/shm
       {{- if eq $hasConfigMap "true" }}
       - name: available-configs
         configMap:

@@ -57,6 +57,7 @@ type Flags struct {
 type CommandLineFlags struct {
 	MigStrategy      *string                 `json:"migStrategy"                yaml:"migStrategy"`
 	FailOnInitError  *bool                   `json:"failOnInitError"            yaml:"failOnInitError"`
+	MpsRoot          *string                 `json:"mpsRoot,omitempty"          yaml:"mpsRoot,omitempty"`
 	NvidiaDriverRoot *string                 `json:"nvidiaDriverRoot,omitempty" yaml:"nvidiaDriverRoot,omitempty"`
 	GDSEnabled       *bool                   `json:"gdsEnabled"                 yaml:"gdsEnabled"`
 	MOFEDEnabled     *bool                   `json:"mofedEnabled"               yaml:"mofedEnabled"`
@@ -116,6 +117,8 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.MigStrategy, c, n)
 			case "fail-on-init-error":
 				updateFromCLIFlag(&f.FailOnInitError, c, n)
+			case "mps-root":
+				updateFromCLIFlag(&f.MpsRoot, c, n)
 			case "nvidia-driver-root":
 				updateFromCLIFlag(&f.NvidiaDriverRoot, c, n)
 			case "gds-enabled":

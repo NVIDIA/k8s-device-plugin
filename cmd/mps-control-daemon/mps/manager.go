@@ -85,7 +85,7 @@ func (m *manager) Daemons() ([]*Daemon, error) {
 			klog.InfoS("Resource is not shared", "resource", "resource", resourceManager.Resource())
 			continue
 		}
-		daemon := NewDaemon(resourceManager)
+		daemon := NewDaemon(resourceManager, ContainerRoot)
 		daemons = append(daemons, daemon)
 	}
 
