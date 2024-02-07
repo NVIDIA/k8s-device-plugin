@@ -186,7 +186,6 @@ spec:
           # This is required for CDI detection to work correctly.
           - name: driver-root
             mountPath: /driver-root
-            readOnly: true
         {{- end }}
           # The MPS /dev/shm is needed to allow for MPS daemon health-checking.
           - name: mps-shm
@@ -213,6 +212,7 @@ spec:
           hostPath:
           # TODO: This should be /var/run/nvidia/mps
             path: /var/lib/kubelet/device-plugins/mps
+            type: DirectoryOrCreate
         - name: mps-shm
           hostPath:
             path: /var/lib/kubelet/device-plugins/mps/shm
