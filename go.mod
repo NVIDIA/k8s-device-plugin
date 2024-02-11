@@ -36,7 +36,7 @@ require (
 	github.com/NVIDIA/go-nvml v0.12.0-2
 	github.com/NVIDIA/nvidia-container-toolkit v1.14.4-0.20231115203935-5d7ee25b37e2
 	github.com/fsnotify/fsnotify v1.7.0
-	github.com/google/uuid v1.4.0
+	github.com/google/uuid v1.6.0
 	github.com/mittwald/go-helm-client v0.12.3
 	github.com/onsi/ginkgo/v2 v2.15.0
 	github.com/onsi/gomega v1.31.1
