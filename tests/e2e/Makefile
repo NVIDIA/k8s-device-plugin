@@ -21,6 +21,7 @@ DRIVER_ENABLED ?= true
 E2E_IMAGE_REPO ?= $(REGISTRY)/$(DRIVER_NAME)
 E2E_IMAGE_TAG ?= $(VERSION)
 E2E_IMAGE_PULL_POLICY ?= IfNotPresent
+
 HELM_CHART ?= $(CURDIR)/deployments/helm/nvidia-device-plugin
 
 .PHONY: e2e-test

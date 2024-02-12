@@ -63,6 +63,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 				fmt.Sprintf("image.repository=%s", *ImageRepo),
 				fmt.Sprintf("image.tag=%s", *ImageTag),
 				fmt.Sprintf("image.pullPolicy=%s", *ImagePullPolicy),
+				"runtimeClassName=nvidia",
 				"devicePlugin.enabled=true",
 				// We need to make affinity is none if not deploying NFD/GFD
 				// test will fail if not run on a GPU node
@@ -144,6 +145,8 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 			It("it should run GPU jobs", func(ctx context.Context) {
 				By("Creating GPU job")
 				job := common.GPUJob.DeepCopy()
+				runtimeClassName := "nvidia"
+				job.Spec.Template.Spec.RuntimeClassName = &runtimeClassName
 				job.Namespace = f.Namespace.Name
 				_, err := f.ClientSet.BatchV1().Jobs(f.Namespace.Name).Create(ctx, job, metav1.CreateOptions{})
 				Expect(err).NotTo(HaveOccurred())
