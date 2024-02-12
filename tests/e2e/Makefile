@@ -13,7 +13,6 @@
 # limitations under the License.
 
 GO_CMD ?= go
-GO_FMT ?= gofmt
 
 include $(CURDIR)/versions.mk
 
