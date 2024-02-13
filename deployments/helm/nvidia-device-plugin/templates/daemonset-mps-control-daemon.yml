@@ -149,7 +149,7 @@ spec:
             exec:
               command:
               - cat
-              - /driver-root/mps/nvidia.com/gpu/.started
+              - /mps/nvidia.com/gpu/.started
             initialDelaySeconds: 1
             periodSeconds: 1
           env:
@@ -158,8 +158,6 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: spec.nodeName
-          - name: NVIDIA_VISIBLE_DEVICES
-            value: void
         {{- if typeIs "string" .Values.migStrategy }}
           - name: MIG_STRATEGY
             value: "{{ .Values.migStrategy }}"
@@ -168,18 +166,21 @@ spec:
           - name: CONFIG_FILE
             value: /config/config.yaml
         {{- end }}
+        {{- if ne $migStrategiesAreAllNone "true" }}
+          - name: NVIDIA_MIG_MONITOR_DEVICES
+            value: all
+        {{- end }}
+          - name: NVIDIA_VISIBLE_DEVICES
+            value: all
+          - name: NVIDIA_DRIVER_CAPABILITIES
+            value: compute,utility
           securityContext:
             privileged: true
           volumeMounts:
-          {{- if typeIs "string" .Values.nvidiaDriverRoot }}
-          # We always mount the driver root at /driver-root in the container.
-          - name: driver-root
-            mountPath: /driver-root
-          {{- end }}
           - name: mps-shm
-            mountPath: /driver-root/dev/shm
+            mountPath: /dev/shm
           - name: mps-root
-            mountPath: /driver-root/mps
+            mountPath: /mps
           {{- if eq $hasConfigMap "true" }}
           - name: available-configs
             mountPath: /available-configs
@@ -199,11 +200,6 @@ spec:
       - name: mps-shm
         hostPath:
           path: /var/lib/kubelet/device-plugins/mps/shm
-      {{- if typeIs "string" .Values.nvidiaDriverRoot }}
-      - name: driver-root
-        hostPath:
-          path: {{ .Values.nvidiaDriverRoot }}
-      {{- end }}
       {{- if eq $hasConfigMap "true" }}
       - name: available-configs
         configMap:

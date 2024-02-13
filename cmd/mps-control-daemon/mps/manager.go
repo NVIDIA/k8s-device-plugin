@@ -61,11 +61,7 @@ func New(opts ...Option) (Manager, error) {
 
 	// TODO: This should be controllable via an option
 	if m.nvmllib == nil {
-		driverLibraryPath, err := root("/driver-root").getDriverLibraryPath()
-		if err != nil {
-			return nil, fmt.Errorf("failed to locate driver libraries: %w", err)
-		}
-		m.nvmllib = nvml.New(nvml.WithLibraryPath(driverLibraryPath))
+		m.nvmllib = nvml.New()
 	}
 
 	return m, nil

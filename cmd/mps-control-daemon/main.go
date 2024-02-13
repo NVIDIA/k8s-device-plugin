@@ -61,12 +61,6 @@ func main() {
 
 	config.flags = []cli.Flag{
 		&cli.StringFlag{
-			Name:    "nvidia-driver-root",
-			Value:   "/",
-			Usage:   "the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')",
-			EnvVars: []string{"NVIDIA_DRIVER_ROOT"},
-		},
-		&cli.StringFlag{
 			Name:        "config-file",
 			Usage:       "the path to a config file as an alternative to command line options or environment variables",
 			Destination: &config.configFile,
