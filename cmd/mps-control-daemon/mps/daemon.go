@@ -83,7 +83,6 @@ func (d *Daemon) Envvars() envvars {
 }
 
 // Start starts the MPS deamon as a background process.
-// The pipe and log dirs are also created relative to the driver-root.
 func (d *Daemon) Start() error {
 	if err := d.setComputeMode(computeModeExclusiveProcess); err != nil {
 		return fmt.Errorf("error setting compute mode %v: %w", computeModeExclusiveProcess, err)
@@ -92,16 +91,16 @@ func (d *Daemon) Start() error {
 	klog.InfoS("Staring MPS daemon", "resource", d.rm.Resource())
 
 	pipeDir := d.pipeDir()
-	if err := os.MkdirAll(filepath.Join("/driver-root", pipeDir), 0755); err != nil {
+	if err := os.MkdirAll(pipeDir, 0755); err != nil {
 		return fmt.Errorf("error creating directory %v: %w", pipeDir, err)
 	}
 
 	logDir := d.logDir()
-	if err := os.MkdirAll(filepath.Join("/driver-root", logDir), 0755); err != nil {
+	if err := os.MkdirAll(logDir, 0755); err != nil {
 		return fmt.Errorf("error creating directory %v: %w", logDir, err)
 	}
 
-	mpsDaemon := exec.Command("chroot", "/driver-root", mpsControlBin, "-d")
+	mpsDaemon := exec.Command(mpsControlBin, "-d")
 	mpsDaemon.Env = append(mpsDaemon.Env, d.Envvars().toSlice()...)
 	if err := mpsDaemon.Run(); err != nil {
 		return err
@@ -120,7 +119,7 @@ func (d *Daemon) Start() error {
 		}
 	}
 
-	statusFile, err := os.Create(filepath.Join("/driver-root", d.startedFile()))
+	statusFile, err := os.Create(d.startedFile())
 	if err != nil {
 		return err
 	}
@@ -141,7 +140,7 @@ func (d *Daemon) Stop() error {
 		return fmt.Errorf("error setting compute mode %v: %w", computeModeDefault, err)
 	}
 
-	err = os.Remove(filepath.Join("/driver-root", d.startedFile()))
+	err = os.Remove(d.startedFile())
 	if err != nil && err != os.ErrNotExist {
 		return fmt.Errorf("failed to remove started file: %w", err)
 	}
@@ -177,7 +176,7 @@ func (d *Daemon) EchoPipeToControl(command string) (string, error) {
 	defer writer.Close()
 	defer reader.Close()
 
-	mpsDaemon := exec.Command("chroot", "/driver-root", mpsControlBin)
+	mpsDaemon := exec.Command(mpsControlBin)
 	mpsDaemon.Env = append(mpsDaemon.Env, d.Envvars().toSlice()...)
 
 	mpsDaemon.Stdin = reader
@@ -201,8 +200,6 @@ func (d *Daemon) EchoPipeToControl(command string) (string, error) {
 func (d *Daemon) setComputeMode(mode computeMode) error {
 	for _, uuid := range d.Devices().GetUUIDs() {
 		cmd := exec.Command(
-			// TODO: This needs to be set up to handle non-rootfs paths such as GKE.
-			"chroot", "/driver-root",
 			"nvidia-smi",
 			"-i", uuid,
 			"-c", string(mode))

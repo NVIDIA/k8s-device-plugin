@@ -176,6 +176,10 @@ spec:
           - name: NVIDIA_MIG_MONITOR_DEVICES
             value: all
         {{- end }}
+          - name: NVIDIA_VISIBLE_DEVICES
+            value: all
+          - name: NVIDIA_DRIVER_CAPABILITIES
+            value: compute,utility
         securityContext:
           {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
         volumeMounts:
@@ -186,12 +190,13 @@ spec:
           # This is required for CDI detection to work correctly.
           - name: driver-root
             mountPath: /driver-root
+            readOnly: true
         {{- end }}
           # The MPS /dev/shm is needed to allow for MPS daemon health-checking.
           - name: mps-shm
-            mountPath: /driver-root/dev/shm
+            mountPath: /dev/shm
           - name: mps-root
-            mountPath: /driver-root/mps
+            mountPath: /mps
           - name: cdi-root
             mountPath: /var/run/cdi
         {{- if eq $hasConfigMap "true" }}
