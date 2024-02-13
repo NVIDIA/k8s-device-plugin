@@ -142,20 +142,6 @@ func validateFlags(config *spec.Config) error {
 		if *config.Flags.MigStrategy == spec.MigStrategyMixed {
 			return fmt.Errorf("using --mig-strategy=mixed is not supported with MPS")
 		}
-
-		deviceListStrategies, err := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
-		if err != nil {
-			return err
-		}
-		if !deviceListStrategies.IsCDIEnabled() {
-			return fmt.Errorf("using MPS requires CDI")
-		}
-		if deviceListStrategies.Includes(spec.DeviceListStrategyEnvvar) {
-			return fmt.Errorf("using MPS is incompatible with --device-list-strategy=" + spec.DeviceListStrategyEnvvar)
-		}
-		if deviceListStrategies.Includes(spec.DeviceListStrategyVolumeMounts) {
-			return fmt.Errorf("using MPS is incompatible with --device-list-strategy=" + spec.DeviceListStrategyVolumeMounts)
-		}
 	}
 
 	return nil

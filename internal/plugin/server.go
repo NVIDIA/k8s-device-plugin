@@ -337,14 +337,14 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 			return nil, fmt.Errorf("failed to get allocate response for CDI: %v", err)
 		}
 	}
-	if plugin.config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
-		plugin.updateResponseForMPS(response)
-	}
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyEnvvar) {
 		plugin.updateResponseForDeviceListEnvvar(response, deviceIDs...)
 	}
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyVolumeMounts) {
 		plugin.updateResponseForDeviceMounts(response, deviceIDs...)
+	}
+	if plugin.config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
+		plugin.updateResponseForMPS(response)
 	}
 	if *plugin.config.Flags.Plugin.PassDeviceSpecs {
 		response.Devices = append(response.Devices, plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDriverRoot, requestIds)...)
