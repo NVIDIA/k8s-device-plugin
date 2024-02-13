@@ -326,21 +326,28 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.
 func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*pluginapi.ContainerAllocateResponse, error) {
 	deviceIDs := plugin.deviceIDsFromAnnotatedDeviceIDs(requestIds)
 
-	responseID := uuid.New().String()
-	response, err := plugin.getAllocateResponseForCDI(responseID, deviceIDs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get allocate response for CDI: %v", err)
+	// Create an empty response that will be updated as required below.
+	response := &pluginapi.ContainerAllocateResponse{
+		Envs: make(map[string]string),
 	}
 
+	if plugin.cdiEnabled {
+		responseID := uuid.New().String()
+		if err := plugin.updateResponseForCDI(response, responseID, deviceIDs...); err != nil {
+			return nil, fmt.Errorf("failed to get allocate response for CDI: %v", err)
+		}
+	}
+	if plugin.config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
+		plugin.updateResponseForMPS(response)
+	}
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyEnvvar) {
-		response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, deviceIDs)
+		plugin.updateResponseForDeviceListEnvvar(response, deviceIDs...)
 	}
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyVolumeMounts) {
-		response.Envs = plugin.apiEnvs(plugin.deviceListEnvvar, []string{deviceListAsVolumeMountsContainerPathRoot})
-		response.Mounts = plugin.apiMounts(deviceIDs)
+		plugin.updateResponseForDeviceMounts(response, deviceIDs...)
 	}
 	if *plugin.config.Flags.Plugin.PassDeviceSpecs {
-		response.Devices = plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDriverRoot, requestIds)
+		response.Devices = append(response.Devices, plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDriverRoot, requestIds)...)
 	}
 	if *plugin.config.Flags.GDSEnabled {
 		response.Envs["NVIDIA_GDS"] = "enabled"
@@ -348,47 +355,40 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 	if *plugin.config.Flags.MOFEDEnabled {
 		response.Envs["NVIDIA_MOFED"] = "enabled"
 	}
-	// TODO: We should generate a CDI specification for MPS
-	if plugin.config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
-		if response.Envs == nil {
-			response.Envs = make(map[string]string)
-		}
-		pipeDir := filepath.Join("/mps", string(plugin.rm.Resource()), "pipe")
-		response.Envs["CUDA_MPS_PIPE_DIRECTORY"] = pipeDir
-		response.Mounts = append(response.Mounts,
-			&pluginapi.Mount{
-				ContainerPath: pipeDir,
-				HostPath:      filepath.Join("/var/lib/kubelet/device-plugins", pipeDir),
-			},
-		)
-		logDir := filepath.Join("/mps", string(plugin.rm.Resource()), "log")
-		response.Envs["CUDA_MPS_LOG_DIRECTORY"] = logDir
-		response.Mounts = append(response.Mounts,
-			&pluginapi.Mount{
-				ContainerPath: logDir,
-				HostPath:      filepath.Join("/var/lib/kubelet/device-plugins", logDir),
-			},
-		)
-		response.Mounts = append(response.Mounts,
-			&pluginapi.Mount{
-				ContainerPath: "/dev/shm",
-				HostPath:      "/var/lib/kubelet/device-plugins/mps/shm",
-			},
-		)
-	}
-
-	return &response, nil
+	return response, nil
 }
 
-// getAllocateResponseForCDI returns the allocate response for the specified device IDs.
+// updateResponseForMPS ensures that the ContainerAllocate response contains the information required to use MPS.
+// This includes per-resource pipe and log directories as well as a global daemon-specific shm
+// and assumes that an MPS control daemon has already been started.
+func (plugin NvidiaDevicePlugin) updateResponseForMPS(response *pluginapi.ContainerAllocateResponse) {
+	pipeDir := filepath.Join("/mps", string(plugin.rm.Resource()), "pipe")
+	response.Envs["CUDA_MPS_PIPE_DIRECTORY"] = pipeDir
+	response.Mounts = append(response.Mounts,
+		&pluginapi.Mount{
+			ContainerPath: pipeDir,
+			HostPath:      filepath.Join("/var/lib/kubelet/device-plugins", pipeDir),
+		},
+	)
+	logDir := filepath.Join("/mps", string(plugin.rm.Resource()), "log")
+	response.Envs["CUDA_MPS_LOG_DIRECTORY"] = logDir
+	response.Mounts = append(response.Mounts,
+		&pluginapi.Mount{
+			ContainerPath: logDir,
+			HostPath:      filepath.Join("/var/lib/kubelet/device-plugins", logDir),
+		},
+	)
+	response.Mounts = append(response.Mounts,
+		&pluginapi.Mount{
+			ContainerPath: "/dev/shm",
+			HostPath:      "/var/lib/kubelet/device-plugins/mps/shm",
+		},
+	)
+}
+
+// updateResponseForCDI updates the specified response for the given device IDs.
 // This response contains the annotations required to trigger CDI injection in the container engine or nvidia-container-runtime.
-func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDI(responseID string, deviceIDs []string) (pluginapi.ContainerAllocateResponse, error) {
-	response := pluginapi.ContainerAllocateResponse{}
-
-	if !plugin.cdiEnabled {
-		return response, nil
-	}
-
+func (plugin *NvidiaDevicePlugin) updateResponseForCDI(response *pluginapi.ContainerAllocateResponse, responseID string, deviceIDs ...string) error {
 	var devices []string
 	for _, id := range deviceIDs {
 		devices = append(devices, plugin.cdiHandler.QualifiedName("gpu", id))
@@ -402,21 +402,21 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponseForCDI(responseID string, d
 	}
 
 	if len(devices) == 0 {
-		return response, nil
+		return nil
 	}
 
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyCDIAnnotations) {
-		annotations, err := plugin.getCDIDeviceAnnotations(responseID, devices)
+		annotations, err := plugin.getCDIDeviceAnnotations(responseID, devices...)
 		if err != nil {
-			return response, err
+			return err
 		}
 		response.Annotations = annotations
 	}
 
-	return response, nil
+	return nil
 }
 
-func (plugin *NvidiaDevicePlugin) getCDIDeviceAnnotations(id string, devices []string) (map[string]string, error) {
+func (plugin *NvidiaDevicePlugin) getCDIDeviceAnnotations(id string, devices ...string) (map[string]string, error) {
 	annotations, err := cdiapi.UpdateAnnotations(map[string]string{}, "nvidia-device-plugin", id, devices)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add CDI annotations: %v", err)
@@ -476,24 +476,21 @@ func (plugin *NvidiaDevicePlugin) apiDevices() []*pluginapi.Device {
 	return plugin.rm.Devices().GetPluginDevices()
 }
 
-func (plugin *NvidiaDevicePlugin) apiEnvs(envvar string, deviceIDs []string) map[string]string {
-	return map[string]string{
-		envvar: strings.Join(deviceIDs, ","),
-	}
+// updateResponseForDeviceListEnvvar sets the environment variable for the requested devices.
+func (plugin *NvidiaDevicePlugin) updateResponseForDeviceListEnvvar(response *pluginapi.ContainerAllocateResponse, deviceIDs ...string) {
+	response.Envs[plugin.deviceListEnvvar] = strings.Join(deviceIDs, ",")
 }
 
-func (plugin *NvidiaDevicePlugin) apiMounts(deviceIDs []string) []*pluginapi.Mount {
-	var mounts []*pluginapi.Mount
-
+// updateResponseForDeviceMounts sets the mounts required to request devices if volume mounts are used.
+func (plugin *NvidiaDevicePlugin) updateResponseForDeviceMounts(response *pluginapi.ContainerAllocateResponse, deviceIDs ...string) {
+	plugin.updateResponseForDeviceListEnvvar(response, deviceListAsVolumeMountsContainerPathRoot)
 	for _, id := range deviceIDs {
 		mount := &pluginapi.Mount{
 			HostPath:      deviceListAsVolumeMountsHostPath,
 			ContainerPath: filepath.Join(deviceListAsVolumeMountsContainerPathRoot, id),
 		}
-		mounts = append(mounts, mount)
+		response.Mounts = append(response.Mounts, mount)
 	}
-
-	return mounts
 }
 
 func (plugin *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, ids []string) []*pluginapi.DeviceSpec {
