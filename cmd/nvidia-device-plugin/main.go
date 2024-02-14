@@ -24,6 +24,7 @@ import (
 	"syscall"
 	"time"
 
+	nvinfo "github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/fsnotify/fsnotify"
 	"github.com/urfave/cli/v2"
 	"k8s.io/klog/v2"
@@ -129,9 +130,14 @@ func main() {
 }
 
 func validateFlags(config *spec.Config) error {
-	_, err := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
+	deviceListStrategies, err := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
 	if err != nil {
 		return fmt.Errorf("invalid --device-list-strategy option: %v", err)
+	}
+
+	hasNvml, _ := nvinfo.New().HasNvml()
+	if deviceListStrategies.IsCDIEnabled() && !hasNvml {
+		return fmt.Errorf("CDI --device-list-strategy options are only supported on NVML-based systems")
 	}
 
 	if *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyUUID && *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyIndex {

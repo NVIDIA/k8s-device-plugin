@@ -26,13 +26,6 @@ import (
 // Option is a function that configures a manager
 type Option func(*manager)
 
-// WithCDIEnabled sets whether CDI is enabled for the manager
-func WithCDIEnabled(enabled bool) Option {
-	return func(m *manager) {
-		m.cdiEnabled = enabled
-	}
-}
-
 // WithCDIHandler sets the CDI handler for the manager
 func WithCDIHandler(handler cdi.Interface) Option {
 	return func(m *manager) {

@@ -66,7 +66,7 @@ type NvidiaDevicePlugin struct {
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, cdiHandler cdi.Interface, cdiEnabled bool) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, cdiHandler cdi.Interface) *NvidiaDevicePlugin {
 	_, name := resourceManager.Resource().Split()
 
 	deviceListStrategies, _ := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
@@ -81,7 +81,6 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 		deviceListStrategies: deviceListStrategies,
 		socket:               pluginPath + ".sock",
 		cdiHandler:           cdiHandler,
-		cdiEnabled:           cdiEnabled,
 		cdiAnnotationPrefix:  *config.Flags.Plugin.CDIAnnotationPrefix,
 
 		// These will be reinitialized every
@@ -331,7 +330,7 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 		Envs: make(map[string]string),
 	}
 
-	if plugin.cdiEnabled {
+	if plugin.deviceListStrategies.IsCDIEnabled() {
 		responseID := uuid.New().String()
 		if err := plugin.updateResponseForCDI(response, responseID, deviceIDs...); err != nil {
 			return nil, fmt.Errorf("failed to get allocate response for CDI: %v", err)
@@ -393,7 +392,6 @@ func (plugin *NvidiaDevicePlugin) updateResponseForCDI(response *pluginapi.Conta
 	for _, id := range deviceIDs {
 		devices = append(devices, plugin.cdiHandler.QualifiedName("gpu", id))
 	}
-
 	if *plugin.config.Flags.GDSEnabled {
 		devices = append(devices, plugin.cdiHandler.QualifiedName("gds", "all"))
 	}

@@ -44,10 +44,8 @@ func NewPluginManager(config *spec.Config) (manager.Interface, error) {
 		return nil, fmt.Errorf("invalid device list strategy: %v", err)
 	}
 
-	cdiEnabled := deviceListStrategies.IsCDIEnabled()
-
 	cdiHandler, err := cdi.New(
-		cdi.WithEnabled(cdiEnabled),
+		cdi.WithDeviceListStrategies(deviceListStrategies),
 		cdi.WithDriverRoot(*config.Flags.Plugin.ContainerDriverRoot),
 		cdi.WithTargetDriverRoot(*config.Flags.NvidiaDriverRoot),
 		cdi.WithNvidiaCTKPath(*config.Flags.Plugin.NvidiaCTKPath),
@@ -63,7 +61,6 @@ func NewPluginManager(config *spec.Config) (manager.Interface, error) {
 
 	m, err := manager.New(
 		manager.WithNVML(nvmllib),
-		manager.WithCDIEnabled(cdiEnabled),
 		manager.WithCDIHandler(cdiHandler),
 		manager.WithConfig(config),
 		manager.WithFailOnInitError(*config.Flags.FailOnInitError),
