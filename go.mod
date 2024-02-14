@@ -43,7 +43,7 @@ require (
 	github.com/prometheus/procfs v0.12.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
-	github.com/urfave/cli/v2 v2.25.7
+	github.com/urfave/cli/v2 v2.27.1
 	golang.org/x/net v0.21.0
 	google.golang.org/grpc v1.59.0
 	k8s.io/api v0.28.3
