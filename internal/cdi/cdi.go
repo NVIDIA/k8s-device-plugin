@@ -23,7 +23,7 @@ import (
 	nvdevice "github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvlib/pkg/nvml"
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi"
-	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
+	transformroot "github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform/root"
 	"github.com/sirupsen/logrus"
 	cdiapi "tags.cncf.io/container-device-interface/pkg/cdi"
 	cdiparser "tags.cncf.io/container-device-interface/pkg/parser"
@@ -149,7 +149,11 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 			return fmt.Errorf("failed to get CDI spec: %v", err)
 		}
 
-		err = transform.NewRootTransformer(cdi.driverRoot, cdi.targetDriverRoot).Transform(spec.Raw())
+		err = transformroot.New(
+			transformroot.WithRoot(cdi.driverRoot),
+			transformroot.WithTargetRoot(cdi.targetDriverRoot),
+			transformroot.WithRelativeTo("host"),
+		).Transform(spec.Raw())
 		if err != nil {
 			return fmt.Errorf("failed to transform driver root in CDI spec: %v", err)
 		}

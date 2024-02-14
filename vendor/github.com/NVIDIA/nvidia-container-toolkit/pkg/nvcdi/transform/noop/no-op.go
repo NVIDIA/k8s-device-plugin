@@ -14,24 +14,24 @@
 # limitations under the License.
 **/
 
-package nvcdi
+package noop
 
 import (
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
+	"tags.cncf.io/container-device-interface/specs-go"
+
+	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
 )
 
-const (
-	dxgDeviceNode = "/dev/dxg"
-)
+type noop struct{}
 
-// newDXGDeviceDiscoverer returns a Discoverer for DXG devices under WSL2.
-func newDXGDeviceDiscoverer(logger logger.Interface, devRoot string) discover.Discover {
-	deviceNodes := discover.NewCharDeviceDiscoverer(
-		logger,
-		devRoot,
-		[]string{dxgDeviceNode},
-	)
+var _ transform.Transformer = (*noop)(nil)
 
-	return deviceNodes
+// New returns a no-op transformer.
+func New() transform.Transformer {
+	return noop{}
+}
+
+// Transform is a no-op for a noop transformer.
+func (n noop) Transform(spec *specs.Spec) error {
+	return nil
 }
