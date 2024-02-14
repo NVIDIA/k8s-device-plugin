@@ -1,5 +1,5 @@
 /**
-# Copyright (c) NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,24 +14,20 @@
 # limitations under the License.
 **/
 
-package nvcdi
+package discover
 
-import (
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
-)
+import "github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 
-const (
-	dxgDeviceNode = "/dev/dxg"
-)
-
-// newDXGDeviceDiscoverer returns a Discoverer for DXG devices under WSL2.
-func newDXGDeviceDiscoverer(logger logger.Interface, devRoot string) discover.Discover {
-	deviceNodes := discover.NewCharDeviceDiscoverer(
+// NewNvSwitchDiscoverer creates a discoverer for NVSWITCH devices.
+func NewNvSwitchDiscoverer(logger logger.Interface, devRoot string) (Discover, error) {
+	devices := NewCharDeviceDiscoverer(
 		logger,
 		devRoot,
-		[]string{dxgDeviceNode},
+		[]string{
+			"/dev/nvidia-nvswitchctl",
+			"/dev/nvidia-nvswitch*",
+		},
 	)
 
-	return deviceNodes
+	return devices, nil
 }

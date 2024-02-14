@@ -1,5 +1,5 @@
 /**
-# Copyright (c) NVIDIA CORPORATION.  All rights reserved.
+# Copyright 2023 NVIDIA CORPORATION
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,24 +14,25 @@
 # limitations under the License.
 **/
 
-package nvcdi
+package root
 
 import (
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
+	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
+	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform/noop"
 )
 
-const (
-	dxgDeviceNode = "/dev/dxg"
-)
+type builder struct {
+	transformer
+	relativeTo string
+}
 
-// newDXGDeviceDiscoverer returns a Discoverer for DXG devices under WSL2.
-func newDXGDeviceDiscoverer(logger logger.Interface, devRoot string) discover.Discover {
-	deviceNodes := discover.NewCharDeviceDiscoverer(
-		logger,
-		devRoot,
-		[]string{dxgDeviceNode},
-	)
+func (b *builder) build() transform.Transformer {
+	if b.root == b.targetRoot {
+		return noop.New()
+	}
 
-	return deviceNodes
+	if b.relativeTo == "container" {
+		return containerRootTransformer(b.transformer)
+	}
+	return hostRootTransformer(b.transformer)
 }

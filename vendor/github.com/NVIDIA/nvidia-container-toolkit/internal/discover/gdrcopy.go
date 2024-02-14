@@ -14,24 +14,14 @@
 # limitations under the License.
 **/
 
-package nvcdi
+package discover
 
-import (
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
-)
+import "github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 
-const (
-	dxgDeviceNode = "/dev/dxg"
-)
-
-// newDXGDeviceDiscoverer returns a Discoverer for DXG devices under WSL2.
-func newDXGDeviceDiscoverer(logger logger.Interface, devRoot string) discover.Discover {
-	deviceNodes := discover.NewCharDeviceDiscoverer(
+func NewGDRCopyDiscoverer(logger logger.Interface, devRoot string) (Discover, error) {
+	return NewCharDeviceDiscoverer(
 		logger,
 		devRoot,
-		[]string{dxgDeviceNode},
-	)
-
-	return deviceNodes
+		[]string{"/dev/gdrdrv"},
+	), nil
 }

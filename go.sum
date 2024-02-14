@@ -29,8 +29,8 @@ github.com/NVIDIA/go-nvlib v0.0.0-20240109130712-11603560817a h1:EH7wiaq9+NYDgCB
 github.com/NVIDIA/go-nvlib v0.0.0-20240109130712-11603560817a/go.mod h1:U82N6/xKp6OnoqpALBH0C5SO59Buu4sX1Z3rQtBsBKQ=
 github.com/NVIDIA/go-nvml v0.12.0-2 h1:Sg239yy7jmopu/cuvYauoMj9fOpcGMngxVxxS1EBXeY=
 github.com/NVIDIA/go-nvml v0.12.0-2/go.mod h1:7ruy85eOM73muOc/I37euONSwEyFqZsv5ED9AogD4G0=
-github.com/NVIDIA/nvidia-container-toolkit v1.14.4-0.20231115203935-5d7ee25b37e2 h1:vXcDhtCuiueHliG8jCxmQnaeYECtlyDGqgvUCL4XPho=
-github.com/NVIDIA/nvidia-container-toolkit v1.14.4-0.20231115203935-5d7ee25b37e2/go.mod h1:OLTlrY8PrMQEzfiaTzjIl/ELJ5YeOeqoivDpSEpbrn0=
+github.com/NVIDIA/nvidia-container-toolkit v1.15.0-rc.3 h1:885jKnuAY794tMptJBbqxIuM3PzsrD4s91wtpH/pu+g=
+github.com/NVIDIA/nvidia-container-toolkit v1.15.0-rc.3/go.mod h1:CPmY/nn1QKXJsh71y8FdQiZW41FH2YLVzgcKD5Vrc+0=
 github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d h1:UrqY+r/OJnIp5u0s1SbQ8dVfLCZJsnvazdBP5hS4iRs=
 github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d/go.mod h1:HI8ITrYtUY+O+ZhtlqUnD8+KwNPOyugEhfP9fdUIaEQ=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=

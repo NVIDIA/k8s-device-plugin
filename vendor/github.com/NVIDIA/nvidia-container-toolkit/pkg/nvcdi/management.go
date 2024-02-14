@@ -22,12 +22,13 @@ import (
 	"strings"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"tags.cncf.io/container-device-interface/pkg/cdi"
+	"tags.cncf.io/container-device-interface/specs-go"
+
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/edits"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/cuda"
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/spec"
-	"tags.cncf.io/container-device-interface/pkg/cdi"
-	"tags.cncf.io/container-device-interface/specs-go"
 )
 
 type managementlib nvcdilib
@@ -65,7 +66,7 @@ func (m *managementlib) GetCommonEdits() (*cdi.ContainerEdits, error) {
 		return nil, fmt.Errorf("failed to get CUDA version: %v", err)
 	}
 
-	driver, err := newDriverVersionDiscoverer(m.logger, m.driverRoot, m.nvidiaCTKPath, version)
+	driver, err := newDriverVersionDiscoverer(m.logger, m.driver, m.nvidiaCTKPath, m.ldconfigPath, version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create driver library discoverer: %v", err)
 	}
@@ -86,8 +87,7 @@ func (m *managementlib) getCudaVersion() (string, error) {
 	}
 
 	libCudaPaths, err := cuda.New(
-		cuda.WithLogger(m.logger),
-		cuda.WithDriverRoot(m.driverRoot),
+		m.driver.Libraries(),
 	).Locate(".*.*")
 	if err != nil {
 		return "", fmt.Errorf("failed to locate libcuda.so: %v", err)
@@ -109,6 +109,7 @@ type managementDiscoverer struct {
 func (m *managementlib) newManagementDeviceDiscoverer() (discover.Discover, error) {
 	deviceNodes := discover.NewCharDeviceDiscoverer(
 		m.logger,
+		m.devRoot,
 		[]string{
 			"/dev/nvidia*",
 			"/dev/nvidia-caps/nvidia-cap*",
@@ -117,12 +118,11 @@ func (m *managementlib) newManagementDeviceDiscoverer() (discover.Discover, erro
 			"/dev/nvidia-uvm",
 			"/dev/nvidiactl",
 		},
-		m.driverRoot,
 	)
 
 	deviceFolderPermissionHooks := newDeviceFolderPermissionHookDiscoverer(
 		m.logger,
-		m.driverRoot,
+		m.devRoot,
 		m.nvidiaCTKPath,
 		deviceNodes,
 	)
@@ -187,4 +187,11 @@ func (m *managementlib) GetMIGDeviceEdits(device.Device, device.MigDevice) (*cdi
 // GetMIGDeviceSpecs is unsupported for the managementlib specs
 func (m *managementlib) GetMIGDeviceSpecs(int, device.Device, int, device.MigDevice) (*specs.Device, error) {
 	return nil, fmt.Errorf("GetMIGDeviceSpecs is not supported")
+}
+
+// GetDeviceSpecsByID returns the CDI device specs for the GPU(s) represented by
+// the provided identifiers, where an identifier is an index or UUID of a valid
+// GPU device.
+func (l *managementlib) GetDeviceSpecsByID(...string) ([]specs.Device, error) {
+	return nil, fmt.Errorf("GetDeviceSpecsByID is not supported")
 }
