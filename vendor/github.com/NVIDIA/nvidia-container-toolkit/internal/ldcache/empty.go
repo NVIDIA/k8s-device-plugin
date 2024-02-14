@@ -14,22 +14,24 @@
 # limitations under the License.
 **/
 
-package transform
+package ldcache
 
-import (
-	"tags.cncf.io/container-device-interface/specs-go"
-)
+import "github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 
-type noop struct{}
-
-var _ Transformer = (*noop)(nil)
-
-// NewNoopTransformer returns a no-op transformer
-func NewNoopTransformer() Transformer {
-	return noop{}
+type empty struct {
+	logger logger.Interface
+	path   string
 }
 
-// Transform is a no-op
-func (n noop) Transform(spec *specs.Spec) error {
-	return nil
+var _ LDCache = (*empty)(nil)
+
+// List always returns nil for an empty ldcache
+func (e *empty) List() ([]string, []string) {
+	return nil, nil
+}
+
+// Lookup logs a debug message and returns nil for an empty ldcache
+func (e *empty) Lookup(prefixes ...string) ([]string, []string) {
+	e.logger.Debugf("Calling Lookup(%v) on empty ldcache: %v", prefixes, e.path)
+	return nil, nil
 }

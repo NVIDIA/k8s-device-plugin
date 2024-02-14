@@ -20,11 +20,12 @@ import (
 	"fmt"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"tags.cncf.io/container-device-interface/pkg/cdi"
+	"tags.cncf.io/container-device-interface/specs-go"
+
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/edits"
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/spec"
-	"tags.cncf.io/container-device-interface/pkg/cdi"
-	"tags.cncf.io/container-device-interface/specs-go"
 )
 
 type gdslib nvcdilib
@@ -33,7 +34,7 @@ var _ Interface = (*gdslib)(nil)
 
 // GetAllDeviceSpecs returns the device specs for all available devices.
 func (l *gdslib) GetAllDeviceSpecs() ([]specs.Device, error) {
-	discoverer, err := discover.NewGDSDiscoverer(l.logger, l.driverRoot)
+	discoverer, err := discover.NewGDSDiscoverer(l.logger, l.driverRoot, l.devRoot)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GPUDirect Storage discoverer: %v", err)
 	}
@@ -79,4 +80,11 @@ func (l *gdslib) GetMIGDeviceEdits(device.Device, device.MigDevice) (*cdi.Contai
 // GetMIGDeviceSpecs is unsupported for the gdslib specs
 func (l *gdslib) GetMIGDeviceSpecs(int, device.Device, int, device.MigDevice) (*specs.Device, error) {
 	return nil, fmt.Errorf("GetMIGDeviceSpecs is not supported")
+}
+
+// GetDeviceSpecsByID returns the CDI device specs for the GPU(s) represented by
+// the provided identifiers, where an identifier is an index or UUID of a valid
+// GPU device.
+func (l *gdslib) GetDeviceSpecsByID(...string) ([]specs.Device, error) {
+	return nil, fmt.Errorf("GetDeviceSpecsByID is not supported")
 }
