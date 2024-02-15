@@ -25,10 +25,10 @@ var ToKlog = &toKlog{}
 
 // Warning forwards the arguments to the klog.Warning function.
 func (l toKlog) Warning(args ...interface{}) {
-	klog.Warning(args)
+	klog.Warning(args...)
 }
 
 // Warningf forwards the arguments to the klog.Warningf function.
 func (l toKlog) Warningf(format string, args ...interface{}) {
-	klog.Warning(format, args)
+	klog.Warningf(format, args...)
 }
