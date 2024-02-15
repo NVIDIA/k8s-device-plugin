@@ -50,7 +50,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.28.2
 	k8s.io/apimachinery v0.28.3
 	k8s.io/client-go v0.28.3
-	k8s.io/klog/v2 v2.100.1
+	k8s.io/klog/v2 v2.120.1
 	k8s.io/kubelet v0.28.2
 	k8s.io/mount-utils v0.25.0
 	sigs.k8s.io/node-feature-discovery v0.14.2
@@ -92,7 +92,7 @@ require (
 	github.com/frankban/quicktest v1.14.4 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
-	github.com/go-logr/logr v1.3.0 // indirect
+	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
