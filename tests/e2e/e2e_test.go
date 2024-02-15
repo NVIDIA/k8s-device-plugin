@@ -38,6 +38,7 @@ var (
 	ImageRepo             = flag.String("image.repo", "", "Image repository to fetch image from")
 	ImageTag              = flag.String("image.tag", "", "Image tag to use")
 	ImagePullPolicy       = flag.String("image.pull-policy", "IfNotPresent", "Image pull policy")
+	RuntimeClassName      = flag.String("runtime-class-name", "", "Specify the runtime class name to use")
 )
 
 func TestMain(m *testing.M) {
@@ -47,8 +48,8 @@ func TestMain(m *testing.M) {
 	klog.SetOutput(ginkgo.GinkgoWriter)
 
 	// check if flags are set and if not cancel the test run
-	if *ImageRepo == "" || *ImageTag == "" || *HelmChart == "" {
-		e2elog.Failf("Required flags not set. Please set -image.repo, -image.tag and -helm-chart")
+	if *HelmChart == "" {
+		e2elog.Failf("Required flags not set. Please set -helm-chart")
 	}
 
 	rand.New(rand.NewSource(time.Now().UnixNano()))

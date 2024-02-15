@@ -36,6 +36,7 @@ e2e-test:
 		-image.repo=$(E2E_IMAGE_REPO) \
 		-image.tag=$(E2E_IMAGE_TAG) \
 		-image.pull-policy=$(E2E_IMAGE_PULL_POLICY) \
+		-runtime-class-name=nvidia \
 		-helm-chart=$(HELM_CHART) \
-		-ginkgo.focus="\[nvidia\]" \
+		-ginkgo.focus="GPU\ Device\ Plugin" \
 		-test.timeout=1h

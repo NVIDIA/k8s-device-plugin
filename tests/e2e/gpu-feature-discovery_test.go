@@ -39,7 +39,7 @@ import (
 )
 
 // Actual test suite
-var _ = NVDescribe("GPU Feature Discovery", func() {
+var _ = Describe("GPU Feature Discovery", func() {
 	f := framework.NewFramework("gpu-feature-discovery")
 
 	expectedLabelPatterns := k8sLabels{
