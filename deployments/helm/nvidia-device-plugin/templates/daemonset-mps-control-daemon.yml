@@ -149,7 +149,7 @@ spec:
             exec:
               command:
               - cat
-              - /mps/nvidia.com/gpu/.started
+              - /mps/.ready
             initialDelaySeconds: 1
             periodSeconds: 1
           env:
