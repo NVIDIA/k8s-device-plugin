@@ -29,7 +29,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-
+      name: Checkout code
+    - name: Install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 'stable'
     - name: Lint
       uses: golangci/golangci-lint-action@v4
       with:
@@ -45,12 +49,13 @@ jobs:
         - name: Install Go
           uses: actions/setup-go@v5
           with:
-            go-version: '1.20'
+            go-version: 'stable'
         - run: make test
   build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+      name: Checkout code
 
     - name: Build
       run: make docker-build
