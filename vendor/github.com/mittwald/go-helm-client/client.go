@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"strings"
 
+	"golang.org/x/exp/slices"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/spf13/pflag"
@@ -773,6 +775,28 @@ func (c *HelmClient) GetChart(chartName string, chartPathOptions *action.ChartPa
 	return helmChart, chartPath, err
 }
 
+// RunTests runs the tests that were deployed with the release provided. It returns true
+// if all the tests ran successfully and false in all other cases.
+// NOTE: error = nil implies that all tests ran to either success or failure.
+func (c *HelmClient) RunChartTests(releaseName string) (bool, error) {
+
+	client := action.NewReleaseTesting(c.ActionConfig)
+
+	if c.Settings.Namespace() == "" {
+		return false, fmt.Errorf("namespace not set")
+	}
+
+	client.Namespace = c.Settings.Namespace()
+
+	rel, err := client.Run(releaseName)
+	if err != nil && rel == nil {
+		return false, fmt.Errorf("unable to find release '%s': %v", releaseName, err)
+	}
+
+	// Check that there are no test failures
+	return checkReleaseForTestFailure(rel) == false, nil
+}
+
 // chartExists checks whether a chart is already installed
 // in a namespace or not based on the provided chart spec.
 // Note that this function only considers the contained chart name and namespace.
@@ -854,6 +878,23 @@ func updateDependencies(helmChart *chart.Chart, chartPathOptions *action.ChartPa
 		}
 	}
 	return helmChart, nil
+}
+
+// checkReleaseForTestFailure parses the list of hooks in the release
+// and checks the status of the test hooks, returning true if any test has Phase != Succeeded
+// Returns false if all tests have passed (including if there are no tests)
+func checkReleaseForTestFailure(rel *release.Release) bool {
+	// Check if any test failed
+	hooksToCheck := []*release.Hook{}
+	for _, hook := range rel.Hooks {
+		// Only check the Phase for events which are supposed to get triggered for "test" hook
+		if slices.Contains(hook.Events, release.HookTest) {
+			hooksToCheck = append(hooksToCheck, hook)
+		}
+	}
+	return slices.ContainsFunc(hooksToCheck, func(h *release.Hook) bool {
+		return h.LastRun.Phase != release.HookPhaseSucceeded
+	})
 }
 
 // mergeRollbackOptions merges values of the provided chart to helm rollback options used by the client.

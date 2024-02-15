@@ -54,13 +54,13 @@ MOCKGEN ?= $(LOCALBIN)/mockgen
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 
 ## Tool Versions
-MOCKGEN_VERSION ?= v1.6.0
-CONTROLLER_TOOLS_VERSION ?= v0.10.0
+MOCKGEN_VERSION ?= v0.4.0
+CONTROLLER_TOOLS_VERSION ?= v0.13.0
 
 .PHONY: mockgen
 mockgen: $(MOCKGEN) ## Download mockgen locally if necessary.
 $(MOCKGEN): $(LOCALBIN)
-	test -s $(LOCALBIN)/mockgen || GOBIN=$(LOCALBIN) go install github.com/golang/mock/mockgen@$(MOCKGEN_VERSION)
+	test -s $(LOCALBIN)/mockgen || GOBIN=$(LOCALBIN) go install go.uber.org/mock/mockgen@$(MOCKGEN_VERSION)
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
