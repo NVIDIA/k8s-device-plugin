@@ -400,12 +400,12 @@ func updateSymlink(config string, f *Flags) (bool, error) {
 	}
 	if exists {
 		srcRealpath, err := filepath.EvalSymlinks(src)
-		if err != nil && !os.IsNotExist(err) {
+		if err != nil {
 			return false, fmt.Errorf("error evaluating realpath of '%v': %v", src, err)
 		}
 
 		dstRealpath, err := filepath.EvalSymlinks(f.ConfigFileDst)
-		if err != nil && !os.IsNotExist(err) {
+		if err != nil {
 			return false, fmt.Errorf("error evaluating realpath of '%v': %v", f.ConfigFileDst, err)
 		}
 
