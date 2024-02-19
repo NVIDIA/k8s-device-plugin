@@ -17,12 +17,14 @@
 package plugin
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
@@ -168,12 +170,28 @@ func (plugin *NvidiaDevicePlugin) waitForMPSDaemon() error {
 	if plugin.config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
 		return nil
 	}
-	// TODO: Check the .ready file here.
 	// TODO: Have some retry strategy here.
 	if err := plugin.mpsDaemon.AssertHealthy(); err != nil {
 		return fmt.Errorf("error checking MPS daemon health: %w", err)
 	}
 	klog.InfoS("MPS daemon is healthy", "resource", plugin.rm.Resource())
+
+	// TODO: Check the .ready file here.
+	readyFile, err := os.Open("/mps/.ready")
+	if err != nil {
+		return fmt.Errorf("failed to process .ready file: %w", err)
+	}
+	defer readyFile.Close()
+
+	var mpsConfig spec.ReplicatedResources
+	if err := json.NewDecoder(readyFile).Decode(&mpsConfig); err != nil {
+		return fmt.Errorf("failed to load .ready config: %w", err)
+	}
+	if !reflect.DeepEqual(mpsConfig, *plugin.config.Sharing.MPS) {
+		klog.InfoS("mismatched sharing configs", "config", mpsConfig)
+		return fmt.Errorf("mismatched sharing config; assuming MPS is not ready")
+	}
+
 	return nil
 }
 

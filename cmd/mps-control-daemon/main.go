@@ -110,6 +110,9 @@ func start(c *cli.Context, cfg *Config) error {
 	var restartTimeout <-chan time.Time
 	var daemons []*mps.Daemon
 restart:
+	if err := os.Remove("/mps/.ready"); err != nil {
+		klog.Warningf("Failed to remove .ready file: %v", err)
+	}
 	// If we are restarting, stop daemons from previous run.
 	if started {
 		err := stopDaemons(daemons...)
@@ -204,19 +207,20 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 			return mpsDaemons, true, nil
 		}
 	}
+	// Create an /mps/.ready file.
 	readyFile, err := os.Create("/mps/.ready")
 	if err != nil {
-		return mpsDaemons, true, fmt.Errorf("failed to create .ready file")
+		return mpsDaemons, false, fmt.Errorf("failed to create .ready file: %w", err)
 	}
 	defer readyFile.Close()
+	if err := json.NewEncoder(readyFile).Encode(config.Sharing.MPS); err != nil {
+		return mpsDaemons, false, fmt.Errorf("failed to write .ready file: %w", err)
+	}
 
 	return mpsDaemons, false, nil
 }
 
 func stopDaemons(mpsDaemons ...*mps.Daemon) error {
-	if err := os.Remove("/mps/.ready"); err != nil {
-		klog.Warningf("Failed to remove .ready file: %v", err)
-	}
 	klog.Info("Stopping MPS daemons.")
 	var errs error
 	for _, p := range mpsDaemons {
