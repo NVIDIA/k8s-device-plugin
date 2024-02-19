@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"syscall"
 	"time"
 
@@ -221,7 +222,6 @@ restart:
 		// 'pluginapi.KubeletSocket' file. When this occurs, restart this loop,
 		// restarting all of the plugins in the process.
 		case event := <-watcher.Events:
-			klog.InfoS("processing watcher event", "event", event)
 			if event.Name == pluginapi.KubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
 				klog.Infof("inotify: %s created, restarting.", pluginapi.KubeletSocket)
 				goto restart
@@ -232,12 +232,29 @@ restart:
 					continue
 				}
 				switch {
-				case event.Op&fsnotify.Create == fsnotify.Create:
-					klog.Infof("/mps/.ready created; restarting")
-					goto restart
 				case event.Op&fsnotify.Remove == fsnotify.Remove:
 					klog.Infof("/mps/.ready removed; restarting")
 					goto restart
+				case event.Op&(fsnotify.Create|fsnotify.Write) != 0:
+					klog.Infof("/mps/.ready created or modified; checking config")
+					readyFile, err := os.Open("/mps/.ready")
+					if err != nil {
+						return fmt.Errorf("failed to process .ready file: %w", err)
+					}
+					defer readyFile.Close()
+					var mpsConfig spec.ReplicatedResources
+					if err := json.NewDecoder(readyFile).Decode(&mpsConfig); err != nil {
+						readyFile.Close()
+						klog.ErrorS(err, "failed to load .ready config")
+						goto restart
+					}
+					if !reflect.DeepEqual(mpsConfig, *config.Sharing.MPS) {
+						readyFile.Close()
+						klog.Info("mismatched sharing config; restarting.")
+						goto restart
+					}
+					readyFile.Close()
+					continue
 				}
 			}
 
