@@ -33,7 +33,6 @@ type manager struct {
 	nvmllib         nvml.Interface
 
 	cdiHandler cdi.Interface
-	cdiEnabled bool
 	config     *spec.Config
 	infolib    info.Interface
 }
@@ -50,21 +49,17 @@ func New(opts ...Option) (Interface, error) {
 		return &null{}, nil
 	}
 
+	if m.cdiHandler != nil {
+		m.cdiHandler = cdi.NewNullHandler()
+	}
+
 	if m.infolib == nil {
 		m.infolib = info.New()
-	}
-	if m.cdiHandler == nil {
-		m.cdiHandler = cdi.NewNullHandler()
 	}
 
 	mode, err := m.resolveMode()
 	if err != nil {
 		return nil, err
-	}
-
-	if mode != "nvml" && m.cdiEnabled {
-		klog.Warning("CDI is not supported; disabling CDI.")
-		m.cdiEnabled = false
 	}
 
 	switch mode {

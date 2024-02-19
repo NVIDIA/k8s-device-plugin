@@ -27,6 +27,8 @@ import (
 	"github.com/sirupsen/logrus"
 	cdiapi "tags.cncf.io/container-device-interface/pkg/cdi"
 	cdiparser "tags.cncf.io/container-device-interface/pkg/parser"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 const (
@@ -44,7 +46,8 @@ type cdiHandler struct {
 	vendor           string
 	deviceIDStrategy string
 
-	enabled      bool
+	deviceListStrategies spec.DeviceListStrategies
+
 	gdsEnabled   bool
 	mofedEnabled bool
 
@@ -60,7 +63,7 @@ func newHandler(opts ...Option) (Interface, error) {
 		opt(c)
 	}
 
-	if !c.enabled {
+	if !c.deviceListStrategies.IsCDIEnabled() {
 		return &null{}, nil
 	}
 

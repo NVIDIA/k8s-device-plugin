@@ -24,6 +24,7 @@ import (
 	"syscall"
 	"time"
 
+	nvinfo "github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/fsnotify/fsnotify"
 	"github.com/urfave/cli/v2"
 	"k8s.io/klog/v2"
@@ -129,9 +130,14 @@ func main() {
 }
 
 func validateFlags(config *spec.Config) error {
-	_, err := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
+	deviceListStrategies, err := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
 	if err != nil {
 		return fmt.Errorf("invalid --device-list-strategy option: %v", err)
+	}
+
+	hasNvml, _ := nvinfo.New().HasNvml()
+	if deviceListStrategies.IsCDIEnabled() && !hasNvml {
+		return fmt.Errorf("CDI --device-list-strategy options are only supported on NVML-based systems")
 	}
 
 	if *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyUUID && *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyIndex {
@@ -141,20 +147,6 @@ func validateFlags(config *spec.Config) error {
 	if config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
 		if *config.Flags.MigStrategy == spec.MigStrategyMixed {
 			return fmt.Errorf("using --mig-strategy=mixed is not supported with MPS")
-		}
-
-		deviceListStrategies, err := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
-		if err != nil {
-			return err
-		}
-		if !deviceListStrategies.IsCDIEnabled() {
-			return fmt.Errorf("using MPS requires CDI")
-		}
-		if deviceListStrategies.Includes(spec.DeviceListStrategyEnvvar) {
-			return fmt.Errorf("using MPS is incompatible with --device-list-strategy=" + spec.DeviceListStrategyEnvvar)
-		}
-		if deviceListStrategies.Includes(spec.DeviceListStrategyVolumeMounts) {
-			return fmt.Errorf("using MPS is incompatible with --device-list-strategy=" + spec.DeviceListStrategyVolumeMounts)
 		}
 	}
 

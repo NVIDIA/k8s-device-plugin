@@ -44,13 +44,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 			CDIEnabled:           true,
 		},
 		{
-			description:          "CDI disabled has empty response",
-			deviceIds:            []string{"gpu0"},
-			deviceListStrategies: []string{"cdi-annotations"},
-			CDIPrefix:            "cdi.k8s.io/",
-			CDIEnabled:           false,
-		},
-		{
 			description:          "single device is added to annotations",
 			deviceIds:            []string{"gpu0"},
 			deviceListStrategies: []string{"cdi-annotations"},
@@ -160,7 +153,8 @@ func TestCDIAllocateResponse(t *testing.T) {
 				cdiAnnotationPrefix:  tc.CDIPrefix,
 			}
 
-			response, err := plugin.getAllocateResponseForCDI("uuid", tc.deviceIds)
+			response := pluginapi.ContainerAllocateResponse{}
+			err := plugin.updateResponseForCDI(&response, "uuid", tc.deviceIds...)
 
 			require.Nil(t, err)
 			require.EqualValues(t, &tc.expectedResponse, &response)
