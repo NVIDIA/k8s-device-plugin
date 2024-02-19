@@ -87,14 +87,14 @@ func TestSharingLabeler(t *testing.T) {
 		{
 			descrition: "nil config",
 			expectedLabels: map[string]string{
-				"nvidia.com/sharing.mps.enabled": "false",
+				"nvidia.com/mps.capable": "false",
 			},
 		},
 		{
 			descrition: "empty config",
 			config:     &spec.Config{},
 			expectedLabels: map[string]string{
-				"nvidia.com/sharing.mps.enabled": "false",
+				"nvidia.com/mps.capable": "false",
 			},
 		},
 		{
@@ -111,7 +111,7 @@ func TestSharingLabeler(t *testing.T) {
 				},
 			},
 			expectedLabels: map[string]string{
-				"nvidia.com/sharing.mps.enabled": "false",
+				"nvidia.com/mps.capable": "false",
 			},
 		},
 		{
@@ -128,7 +128,7 @@ func TestSharingLabeler(t *testing.T) {
 				},
 			},
 			expectedLabels: map[string]string{
-				"nvidia.com/sharing.mps.enabled": "false",
+				"nvidia.com/mps.capable": "false",
 			},
 		},
 		{
@@ -145,7 +145,7 @@ func TestSharingLabeler(t *testing.T) {
 				},
 			},
 			expectedLabels: map[string]string{
-				"nvidia.com/sharing.mps.enabled": "true",
+				"nvidia.com/mps.capable": "true",
 			},
 		},
 	}

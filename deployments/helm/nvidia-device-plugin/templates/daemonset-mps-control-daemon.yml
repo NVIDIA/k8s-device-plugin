@@ -209,7 +209,7 @@ spec:
       {{- end }}
       nodeSelector:
         # We only deploy this pod if the following sharing label is applied.
-        nvidia.com/sharing.mps.enabled: "true"
+        nvidia.com/mps.capable: "true"
       {{- with .Values.nodeSelector }}
         {{- toYaml . | nindent 8 }}
       {{- end }}

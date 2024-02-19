@@ -59,7 +59,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 		"nvidia.com/mig.capable":          "[true|false]",
 		"nvidia.com/gpu.compute.major":    "[0-9]+",
 		"nvidia.com/gpu.compute.minor":    "[0-9]+",
-		"nvidia.com/sharing.mps.enabled":  "[true|false]",
+		"nvidia.com/mps.capable":          "[true|false]",
 	}
 
 	Context("When deploying GFD", Ordered, func() {
