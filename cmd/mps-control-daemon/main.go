@@ -188,7 +188,6 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 
 	if len(mpsDaemons) == 0 {
 		klog.Info("No devices are configured for MPS sharing; Waiting indefinitely.")
-		return nil, false, nil
 	}
 
 	// Loop through all MPS daemons and start them.
@@ -199,10 +198,19 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 			return mpsDaemons, true, nil
 		}
 	}
+	readyFile, err := os.Create("/mps/.ready")
+	if err != nil {
+		return mpsDaemons, true, fmt.Errorf("failed to create .ready file")
+	}
+	defer readyFile.Close()
+
 	return mpsDaemons, false, nil
 }
 
 func stopDaemons(mpsDaemons ...*mps.Daemon) error {
+	if err := os.Remove("/mps/.ready"); err != nil {
+		klog.Warning("Failed to remove .ready file: %v", err)
+	}
 	klog.Info("Stopping MPS daemons.")
 	var errs error
 	for _, p := range mpsDaemons {
