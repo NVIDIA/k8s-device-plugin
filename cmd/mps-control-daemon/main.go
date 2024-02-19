@@ -209,7 +209,7 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 
 func stopDaemons(mpsDaemons ...*mps.Daemon) error {
 	if err := os.Remove("/mps/.ready"); err != nil {
-		klog.Warning("Failed to remove .ready file: %v", err)
+		klog.Warningf("Failed to remove .ready file: %v", err)
 	}
 	klog.Info("Stopping MPS daemons.")
 	var errs error
