@@ -49,7 +49,7 @@ func New(opts ...Option) (Interface, error) {
 		return &null{}, nil
 	}
 
-	if m.cdiHandler != nil {
+	if m.cdiHandler == nil {
 		m.cdiHandler = cdi.NewNullHandler()
 	}
 
