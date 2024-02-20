@@ -15,13 +15,14 @@
 GO_CMD ?= go
 GO_FMT ?= gofmt
 
+include $(CURDIR)/versions.mk
+
 DRIVER_ENABLED ?= true
 
-E2E_IMAGE_REPO ?= nvcr.io/nvidia/k8s-device-plugin
-E2E_IMAGE_TAG ?= v0.14.3
-E2E_IMAGE_PULL_POLICY ?= Always
-
-HELM_CHART ?= $(CURDIR)/../../deployments/helm/nvidia-device-plugin
+E2E_IMAGE_REPO ?= $(REGISTRY)/$(DRIVER_NAME)
+E2E_IMAGE_TAG ?= $(VERSION)
+E2E_IMAGE_PULL_POLICY ?= IfNotPresent
+HELM_CHART ?= $(CURDIR)/deployments/helm/nvidia-device-plugin
 
 .PHONY: e2e-test
 e2e-test:
@@ -29,7 +30,7 @@ e2e-test:
 		echo "[ERR] KUBECONFIG missing, must be defined"; \
 		exit 1; \
 	fi
-	$(GO_CMD) test -v . -args \
+	$(GO_CMD) test -v $(CURDIR)/tests/e2e -args \
 		-kubeconfig=$(KUBECONFIG) \
 		-driver-enabled=$(DRIVER_ENABLED) \
 		-image.repo=$(E2E_IMAGE_REPO) \

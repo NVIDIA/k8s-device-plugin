@@ -16,6 +16,9 @@ name: Golang
 
 on:
   pull_request:
+    types:
+      - opened
+      - synchronize
     branches:
       - main
       - release-*

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Run this workflow on pull requests or merge to main/release branches
-name: image
+name: Image
 
 on:
   pull_request:
