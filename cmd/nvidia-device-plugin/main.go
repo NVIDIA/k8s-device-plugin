@@ -120,6 +120,11 @@ func main() {
 			Usage:   "the path where the NVIDIA driver root is mounted in the container; used for generating CDI specifications",
 			EnvVars: []string{"CONTAINER_DRIVER_ROOT"},
 		},
+		&cli.StringFlag{
+			Name:    "mps-root",
+			Usage:   "the path on the host where MPS-specific mounts and files are created by the MPS control daemon manager",
+			EnvVars: []string{"MPS_ROOT"},
+		},
 	}
 
 	err := c.Run(os.Args)
@@ -147,6 +152,9 @@ func validateFlags(config *spec.Config) error {
 	if config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
 		if *config.Flags.MigStrategy == spec.MigStrategyMixed {
 			return fmt.Errorf("using --mig-strategy=mixed is not supported with MPS")
+		}
+		if config.Flags.MpsRoot == nil || *config.Flags.MpsRoot == "" {
+			return fmt.Errorf("using MPS requires --mps-root to be specified")
 		}
 	}
 
