@@ -146,6 +146,6 @@ func newSharingLabeler(config *spec.Config) Labeler {
 	}
 
 	return Labels{
-		"nvidia.com/sharing.mps.enabled": strconv.FormatBool(mpsEnabled),
+		"nvidia.com/mps.capable": strconv.FormatBool(mpsEnabled),
 	}
 }
