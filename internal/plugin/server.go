@@ -69,7 +69,7 @@ type NvidiaDevicePlugin struct {
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, cdiHandler cdi.Interface) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, cdiHandler cdi.Interface) (*NvidiaDevicePlugin, error) {
 	_, name := resourceManager.Resource().Split()
 
 	deviceListStrategies, _ := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
@@ -80,11 +80,17 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 	var mpsDaemon *mps.Daemon
 	var mpsHostRoot mps.Root
 	if config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
+		// TODO: It might make sense to pull this logic into a resource manager.
+		for _, device := range resourceManager.Devices() {
+			if device.IsMigDevice() {
+				return nil, errors.New("sharing using MPS is not supported for MIG devices")
+			}
+		}
 		mpsDaemon = mps.NewDaemon(resourceManager, mps.ContainerRoot)
 		mpsHostRoot = mps.Root(*config.Flags.CommandLineFlags.MpsRoot)
 	}
 
-	return &NvidiaDevicePlugin{
+	plugin := NvidiaDevicePlugin{
 		rm:                   resourceManager,
 		config:               config,
 		deviceListEnvvar:     "NVIDIA_VISIBLE_DEVICES",
@@ -102,6 +108,7 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 		health: nil,
 		stop:   nil,
 	}
+	return &plugin, nil
 }
 
 func (plugin *NvidiaDevicePlugin) initialize() {

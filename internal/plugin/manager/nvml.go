@@ -34,7 +34,11 @@ func (m *nvmlmanager) GetPlugins() ([]plugin.Interface, error) {
 
 	var plugins []plugin.Interface
 	for _, r := range rms {
-		plugins = append(plugins, plugin.NewNvidiaDevicePlugin(m.config, r, m.cdiHandler))
+		plugin, err := plugin.NewNvidiaDevicePlugin(m.config, r, m.cdiHandler)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create plugin: %w", err)
+		}
+		plugins = append(plugins, plugin)
 	}
 	return plugins, nil
 }
