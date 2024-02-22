@@ -375,19 +375,13 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 // and assumes that an MPS control daemon has already been started.
 func (plugin NvidiaDevicePlugin) updateResponseForMPS(response *pluginapi.ContainerAllocateResponse) {
 	// TODO: We should check that the deviceIDs are shared using MPS.
-	for k, v := range plugin.mpsDaemon.Envvars() {
-		response.Envs[k] = v
-	}
+	response.Envs["CUDA_MPS_PIPE_DIRECTORY"] = plugin.mpsDaemon.PipeDir()
 
 	resourceName := plugin.rm.Resource()
 	response.Mounts = append(response.Mounts,
 		&pluginapi.Mount{
 			ContainerPath: plugin.mpsDaemon.PipeDir(),
 			HostPath:      plugin.mpsHostRoot.PipeDir(resourceName),
-		},
-		&pluginapi.Mount{
-			ContainerPath: plugin.mpsDaemon.PipeDir(),
-			HostPath:      plugin.mpsHostRoot.LogDir(resourceName),
 		},
 		&pluginapi.Mount{
 			ContainerPath: plugin.mpsDaemon.ShmDir(),
