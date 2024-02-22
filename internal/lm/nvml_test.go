@@ -81,6 +81,7 @@ func TestMigCapabilityLabeler(t *testing.T) {
 func TestSharingLabeler(t *testing.T) {
 	testCases := []struct {
 		descrition     string
+		manager        resource.Manager
 		config         *spec.Config
 		expectedLabels map[string]string
 	}{
@@ -132,7 +133,19 @@ func TestSharingLabeler(t *testing.T) {
 			},
 		},
 		{
-			descrition: "config with mps replicas",
+			descrition: "config with mps replicas no-mig-devices",
+			manager: &resource.ManagerMock{
+				GetDevicesFunc: func() ([]resource.Device, error) {
+					devices := []resource.Device{
+						&resource.DeviceMock{
+							IsMigEnabledFunc: func() (bool, error) {
+								return false, nil
+							},
+						},
+					}
+					return devices, nil
+				},
+			},
 			config: &spec.Config{
 				Sharing: spec.Sharing{
 					MPS: &spec.ReplicatedResources{
@@ -148,11 +161,40 @@ func TestSharingLabeler(t *testing.T) {
 				"nvidia.com/mps.capable": "true",
 			},
 		},
+		{
+			descrition: "config with mps replicas mig-devices",
+			manager: &resource.ManagerMock{
+				GetDevicesFunc: func() ([]resource.Device, error) {
+					devices := []resource.Device{
+						&resource.DeviceMock{
+							IsMigEnabledFunc: func() (bool, error) {
+								return true, nil
+							},
+						},
+					}
+					return devices, nil
+				},
+			},
+			config: &spec.Config{
+				Sharing: spec.Sharing{
+					MPS: &spec.ReplicatedResources{
+						Resources: []spec.ReplicatedResource{
+							{
+								Replicas: 2,
+							},
+						},
+					},
+				},
+			},
+			expectedLabels: map[string]string{
+				"nvidia.com/mps.capable": "false",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.descrition, func(t *testing.T) {
-			require.EqualValues(t, tc.expectedLabels, newSharingLabeler(tc.config))
+			require.EqualValues(t, tc.expectedLabels, newSharingLabeler(tc.manager, tc.config))
 		})
 	}
 }
