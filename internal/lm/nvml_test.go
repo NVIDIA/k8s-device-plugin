@@ -80,26 +80,26 @@ func TestMigCapabilityLabeler(t *testing.T) {
 
 func TestSharingLabeler(t *testing.T) {
 	testCases := []struct {
-		descrition     string
+		description    string
 		manager        resource.Manager
 		config         *spec.Config
 		expectedLabels map[string]string
 	}{
 		{
-			descrition: "nil config",
+			description: "nil config",
 			expectedLabels: map[string]string{
 				"nvidia.com/mps.capable": "false",
 			},
 		},
 		{
-			descrition: "empty config",
-			config:     &spec.Config{},
+			description: "empty config",
+			config:      &spec.Config{},
 			expectedLabels: map[string]string{
 				"nvidia.com/mps.capable": "false",
 			},
 		},
 		{
-			descrition: "config with timeslicing replicas",
+			description: "config with timeslicing replicas",
 			config: &spec.Config{
 				Sharing: spec.Sharing{
 					TimeSlicing: spec.ReplicatedResources{
@@ -116,7 +116,7 @@ func TestSharingLabeler(t *testing.T) {
 			},
 		},
 		{
-			descrition: "config with no mps replicas",
+			description: "config with no mps replicas",
 			config: &spec.Config{
 				Sharing: spec.Sharing{
 					MPS: &spec.ReplicatedResources{
@@ -133,7 +133,7 @@ func TestSharingLabeler(t *testing.T) {
 			},
 		},
 		{
-			descrition: "config with mps replicas no-mig-devices",
+			description: "config with mps replicas no-mig-devices",
 			manager: &resource.ManagerMock{
 				GetDevicesFunc: func() ([]resource.Device, error) {
 					devices := []resource.Device{
@@ -162,7 +162,7 @@ func TestSharingLabeler(t *testing.T) {
 			},
 		},
 		{
-			descrition: "config with mps replicas mig-devices",
+			description: "config with mps replicas mig-devices",
 			manager: &resource.ManagerMock{
 				GetDevicesFunc: func() ([]resource.Device, error) {
 					devices := []resource.Device{
@@ -193,7 +193,7 @@ func TestSharingLabeler(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.descrition, func(t *testing.T) {
+		t.Run(tc.description, func(t *testing.T) {
 			require.EqualValues(t, tc.expectedLabels, newSharingLabeler(tc.manager, tc.config))
 		})
 	}
