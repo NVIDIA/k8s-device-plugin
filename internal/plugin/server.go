@@ -79,7 +79,7 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 
 	var mpsDaemon *mps.Daemon
 	var mpsHostRoot mps.Root
-	if config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
+	if config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
 		mpsDaemon = mps.NewDaemon(resourceManager, mps.ContainerRoot)
 		mpsHostRoot = mps.Root(*config.Flags.CommandLineFlags.MpsRoot)
 	}
