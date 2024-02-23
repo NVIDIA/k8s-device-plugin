@@ -12,7 +12,9 @@
   * [As command line flags or envvars](#as-command-line-flags-or-envvars)
   * [As a configuration file](#as-a-configuration-file)
   * [Configuration Option Details](#configuration-option-details)
-  * [Shared Access to GPUs with CUDA Time-Slicing](#shared-access-to-gpus-with-cuda-time-slicing)
+  * [Shared Access to GPUs](#shared-access-to-gpus)
+    * [With CUDA Time-Slicing](#with-cuda-time-slicing)
+    * [With CUDA MPS](#with-cuda-mps)
 - [Deployment via `helm`](#deployment-via-helm)
   * [Configuring the device plugin's `helm` chart](#configuring-the-device-plugins-helm-chart)
     + [Passing configuration to the plugin via a `ConfigMap`.](#passing-configuration-to-the-plugin-via-a-configmap)
@@ -348,18 +350,28 @@ options outside of this section are shared.
   launch time. As described below, a `ConfigMap` can be used to point the
   plugin at a desired configuration file when deploying via `helm`.
 
-### Shared Access to GPUs with CUDA Time-Slicing
+### Shared Access to GPUs
 
 The NVIDIA device plugin allows oversubscription of GPUs through a set of
-extended options in its configuration file. Under the hood, CUDA time-slicing
-is used to allow workloads that land on oversubscribed GPUs to interleave with
-one another. However, nothing special is done to isolate workloads that are
+extended options in its configuration file. There are two flavors of sharing
+available: Time-Slicing and MPS.
+
+**Note:** The use of time-slicing and MPS are mutually exclusive.
+
+In the case of time-slicing, CUDA time-slicing is used to allow workloads sharing a GPU to
+interleave with each other. However, nothing special is done to isolate workloads that are
 granted replicas from the same underlying GPU, and each workload has access to
 the GPU memory and runs in the same fault-domain as of all the others (meaning
 if one workload crashes, they all do).
 
+In the case of MPS, a control daemon is used to manage access to the shared GPU.
+In contrast to time-slicing, MPS does space partitioning and allows memory and
+compute resources to be explicitly partitioned and enforces these limits per
+workload.
 
-These extended options can be seen below:
+#### With CUDA Time-Slicing
+
+The extended options for sharing using time-slicing can be seen below:
 ```
 version: v1
 sharing:
@@ -485,6 +497,86 @@ nvidia.com/mig-2g.20gb
 nvidia.com/mig-3g.40gb
 nvidia.com/mig-7g.80gb
 ```
+
+### With CUDA MPS
+
+**Note**: Sharing with MPS is currently not supported on devices with MIG enabled.
+
+The extended options for sharing using MPS can be seen below:
+```
+version: v1
+sharing:
+  mps:
+    renameByDefault: <bool>
+    resources:
+    - name: <resource-name>
+      replicas: <num-replicas>
+    ...
+```
+
+That is, for each named resource under `sharing.mps.resources`, a number
+of replicas can be specified for that resource type. As is the case with
+time-slicing, these replicas represent the number of shared accesses that will
+be granted for a GPU associated with that resource type. In contrast with
+time-slicing, the amount of memory allowed per client (i.e. per partition) is
+managed by the MPS control daemon and limited to an equal fraction of the total
+device memory. In addition to controlling the amount of memory that each client
+can consume, the MPS control daemon also limits the amount of compute capacity
+that can be consumed by a client.
+
+If `renameByDefault=true`, then each resource will be advertised under the name
+`<resource-name>.shared` instead of simply `<resource-name>`.
+
+For example:
+```
+version: v1
+sharing:
+  mps:
+    resources:
+    - name: nvidia.com/gpu
+      replicas: 10
+```
+
+If this configuration were applied to a node with 8 GPUs on it, the plugin
+would now advertise 80 `nvidia.com/gpu` resources to Kubernetes instead of 8.
+
+```
+$ kubectl describe node
+...
+Capacity:
+  nvidia.com/gpu: 80
+...
+```
+
+Likewise, if the following configuration were applied to a node, then 80
+`nvidia.com/gpu.shared` resources would be advertised to Kubernetes instead of 8
+`nvidia.com/gpu` resources.
+
+```
+version: v1
+sharing:
+  mps:
+    renameByDefault: true
+    resources:
+    - name: nvidia.com/gpu
+      replicas: 10
+    ...
+```
+
+```
+$ kubectl describe node
+...
+Capacity:
+  nvidia.com/gpu.shared: 80
+...
+```
+
+Furthermore, each of these resources -- either `nvidia.com/gpu` or
+`nvidia.com/gpu.shared` -- would have access to the same fraction (1/10) of the
+total memory and compute resources of the GPU.
+
+**Note**: As of now, the only supported resource available for MPS are `nvidia.com/gpu`
+resources and only with full GPUs.
 
 ## Deployment via `helm`
 
