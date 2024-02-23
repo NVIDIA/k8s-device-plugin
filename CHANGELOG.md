@@ -1,5 +1,14 @@
 ## Changelog
 
+### Version v0.15.0-rc.1
+- Import GPU Feature Discovery into the GPU Device Plugin repo. This means that
+  the same version and container image is used for both components.
+- Add tooling to create a kind cluster for local development and testing.
+- Update `go-gpuallocator` dependency to migrate away from the deprecated `gpu-monitoring-tools` NVML bindings.
+- Remove `legacyDaemonsetAPI` config option. This was only required for k8s versions < 1.16.
+- Add support for MPS sharing.
+- Bump CUDA base image version to 12.3.1
+
 ### Version v0.14.4
 
 - Update to refactored go-gpuallocator code. This permanently fixes the NVML_NVLINK_MAX_LINKS value addressed in a
