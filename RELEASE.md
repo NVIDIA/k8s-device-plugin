@@ -9,7 +9,7 @@ Publishing the helm chart is currently manual, and we should move to an automate
 
 # Release Process Checklist
 - [ ] Update the README changelog
-- [ ] Update the README to change occurances of the old version (e.g: `v0.14.4`) with the new version
+- [ ] Update the README to change occurances of the old version (e.g: `v0.15.0-rc.1`) with the new version
 - [ ] Commit, Tag and Push to Gitlab
 - [ ] Build a new helm package with `./hack/package-helm-charts.sh`
 - [ ] Switch to the `gh-pages` branch and move the newly generated package to the `stable` helm repo

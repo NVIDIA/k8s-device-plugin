@@ -162,7 +162,7 @@ Once you have configured the options above on all the GPU nodes in your
 cluster, you can enable GPU support by deploying the following Daemonset:
 
 ```shell
-$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.4/nvidia-device-plugin.yml
+$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.15.0-rc.1/nvidia-device-plugin.yml
 ```
 
 **Note:** This is a simple static daemonset meant to demonstrate the basic
@@ -590,11 +590,11 @@ $ helm repo add nvdp https://nvidia.github.io/k8s-device-plugin
 $ helm repo update
 ```
 
-Then verify that the latest release (`v0.14.4`) of the plugin is available:
+Then verify that the latest release (`v0.15.0-rc.1`) of the plugin is available:
 ```
 $ helm search repo nvdp --devel
 NAME                     	  CHART VERSION  APP VERSION	DESCRIPTION
-nvdp/nvidia-device-plugin	  0.14.4	 0.14.4		A Helm chart for ...
+nvdp/nvidia-device-plugin	  0.15.0-rc.1	 0.15.0-rc.1	A Helm chart for ...
 ```
 
 Once this repo is updated, you can begin installing packages from it to deploy
@@ -605,7 +605,7 @@ The most basic installation command without any options is then:
 helm upgrade -i nvdp nvdp/nvidia-device-plugin \
   --namespace nvidia-device-plugin \
   --create-namespace \
-  --version 0.14.4
+  --version 0.15.0-rc.1
 ```
 
 **Note:** You only need the to pass the `--devel` flag to `helm search repo`
@@ -614,7 +614,7 @@ version (e.g. `<version>-rc.1`). Full releases will be listed without this.
 
 ### Configuring the device plugin's `helm` chart
 
-The `helm` chart for the latest release of the plugin (`v0.14.4`) includes
+The `helm` chart for the latest release of the plugin (`v0.15.0-rc.1`) includes
 a number of customizable values.
 
 Prior to `v0.12.0` the most commonly used values were those that had direct
@@ -624,7 +624,7 @@ case of the original values is then to override an option from the `ConfigMap`
 if desired. Both methods are discussed in more detail below.
 
 The full set of values that can be set are found here:
-[here](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.14.4/deployments/helm/nvidia-device-plugin/values.yaml).
+[here](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.15.0-rc.1/deployments/helm/nvidia-device-plugin/values.yaml).
 
 #### Passing configuration to the plugin via a `ConfigMap`.
 
@@ -663,7 +663,7 @@ EOF
 And deploy the device plugin via helm (pointing it at this config file and giving it a name):
 ```
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.4 \
+    --version=0.15.0-rc.1 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set-file config.map.config=/tmp/dp-example-config0.yaml
@@ -685,7 +685,7 @@ $ kubectl create cm -n nvidia-device-plugin nvidia-plugin-configs \
 ```
 ```
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.4 \
+    --version=0.15.0-rc.1 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set config.name=nvidia-plugin-configs
@@ -713,7 +713,7 @@ EOF
 And redeploy the device plugin via helm (pointing it at both configs with a specified default).
 ```
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.4 \
+    --version=0.15.0-rc.1 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set config.default=config0 \
@@ -732,7 +732,7 @@ $ kubectl create cm -n nvidia-device-plugin nvidia-plugin-configs \
 ```
 ```
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.4 \
+    --version=0.15.0-rc.1 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set config.default=config0 \
@@ -815,7 +815,7 @@ chart values that are commonly overridden are:
 ```
 
 Please take a look in the
-[`values.yaml`](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.14.4/deployments/helm/nvidia-device-plugin/values.yaml)
+[`values.yaml`](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.15.0-rc.1/deployments/helm/nvidia-device-plugin/values.yaml)
 file to see the full set of overridable parameters for the device plugin.
 
 Examples of setting these options include:
@@ -824,7 +824,7 @@ Enabling compatibility with the `CPUManager` and running with a request for
 100ms of CPU time and a limit of 512MB of memory.
 ```shell
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.4 \
+    --version=0.15.0-rc.1 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set compatWithCPUManager=true \
@@ -835,7 +835,7 @@ $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
 Enabling compatibility with the `CPUManager` and the `mixed` `migStrategy`
 ```shell
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.4 \
+    --version=0.15.0-rc.1 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set compatWithCPUManager=true \
@@ -854,7 +854,7 @@ Discovery to perform this labeling.
 To enable it, simply set `gfd.enabled=true` during helm install.
 ```
 helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.4 \
+    --version=0.15.0-rc.1 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set gfd.enabled=true
@@ -960,14 +960,14 @@ Using the default values for the flags:
 $ helm upgrade -i nvdp \
     --namespace nvidia-device-plugin \
     --create-namespace \
-    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.14.4.tgz
+    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.15.0-rc.1.tgz
 ```
 -->
 ## Building and Running Locally
 
 The next sections are focused on building the device plugin locally and running it.
 It is intended purely for development and testing, and not required by most users.
-It assumes you are pinning to the latest release tag (i.e. `v0.14.4`), but can
+It assumes you are pinning to the latest release tag (i.e. `v0.15.0-rc.1`), but can
 easily be modified to work with any available tag or branch.
 
 ### With Docker
@@ -975,8 +975,8 @@ easily be modified to work with any available tag or branch.
 #### Build
 Option 1, pull the prebuilt image from [Docker Hub](https://hub.docker.com/r/nvidia/k8s-device-plugin):
 ```shell
-$ docker pull nvcr.io/nvidia/k8s-device-plugin:v0.14.4
-$ docker tag nvcr.io/nvidia/k8s-device-plugin:v0.14.4 nvcr.io/nvidia/k8s-device-plugin:devel
+$ docker pull nvcr.io/nvidia/k8s-device-plugin:v0.15.0-rc.1
+$ docker tag nvcr.io/nvidia/k8s-device-plugin:v0.15.0-rc.1 nvcr.io/nvidia/k8s-device-plugin:devel
 ```
 
 Option 2, build without cloning the repository:
@@ -984,7 +984,7 @@ Option 2, build without cloning the repository:
 $ docker build \
     -t nvcr.io/nvidia/k8s-device-plugin:devel \
     -f deployments/container/Dockerfile.ubuntu \
-    https://github.com/NVIDIA/k8s-device-plugin.git#v0.14.4
+    https://github.com/NVIDIA/k8s-device-plugin.git#v0.15.0-rc.1
 ```
 
 Option 3, if you want to modify the code:
