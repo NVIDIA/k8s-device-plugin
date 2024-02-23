@@ -37,7 +37,8 @@ DRIVER_IMAGE_VERSION=$(from_versions_mk "VERSION")
 
 # The kubernetes tag to build the kind cluster from
 # From https://github.com/kubernetes/kubernetes/tags
-: ${KIND_K8S_TAG:="v1.27.1"}
+# See also https://hub.docker.com/r/kindest/node/tags
+: ${KIND_K8S_TAG:="v1.29.1"}
 
 # The name of the kind cluster to create
 : ${KIND_CLUSTER_NAME:="${DRIVER_NAME}-cluster"}
@@ -45,8 +46,6 @@ DRIVER_IMAGE_VERSION=$(from_versions_mk "VERSION")
 # The path to kind's cluster configuration file
 : ${KIND_CLUSTER_CONFIG_PATH:="${SCRIPTS_DIR}/kind-cluster-config.yaml"}
 
-# The derived name of the kind image to build
-: ${KIND_IMAGE_BASE_TAG:="v20230515-01914134-containerd_v1.7.1"}
-: ${KIND_IMAGE_BASE:="gcr.io/k8s-staging-kind/base:${KIND_IMAGE_BASE_TAG}"}
-: ${KIND_IMAGE:="kindest/node:${KIND_K8S_TAG}-${KIND_IMAGE_BASE_TAG}"}
+# The kind image to use. This image will be built if it is not available.
+: ${KIND_IMAGE:="kindest/node:${KIND_K8S_TAG}"}
 
