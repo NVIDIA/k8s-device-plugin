@@ -69,7 +69,7 @@ type NvidiaDevicePlugin struct {
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, cdiHandler cdi.Interface) *NvidiaDevicePlugin {
+func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, cdiHandler cdi.Interface) (*NvidiaDevicePlugin, error) {
 	_, name := resourceManager.Resource().Split()
 
 	deviceListStrategies, _ := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
@@ -79,12 +79,18 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 
 	var mpsDaemon *mps.Daemon
 	var mpsHostRoot mps.Root
-	if config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
+	if config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
+		// TODO: It might make sense to pull this logic into a resource manager.
+		for _, device := range resourceManager.Devices() {
+			if device.IsMigDevice() {
+				return nil, errors.New("sharing using MPS is not supported for MIG devices")
+			}
+		}
 		mpsDaemon = mps.NewDaemon(resourceManager, mps.ContainerRoot)
 		mpsHostRoot = mps.Root(*config.Flags.CommandLineFlags.MpsRoot)
 	}
 
-	return &NvidiaDevicePlugin{
+	plugin := NvidiaDevicePlugin{
 		rm:                   resourceManager,
 		config:               config,
 		deviceListEnvvar:     "NVIDIA_VISIBLE_DEVICES",
@@ -102,6 +108,7 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 		health: nil,
 		stop:   nil,
 	}
+	return &plugin, nil
 }
 
 func (plugin *NvidiaDevicePlugin) initialize() {
@@ -375,19 +382,13 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 // and assumes that an MPS control daemon has already been started.
 func (plugin NvidiaDevicePlugin) updateResponseForMPS(response *pluginapi.ContainerAllocateResponse) {
 	// TODO: We should check that the deviceIDs are shared using MPS.
-	for k, v := range plugin.mpsDaemon.Envvars() {
-		response.Envs[k] = v
-	}
+	response.Envs["CUDA_MPS_PIPE_DIRECTORY"] = plugin.mpsDaemon.PipeDir()
 
 	resourceName := plugin.rm.Resource()
 	response.Mounts = append(response.Mounts,
 		&pluginapi.Mount{
 			ContainerPath: plugin.mpsDaemon.PipeDir(),
 			HostPath:      plugin.mpsHostRoot.PipeDir(resourceName),
-		},
-		&pluginapi.Mount{
-			ContainerPath: plugin.mpsDaemon.PipeDir(),
-			HostPath:      plugin.mpsHostRoot.LogDir(resourceName),
 		},
 		&pluginapi.Mount{
 			ContainerPath: plugin.mpsDaemon.ShmDir(),

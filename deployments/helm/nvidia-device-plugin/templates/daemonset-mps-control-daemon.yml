@@ -145,13 +145,6 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           name: mps-control-daemon-ctr
           command: [mps-control-daemon]
-          startupProbe:
-            exec:
-              command:
-              - cat
-              - /mps/.ready
-            initialDelaySeconds: 1
-            periodSeconds: 1
           env:
           - name: NODE_NAME
             valueFrom:

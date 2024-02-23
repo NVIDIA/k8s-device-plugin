@@ -85,6 +85,13 @@ func (m *manager) Daemons() ([]*Daemon, error) {
 			klog.InfoS("Resource is not shared", "resource", "resource", resourceManager.Resource())
 			continue
 		}
+		// Check if MIG devices are included.
+		for _, device := range resourceManager.Devices() {
+			if device.IsMigDevice() {
+				klog.Warning("MPS sharing is not supported for MIG devices; skipping daemon creation")
+				continue
+			}
+		}
 		daemon := NewDaemon(resourceManager, ContainerRoot)
 		daemons = append(daemons, daemon)
 	}
