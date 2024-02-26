@@ -74,8 +74,8 @@ func (mounter *Mounter) IsLikelyNotMountPoint(file string) (bool, error) {
 	return true, errUnsupported
 }
 
-// CanSafelySkipMountPointCheck always returns false on unsupported platforms
-func (mounter *Mounter) CanSafelySkipMountPointCheck() bool {
+// canSafelySkipMountPointCheck always returns false on unsupported platforms
+func (mounter *Mounter) canSafelySkipMountPointCheck() bool {
 	return false
 }
 
@@ -90,7 +90,7 @@ func (mounter *Mounter) GetMountRefs(pathname string) ([]string, error) {
 	return nil, errUnsupported
 }
 
-func (mounter *SafeFormatAndMount) formatAndMountSensitive(source string, target string, fstype string, options []string, sensitiveOptions []string, formatOptions []string) error {
+func (mounter *SafeFormatAndMount) formatAndMountSensitive(source string, target string, fstype string, options []string, sensitiveOptions []string) error {
 	return mounter.Interface.Mount(source, target, fstype, options)
 }
 
