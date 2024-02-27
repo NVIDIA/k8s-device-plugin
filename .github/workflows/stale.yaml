@@ -24,3 +24,4 @@ jobs:
         days-before-issue-close: 30
         days-before-pr-close: 30
         remove-stale-when-updated: true
+        operations-per-run: 300
