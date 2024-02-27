@@ -3,7 +3,7 @@ module github.com/NVIDIA/k8s-device-plugin
 go 1.21
 
 require (
-	github.com/NVIDIA/go-gpuallocator v0.3.1
+	github.com/NVIDIA/go-gpuallocator v0.3.2
 	github.com/NVIDIA/go-nvlib v0.0.0-20240109130712-11603560817a
 	github.com/NVIDIA/go-nvml v0.12.0-2
 	github.com/NVIDIA/nvidia-container-toolkit v1.15.0-rc.3
