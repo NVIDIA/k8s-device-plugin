@@ -12,23 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 default:
-  image: docker:stable
+  image: docker:24.0.6
   services:
-    - name: docker:dind
+    - name: docker:24.0.6-dind
       command: ["--experimental"]
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
-  BUILDIMAGE: "${CI_REGISTRY_IMAGE}/build:${CI_COMMIT_SHORT_SHA}"
   BUILD_MULTI_ARCH_IMAGES: "true"
 
 stages:
   - trigger
-  - image
-  - lint
-  - go-checks
-  - go-build
-  - unit-tests
   - package-build
   - image-build
   - test

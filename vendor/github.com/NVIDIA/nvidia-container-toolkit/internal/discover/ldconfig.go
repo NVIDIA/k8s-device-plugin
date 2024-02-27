@@ -21,14 +21,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sirupsen/logrus"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 )
 
 // NewLDCacheUpdateHook creates a discoverer that updates the ldcache for the specified mounts. A logger can also be specified
-func NewLDCacheUpdateHook(logger *logrus.Logger, mounts Discover, cfg *Config) (Discover, error) {
+func NewLDCacheUpdateHook(logger logger.Interface, mounts Discover, nvidiaCTKPath, ldconfigPath string) (Discover, error) {
 	d := ldconfig{
 		logger:        logger,
-		nvidiaCTKPath: FindNvidiaCTK(logger, cfg.NvidiaCTKPath),
+		nvidiaCTKPath: nvidiaCTKPath,
+		ldconfigPath:  ldconfigPath,
 		mountsFrom:    mounts,
 	}
 
@@ -37,8 +38,9 @@ func NewLDCacheUpdateHook(logger *logrus.Logger, mounts Discover, cfg *Config) (
 
 type ldconfig struct {
 	None
-	logger        *logrus.Logger
+	logger        logger.Interface
 	nvidiaCTKPath string
+	ldconfigPath  string
 	mountsFrom    Discover
 }
 
@@ -50,14 +52,20 @@ func (d ldconfig) Hooks() ([]Hook, error) {
 	}
 	h := CreateLDCacheUpdateHook(
 		d.nvidiaCTKPath,
+		d.ldconfigPath,
 		getLibraryPaths(mounts),
 	)
 	return []Hook{h}, nil
 }
 
 // CreateLDCacheUpdateHook locates the NVIDIA Container Toolkit CLI and creates a hook for updating the LD Cache
-func CreateLDCacheUpdateHook(executable string, libraries []string) Hook {
+func CreateLDCacheUpdateHook(executable string, ldconfig string, libraries []string) Hook {
 	var args []string
+
+	if ldconfig != "" {
+		args = append(args, "--ldconfig-path", ldconfig)
+	}
+
 	for _, f := range uniqueFolders(libraries) {
 		args = append(args, "--folder", f)
 	}
@@ -69,7 +77,6 @@ func CreateLDCacheUpdateHook(executable string, libraries []string) Hook {
 	)
 
 	return hook
-
 }
 
 // getLibraryPaths extracts the library dirs from the specified mounts
@@ -86,7 +93,6 @@ func getLibraryPaths(mounts []Mount) []string {
 
 // isLibName checks if the specified filename is a library (i.e. ends in `.so*`)
 func isLibName(filename string) bool {
-
 	base := filepath.Base(filename)
 
 	isLib, err := filepath.Match("lib?*.so*", base)

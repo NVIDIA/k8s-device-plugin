@@ -17,7 +17,7 @@
 package v1
 
 import (
-	cdiapi "github.com/container-orchestrated-devices/container-device-interface/pkg/cdi"
+	cdiapi "tags.cncf.io/container-device-interface/pkg/cdi"
 )
 
 // Constants related to resource names

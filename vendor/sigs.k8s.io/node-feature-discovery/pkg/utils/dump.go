@@ -18,24 +18,24 @@ package utils
 
 import (
 	"fmt"
-	"strings"
 
-	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
 )
 
-func KlogDump(v klog.Level, heading, prefix string, obj interface{}) {
-	if klog.V(v).Enabled() {
-		if heading != "" {
-			klog.InfoDepth(1, heading)
-		}
+type dumper struct {
+	obj interface{}
+}
 
-		d := strings.Split(Dump(obj), "\n")
-		// Print all but the last empty line
-		for i := 0; i < len(d)-1; i++ {
-			klog.InfoDepth(1, prefix+d[i])
-		}
-	}
+// String implements the fmt.Stringer interface
+func (d *dumper) String() string {
+	return Dump(d.obj)
+}
+
+// DelayedDumper delays the dumping of an object. Useful in logging to delay
+// the processing (JSON marshalling) until (or if) the object is actually
+// evaluated.
+func DelayedDumper(obj interface{}) fmt.Stringer {
+	return &dumper{obj: obj}
 }
 
 // Dump dumps an object into YAML textual format

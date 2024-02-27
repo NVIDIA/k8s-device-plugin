@@ -9,9 +9,9 @@ Publishing the helm chart is currently manual, and we should move to an automate
 
 # Release Process Checklist
 - [ ] Update the README changelog
-- [ ] Update the README to change occurances of the old version (e.g: `v0.14.1`) with the new version
+- [ ] Update the README to change occurances of the old version (e.g: `v0.14.4`) with the new version
 - [ ] Commit, Tag and Push to Gitlab
-- [ ] Build a new helm package with `helm package ./deployments/helm/nvidia-device-plugin`
+- [ ] Build a new helm package with `./hack/package-helm-charts.sh`
 - [ ] Switch to the `gh-pages` branch and move the newly generated package to the `stable` helm repo
 - [ ] Run the `./build-index.sh` script to rebuild the indices for each repo
 - [ ] Commit and push the `gh-pages` branch to GitHub

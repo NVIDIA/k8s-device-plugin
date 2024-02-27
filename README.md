@@ -12,7 +12,9 @@
   * [As command line flags or envvars](#as-command-line-flags-or-envvars)
   * [As a configuration file](#as-a-configuration-file)
   * [Configuration Option Details](#configuration-option-details)
-  * [Shared Access to GPUs with CUDA Time-Slicing](#shared-access-to-gpus-with-cuda-time-slicing)
+  * [Shared Access to GPUs](#shared-access-to-gpus)
+    * [With CUDA Time-Slicing](#with-cuda-time-slicing)
+    * [With CUDA MPS](#with-cuda-mps)
 - [Deployment via `helm`](#deployment-via-helm)
   * [Configuring the device plugin's `helm` chart](#configuring-the-device-plugins-helm-chart)
     + [Passing configuration to the plugin via a `ConfigMap`.](#passing-configuration-to-the-plugin-via-a-configmap)
@@ -37,7 +39,7 @@ The NVIDIA device plugin for Kubernetes is a Daemonset that allows you to automa
 - Keep track of the health of your GPUs
 - Run GPU enabled containers in your Kubernetes cluster.
 
-This repository contains NVIDIA's official implementation of the [Kubernetes device plugin](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/resource-management/device-plugin.md).
+This repository contains NVIDIA's official implementation of the [Kubernetes device plugin](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/).
 
 Please note that:
 - The NVIDIA device plugin API is beta as of Kubernetes v1.10.
@@ -122,13 +124,45 @@ And then restart `containerd`:
 $ sudo systemctl restart containerd
 ```
 
+##### Configure `CRI-O`
+When running `kubernetes` with `CRI-O`, add the config file to set the
+`nvidia-container-runtime` as the default low-level OCI runtime under
+`/etc/crio/crio.conf.d/99-nvidia.conf`. This will take priority over the default
+`crun` config file at `/etc/crio/crio.conf.d/10-crun.conf`:
+```
+[crio]
+
+  [crio.runtime]
+    default_runtime = "nvidia"
+
+    [crio.runtime.runtimes]
+
+      [crio.runtime.runtimes.nvidia]
+        runtime_path = "/usr/bin/nvidia-container-runtime"
+        runtime_type = "oci"
+```
+This file can automatically be generated with the nvidia-ctk command:
+```
+$ sudo nvidia-ctk runtime configure --runtime=crio --set-as-default --config=/etc/crio/crio.conf.d/99-nvidia.conf
+```
+`CRI-O` uses `crun` as default low-level OCI runtime so `crun` needs to be added
+to the runtimes of the `nvidia-container-runtime` in the config file at `/etc/nvidia-container-runtime/config.toml`:
+```
+[nvidia-container-runtime]
+runtimes = ["crun", "docker-runc", "runc"]
+```
+And then restart `CRI-O`:
+```
+$ sudo systemctl restart crio
+```
+
 ### Enabling GPU Support in Kubernetes
 
 Once you have configured the options above on all the GPU nodes in your
 cluster, you can enable GPU support by deploying the following Daemonset:
 
 ```shell
-$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.1/nvidia-device-plugin.yml
+$ kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.4/nvidia-device-plugin.yml
 ```
 
 **Note:** This is a simple static daemonset meant to demonstrate the basic
@@ -316,18 +350,28 @@ options outside of this section are shared.
   launch time. As described below, a `ConfigMap` can be used to point the
   plugin at a desired configuration file when deploying via `helm`.
 
-### Shared Access to GPUs with CUDA Time-Slicing
+### Shared Access to GPUs
 
 The NVIDIA device plugin allows oversubscription of GPUs through a set of
-extended options in its configuration file. Under the hood, CUDA time-slicing
-is used to allow workloads that land on oversubscribed GPUs to interleave with
-one another. However, nothing special is done to isolate workloads that are
+extended options in its configuration file. There are two flavors of sharing
+available: Time-Slicing and MPS.
+
+**Note:** The use of time-slicing and MPS are mutually exclusive.
+
+In the case of time-slicing, CUDA time-slicing is used to allow workloads sharing a GPU to
+interleave with each other. However, nothing special is done to isolate workloads that are
 granted replicas from the same underlying GPU, and each workload has access to
 the GPU memory and runs in the same fault-domain as of all the others (meaning
 if one workload crashes, they all do).
 
+In the case of MPS, a control daemon is used to manage access to the shared GPU.
+In contrast to time-slicing, MPS does space partitioning and allows memory and
+compute resources to be explicitly partitioned and enforces these limits per
+workload.
 
-These extended options can be seen below:
+#### With CUDA Time-Slicing
+
+The extended options for sharing using time-slicing can be seen below:
 ```
 version: v1
 sharing:
@@ -454,6 +498,86 @@ nvidia.com/mig-3g.40gb
 nvidia.com/mig-7g.80gb
 ```
 
+### With CUDA MPS
+
+**Note**: Sharing with MPS is currently not supported on devices with MIG enabled.
+
+The extended options for sharing using MPS can be seen below:
+```
+version: v1
+sharing:
+  mps:
+    renameByDefault: <bool>
+    resources:
+    - name: <resource-name>
+      replicas: <num-replicas>
+    ...
+```
+
+That is, for each named resource under `sharing.mps.resources`, a number
+of replicas can be specified for that resource type. As is the case with
+time-slicing, these replicas represent the number of shared accesses that will
+be granted for a GPU associated with that resource type. In contrast with
+time-slicing, the amount of memory allowed per client (i.e. per partition) is
+managed by the MPS control daemon and limited to an equal fraction of the total
+device memory. In addition to controlling the amount of memory that each client
+can consume, the MPS control daemon also limits the amount of compute capacity
+that can be consumed by a client.
+
+If `renameByDefault=true`, then each resource will be advertised under the name
+`<resource-name>.shared` instead of simply `<resource-name>`.
+
+For example:
+```
+version: v1
+sharing:
+  mps:
+    resources:
+    - name: nvidia.com/gpu
+      replicas: 10
+```
+
+If this configuration were applied to a node with 8 GPUs on it, the plugin
+would now advertise 80 `nvidia.com/gpu` resources to Kubernetes instead of 8.
+
+```
+$ kubectl describe node
+...
+Capacity:
+  nvidia.com/gpu: 80
+...
+```
+
+Likewise, if the following configuration were applied to a node, then 80
+`nvidia.com/gpu.shared` resources would be advertised to Kubernetes instead of 8
+`nvidia.com/gpu` resources.
+
+```
+version: v1
+sharing:
+  mps:
+    renameByDefault: true
+    resources:
+    - name: nvidia.com/gpu
+      replicas: 10
+    ...
+```
+
+```
+$ kubectl describe node
+...
+Capacity:
+  nvidia.com/gpu.shared: 80
+...
+```
+
+Furthermore, each of these resources -- either `nvidia.com/gpu` or
+`nvidia.com/gpu.shared` -- would have access to the same fraction (1/10) of the
+total memory and compute resources of the GPU.
+
+**Note**: As of now, the only supported resource available for MPS are `nvidia.com/gpu`
+resources and only with full GPUs.
+
 ## Deployment via `helm`
 
 The preferred method to deploy the device plugin is as a daemonset using `helm`.
@@ -466,11 +590,11 @@ $ helm repo add nvdp https://nvidia.github.io/k8s-device-plugin
 $ helm repo update
 ```
 
-Then verify that the latest release (`v0.14.1`) of the plugin is available:
+Then verify that the latest release (`v0.14.4`) of the plugin is available:
 ```
 $ helm search repo nvdp --devel
 NAME                     	  CHART VERSION  APP VERSION	DESCRIPTION
-nvdp/nvidia-device-plugin	  0.14.1	 0.14.1		A Helm chart for ...
+nvdp/nvidia-device-plugin	  0.14.4	 0.14.4		A Helm chart for ...
 ```
 
 Once this repo is updated, you can begin installing packages from it to deploy
@@ -481,7 +605,7 @@ The most basic installation command without any options is then:
 helm upgrade -i nvdp nvdp/nvidia-device-plugin \
   --namespace nvidia-device-plugin \
   --create-namespace \
-  --version 0.14.1
+  --version 0.14.4
 ```
 
 **Note:** You only need the to pass the `--devel` flag to `helm search repo`
@@ -490,7 +614,7 @@ version (e.g. `<version>-rc.1`). Full releases will be listed without this.
 
 ### Configuring the device plugin's `helm` chart
 
-The `helm` chart for the latest release of the plugin (`v0.14.1`) includes
+The `helm` chart for the latest release of the plugin (`v0.14.4`) includes
 a number of customizable values.
 
 Prior to `v0.12.0` the most commonly used values were those that had direct
@@ -500,7 +624,7 @@ case of the original values is then to override an option from the `ConfigMap`
 if desired. Both methods are discussed in more detail below.
 
 The full set of values that can be set are found here:
-[here](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.14.1/deployments/helm/nvidia-device-plugin/values.yaml).
+[here](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.14.4/deployments/helm/nvidia-device-plugin/values.yaml).
 
 #### Passing configuration to the plugin via a `ConfigMap`.
 
@@ -539,7 +663,7 @@ EOF
 And deploy the device plugin via helm (pointing it at this config file and giving it a name):
 ```
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.1 \
+    --version=0.14.4 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set-file config.map.config=/tmp/dp-example-config0.yaml
@@ -561,7 +685,7 @@ $ kubectl create cm -n nvidia-device-plugin nvidia-plugin-configs \
 ```
 ```
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.1 \
+    --version=0.14.4 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set config.name=nvidia-plugin-configs
@@ -589,7 +713,7 @@ EOF
 And redeploy the device plugin via helm (pointing it at both configs with a specified default).
 ```
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.1 \
+    --version=0.14.4 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set config.default=config0 \
@@ -608,7 +732,7 @@ $ kubectl create cm -n nvidia-device-plugin nvidia-plugin-configs \
 ```
 ```
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.1 \
+    --version=0.14.4 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set config.default=config0 \
@@ -686,15 +810,12 @@ Besides these custom configuration options for the plugin, other standard helm
 chart values that are commonly overridden are:
 
 ```
-  legacyDaemonsetAPI:
-      use the legacy daemonset API version 'extensions/v1beta1'
-      (default 'false')
   runtimeClassName:
       the runtimeClassName to use, for use with clusters that have multiple runtimes. (typical value is 'nvidia')
 ```
 
 Please take a look in the
-[`values.yaml`](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.14.1/deployments/helm/nvidia-device-plugin/values.yaml)
+[`values.yaml`](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.14.4/deployments/helm/nvidia-device-plugin/values.yaml)
 file to see the full set of overridable parameters for the device plugin.
 
 Examples of setting these options include:
@@ -703,7 +824,7 @@ Enabling compatibility with the `CPUManager` and running with a request for
 100ms of CPU time and a limit of 512MB of memory.
 ```shell
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.1 \
+    --version=0.14.4 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set compatWithCPUManager=true \
@@ -711,19 +832,10 @@ $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
     --set resources.limits.memory=512Mi
 ```
 
-Using the legacy Daemonset API (only available on Kubernetes < `v1.16`):
-```shell
-$ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.1 \
-    --namespace nvidia-device-plugin \
-    --create-namespace \
-    --set legacyDaemonsetAPI=true
-```
-
 Enabling compatibility with the `CPUManager` and the `mixed` `migStrategy`
 ```shell
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.1 \
+    --version=0.14.4 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set compatWithCPUManager=true \
@@ -742,7 +854,7 @@ Discovery to perform this labeling.
 To enable it, simply set `gfd.enabled=true` during helm install.
 ```
 helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.14.1 \
+    --version=0.14.4 \
     --namespace nvidia-device-plugin \
     --create-namespace \
     --set gfd.enabled=true
@@ -848,14 +960,14 @@ Using the default values for the flags:
 $ helm upgrade -i nvdp \
     --namespace nvidia-device-plugin \
     --create-namespace \
-    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.14.1.tgz
+    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.14.4.tgz
 ```
 -->
 ## Building and Running Locally
 
 The next sections are focused on building the device plugin locally and running it.
 It is intended purely for development and testing, and not required by most users.
-It assumes you are pinning to the latest release tag (i.e. `v0.14.1`), but can
+It assumes you are pinning to the latest release tag (i.e. `v0.14.4`), but can
 easily be modified to work with any available tag or branch.
 
 ### With Docker
@@ -863,8 +975,8 @@ easily be modified to work with any available tag or branch.
 #### Build
 Option 1, pull the prebuilt image from [Docker Hub](https://hub.docker.com/r/nvidia/k8s-device-plugin):
 ```shell
-$ docker pull nvcr.io/nvidia/k8s-device-plugin:v0.14.1
-$ docker tag nvcr.io/nvidia/k8s-device-plugin:v0.14.1 nvcr.io/nvidia/k8s-device-plugin:devel
+$ docker pull nvcr.io/nvidia/k8s-device-plugin:v0.14.4
+$ docker tag nvcr.io/nvidia/k8s-device-plugin:v0.14.4 nvcr.io/nvidia/k8s-device-plugin:devel
 ```
 
 Option 2, build without cloning the repository:
@@ -872,7 +984,7 @@ Option 2, build without cloning the repository:
 $ docker build \
     -t nvcr.io/nvidia/k8s-device-plugin:devel \
     -f deployments/container/Dockerfile.ubuntu \
-    https://github.com/NVIDIA/k8s-device-plugin.git#v0.14.1
+    https://github.com/NVIDIA/k8s-device-plugin.git#v0.14.4
 ```
 
 Option 3, if you want to modify the code:
@@ -926,300 +1038,7 @@ $ ./k8s-device-plugin --pass-device-specs
 
 ## Changelog
 
-### Version v0.14.1
-
-- Fix parsing of `deviceListStrategy` in config file to correctly support strings as well as slices.
-- Update GFD subchart to v0.8.1
-- Bumped CUDA base images version to 12.2.0
-
-
-### Version v0.14.0
-
-- Promote v0.14.0-rc.3 to v0.14.0
-- Bumped `nvidia-container-toolkit` dependency to latest version for newer CDI spec generation code
-
-### Version v0.14.0-rc.3
-
-- Removed `--cdi-enabled` config option and instead trigger CDI injection based on `cdi-annotation` strategy.
-- Bumped `go-nvlib` dependency to latest version for support of new MIG profiles.
-- Added `cdi-annotation-prefix` config option to control how CDI annotations are generated.
-- Renamed `driver-root-ctr-path` config option added in `v0.14.0-rc.1` to `container-driver-root`.
-- Updated GFD subchart to version 0.8.0-rc.2
-
-### Version v0.14.0-rc.2
-
-- Fix bug from v0.14.0-rc.1 when using cdi-enabled=false
-
-### Version v0.14.0-rc.1
-
-- Added --cdi-enabled flag to GPU Device Plugin. With this enabled, the device plugin will generate CDI specifications for available NVIDIA devices. Allocation will add CDI anntiations (`cdi.k8s.io/*`) to the response. These are read by a CDI-enabled runtime to make the required modifications to a container being created.
-- Updated GFD subchart to version 0.8.0-rc.1
-- Bumped Golang version to 1.20.1
-- Bumped CUDA base images version to 12.1.0
-- Switched to klog for logging
-- Added a static deployment file for Microshift
-
-### Version v0.13.0
-
-- Promote v0.13.0-rc.3 to v0.13.0
-- Fail on startup if no valid resources are detected
-- Ensure that display adapters are skipped when enumerating devices
-- Bump GFD subchart to version 0.7.0
-
-### Version v0.13.0-rc.3
-
-- Use `nodeAffinity` instead of `nodeSelector` by default in daemonsets
-- Mount `/sys` instead of `/sys/class/dmi/id/product_name` in GPU Feature Discovery daemonset
-- Bump GFD subchart to version 0.7.0-rc.3
-
-### Version v0.13.0-rc.2
-
-- Bump cuda base image to 11.8.0
-- Use consistent indentation in YAML manifests
-- Fix bug from v0.13.0-rc.1 when using mig-strategy="mixed"
-- Add logged error message if setting up health checks fails
-- Support MIG devices with 1g.10gb+me profile
-- Distribute replicas evenly across GPUs during allocation
-- Bump GFD subchart to version 0.7.0-rc.2
-
-### Version v0.13.0-rc.1
-
-- Improve health checks to detect errors when waiting on device events
-- Log ECC error events detected during health check
-- Add the GIT sha to version information for the CLI and container images
-- Use NVML interfaces from go-nvlib to query devices
-- Refactor plugin creation from resources
-- Add a CUDA-based resource manager that can be used to expose integrated devices on Tegra-based systems
-- Bump GFD subchart to version 0.7.0-rc.1
-
-### Version v0.12.3
-
-- Bump cuda base image to 11.7.1
-- Remove CUDA compat libs from the device-plugin image in favor of libs installed by the driver
-- Fix securityContext.capabilities indentation
-- Add namespace override for multi-namespace deployments
-
-### Version v0.12.2
-
-- Add an 'empty' config fallback (but don't apply it by default)
-- Make config fallbacks for config-manager a configurable, ordered list
-- Allow an empty config file and default to "version: v1"
-- Bump GFD subchart to version 0.6.1
-- Move NFD servicAccount info under 'master' in helm chart
-- Make priorityClassName configurable through helm
-- Fix assertions for panicking on uniformity with migStrategy=single
-- Fix example configmap settings in values.yaml file
-
-### Version v0.12.1
-
-- Exit the plugin and GFD sidecar containers on error instead of logging and continuing
-- Only force restart of daemonsets when using config file and allow overrides
-- Fix bug in calculation for GFD security context in helm chart
-
-### Version v0.12.0
-
-- Promote v0.12.0-rc.6 to v0.12.0
-- Update README.md with all of the v0.12.0 features
-
-### Version v0.12.0-rc.6
-
-- Send SIGHUP from GFD sidecar to GFD main container on config change
-- Reuse main container's securityContext in sidecar containers
-- Update GFD subchart to v0.6.0-rc.1
-- Bump CUDA base image version to 11.7.0
-- Add a flag called FailRequestsGreaterThanOne for TimeSlicing resources
-
-### Version v0.12.0-rc.5
-
-- Allow either an external ConfigMap name or a set of configs in helm
-- Handle cases where no default config is specified to config-manager
-- Update API used to pass config files to helm to use map instead of list
-- Fix bug that wasn't properly stopping plugins across a soft restart
-
-### Version v0.12.0-rc.4
-
-- Make GFD and NFD (optional) subcharts of the device plugin's helm chart
-- Add new config-manager binary to run as sidecar and update the plugin's configuration via a node label
-- Add support to helm to provide multiple config files for the config map
-- Refactor main to allow configs to be reloaded across a (soft) restart
-- Add field for `TimeSlicing.RenameByDefault` to rename all replicated resources to `<resource-name>.shared`
-- Disable support for resource-renaming in the config (will no longer be part of this release)
-
-### Version v0.12.0-rc.3
-
-- Add ability to parse Duration fields from config file
-- Omit either the Plugin or GFD flags from the config when not present
-- Fix bug when falling back to none strategy from single strategy
-
-### Version v0.12.0-rc.2
-
-- Move MigStrategy from Sharing.Mig.Strategy back to Flags.MigStrategy
-- Remove timeSlicing.strategy and any allocation policies built around it
-- Add support for specifying a config file to the helm chart
-
-### Version v0.12.0-rc.1
-
-- Add API for specifying time-slicing parameters to support GPU sharing
-- Add API for specifying explicit resource naming in the config file
-- Update config file to be used across plugin and GFD
-- Stop publishing images to dockerhub (now only published to nvcr.io)
-- Add NVIDIA_MIG_MONITOR_DEVICES=all to daemonset envvars when mig mode is enabled
-- Print the plugin configuration at startup
-- Add the ability to load the plugin configuration from a file
-- Remove deprecated tolerations for critical-pod
-- Drop critical-pod annotation(removed from 1.16+) in favor of priorityClassName
-- Pass all parameters as env in helm chart and example daemonset.yamls files for consistency
-
-### Version v0.11.0
-
-- Update CUDA base image version to 11.6.0
-- Add support for multi-arch images
-
-### Version v0.10.0
-
-- Update CUDA base images to 11.4.2
-- Ignore Xid=13 (Graphics Engine Exception) critical errors in device health-check
-- Ignore Xid=68 (Video processor exception) critical errors in device health-check
-- Build multi-arch container images for linux/amd64 and linux/arm64
-- Use Ubuntu 20.04 for Ubuntu-based container images
-- Remove Centos7 images
-
-### Version v0.9.0
-
-- Fix bug when using CPUManager and the device plugin MIG mode not set to "none"
-- Allow passing list of GPUs by device index instead of uuid
-- Move to urfave/cli to build the CLI
-- Support setting command line flags via environment variables
-
-### Version v0.8.2
-
-- Update all dockerhub references to nvcr.io
-
-### Version v0.8.1
-
-- Fix permission error when using NewDevice instead of NewDeviceLite when constructing MIG device map
-
-### Version v0.8.0
-
-- Raise an error if a device has migEnabled=true but has no MIG devices
-- Allow mig.strategy=single on nodes with non-MIG gpus
-
-### Version v0.7.3
-
-- Update vendoring to include bug fix for `nvmlEventSetWait_v2`
-
-### Version v0.7.2
-
-- Fix bug in dockfiles for ubi8 and centos using CMD not ENTRYPOINT
-
-### Version v0.7.1
-
-- Update all Dockerfiles to point to latest cuda-base on nvcr.io
-
-### Version v0.7.0
-
-- Promote v0.7.0-rc.8 to v0.7.0
-
-### Version v0.7.0-rc.8
-
-- Permit configuration of alternative container registry through environment variables.
-- Add an alternate set of gitlab-ci directives under .nvidia-ci.yml
-- Update all k8s dependencies to v1.19.1
-- Update vendoring for NVML Go bindings
-- Move restart loop to force recreate of plugins on SIGHUP
-
-### Version v0.7.0-rc.7
-
-- Fix bug which only allowed running the plugin on machines with CUDA 10.2+ installed
-
-### Version v0.7.0-rc.6
-
-- Add logic to skip / error out when unsupported MIG device encountered
-- Fix bug treating memory as multiple of 1000 instead of 1024
-- Switch to using CUDA base images
-- Add a set of standard tests to the .gitlab-ci.yml file
-
-### Version v0.7.0-rc.5
-
-- Add deviceListStrategyFlag to allow device list passing as volume mounts
-
-### Version v0.7.0-rc.4
-
-- Allow one to override selector.matchLabels in the helm chart
-- Allow one to override the udateStrategy in the helm chart
-
-### Version v0.7.0-rc.3
-
-- Fail the plugin if NVML cannot be loaded
-- Update logging to print to stderr on error
-- Add best effort removal of socket file before serving
-- Add logic to implement GetPreferredAllocation() call from kubelet
-
-### Version v0.7.0-rc.2
-
-- Add the ability to set 'resources' as part of a helm install
-- Add overrides for name and fullname in helm chart
-- Add ability to override image related parameters helm chart
-- Add conditional support for overriding secutiryContext in helm chart
-
-### Version v0.7.0-rc.1
-
-- Added `migStrategy` as a parameter to select the MIG strategy to the helm chart
-- Add support for MIG with different strategies {none, single, mixed}
-- Update vendored NVML bindings to latest (to include MIG APIs)
-- Add license in UBI image
-- Update UBI image with certification requirements
-
-### Version v0.6.0
-
-- Update CI, build system, and vendoring mechanism
-- Change versioning scheme to v0.x.x instead of v1.0.0-betax
-- Introduced helm charts as a mechanism to deploy the plugin
-
-### Version v0.5.0
-
-- Add a new plugin.yml variant that is compatible with the CPUManager
-- Change CMD in Dockerfile to ENTRYPOINT
-- Add flag to optionally return list of device nodes in Allocate() call
-- Refactor device plugin to eventually handle multiple resource types
-- Move plugin error retry to event loop so we can exit with a signal
-- Update all vendored dependencies to their latest versions
-- Fix bug that was inadvertently *always* disabling health checks
-- Update minimal driver version to 384.81
-
-### Version v0.4.0
-
-- Fixes a bug with a nil pointer dereference around `getDevices:CPUAffinity`
-
-### Version v0.3.0
-
-- Manifest is updated for Kubernetes 1.16+ (apps/v1)
-- Adds more logging information
-
-### Version v0.2.0
-
-- Adds the Topology field for Kubernetes 1.16+
-
-### Version v0.1.0
-
-- If gRPC throws an error, the device plugin no longer ends up in a non responsive state.
-
-### Version v0.0.0
-
-- Reversioned to SEMVER as device plugins aren't tied to a specific version of kubernetes anymore.
-
-### Version v1.11
-
-- No change.
-
-### Version v1.10
-
-- The device Plugin API is now v1beta1
-
-### Version v1.9
-
-- The device Plugin API changed and is no longer compatible with 1.8
-- Error messages were added
+See the [changelog](CHANGELOG.md)
 
 ## Issues and Contributing
 [Checkout the Contributing document!](CONTRIBUTING.md)

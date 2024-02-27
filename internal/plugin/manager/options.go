@@ -17,20 +17,14 @@
 package manager
 
 import (
+	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
 )
 
 // Option is a function that configures a manager
 type Option func(*manager)
-
-// WithCDIEnabled sets whether CDI is enabled for the manager
-func WithCDIEnabled(enabled bool) Option {
-	return func(m *manager) {
-		m.cdiEnabled = enabled
-	}
-}
 
 // WithCDIHandler sets the CDI handler for the manager
 func WithCDIHandler(handler cdi.Interface) Option {

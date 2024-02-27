@@ -17,10 +17,11 @@
 package nvcdi
 
 import (
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"tags.cncf.io/container-device-interface/pkg/cdi"
+	"tags.cncf.io/container-device-interface/specs-go"
+
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/spec"
-	"github.com/container-orchestrated-devices/container-device-interface/pkg/cdi"
-	"github.com/container-orchestrated-devices/container-device-interface/specs-go"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
 )
 
 const (
@@ -36,6 +37,9 @@ const (
 	ModeGds = "gds"
 	// ModeMofed configures the CDI spec generator to generate a MOFED spec.
 	ModeMofed = "mofed"
+	// ModeCSV configures the CDI spec generator to generate a spec based on the contents of CSV
+	// mountspec files.
+	ModeCSV = "csv"
 )
 
 // Interface defines the API for the nvcdi package
@@ -47,4 +51,5 @@ type Interface interface {
 	GetGPUDeviceSpecs(int, device.Device) (*specs.Device, error)
 	GetMIGDeviceEdits(device.Device, device.MigDevice) (*cdi.ContainerEdits, error)
 	GetMIGDeviceSpecs(int, device.Device, int, device.MigDevice) (*specs.Device, error)
+	GetDeviceSpecsByID(...string) ([]specs.Device, error)
 }

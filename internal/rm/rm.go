@@ -20,11 +20,12 @@ import (
 	"fmt"
 	"strings"
 
-	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvlib/pkg/nvml"
 	"k8s.io/klog/v2"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 // resourceManager forms the base type for specific resource manager implementations
@@ -111,7 +112,10 @@ func (r *resourceManager) Devices() Devices {
 
 // AddDefaultResourcesToConfig adds default resource matching rules to config.Resources
 func AddDefaultResourcesToConfig(config *spec.Config) error {
-	config.Resources.AddGPUResource("*", "gpu")
+	_ = config.Resources.AddGPUResource("*", "gpu")
+	if config.Flags.MigStrategy == nil {
+		return nil
+	}
 	switch *config.Flags.MigStrategy {
 	case spec.MigStrategySingle:
 		return config.Resources.AddMIGResource("*", "gpu")

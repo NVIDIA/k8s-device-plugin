@@ -18,46 +18,57 @@ package nvcdi
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"golang.org/x/sys/unix"
+
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/cuda"
-	"github.com/sirupsen/logrus"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/root"
 )
 
 // NewDriverDiscoverer creates a discoverer for the libraries and binaries associated with a driver installation.
 // The supplied NVML Library is used to query the expected driver version.
-func NewDriverDiscoverer(logger *logrus.Logger, driverRoot string, nvidiaCTKPath string, nvmllib nvml.Interface) (discover.Discover, error) {
+func NewDriverDiscoverer(logger logger.Interface, driver *root.Driver, nvidiaCTKPath string, ldconfigPath string, nvmllib nvml.Interface) (discover.Discover, error) {
 	if r := nvmllib.Init(); r != nvml.SUCCESS {
-		return nil, fmt.Errorf("failed to initalize NVML: %v", r)
+		return nil, fmt.Errorf("failed to initialize NVML: %v", r)
 	}
-	defer nvmllib.Shutdown()
+	defer func() {
+		if r := nvmllib.Shutdown(); r != nvml.SUCCESS {
+			logger.Warningf("failed to shutdown NVML: %v", r)
+		}
+	}()
 
 	version, r := nvmllib.SystemGetDriverVersion()
 	if r != nvml.SUCCESS {
 		return nil, fmt.Errorf("failed to determine driver version: %v", r)
 	}
 
-	return newDriverVersionDiscoverer(logger, driverRoot, nvidiaCTKPath, version)
+	return newDriverVersionDiscoverer(logger, driver, nvidiaCTKPath, ldconfigPath, version)
 }
 
-func newDriverVersionDiscoverer(logger *logrus.Logger, driverRoot string, nvidiaCTKPath string, version string) (discover.Discover, error) {
-	libraries, err := NewDriverLibraryDiscoverer(logger, driverRoot, nvidiaCTKPath, version)
+func newDriverVersionDiscoverer(logger logger.Interface, driver *root.Driver, nvidiaCTKPath, ldconfigPath, version string) (discover.Discover, error) {
+	libraries, err := NewDriverLibraryDiscoverer(logger, driver, nvidiaCTKPath, ldconfigPath, version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create discoverer for driver libraries: %v", err)
 	}
 
-	ipcs, err := discover.NewIPCDiscoverer(logger, driverRoot)
+	ipcs, err := discover.NewIPCDiscoverer(logger, driver.Root)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create discoverer for IPC sockets: %v", err)
 	}
 
-	firmwares := NewDriverFirmwareDiscoverer(logger, driverRoot, version)
+	firmwares, err := NewDriverFirmwareDiscoverer(logger, driver.Root, version)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create discoverer for GSP firmware: %v", err)
+	}
 
-	binaries := NewDriverBinariesDiscoverer(logger, driverRoot)
+	binaries := NewDriverBinariesDiscoverer(logger, driver.Root)
 
 	d := discover.Merge(
 		libraries,
@@ -70,8 +81,8 @@ func newDriverVersionDiscoverer(logger *logrus.Logger, driverRoot string, nvidia
 }
 
 // NewDriverLibraryDiscoverer creates a discoverer for the libraries associated with the specified driver version.
-func NewDriverLibraryDiscoverer(logger *logrus.Logger, driverRoot string, nvidiaCTKPath string, version string) (discover.Discover, error) {
-	libraryPaths, err := getVersionLibs(logger, driverRoot, version)
+func NewDriverLibraryDiscoverer(logger logger.Interface, driver *root.Driver, nvidiaCTKPath, ldconfigPath, version string) (discover.Discover, error) {
+	libraryPaths, err := getVersionLibs(logger, driver, version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get libraries for driver version: %v", err)
 	}
@@ -80,17 +91,13 @@ func NewDriverLibraryDiscoverer(logger *logrus.Logger, driverRoot string, nvidia
 		logger,
 		lookup.NewFileLocator(
 			lookup.WithLogger(logger),
-			lookup.WithRoot(driverRoot),
+			lookup.WithRoot(driver.Root),
 		),
-		driverRoot,
+		driver.Root,
 		libraryPaths,
 	)
 
-	cfg := &discover.Config{
-		DriverRoot:    driverRoot,
-		NvidiaCTKPath: nvidiaCTKPath,
-	}
-	hooks, _ := discover.NewLDCacheUpdateHook(logger, libraries, cfg)
+	hooks, _ := discover.NewLDCacheUpdateHook(logger, libraries, nvidiaCTKPath, ldconfigPath)
 
 	d := discover.Merge(
 		libraries,
@@ -100,22 +107,69 @@ func NewDriverLibraryDiscoverer(logger *logrus.Logger, driverRoot string, nvidia
 	return d, nil
 }
 
+func getUTSRelease() (string, error) {
+	utsname := &unix.Utsname{}
+	if err := unix.Uname(utsname); err != nil {
+		return "", err
+	}
+	return unix.ByteSliceToString(utsname.Release[:]), nil
+}
+
+func getFirmwareSearchPaths(logger logger.Interface) ([]string, error) {
+
+	var firmwarePaths []string
+	if p := getCustomFirmwareClassPath(logger); p != "" {
+		logger.Debugf("using custom firmware class path: %s", p)
+		firmwarePaths = append(firmwarePaths, p)
+	}
+
+	utsRelease, err := getUTSRelease()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get UTS_RELEASE: %v", err)
+	}
+
+	standardPaths := []string{
+		filepath.Join("/lib/firmware/updates/", utsRelease),
+		"/lib/firmware/updates/",
+		filepath.Join("/lib/firmware/", utsRelease),
+		"/lib/firmware/",
+	}
+
+	return append(firmwarePaths, standardPaths...), nil
+}
+
+// getCustomFirmwareClassPath returns the custom firmware class path if it exists.
+func getCustomFirmwareClassPath(logger logger.Interface) string {
+	customFirmwareClassPath, err := os.ReadFile("/sys/module/firmware_class/parameters/path")
+	if err != nil {
+		logger.Warningf("failed to get custom firmware class path: %v", err)
+		return ""
+	}
+
+	return strings.TrimSpace(string(customFirmwareClassPath))
+}
+
 // NewDriverFirmwareDiscoverer creates a discoverer for GSP firmware associated with the specified driver version.
-func NewDriverFirmwareDiscoverer(logger *logrus.Logger, driverRoot string, version string) discover.Discover {
-	gspFirmwarePath := filepath.Join("/lib/firmware/nvidia", version, "gsp*.bin")
+func NewDriverFirmwareDiscoverer(logger logger.Interface, driverRoot string, version string) (discover.Discover, error) {
+	gspFirmwareSearchPaths, err := getFirmwareSearchPaths(logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get firmware search paths: %v", err)
+	}
+	gspFirmwarePaths := filepath.Join("nvidia", version, "gsp*.bin")
 	return discover.NewMounts(
 		logger,
 		lookup.NewFileLocator(
 			lookup.WithLogger(logger),
 			lookup.WithRoot(driverRoot),
+			lookup.WithSearchPaths(gspFirmwareSearchPaths...),
 		),
 		driverRoot,
-		[]string{gspFirmwarePath},
-	)
+		[]string{gspFirmwarePaths},
+	), nil
 }
 
 // NewDriverBinariesDiscoverer creates a discoverer for GSP firmware associated with the GPU driver.
-func NewDriverBinariesDiscoverer(logger *logrus.Logger, driverRoot string) discover.Discover {
+func NewDriverBinariesDiscoverer(logger logger.Interface, driverRoot string) discover.Discover {
 	return discover.NewMounts(
 		logger,
 		lookup.NewExecutableLocator(logger, driverRoot),
@@ -133,12 +187,11 @@ func NewDriverBinariesDiscoverer(logger *logrus.Logger, driverRoot string) disco
 // getVersionLibs checks the LDCache for libraries ending in the specified driver version.
 // Although the ldcache at the specified driverRoot is queried, the paths are returned relative to this driverRoot.
 // This allows the standard mount location logic to be used for resolving the mounts.
-func getVersionLibs(logger *logrus.Logger, driverRoot string, version string) ([]string, error) {
+func getVersionLibs(logger logger.Interface, driver *root.Driver, version string) ([]string, error) {
 	logger.Infof("Using driver version %v", version)
 
 	libCudaPaths, err := cuda.New(
-		cuda.WithLogger(logger),
-		cuda.WithDriverRoot(driverRoot),
+		driver.Libraries(),
 	).Locate("." + version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to locate libcuda.so.%v: %v", version, err)
@@ -156,13 +209,13 @@ func getVersionLibs(logger *logrus.Logger, driverRoot string, version string) ([
 		return nil, fmt.Errorf("failed to locate libraries for driver version %v: %v", version, err)
 	}
 
-	if driverRoot == "/" || driverRoot == "" {
+	if driver.Root == "/" || driver.Root == "" {
 		return libs, nil
 	}
 
 	var relative []string
 	for _, l := range libs {
-		relative = append(relative, strings.TrimPrefix(l, driverRoot))
+		relative = append(relative, strings.TrimPrefix(l, driver.Root))
 	}
 
 	return relative, nil

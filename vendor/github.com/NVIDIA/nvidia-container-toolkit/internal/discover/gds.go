@@ -17,29 +17,29 @@
 package discover
 
 import (
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup"
-	"github.com/sirupsen/logrus"
 )
 
 type gdsDeviceDiscoverer struct {
 	None
-	logger  *logrus.Logger
+	logger  logger.Interface
 	devices Discover
 	mounts  Discover
 }
 
 // NewGDSDiscoverer creates a discoverer for GPUDirect Storage devices and mounts.
-func NewGDSDiscoverer(logger *logrus.Logger, root string) (Discover, error) {
+func NewGDSDiscoverer(logger logger.Interface, driverRoot string, devRoot string) (Discover, error) {
 	devices := NewCharDeviceDiscoverer(
 		logger,
+		devRoot,
 		[]string{"/dev/nvidia-fs*"},
-		root,
 	)
 
 	udev := NewMounts(
 		logger,
-		lookup.NewDirectoryLocator(logger, root),
-		root,
+		lookup.NewDirectoryLocator(lookup.WithLogger(logger), lookup.WithRoot(driverRoot)),
+		driverRoot,
 		[]string{"/run/udev"},
 	)
 
@@ -47,9 +47,9 @@ func NewGDSDiscoverer(logger *logrus.Logger, root string) (Discover, error) {
 		logger,
 		lookup.NewFileLocator(
 			lookup.WithLogger(logger),
-			lookup.WithRoot(root),
+			lookup.WithRoot(driverRoot),
 		),
-		root,
+		driverRoot,
 		[]string{"/etc/cufile.json"},
 	)
 

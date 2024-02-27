@@ -12,12 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+PUSH_ON_BUILD ?= false
 DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
 
-$(PUSH_TARGETS): push-%:
-	$(DOCKER) tag "$(IMAGE)" "$(OUT_IMAGE)"
-	$(DOCKER) push "$(OUT_IMAGE)"
+ifeq ($(PUSH_ON_BUILD),true)
+$(BUILD_TARGETS): build-%: image-%
+	$(DOCKER) push "$(IMAGE)"
+else
+$(BUILD_TARGETS): build-%: image-%
+endif
 
-push-short:
-	$(DOCKER) tag "$(IMAGE_NAME):$(VERSION)-$(DEFAULT_PUSH_TARGET)" "$(OUT_IMAGE_NAME):$(OUT_IMAGE_VERSION)"
-	$(DOCKER) push "$(OUT_IMAGE_NAME):$(OUT_IMAGE_VERSION)"
+# For the default distribution we also retag the image.
+# Note: This needs to be updated for multi-arch images.
+ifeq ($(IMAGE_TAG),$(VERSION)-$(DIST))
+$(DEFAULT_PUSH_TARGET):
+	$(DOCKER) image inspect $(IMAGE) > /dev/null || $(DOCKER) pull $(IMAGE)
+	$(DOCKER) tag $(IMAGE) $(subst :$(IMAGE_TAG),:$(VERSION),$(IMAGE))
+endif

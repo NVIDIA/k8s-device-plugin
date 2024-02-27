@@ -20,12 +20,15 @@ import (
 	"fmt"
 	"path/filepath"
 
+	nvdevice "github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvml"
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi"
-	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
-	cdiapi "github.com/container-orchestrated-devices/container-device-interface/pkg/cdi"
+	transformroot "github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform/root"
 	"github.com/sirupsen/logrus"
-	nvdevice "gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/device"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
+	cdiapi "tags.cncf.io/container-device-interface/pkg/cdi"
+	cdiparser "tags.cncf.io/container-device-interface/pkg/parser"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 const (
@@ -40,11 +43,11 @@ type cdiHandler struct {
 	driverRoot       string
 	targetDriverRoot string
 	nvidiaCTKPath    string
-	cdiRoot          string
 	vendor           string
 	deviceIDStrategy string
 
-	enabled      bool
+	deviceListStrategies spec.DeviceListStrategies
+
 	gdsEnabled   bool
 	mofedEnabled bool
 
@@ -60,7 +63,7 @@ func newHandler(opts ...Option) (Interface, error) {
 		opt(c)
 	}
 
-	if !c.enabled {
+	if !c.deviceListStrategies.IsCDIEnabled() {
 		return &null{}, nil
 	}
 
@@ -139,7 +142,9 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 			if ret != nvml.SUCCESS {
 				return fmt.Errorf("failed to initialize NVML: %v", ret)
 			}
-			defer cdi.nvml.Shutdown()
+			defer func() {
+				_ = cdi.nvml.Shutdown()
+			}()
 		}
 
 		spec, err := cdilib.GetSpec()
@@ -147,7 +152,11 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 			return fmt.Errorf("failed to get CDI spec: %v", err)
 		}
 
-		err = transform.NewRootTransformer(cdi.driverRoot, cdi.targetDriverRoot).Transform(spec.Raw())
+		err = transformroot.New(
+			transformroot.WithRoot(cdi.driverRoot),
+			transformroot.WithTargetRoot(cdi.targetDriverRoot),
+			transformroot.WithRelativeTo("host"),
+		).Transform(spec.Raw())
 		if err != nil {
 			return fmt.Errorf("failed to transform driver root in CDI spec: %v", err)
 		}
@@ -169,5 +178,5 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 // QualifiedName constructs a CDI qualified device name for the specified resources.
 // Note: This assumes that the specified id matches the device name returned by the naming strategy.
 func (cdi *cdiHandler) QualifiedName(class string, id string) string {
-	return cdiapi.QualifiedName(cdi.vendor, class, id)
+	return cdiparser.QualifiedName(cdi.vendor, class, id)
 }

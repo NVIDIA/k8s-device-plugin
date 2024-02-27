@@ -18,7 +18,7 @@ package nvcdi
 
 import (
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
-	"github.com/sirupsen/logrus"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 )
 
 const (
@@ -26,11 +26,11 @@ const (
 )
 
 // newDXGDeviceDiscoverer returns a Discoverer for DXG devices under WSL2.
-func newDXGDeviceDiscoverer(logger *logrus.Logger, driverRoot string) discover.Discover {
+func newDXGDeviceDiscoverer(logger logger.Interface, devRoot string) discover.Discover {
 	deviceNodes := discover.NewCharDeviceDiscoverer(
 		logger,
+		devRoot,
 		[]string{dxgDeviceNode},
-		driverRoot,
 	)
 
 	return deviceNodes

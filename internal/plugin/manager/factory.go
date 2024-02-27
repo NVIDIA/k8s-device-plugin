@@ -19,8 +19,8 @@ package manager
 import (
 	"fmt"
 
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvlib/pkg/nvml"
 	"k8s.io/klog/v2"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
@@ -33,7 +33,6 @@ type manager struct {
 	nvmllib         nvml.Interface
 
 	cdiHandler cdi.Interface
-	cdiEnabled bool
 	config     *spec.Config
 	infolib    info.Interface
 }
@@ -50,21 +49,17 @@ func New(opts ...Option) (Interface, error) {
 		return &null{}, nil
 	}
 
-	if m.infolib == nil {
-		m.infolib = info.New()
-	}
 	if m.cdiHandler == nil {
 		m.cdiHandler = cdi.NewNullHandler()
+	}
+
+	if m.infolib == nil {
+		m.infolib = info.New()
 	}
 
 	mode, err := m.resolveMode()
 	if err != nil {
 		return nil, err
-	}
-
-	if mode != "nvml" && m.cdiEnabled {
-		klog.Warning("CDI is not supported; disabling CDI.")
-		m.cdiEnabled = false
 	}
 
 	switch mode {
@@ -85,7 +80,9 @@ func New(opts ...Option) (Interface, error) {
 			klog.Warningf("nvml init failed: %v", ret)
 			return &null{}, nil
 		}
-		defer m.nvmllib.Shutdown()
+		defer func() {
+			_ = m.nvmllib.Shutdown()
+		}()
 
 		return (*nvmlmanager)(m), nil
 	case "tegra":

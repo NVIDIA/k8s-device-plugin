@@ -22,8 +22,8 @@ import (
 
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/dxcore"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup"
-	"github.com/sirupsen/logrus"
 )
 
 var requiredDriverStoreFiles = []string{
@@ -33,17 +33,22 @@ var requiredDriverStoreFiles = []string{
 	"libnvidia-ml.so.1",             /* Core library for nvml */
 	"libnvidia-ml_loader.so",        /* Core library for nvml on WSL */
 	"libdxcore.so",                  /* Core library for dxcore support */
+	"libnvdxgdmal.so.1",             /* dxgdmal library for cuda */
 	"nvcubins.bin",                  /* Binary containing GPU code for cuda */
 	"nvidia-smi",                    /* nvidia-smi binary*/
 }
 
 // newWSLDriverDiscoverer returns a Discoverer for WSL2 drivers.
-func newWSLDriverDiscoverer(logger *logrus.Logger, driverRoot string, nvidiaCTKPath string) (discover.Discover, error) {
+func newWSLDriverDiscoverer(logger logger.Interface, driverRoot string, nvidiaCTKPath, ldconfigPath string) (discover.Discover, error) {
 	err := dxcore.Init()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize dxcore: %v", err)
 	}
-	defer dxcore.Shutdown()
+	defer func() {
+		if err := dxcore.Shutdown(); err != nil {
+			logger.Warningf("failed to shutdown dxcore: %v", err)
+		}
+	}()
 
 	driverStorePaths := dxcore.GetDriverStorePaths()
 	if len(driverStorePaths) == 0 {
@@ -51,11 +56,11 @@ func newWSLDriverDiscoverer(logger *logrus.Logger, driverRoot string, nvidiaCTKP
 	}
 	logger.Infof("Using WSL driver store paths: %v", driverStorePaths)
 
-	return newWSLDriverStoreDiscoverer(logger, driverRoot, nvidiaCTKPath, driverStorePaths)
+	return newWSLDriverStoreDiscoverer(logger, driverRoot, nvidiaCTKPath, ldconfigPath, driverStorePaths)
 }
 
 // newWSLDriverStoreDiscoverer returns a Discoverer for WSL2 drivers in the driver store associated with a dxcore adapter.
-func newWSLDriverStoreDiscoverer(logger *logrus.Logger, driverRoot string, nvidiaCTKPath string, driverStorePaths []string) (discover.Discover, error) {
+func newWSLDriverStoreDiscoverer(logger logger.Interface, driverRoot string, nvidiaCTKPath string, ldconfigPath string, driverStorePaths []string) (discover.Discover, error) {
 	var searchPaths []string
 	seen := make(map[string]bool)
 	for _, path := range driverStorePaths {
@@ -65,7 +70,7 @@ func newWSLDriverStoreDiscoverer(logger *logrus.Logger, driverRoot string, nvidi
 		searchPaths = append(searchPaths, path)
 	}
 	if len(searchPaths) > 1 {
-		logger.Warnf("Found multiple driver store paths: %v", searchPaths)
+		logger.Warningf("Found multiple driver store paths: %v", searchPaths)
 	}
 	searchPaths = append(searchPaths, "/usr/lib/wsl/lib")
 
@@ -88,11 +93,7 @@ func newWSLDriverStoreDiscoverer(logger *logrus.Logger, driverRoot string, nvidi
 		nvidiaCTKPath: nvidiaCTKPath,
 	}
 
-	cfg := &discover.Config{
-		DriverRoot:    driverRoot,
-		NvidiaCTKPath: nvidiaCTKPath,
-	}
-	ldcacheHook, _ := discover.NewLDCacheUpdateHook(logger, libraries, cfg)
+	ldcacheHook, _ := discover.NewLDCacheUpdateHook(logger, libraries, nvidiaCTKPath, ldconfigPath)
 
 	d := discover.Merge(
 		libraries,
@@ -105,7 +106,7 @@ func newWSLDriverStoreDiscoverer(logger *logrus.Logger, driverRoot string, nvidi
 
 type nvidiaSMISimlinkHook struct {
 	discover.None
-	logger        *logrus.Logger
+	logger        logger.Interface
 	mountsFrom    discover.Discover
 	nvidiaCTKPath string
 }

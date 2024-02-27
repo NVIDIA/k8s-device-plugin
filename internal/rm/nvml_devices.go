@@ -23,8 +23,8 @@ import (
 	"strconv"
 	"strings"
 
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvlib/pkg/nvml"
 
 	"github.com/NVIDIA/k8s-device-plugin/internal/mig"
 )
@@ -165,4 +165,22 @@ func (d nvmlMigDevice) GetNumaNode() (bool, int, error) {
 	}
 
 	return nvmlDevice{parent}.GetNumaNode()
+}
+
+// GetTotalMemory returns the total memory available on the device.
+func (d nvmlDevice) GetTotalMemory() (uint64, error) {
+	info, ret := d.Device.GetMemoryInfo()
+	if ret != nvml.SUCCESS {
+		return 0, ret
+	}
+	return info.Total, nil
+}
+
+// GetTotalMemory returns the total memory available on the device.
+func (d nvmlMigDevice) GetTotalMemory() (uint64, error) {
+	info, ret := d.Device.GetMemoryInfo()
+	if ret != nvml.SUCCESS {
+		return 0, ret
+	}
+	return info.Total, nil
 }

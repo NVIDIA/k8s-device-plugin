@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvlib/pkg/nvml"
 	"k8s.io/klog/v2"
 )
 
@@ -33,9 +33,6 @@ const (
 	// this is in addition to the Application errors that are already ignored.
 	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
 	allHealthChecks        = "xids"
-
-	// maxSuccessiveEventErrorCount sets the number of errors waiting for events before marking all devices as unhealthy.
-	maxSuccessiveEventErrorCount = 3
 )
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
@@ -86,7 +83,9 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 	if ret != nvml.SUCCESS {
 		return fmt.Errorf("failed to create event set: %v", ret)
 	}
-	defer eventSet.Free()
+	defer func() {
+		_ = eventSet.Free()
+	}()
 
 	parentToDeviceMap := make(map[string]*Device)
 	deviceIDToGiMap := make(map[string]int)

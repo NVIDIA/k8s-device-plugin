@@ -29,12 +29,16 @@ type tegramanager manager
 func (m *tegramanager) GetPlugins() ([]plugin.Interface, error) {
 	rms, err := rm.NewTegraResourceManagers(m.config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to construct NVML resource managers: %v", err)
+		return nil, fmt.Errorf("failed to construct Tegra resource managers: %v", err)
 	}
 
 	var plugins []plugin.Interface
 	for _, r := range rms {
-		plugins = append(plugins, plugin.NewNvidiaDevicePlugin(m.config, r, m.cdiHandler, m.cdiEnabled))
+		plugin, err := plugin.NewNvidiaDevicePlugin(m.config, r, m.cdiHandler)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create plugin: %w", err)
+		}
+		plugins = append(plugins, plugin)
 	}
 	return plugins, nil
 }

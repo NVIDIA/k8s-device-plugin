@@ -35,7 +35,7 @@ func newMachineTypeLabeler(machineTypePath string) (Labeler, error) {
 		machineType = machineTypeUnknown
 	}
 	l := Labels{
-		"nvidia.com/gpu.machine": strings.Replace(machineType, " ", "-", -1),
+		"nvidia.com/gpu.machine": strings.ReplaceAll(machineType, " ", "-"),
 	}
 	return l, nil
 }

@@ -29,7 +29,8 @@ import (
 	"syscall"
 	"unsafe"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/symlinks"
 )
 
 const ldcachePath = "/etc/ld.so.cache"
@@ -80,6 +81,8 @@ type entry2 struct {
 }
 
 // LDCache represents the interface for performing lookups into the LDCache
+//
+//go:generate moq -out ldcache_mock.go . LDCache
 type LDCache interface {
 	List() ([]string, []string)
 	Lookup(...string) ([]string, []string)
@@ -93,16 +96,23 @@ type ldcache struct {
 	entries    []entry2
 
 	root   string
-	logger *log.Logger
+	logger logger.Interface
 }
 
 // New creates a new LDCache with the specified logger and root.
-func New(logger *log.Logger, root string) (LDCache, error) {
+func New(logger logger.Interface, root string) (LDCache, error) {
 	path := filepath.Join(root, ldcachePath)
 
 	logger.Debugf("Opening ld.conf at %v", path)
 	f, err := os.Open(path)
-	if err != nil {
+	if os.IsNotExist(err) {
+		logger.Warningf("Could not find ld.so.cache at %v; creating empty cache", path)
+		e := &empty{
+			logger: logger,
+			path:   path,
+		}
+		return e, nil
+	} else if err != nil {
 		return nil, err
 	}
 	defer f.Close()
@@ -233,7 +243,7 @@ func (c *ldcache) getEntries(selected func(string) bool) []entry {
 	return entries
 }
 
-// List creates a list of libraires in the ldcache.
+// List creates a list of libraries in the ldcache.
 // The 32-bit and 64-bit libraries are returned separately.
 func (c *ldcache) List() ([]string, []string) {
 	all := func(s string) bool { return true }
@@ -286,20 +296,14 @@ func (c *ldcache) resolveSelected(selected func(string) bool) ([]string, []strin
 func (c *ldcache) resolve(target string) (string, error) {
 	name := filepath.Join(c.root, target)
 
-	c.logger.Debugf("checking %v", string(name))
+	c.logger.Debugf("checking %v", name)
 
-	info, err := os.Lstat(name)
-	if err != nil {
-		return "", fmt.Errorf("failed to get file info: %v", info)
-	}
-	if info.Mode()&os.ModeSymlink == 0 {
-		c.logger.Debugf("Resolved regular file: %v", name)
-		return name, nil
-	}
-
-	link, err := os.Readlink(name)
+	link, err := symlinks.Resolve(name)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve symlink: %v", err)
+	}
+	if link == name {
+		return name, nil
 	}
 
 	// We return absolute paths for all targets

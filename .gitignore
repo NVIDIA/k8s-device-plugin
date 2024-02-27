@@ -1,2 +1,4 @@
 /nvidia-device-plugin
 /releases
+deployments/helm/gpu-feature-discovery
+*.tgz

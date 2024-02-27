@@ -27,7 +27,6 @@ config:
   # List of fallback strategies to attempt if no config is selected and no default is provided
   fallbackStrategies: ["named" , "single"]
 
-legacyDaemonsetAPI: null
 compatWithCPUManager: null
 migStrategy: null
 failOnInitError: null
@@ -106,6 +105,19 @@ devicePlugin:
 hostDir: /var/lib/kubelet
 
 # Subcharts
+gfd:
+  enabled: false
+  nameOverride: gpu-feature-discovery
+  namespaceOverride: ""
+  noTimestamp: null
+  sleepInterval: null
+  securityContext:
+    # privileged access is required for the gpu-feature-discovery to access the
+    # vgpu info on a host.
+    # TODO: This should be optional and detected automatically.
+    privileged: true
+
+# Helm dependency
 nfd:
   nameOverride: node-feature-discovery
   enableNodeFeatureApi: false
@@ -137,13 +149,10 @@ nfd:
           - "0302"
           deviceLabelFields:
           - vendor
-gfd:
-  enabled: false
-  nameOverride: gpu-feature-discovery
-  namespaceOverride: ""
-  noTimestamp: null
-  sleepInterval: null
-  securityContext:
-    # privileged access is required for the gpu-feature-discovery to access the
-    # vgpu info on a host. This should be optional and detected automatically.
-    privileged: true
+
+mps:
+  # root specifies the location where files and folders for managing MPS will
+  # be created. This includes a daemon-specific /dev/shm and pipe and log
+  # directories.
+  # Pipe directories will be created at {{ mps.root }}/{{ .ResourceName }}
+  root: "/run/nvidia/mps"

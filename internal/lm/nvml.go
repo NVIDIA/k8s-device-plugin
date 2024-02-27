@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/klog/v2"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 )
@@ -30,7 +32,9 @@ func NewNVMLLabeler(manager resource.Manager, config *spec.Config) (Labeler, err
 	if err := manager.Init(); err != nil {
 		return nil, fmt.Errorf("failed to initialize NVML: %v", err)
 	}
-	defer manager.Shutdown()
+	defer func() {
+		_ = manager.Shutdown()
+	}()
 
 	devices, err := manager.GetDevices()
 	if err != nil {
@@ -66,6 +70,7 @@ func NewNVMLLabeler(manager resource.Manager, config *spec.Config) (Labeler, err
 		versionLabeler,
 		migCapabilityLabeler,
 		resourceLabeler,
+		newSharingLabeler(manager, config),
 	)
 
 	return l, nil
@@ -134,4 +139,43 @@ func newMigCapabilityLabeler(manager resource.Manager) (Labeler, error) {
 		"nvidia.com/mig.capable": strconv.FormatBool(isMigCapable),
 	}
 	return labels, nil
+}
+
+func newSharingLabeler(manager resource.Manager, config *spec.Config) Labeler {
+	if config == nil || config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
+		return Labels{
+			"nvidia.com/mps.capable": "false",
+		}
+	}
+
+	capable, err := isMPSCapable(manager)
+	if err != nil {
+		klog.ErrorS(err, "MPS-capable check failed")
+		return Labels{
+			"nvidia.com/mps.capable": "false",
+		}
+	}
+
+	return Labels{
+		"nvidia.com/mps.capable": strconv.FormatBool(capable),
+	}
+}
+
+func isMPSCapable(manager resource.Manager) (bool, error) {
+	devices, err := manager.GetDevices()
+	if err != nil {
+		return false, fmt.Errorf("failed to get device: %w", err)
+	}
+
+	for _, d := range devices {
+		isMigEnabled, err := d.IsMigEnabled()
+		if err != nil {
+			return false, fmt.Errorf("faled to check if device is MIG-enabled: %w", err)
+		}
+		if isMigEnabled {
+			klog.Warning("Seting mps.capable to false for MIG devices")
+			return false, nil
+		}
+	}
+	return true, nil
 }

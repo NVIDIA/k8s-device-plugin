@@ -25,50 +25,37 @@ import (
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/config/image"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/info/drm"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/info/proc"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/cuda"
-	"github.com/sirupsen/logrus"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/root"
 )
 
-// NewGraphicsDiscoverer returns the discoverer for graphics tools such as Vulkan.
-func NewGraphicsDiscoverer(logger *logrus.Logger, devices image.VisibleDevices, cfg *Config) (Discover, error) {
-	driverRoot := cfg.DriverRoot
-
-	mounts, err := NewGraphicsMountsDiscoverer(logger, driverRoot)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create mounts discoverer: %v", err)
-	}
-
-	drmDeviceNodes, err := newDRMDeviceDiscoverer(logger, devices, driverRoot)
+// NewDRMNodesDiscoverer returns a discoverer for the DRM device nodes associated with the specified visible devices.
+//
+// TODO: The logic for creating DRM devices should be consolidated between this
+// and the logic for generating CDI specs for a single device. This is only used
+// when applying OCI spec modifications to an incoming spec in "legacy" mode.
+func NewDRMNodesDiscoverer(logger logger.Interface, devices image.VisibleDevices, devRoot string, nvidiaCTKPath string) (Discover, error) {
+	drmDeviceNodes, err := newDRMDeviceDiscoverer(logger, devices, devRoot)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create DRM device discoverer: %v", err)
 	}
 
-	drmByPathSymlinks := newCreateDRMByPathSymlinks(logger, drmDeviceNodes, cfg)
+	drmByPathSymlinks := newCreateDRMByPathSymlinks(logger, drmDeviceNodes, devRoot, nvidiaCTKPath)
 
-	xorg := optionalXorgDiscoverer(logger, driverRoot, cfg.NvidiaCTKPath)
-
-	discover := Merge(
-		Merge(drmDeviceNodes, drmByPathSymlinks),
-		mounts,
-		xorg,
-	)
-
+	discover := Merge(drmDeviceNodes, drmByPathSymlinks)
 	return discover, nil
 }
 
 // NewGraphicsMountsDiscoverer creates a discoverer for the mounts required by graphics tools such as vulkan.
-func NewGraphicsMountsDiscoverer(logger *logrus.Logger, driverRoot string) (Discover, error) {
-	locator, err := lookup.NewLibraryLocator(logger, driverRoot)
-	if err != nil {
-		return nil, fmt.Errorf("failed to construct library locator: %v", err)
-	}
+func NewGraphicsMountsDiscoverer(logger logger.Interface, driver *root.Driver, nvidiaCTKPath string) (Discover, error) {
 	libraries := NewMounts(
 		logger,
-		locator,
-		driverRoot,
+		driver.Libraries(),
+		driver.Root,
 		[]string{
-			"libnvidia-egl-gbm.so",
+			"libnvidia-egl-gbm.so.*",
 		},
 	)
 
@@ -76,22 +63,27 @@ func NewGraphicsMountsDiscoverer(logger *logrus.Logger, driverRoot string) (Disc
 		logger,
 		lookup.NewFileLocator(
 			lookup.WithLogger(logger),
-			lookup.WithRoot(driverRoot),
+			lookup.WithRoot(driver.Root),
 			lookup.WithSearchPaths("/etc", "/usr/share"),
 		),
-		driverRoot,
+		driver.Root,
 		[]string{
 			"glvnd/egl_vendor.d/10_nvidia.json",
 			"vulkan/icd.d/nvidia_icd.json",
+			"vulkan/icd.d/nvidia_layers.json",
 			"vulkan/implicit_layer.d/nvidia_layers.json",
 			"egl/egl_external_platform.d/15_nvidia_gbm.json",
 			"egl/egl_external_platform.d/10_nvidia_wayland.json",
+			"nvidia/nvoptix.bin",
 		},
 	)
+
+	xorg := optionalXorgDiscoverer(logger, driver, nvidiaCTKPath)
 
 	discover := Merge(
 		libraries,
 		jsonMounts,
+		xorg,
 	)
 
 	return discover, nil
@@ -99,18 +91,18 @@ func NewGraphicsMountsDiscoverer(logger *logrus.Logger, driverRoot string) (Disc
 
 type drmDevicesByPath struct {
 	None
-	logger        *logrus.Logger
+	logger        logger.Interface
 	nvidiaCTKPath string
-	driverRoot    string
+	devRoot       string
 	devicesFrom   Discover
 }
 
 // newCreateDRMByPathSymlinks creates a discoverer for a hook to create the by-path symlinks for DRM devices discovered by the specified devices discoverer
-func newCreateDRMByPathSymlinks(logger *logrus.Logger, devices Discover, cfg *Config) Discover {
+func newCreateDRMByPathSymlinks(logger logger.Interface, devices Discover, devRoot string, nvidiaCTKPath string) Discover {
 	d := drmDevicesByPath{
 		logger:        logger,
-		nvidiaCTKPath: FindNvidiaCTK(logger, cfg.NvidiaCTKPath),
-		driverRoot:    cfg.DriverRoot,
+		nvidiaCTKPath: nvidiaCTKPath,
+		devRoot:       devRoot,
 		devicesFrom:   devices,
 	}
 
@@ -148,7 +140,7 @@ func (d drmDevicesByPath) Hooks() ([]Hook, error) {
 	return []Hook{hook}, nil
 }
 
-// getSpecificLinkArgs returns the required specic links that need to be created
+// getSpecificLinkArgs returns the required specific links that need to be created
 func (d drmDevicesByPath) getSpecificLinkArgs(devices []Device) ([]string, error) {
 	selectedDevices := make(map[string]bool)
 	for _, d := range devices {
@@ -157,7 +149,7 @@ func (d drmDevicesByPath) getSpecificLinkArgs(devices []Device) ([]string, error
 
 	linkLocator := lookup.NewFileLocator(
 		lookup.WithLogger(d.logger),
-		lookup.WithRoot(d.driverRoot),
+		lookup.WithRoot(d.devRoot),
 	)
 	candidates, err := linkLocator.Locate("/dev/dri/by-path/pci-*-*")
 	if err != nil {
@@ -183,27 +175,23 @@ func (d drmDevicesByPath) getSpecificLinkArgs(devices []Device) ([]string, error
 }
 
 // newDRMDeviceDiscoverer creates a discoverer for the DRM devices associated with the requested devices.
-func newDRMDeviceDiscoverer(logger *logrus.Logger, devices image.VisibleDevices, driverRoot string) (Discover, error) {
-	allDevices := NewDeviceDiscoverer(
+func newDRMDeviceDiscoverer(logger logger.Interface, devices image.VisibleDevices, devRoot string) (Discover, error) {
+	allDevices := NewCharDeviceDiscoverer(
 		logger,
-		lookup.NewCharDeviceLocator(
-			lookup.WithLogger(logger),
-			lookup.WithRoot(driverRoot),
-		),
-		driverRoot,
+		devRoot,
 		[]string{
 			"/dev/dri/card*",
 			"/dev/dri/renderD*",
 		},
 	)
 
-	filter, err := newDRMDeviceFilter(logger, devices, driverRoot)
+	filter, err := newDRMDeviceFilter(devices, devRoot)
 	if err != nil {
 		return nil, fmt.Errorf("failed to construct DRM device filter: %v", err)
 	}
 
 	// We return a discoverer that applies the DRM device filter created above to all discovered DRM device nodes.
-	d := newFilteredDisoverer(
+	d := newFilteredDiscoverer(
 		logger,
 		allDevices,
 		filter,
@@ -213,8 +201,8 @@ func newDRMDeviceDiscoverer(logger *logrus.Logger, devices image.VisibleDevices,
 }
 
 // newDRMDeviceFilter creates a filter that matches DRM devices nodes for the visible devices.
-func newDRMDeviceFilter(logger *logrus.Logger, devices image.VisibleDevices, driverRoot string) (Filter, error) {
-	gpuInformationPaths, err := proc.GetInformationFilePaths(driverRoot)
+func newDRMDeviceFilter(devices image.VisibleDevices, devRoot string) (Filter, error) {
+	gpuInformationPaths, err := proc.GetInformationFilePaths(devRoot)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read GPU information: %v", err)
 	}
@@ -241,7 +229,7 @@ func newDRMDeviceFilter(logger *logrus.Logger, devices image.VisibleDevices, dri
 			return nil, fmt.Errorf("failed to determine DRM devices for %v: %v", busID, err)
 		}
 		for _, drmDeviceNode := range drmDeviceNodes {
-			filter[filepath.Join(drmDeviceNode)] = true
+			filter[drmDeviceNode] = true
 		}
 	}
 
@@ -258,19 +246,18 @@ var _ Discover = (*xorgHooks)(nil)
 
 // optionalXorgDiscoverer creates a discoverer for Xorg libraries.
 // If the creation of the discoverer fails, a None discoverer is returned.
-func optionalXorgDiscoverer(logger *logrus.Logger, driverRoot string, nvidiaCTKPath string) Discover {
-	xorg, err := newXorgDiscoverer(logger, driverRoot, nvidiaCTKPath)
+func optionalXorgDiscoverer(logger logger.Interface, driver *root.Driver, nvidiaCTKPath string) Discover {
+	xorg, err := newXorgDiscoverer(logger, driver, nvidiaCTKPath)
 	if err != nil {
-		logger.Warnf("Failed to create Xorg discoverer: %v; skipping xorg libraries", err)
+		logger.Warningf("Failed to create Xorg discoverer: %v; skipping xorg libraries", err)
 		return None{}
 	}
 	return xorg
 }
 
-func newXorgDiscoverer(logger *logrus.Logger, driverRoot string, nvidiaCTKPath string) (Discover, error) {
+func newXorgDiscoverer(logger logger.Interface, driver *root.Driver, nvidiaCTKPath string) (Discover, error) {
 	libCudaPaths, err := cuda.New(
-		cuda.WithLogger(logger),
-		cuda.WithDriverRoot(driverRoot),
+		driver.Libraries(),
 	).Locate(".*.*")
 	if err != nil {
 		return nil, fmt.Errorf("failed to locate libcuda.so: %v", err)
@@ -287,11 +274,11 @@ func newXorgDiscoverer(logger *logrus.Logger, driverRoot string, nvidiaCTKPath s
 		logger,
 		lookup.NewFileLocator(
 			lookup.WithLogger(logger),
-			lookup.WithRoot(driverRoot),
+			lookup.WithRoot(driver.Root),
 			lookup.WithSearchPaths(libRoot, "/usr/lib/x86_64-linux-gnu"),
 			lookup.WithCount(1),
 		),
-		driverRoot,
+		driver.Root,
 		[]string{
 			"nvidia/xorg/nvidia_drv.so",
 			fmt.Sprintf("nvidia/xorg/libglxserver_nvidia.so.%s", version),
@@ -300,23 +287,23 @@ func newXorgDiscoverer(logger *logrus.Logger, driverRoot string, nvidiaCTKPath s
 	xorgHooks := xorgHooks{
 		libraries:     xorgLibs,
 		driverVersion: version,
-		nvidiaCTKPath: FindNvidiaCTK(logger, nvidiaCTKPath),
+		nvidiaCTKPath: nvidiaCTKPath,
 	}
 
-	xorgConfg := NewMounts(
+	xorgConfig := NewMounts(
 		logger,
 		lookup.NewFileLocator(
 			lookup.WithLogger(logger),
-			lookup.WithRoot(driverRoot),
+			lookup.WithRoot(driver.Root),
 			lookup.WithSearchPaths("/usr/share"),
 		),
-		driverRoot,
+		driver.Root,
 		[]string{"X11/xorg.conf.d/10-nvidia.conf"},
 	)
 
 	d := Merge(
 		xorgLibs,
-		xorgConfg,
+		xorgConfig,
 		xorgHooks,
 	)
 

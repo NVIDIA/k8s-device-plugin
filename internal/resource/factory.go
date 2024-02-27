@@ -17,9 +17,10 @@
 package resource
 
 import (
-	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"k8s.io/klog/v2"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 // NewManager is a factory method that creates a resource Manager based on the specified config.

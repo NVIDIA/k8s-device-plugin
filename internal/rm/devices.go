@@ -27,8 +27,9 @@ import (
 // Device wraps pluginapi.Device with extra metadata and functions.
 type Device struct {
 	pluginapi.Device
-	Paths []string
-	Index string
+	Paths       []string
+	Index       string
+	TotalMemory uint64
 }
 
 // deviceInfo defines the information the required to construct a Device
@@ -36,6 +37,7 @@ type deviceInfo interface {
 	GetUUID() (string, error)
 	GetPaths() ([]string, error)
 	GetNumaNode() (bool, int, error)
+	GetTotalMemory() (uint64, error)
 }
 
 // Devices wraps a map[string]*Device with some functions.
@@ -64,7 +66,14 @@ func BuildDevice(index string, d deviceInfo) (*Device, error) {
 		return nil, fmt.Errorf("error getting device NUMA node: %v", err)
 	}
 
-	dev := Device{}
+	totalMemory, err := d.GetTotalMemory()
+	if err != nil {
+		return nil, fmt.Errorf("error getting device memory: %w", err)
+	}
+
+	dev := Device{
+		TotalMemory: totalMemory,
+	}
 	dev.ID = uuid
 	dev.Index = index
 	dev.Paths = paths
@@ -139,10 +148,26 @@ func (ds Devices) GetIDs() []string {
 	return res
 }
 
+// GetUUIDs returns the uuids associated with the Device in the set.
+func (ds Devices) GetUUIDs() []string {
+	var res []string
+	seen := make(map[string]bool)
+	for _, d := range ds {
+		uuid := d.GetUUID()
+		if seen[uuid] {
+			continue
+		}
+		seen[uuid] = true
+		res = append(res, uuid)
+	}
+	return res
+}
+
 // GetPluginDevices returns the plugin Devices from all devices in the Devices
 func (ds Devices) GetPluginDevices() []*pluginapi.Device {
 	var res []*pluginapi.Device
-	for _, d := range ds {
+	for _, device := range ds {
+		d := device
 		res = append(res, &d.Device)
 	}
 	return res
@@ -166,7 +191,7 @@ func (ds Devices) GetPaths() []string {
 	return res
 }
 
-// AlignedAllocationSupported checks whether all devices support an alligned allocation
+// AlignedAllocationSupported checks whether all devices support an aligned allocation
 func (ds Devices) AlignedAllocationSupported() bool {
 	for _, d := range ds {
 		if !d.AlignedAllocationSupported() {
@@ -176,7 +201,7 @@ func (ds Devices) AlignedAllocationSupported() bool {
 	return true
 }
 
-// AlignedAllocationSupported checks whether the device supports an alligned allocation
+// AlignedAllocationSupported checks whether the device supports an aligned allocation
 func (d Device) AlignedAllocationSupported() bool {
 	if d.IsMigDevice() {
 		return false
@@ -209,10 +234,7 @@ func NewAnnotatedID(id string, replica int) AnnotatedID {
 // HasAnnotations checks if an AnnotatedID has any annotations or not.
 func (r AnnotatedID) HasAnnotations() bool {
 	split := strings.SplitN(string(r), "::", 2)
-	if len(split) != 2 {
-		return false
-	}
-	return true
+	return len(split) == 2
 }
 
 // Split splits a AnnotatedID into its ID and replica number parts.

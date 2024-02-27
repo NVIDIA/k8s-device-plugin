@@ -23,16 +23,13 @@ REGISTRY ?= nvidia
 IMAGE_NAME = $(REGISTRY)/k8s-device-plugin
 endif
 
-BUILDIMAGE_TAG ?= golang$(GOLANG_VERSION)
-BUILDIMAGE ?= $(IMAGE_NAME)-build:$(BUILDIMAGE_TAG)
-
 EXAMPLES := $(patsubst ./examples/%/,%,$(sort $(dir $(wildcard ./examples/*/))))
 EXAMPLE_TARGETS := $(patsubst %,example-%, $(EXAMPLES))
 
 CMDS := $(patsubst ./cmd/%/,%,$(sort $(dir $(wildcard ./cmd/*/))))
 CMD_TARGETS := $(patsubst %,cmd-%, $(CMDS))
 
-CHECK_TARGETS := assert-fmt vet lint ineffassign misspell
+CHECK_TARGETS := lint
 MAKE_TARGETS := binaries build check fmt lint-internal test examples cmds coverage generate $(CHECK_TARGETS)
 
 TARGETS := $(MAKE_TARGETS) $(EXAMPLE_TARGETS) $(CMD_TARGETS)
@@ -72,38 +69,16 @@ fmt:
 	go list -f '{{.Dir}}' $(MODULE)/... \
 		| xargs gofmt -s -l -w
 
-assert-fmt:
-	go list -f '{{.Dir}}' $(MODULE)/... \
-		| xargs gofmt -s -l > fmt.out
-	@if [ -s fmt.out ]; then \
-		echo "\nERROR: The following files are not formatted:\n"; \
-		cat fmt.out; \
-		rm fmt.out; \
-		exit 1; \
-	else \
-		rm fmt.out; \
-	fi
-
-ineffassign:
-	ineffassign $(MODULE)/...
+goimports:
+	go list -f {{.Dir}} $(MODULE)/... \
+		| xargs goimports -local $(MODULE) -w
 
 lint:
-# We use `go list -f '{{.Dir}}' $(MODULE)/...` to skip the `vendor` folder.
-	go list -f '{{.Dir}}' $(MODULE)/... | xargs golint -set_exit_status
-
-lint-internal:
-# We use `go list -f '{{.Dir}}' $(MODULE)/...` to skip the `vendor` folder.
-	go list -f '{{.Dir}}' $(MODULE)/internal/... | xargs golint -set_exit_status
-
-misspell:
-	misspell $(MODULE)/...
-
-vet:
-	go vet $(MODULE)/...
+	golangci-lint run ./...
 
 COVERAGE_FILE := coverage.out
 test: build cmds
-	go test -v -coverprofile=$(COVERAGE_FILE) $(MODULE)/...
+	go test -coverprofile=$(COVERAGE_FILE) $(MODULE)/cmd/... $(MODULE)/internal/... $(MODULE)/api/...
 
 coverage: test
 	cat $(COVERAGE_FILE) | grep -v "_mock.go" > $(COVERAGE_FILE).no-mocks
@@ -112,32 +87,14 @@ coverage: test
 generate:
 	go generate $(MODULE)/...
 
-# Generate an image for containerized builds
-# Note: This image is local only
-.PHONY: .build-image .pull-build-image .push-build-image
-.build-image: docker/Dockerfile.devel
-	if [ x"$(SKIP_IMAGE_BUILD)" = x"" ]; then \
-		$(DOCKER) build \
-			--progress=plain \
-			--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
-			--tag $(BUILDIMAGE) \
-			-f $(^) \
-			docker; \
-	fi
-
-.pull-build-image:
-	$(DOCKER) pull $(BUILDIMAGE)
-
-.push-build-image:
-	$(DOCKER) push $(BUILDIMAGE)
-
-$(DOCKER_TARGETS): docker-%: .build-image
-	@echo "Running 'make $(*)' in docker container $(BUILDIMAGE)"
+$(DOCKER_TARGETS): docker-%:
+	@echo "Running 'make $(*)' in container image $(BUILDIMAGE)"
 	$(DOCKER) run \
 		--rm \
-		-e GOCACHE=/tmp/.cache \
-		-v $(PWD):$(PWD) \
-		-w $(PWD) \
+		-e GOCACHE=/tmp/.cache/go \
+		-e GOMODCACHE=/tmp/.cache/gomod \
+		-v $(PWD):/work \
+		-w /work \
 		--user $$(id -u):$$(id -g) \
 		$(BUILDIMAGE) \
 			make $(*)
@@ -148,8 +105,9 @@ PHONY: .shell
 	$(DOCKER) run \
 		--rm \
 		-ti \
-		-e GOCACHE=/tmp/.cache \
-		-v $(PWD):$(PWD) \
-		-w $(PWD) \
+		-e GOCACHE=/tmp/.cache/go \
+		-e GOMODCACHE=/tmp/.cache/gomod \
+		-v $(PWD):/work \
+		-w /work \
 		--user $$(id -u):$$(id -g) \
 		$(BUILDIMAGE)

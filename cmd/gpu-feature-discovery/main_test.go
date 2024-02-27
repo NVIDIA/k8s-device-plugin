@@ -15,11 +15,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 	rt "github.com/NVIDIA/k8s-device-plugin/internal/resource/testing"
 	"github.com/NVIDIA/k8s-device-plugin/internal/vgpu"
-	"github.com/stretchr/testify/require"
+	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
 )
 
 const (
@@ -183,7 +185,7 @@ func TestRunWithNoTimestamp(t *testing.T) {
 
 func TestRunSleep(t *testing.T) {
 	log.Println("Starting OS watcher.")
-	sigs := newOSWatcher(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	sigs := watch.Signals(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	nvmlMock := NewTestNvmlMock()
 	vgpuMock := NewTestVGPUMock()
@@ -429,7 +431,7 @@ LOOP:
 				continue LOOP
 			}
 		}
-		return fmt.Errorf("line does not match any regexp: %v", string(line))
+		return fmt.Errorf("line does not match any regexp: %v", line)
 	}
 	return nil
 }

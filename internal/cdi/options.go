@@ -17,16 +17,18 @@
 package cdi
 
 import (
-	"gitlab.com/nvidia/cloud-native/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 // Option defines a function for passing options to the New() call
 type Option func(*cdiHandler)
 
-// WithEnabled provides an Option to set the enabled flag used by the 'cdi' interface
-func WithEnabled(enabled bool) Option {
+// WithDeviceListStrategies provides an Option to set the enabled flag used by the 'cdi' interface
+func WithDeviceListStrategies(deviceListStrategies spec.DeviceListStrategies) Option {
 	return func(c *cdiHandler) {
-		c.enabled = enabled
+		c.deviceListStrategies = deviceListStrategies
 	}
 }
 

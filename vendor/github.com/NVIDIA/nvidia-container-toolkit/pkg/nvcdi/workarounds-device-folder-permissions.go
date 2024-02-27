@@ -21,12 +21,12 @@ import (
 	"path/filepath"
 
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
-	"github.com/sirupsen/logrus"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 )
 
 type deviceFolderPermissions struct {
-	logger        *logrus.Logger
-	driverRoot    string
+	logger        logger.Interface
+	devRoot       string
 	nvidiaCTKPath string
 	devices       discover.Discover
 }
@@ -39,10 +39,10 @@ var _ discover.Discover = (*deviceFolderPermissions)(nil)
 // The nested devices that are applicable to the NVIDIA GPU devices are:
 //   - DRM devices at /dev/dri/*
 //   - NVIDIA Caps devices at /dev/nvidia-caps/*
-func newDeviceFolderPermissionHookDiscoverer(logger *logrus.Logger, driverRoot string, nvidiaCTKPath string, devices discover.Discover) discover.Discover {
+func newDeviceFolderPermissionHookDiscoverer(logger logger.Interface, devRoot string, nvidiaCTKPath string, devices discover.Discover) discover.Discover {
 	d := &deviceFolderPermissions{
 		logger:        logger,
-		driverRoot:    driverRoot,
+		devRoot:       devRoot,
 		nvidiaCTKPath: nvidiaCTKPath,
 		devices:       devices,
 	}
