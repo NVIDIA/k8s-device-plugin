@@ -11,6 +11,12 @@ import (
 	"sync"
 )
 
+var (
+	MarshalIndent = json.MarshalIndent
+	NewDecoder    = json.NewDecoder
+	NewEncoder    = json.NewEncoder
+)
+
 // EntityReaderWriter can read and write values using an encoding such as JSON,XML.
 type EntityReaderWriter interface {
 	// Read a serialized version of the value from the request.
