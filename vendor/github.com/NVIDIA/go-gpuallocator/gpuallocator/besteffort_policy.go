@@ -46,6 +46,10 @@ func (p *bestEffortPolicy) Allocate(available []*Device, required []*Device, siz
 		return []*Device{}
 	}
 
+	if len(required) > len(available) {
+		return []*Device{}
+	}
+
 	// Find the highest scoring GPU partition with sets of of size 'size'.
 	// Don't consider partitions that don't have at least one set that contains
 	// all of the GPUs 'required' by the allocation.
