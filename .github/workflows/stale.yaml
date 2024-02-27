@@ -14,8 +14,8 @@ jobs:
     steps:
     - uses: actions/stale@v8
       with:
-        stale-issue-message: 'This issue has become stale and will be closed automatically within 30 days if no activity is recorded.'
-        stale-pr-message: 'This pull request has become stale and will be closed automatically within 30 days if no activity is recorded.'
+        stale-issue-message: 'This issue is stale because it has been open 90 days with no activity. This issue will be closed in 30 days unless new comments are made or the stale label is removed.'
+        stale-pr-message: 'This PR is stale because it has been open 90 days with no activity. This PR will be closed in 30 days unless new comments are made or the stale label is removed.'
         stale-issue-label: 'lifecycle/stale'
         stale-pr-label: 'lifecycle/stale'
         days-before-stale: 90
