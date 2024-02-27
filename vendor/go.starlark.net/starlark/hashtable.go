@@ -6,6 +6,7 @@ package starlark
 
 import (
 	"fmt"
+	"math/big"
 	_ "unsafe" // for go:linkname hack
 )
 
@@ -198,6 +199,57 @@ func (ht *hashtable) lookup(k Value) (v Value, found bool, err error) {
 		}
 	}
 	return None, false, nil // not found
+}
+
+// count returns the number of distinct elements of iter that are elements of ht.
+func (ht *hashtable) count(iter Iterator) (int, error) {
+	if ht.table == nil {
+		return 0, nil // empty
+	}
+
+	var k Value
+	count := 0
+
+	// Use a bitset per table entry to record seen elements of ht.
+	// Elements are identified by their bucket number and index within the bucket.
+	// Each bitset gets one word initially, but may grow.
+	storage := make([]big.Word, len(ht.table))
+	bitsets := make([]big.Int, len(ht.table))
+	for i := range bitsets {
+		bitsets[i].SetBits(storage[i : i+1 : i+1])
+	}
+	for iter.Next(&k) && count != int(ht.len) {
+		h, err := k.Hash()
+		if err != nil {
+			return 0, err // unhashable
+		}
+		if h == 0 {
+			h = 1 // zero is reserved
+		}
+
+		// Inspect each bucket in the bucket list.
+		bucketId := h & (uint32(len(ht.table) - 1))
+		i := 0
+		for p := &ht.table[bucketId]; p != nil; p = p.next {
+			for j := range p.entries {
+				e := &p.entries[j]
+				if e.hash == h {
+					if eq, err := Equal(k, e.key); err != nil {
+						return 0, err
+					} else if eq {
+						bitIndex := i<<3 + j
+						if bitsets[bucketId].Bit(bitIndex) == 0 {
+							bitsets[bucketId].SetBit(&bitsets[bucketId], bitIndex, 1)
+							count++
+						}
+					}
+				}
+			}
+			i++
+		}
+	}
+
+	return count, nil
 }
 
 // Items returns all the items in the map (as key/value pairs) in insertion order.
