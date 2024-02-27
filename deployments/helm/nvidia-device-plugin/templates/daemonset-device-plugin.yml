@@ -215,8 +215,6 @@ spec:
         - name: device-plugin
           hostPath:
             path: {{ .Values.hostDir }}/device-plugins
-        {{- if eq $hasConfigMap "true" }}
-            path: /var/lib/kubelet/device-plugins
         - name: mps-root
           hostPath:
             path: {{ .Values.mps.root }}
