@@ -51,6 +51,7 @@ const (
 	FeatureLabelsAnnotation = AnnotationNs + "/feature-labels"
 
 	// MasterVersionAnnotation is the annotation that holds the version of nfd-master running on the node
+	// DEPRECATED: will not be used in NFD v0.15 or later.
 	MasterVersionAnnotation = AnnotationNs + "/master.version"
 
 	// WorkerVersionAnnotation is the annotation that holds the version of nfd-worker running on the node
@@ -59,9 +60,18 @@ const (
 	// NodeTaintsAnnotation is the annotation that holds the taints that nfd-master set on the node
 	NodeTaintsAnnotation = AnnotationNs + "/taints"
 
+	// FeatureAnnotationsTrackingAnnotation is the annotation that holds all feature annotations that nfd-master set on the node
+	FeatureAnnotationsTrackingAnnotation = AnnotationNs + "/feature-annotations"
+
 	// NodeFeatureObjNodeNameLabel is the label that specifies which node the
 	// NodeFeature object is targeting. Creators of NodeFeature objects must
 	// set this label and consumers of the objects are supposed to use the
 	// label for filtering features designated for a certain node.
 	NodeFeatureObjNodeNameLabel = "nfd.node.kubernetes.io/node-name"
+
+	// FeatureAnnotationNs is the (default) namespace for feature annotations.
+	FeatureAnnotationNs = "feature.node.kubernetes.io"
+
+	// FeatureAnnotationSubNsSuffix is the suffix for allowed feature annotation sub-namespaces.
+	FeatureAnnotationSubNsSuffix = "." + FeatureAnnotationNs
 )

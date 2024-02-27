@@ -16,6 +16,8 @@ limitations under the License.
 
 package v1alpha1
 
+import "maps"
+
 // NewNodeFeatureSpec creates a new emprty instance of NodeFeatureSpec type,
 // initializing all fields to proper empty values.
 func NewNodeFeatureSpec() *NodeFeatureSpec {
@@ -75,9 +77,7 @@ func (f *Features) InsertAttributeFeatures(domain, feature string, values map[st
 		return
 	}
 
-	for k, v := range values {
-		f.Attributes[key].Elements[k] = v
-	}
+	maps.Copy(f.Attributes[key].Elements, values)
 }
 
 // Exists returns a non-empty string if a feature exists. The return value is
@@ -103,9 +103,7 @@ func (in *NodeFeatureSpec) MergeInto(out *NodeFeatureSpec) {
 		if out.Labels == nil {
 			out.Labels = make(map[string]string, len(in.Labels))
 		}
-		for key, val := range in.Labels {
-			out.Labels[key] = val
-		}
+		maps.Copy(out.Labels, in.Labels)
 	}
 }
 
@@ -151,9 +149,7 @@ func (in *FlagFeatureSet) MergeInto(out *FlagFeatureSet) {
 		if out.Elements == nil {
 			out.Elements = make(map[string]Nil, len(in.Elements))
 		}
-		for key, val := range in.Elements {
-			out.Elements[key] = val
-		}
+		maps.Copy(out.Elements, in.Elements)
 	}
 }
 
@@ -163,9 +159,7 @@ func (in *AttributeFeatureSet) MergeInto(out *AttributeFeatureSet) {
 		if out.Elements == nil {
 			out.Elements = make(map[string]string, len(in.Elements))
 		}
-		for key, val := range in.Elements {
-			out.Elements[key] = val
-		}
+		maps.Copy(out.Elements, in.Elements)
 	}
 }
 
