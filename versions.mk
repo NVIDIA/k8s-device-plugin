@@ -23,7 +23,7 @@ VERSION  ?= v0.15.0-rc.1
 vVERSION := v$(VERSION:v%=%)
 
 CUDA_VERSION ?= 12.3.1
-GOLANG_VERSION ?= 1.20.5
+GOLANG_VERSION ?= $(shell go mod edit -json | jq -r .Go)
 
 BUILDIMAGE_TAG ?= devel-go$(GOLANG_VERSION)
 BUILDIMAGE ?=  ghcr.io/nvidia/k8s-test-infra:$(BUILDIMAGE_TAG)
