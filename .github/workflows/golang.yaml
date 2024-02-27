@@ -30,10 +30,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       name: Checkout code
+    - name: Get Golang version
+      id: vars
+      run: |
+        GOLANG_VERSION=$( grep "GOLANG_VERSION ?=" versions.mk )
+        echo "GOLANG_VERSION=${GOLANG_VERSION##GOLANG_VERSION ?= }" >> $GITHUB_ENV
     - name: Install Go
       uses: actions/setup-go@v5
       with:
-        go-version-file: 'go.mod'
+        go-version: ${{ env.GOLANG_VERSION }}
     - name: Lint
       uses: golangci/golangci-lint-action@v4
       with:
@@ -46,10 +51,15 @@ jobs:
       steps:
         - name: Checkout code
           uses: actions/checkout@v4
+        - name: Get Golang version
+          id: vars
+          run: |
+            GOLANG_VERSION=$( grep "GOLANG_VERSION ?=" versions.mk )
+            echo "GOLANG_VERSION=${GOLANG_VERSION##GOLANG_VERSION ?= }" >> $GITHUB_ENV
         - name: Install Go
           uses: actions/setup-go@v5
           with:
-            go-version-file: 'go.mod'
+            go-version: ${{ env.GOLANG_VERSION }}
         - run: make test
   build:
     runs-on: ubuntu-latest
