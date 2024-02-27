@@ -38,11 +38,16 @@ import (
 // Options captures the different ways to specify values
 // +kubebuilder:object:generate:=true
 type Options struct {
-	ValueFiles   []string // -f/--values
-	StringValues []string // --set-string
-	Values       []string // --set
-	FileValues   []string // --set-file
-	JSONValues   []string // --set-json
+	// -f/--values
+	ValueFiles []string `json:"valueFiles,omitempty"`
+	// --set-string
+	StringValues []string `json:"stringValues,omitempty"`
+	// --set
+	Values []string `json:"values,omitempty"`
+	// --set-file
+	FileValues []string `json:"fileValues,omitempty"`
+	// --set-json
+	JSONValues []string `json:"jsonValues,omitempty"`
 }
 
 // MergeValues merges values from files specified via -f/--values and directly
