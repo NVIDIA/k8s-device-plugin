@@ -87,6 +87,14 @@ type HelmClient struct {
 	DebugLog     action.DebugLog
 }
 
+func (c *HelmClient) GetSettings() *cli.EnvSettings {
+	return c.Settings
+}
+
+func (c *HelmClient) GetProviders() getter.Providers {
+	return c.Providers
+}
+
 type GenericHelmOptions struct {
 	PostRenderer postrender.PostRenderer
 	RollBack     RollBack

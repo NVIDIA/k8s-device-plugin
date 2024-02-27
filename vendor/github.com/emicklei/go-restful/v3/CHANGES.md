@@ -1,5 +1,9 @@
 # Change history of go-restful
 
+## [v3.11.1] - 2024-01-03
+
+-  remove the dependency on github.com/json-iterator/go (#539)
+
 ## [v3.11.0] - 2023-08-19
 
 - restored behavior as <= v3.9.0 with option to change path strategy using TrimRightSlashEnabled. 
