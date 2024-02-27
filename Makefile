@@ -30,7 +30,7 @@ CMDS := $(patsubst ./cmd/%/,%,$(sort $(dir $(wildcard ./cmd/*/))))
 CMD_TARGETS := $(patsubst %,cmd-%, $(CMDS))
 
 CHECK_TARGETS := lint
-MAKE_TARGETS := binaries build check fmt lint-internal test examples cmds coverage generate $(CHECK_TARGETS)
+MAKE_TARGETS := binaries build check fmt lint-internal test examples cmds coverage generate vendor check-vendor $(CHECK_TARGETS)
 
 TARGETS := $(MAKE_TARGETS) $(EXAMPLE_TARGETS) $(CMD_TARGETS)
 
@@ -75,6 +75,14 @@ goimports:
 
 lint:
 	golangci-lint run ./...
+
+vendor:
+	go mod tidy
+	go mod vendor
+	go mod verify
+
+check-vendor: vendor
+	git diff --quiet HEAD -- go.mod go.sum vendor
 
 COVERAGE_FILE := coverage.out
 test: build cmds
