@@ -1,4 +1,4 @@
-package registry
+package registry // import "github.com/docker/docker/registry"
 
 import (
 	"context"
@@ -6,16 +6,17 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/containerd/log"
-	"github.com/docker/distribution/registry/client/auth"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/errdefs"
+
+	"github.com/docker/distribution/registry/client/auth"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 var acceptedSearchFilterTags = map[string]bool{
-	"is-automated": true, // Deprecated: the "is_automated" field is deprecated and will always be false in the future.
+	"is-automated": true,
 	"is-official":  true,
 	"stars":        true,
 }
@@ -27,7 +28,6 @@ func (s *Service) Search(ctx context.Context, searchFilters filters.Args, term s
 		return nil, err
 	}
 
-	// TODO(thaJeztah): the "is-automated" field is deprecated; reset the field for the next release (v26.0.0). Return early when using "is-automated=true", and ignore "is-automated=false".
 	isAutomated, err := searchFilters.GetBoolOrDefault("is-automated", false)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,6 @@ func (s *Service) Search(ctx context.Context, searchFilters filters.Args, term s
 		}
 	}
 
-	// TODO(thaJeztah): the "is-automated" field is deprecated. Reset the field for the next release (v26.0.0) if any "true" values are present.
 	unfilteredResult, err := s.searchUnfiltered(ctx, term, limit, authConfig, headers)
 	if err != nil {
 		return nil, err
@@ -60,7 +59,7 @@ func (s *Service) Search(ctx context.Context, searchFilters filters.Args, term s
 	filteredResults := []registry.SearchResult{}
 	for _, result := range unfilteredResult.Results {
 		if searchFilters.Contains("is-automated") {
-			if isAutomated != result.IsAutomated { //nolint:staticcheck // ignore SA1019 for old API versions.
+			if isAutomated != result.IsAutomated {
 				continue
 			}
 		}
@@ -127,7 +126,7 @@ func (s *Service) searchUnfiltered(ctx context.Context, term string, limit int, 
 		v2Client.CheckRedirect = endpoint.client.CheckRedirect
 		v2Client.Jar = endpoint.client.Jar
 
-		log.G(ctx).Debugf("using v2 client for search to %s", endpoint.URL)
+		logrus.Debugf("using v2 client for search to %s", endpoint.URL)
 		client = v2Client
 	} else {
 		client = endpoint.client
@@ -137,27 +136,4 @@ func (s *Service) searchUnfiltered(ctx context.Context, term string, limit int, 
 	}
 
 	return newSession(client, endpoint).searchRepositories(remoteName, limit)
-}
-
-// splitReposSearchTerm breaks a search term into an index name and remote name
-func splitReposSearchTerm(reposName string) (string, string) {
-	nameParts := strings.SplitN(reposName, "/", 2)
-	if len(nameParts) == 1 || (!strings.Contains(nameParts[0], ".") &&
-		!strings.Contains(nameParts[0], ":") && nameParts[0] != "localhost") {
-		// This is a Docker Hub repository (ex: samalba/hipache or ubuntu),
-		// use the default Docker Hub registry (docker.io)
-		return IndexName, reposName
-	}
-	return nameParts[0], nameParts[1]
-}
-
-// ParseSearchIndexInfo will use repository name to get back an indexInfo.
-//
-// TODO(thaJeztah) this function is only used by the CLI, and used to get
-// information of the registry (to provide credentials if needed). We should
-// move this function (or equivalent) to the CLI, as it's doing too much just
-// for that.
-func ParseSearchIndexInfo(reposName string) (*registry.IndexInfo, error) {
-	indexName, _ := splitReposSearchTerm(reposName)
-	return newIndexInfo(emptyServiceConfig, indexName)
 }

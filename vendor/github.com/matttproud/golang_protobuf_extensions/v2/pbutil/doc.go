@@ -1,4 +1,4 @@
-// Copyright The OpenTelemetry Authors
+// Copyright 2013 Matt T. Proud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package semconv // import "go.opentelemetry.io/otel/semconv/v1.20.0"
-
-const (
-	// ExceptionEventName is the name of the Span event representing an exception.
-	ExceptionEventName = "exception"
-)
+// Package pbutil provides record length-delimited Protocol Buffer streaming.
+package pbutil

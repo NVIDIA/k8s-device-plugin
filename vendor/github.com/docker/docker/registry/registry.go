@@ -2,7 +2,6 @@
 package registry // import "github.com/docker/docker/registry"
 
 import (
-	"context"
 	"crypto/tls"
 	"net"
 	"net/http"
@@ -11,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/containerd/log"
 	"github.com/docker/distribution/registry/client/transport"
 	"github.com/docker/go-connections/tlsconfig"
+	"github.com/sirupsen/logrus"
 )
 
 // HostCertsDir returns the config directory for a specific host.
@@ -30,7 +29,7 @@ func newTLSConfig(hostname string, isSecure bool) (*tls.Config, error) {
 
 	if isSecure && CertsDir() != "" {
 		hostDir := HostCertsDir(hostname)
-		log.G(context.TODO()).Debugf("hostDir: %s", hostDir)
+		logrus.Debugf("hostDir: %s", hostDir)
 		if err := ReadCertsDirectory(tlsConfig, hostDir); err != nil {
 			return nil, err
 		}
@@ -66,7 +65,7 @@ func ReadCertsDirectory(tlsConfig *tls.Config, directory string) error {
 				}
 				tlsConfig.RootCAs = systemPool
 			}
-			log.G(context.TODO()).Debugf("crt: %s", filepath.Join(directory, f.Name()))
+			logrus.Debugf("crt: %s", filepath.Join(directory, f.Name()))
 			data, err := os.ReadFile(filepath.Join(directory, f.Name()))
 			if err != nil {
 				return err
@@ -76,7 +75,7 @@ func ReadCertsDirectory(tlsConfig *tls.Config, directory string) error {
 		if strings.HasSuffix(f.Name(), ".cert") {
 			certName := f.Name()
 			keyName := certName[:len(certName)-5] + ".key"
-			log.G(context.TODO()).Debugf("cert: %s", filepath.Join(directory, f.Name()))
+			logrus.Debugf("cert: %s", filepath.Join(directory, f.Name()))
 			if !hasFile(fs, keyName) {
 				return invalidParamf("missing key %s for client certificate %s. CA certificates must use the extension .crt", keyName, certName)
 			}
@@ -89,7 +88,7 @@ func ReadCertsDirectory(tlsConfig *tls.Config, directory string) error {
 		if strings.HasSuffix(f.Name(), ".key") {
 			keyName := f.Name()
 			certName := keyName[:len(keyName)-4] + ".cert"
-			log.G(context.TODO()).Debugf("key: %s", filepath.Join(directory, f.Name()))
+			logrus.Debugf("key: %s", filepath.Join(directory, f.Name()))
 			if !hasFile(fs, certName) {
 				return invalidParamf("missing client certificate %s for key %s", certName, keyName)
 			}
@@ -111,6 +110,51 @@ func Headers(userAgent string, metaHeaders http.Header) []transport.RequestModif
 		modifiers = append(modifiers, transport.NewHeaderRequestModifier(metaHeaders))
 	}
 	return modifiers
+}
+
+// httpClient returns an HTTP client structure which uses the given transport
+// and contains the necessary headers for redirected requests
+func httpClient(transport http.RoundTripper) *http.Client {
+	return &http.Client{
+		Transport:     transport,
+		CheckRedirect: addRequiredHeadersToRedirectedRequests,
+	}
+}
+
+func trustedLocation(req *http.Request) bool {
+	var (
+		trusteds = []string{"docker.com", "docker.io"}
+		hostname = strings.SplitN(req.Host, ":", 2)[0]
+	)
+	if req.URL.Scheme != "https" {
+		return false
+	}
+
+	for _, trusted := range trusteds {
+		if hostname == trusted || strings.HasSuffix(hostname, "."+trusted) {
+			return true
+		}
+	}
+	return false
+}
+
+// addRequiredHeadersToRedirectedRequests adds the necessary redirection headers
+// for redirected requests
+func addRequiredHeadersToRedirectedRequests(req *http.Request, via []*http.Request) error {
+	if len(via) != 0 && via[0] != nil {
+		if trustedLocation(req) && trustedLocation(via[0]) {
+			req.Header = via[0].Header
+			return nil
+		}
+		for k, v := range via[0].Header {
+			if k != "Authorization" {
+				for _, vv := range v {
+					req.Header.Add(k, vv)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // newTransport returns a new HTTP transport. If tlsConfig is nil, it uses the

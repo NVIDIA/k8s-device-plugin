@@ -7,10 +7,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/containerd/log"
-	"github.com/distribution/reference"
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/errdefs"
+	"github.com/sirupsen/logrus"
 )
 
 // Service is a registry service. It tracks configuration data such as a list
@@ -20,8 +20,8 @@ type Service struct {
 	mu     sync.RWMutex
 }
 
-// NewService returns a new instance of [Service] ready to be installed into
-// an engine.
+// NewService returns a new instance of defaultService ready to be
+// installed into an engine.
 func NewService(options ServiceOptions) (*Service, error) {
 	config, err := newServiceConfig(options)
 
@@ -35,18 +35,28 @@ func (s *Service) ServiceConfig() *registry.ServiceConfig {
 	return s.config.copy()
 }
 
-// ReplaceConfig prepares a transaction which will atomically replace the
-// registry service's configuration when the returned commit function is called.
-func (s *Service) ReplaceConfig(options ServiceOptions) (commit func(), err error) {
-	config, err := newServiceConfig(options)
-	if err != nil {
-		return nil, err
-	}
-	return func() {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		s.config = config
-	}, nil
+// LoadAllowNondistributableArtifacts loads allow-nondistributable-artifacts registries for Service.
+func (s *Service) LoadAllowNondistributableArtifacts(registries []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.config.loadAllowNondistributableArtifacts(registries)
+}
+
+// LoadMirrors loads registry mirrors for Service
+func (s *Service) LoadMirrors(mirrors []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.config.loadMirrors(mirrors)
+}
+
+// LoadInsecureRegistries loads insecure registries for Service
+func (s *Service) LoadInsecureRegistries(registries []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.config.loadInsecureRegistries(registries)
 }
 
 // Auth contacts the public registry with the provided credentials,
@@ -54,7 +64,7 @@ func (s *Service) ReplaceConfig(options ServiceOptions) (commit func(), err erro
 // It can be used to verify the validity of a client's credentials.
 func (s *Service) Auth(ctx context.Context, authConfig *registry.AuthConfig, userAgent string) (status, token string, err error) {
 	// TODO Use ctx when searching for repositories
-	registryHostName := IndexHostname
+	var registryHostName = IndexHostname
 
 	if authConfig.ServerAddress != "" {
 		serverAddress := authConfig.ServerAddress
@@ -85,10 +95,22 @@ func (s *Service) Auth(ctx context.Context, authConfig *registry.AuthConfig, use
 			// Failed to authenticate; don't continue with (non-TLS) endpoints.
 			return status, token, err
 		}
-		log.G(ctx).WithError(err).Infof("Error logging in to endpoint, trying next endpoint")
+		logrus.WithError(err).Infof("Error logging in to endpoint, trying next endpoint")
 	}
 
 	return "", "", err
+}
+
+// splitReposSearchTerm breaks a search term into an index name and remote name
+func splitReposSearchTerm(reposName string) (string, string) {
+	nameParts := strings.SplitN(reposName, "/", 2)
+	if len(nameParts) == 1 || (!strings.Contains(nameParts[0], ".") &&
+		!strings.Contains(nameParts[0], ":") && nameParts[0] != "localhost") {
+		// This is a Docker Hub repository (ex: samalba/hipache or ubuntu),
+		// use the default Docker Hub registry (docker.io)
+		return IndexName, reposName
+	}
+	return nameParts[0], nameParts[1]
 }
 
 // ResolveRepository splits a repository name into its components
@@ -103,7 +125,7 @@ func (s *Service) ResolveRepository(name reference.Named) (*RepositoryInfo, erro
 type APIEndpoint struct {
 	Mirror                         bool
 	URL                            *url.URL
-	Version                        APIVersion // Deprecated: v1 registries are deprecated, and endpoints are always v2.
+	Version                        APIVersion
 	AllowNondistributableArtifacts bool
 	Official                       bool
 	TrimHostname                   bool

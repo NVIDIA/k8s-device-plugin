@@ -1,16 +1,15 @@
 package registry // import "github.com/docker/docker/registry"
 
 import (
-	"context"
 	"net"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/containerd/log"
-	"github.com/distribution/reference"
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types/registry"
+	"github.com/sirupsen/logrus"
 )
 
 // ServiceOptions holds command line options.
@@ -198,10 +197,10 @@ skip:
 			return err
 		}
 		if strings.HasPrefix(strings.ToLower(r), "http://") {
-			log.G(context.TODO()).Warnf("insecure registry %s should not contain 'http://' and 'http://' has been removed from the insecure registry config", r)
+			logrus.Warnf("insecure registry %s should not contain 'http://' and 'http://' has been removed from the insecure registry config", r)
 			r = r[7:]
 		} else if strings.HasPrefix(strings.ToLower(r), "https://") {
-			log.G(context.TODO()).Warnf("insecure registry %s should not contain 'https://' and 'https://' has been removed from the insecure registry config", r)
+			logrus.Warnf("insecure registry %s should not contain 'https://' and 'https://' has been removed from the insecure registry config", r)
 			r = r[8:]
 		} else if hasScheme(r) {
 			return invalidParamf("insecure registry %s should not contain '://'", r)
@@ -320,8 +319,7 @@ func isCIDRMatch(cidrs []*registry.NetIPNet, URLHost string) bool {
 	return false
 }
 
-// ValidateMirror validates an HTTP(S) registry mirror. It is used by the daemon
-// to validate the daemon configuration.
+// ValidateMirror validates an HTTP(S) registry mirror
 func ValidateMirror(val string) (string, error) {
 	uri, err := url.Parse(val)
 	if err != nil {
@@ -330,8 +328,8 @@ func ValidateMirror(val string) (string, error) {
 	if uri.Scheme != "http" && uri.Scheme != "https" {
 		return "", invalidParamf("invalid mirror: unsupported scheme %q in %q", uri.Scheme, uri)
 	}
-	if uri.RawQuery != "" || uri.Fragment != "" {
-		return "", invalidParamf("invalid mirror: query or fragment at end of the URI %q", uri)
+	if (uri.Path != "" && uri.Path != "/") || uri.RawQuery != "" || uri.Fragment != "" {
+		return "", invalidParamf("invalid mirror: path, query, or fragment at end of the URI %q", uri)
 	}
 	if uri.User != nil {
 		// strip password from output
@@ -341,8 +339,7 @@ func ValidateMirror(val string) (string, error) {
 	return strings.TrimSuffix(val, "/") + "/", nil
 }
 
-// ValidateIndexName validates an index name. It is used by the daemon to
-// validate the daemon configuration.
+// ValidateIndexName validates an index name.
 func ValidateIndexName(val string) (string, error) {
 	// TODO: upstream this to check to reference package
 	if val == "index.docker.io" {
@@ -428,10 +425,24 @@ func newRepositoryInfo(config *serviceConfig, name reference.Named) (*Repository
 	}, nil
 }
 
-// ParseRepositoryInfo performs the breakdown of a repository name into a
-// [RepositoryInfo], but lacks registry configuration.
-//
-// It is used by the Docker cli to interact with registry-related endpoints.
+// ParseRepositoryInfo performs the breakdown of a repository name into a RepositoryInfo, but
+// lacks registry configuration.
 func ParseRepositoryInfo(reposName reference.Named) (*RepositoryInfo, error) {
 	return newRepositoryInfo(emptyServiceConfig, reposName)
+}
+
+// ParseSearchIndexInfo will use repository name to get back an indexInfo.
+//
+// TODO(thaJeztah) this function is only used by the CLI, and used to get
+// information of the registry (to provide credentials if needed). We should
+// move this function (or equivalent) to the CLI, as it's doing too much just
+// for that.
+func ParseSearchIndexInfo(reposName string) (*registry.IndexInfo, error) {
+	indexName, _ := splitReposSearchTerm(reposName)
+
+	indexInfo, err := newIndexInfo(emptyServiceConfig, indexName)
+	if err != nil {
+		return nil, err
+	}
+	return indexInfo, nil
 }
