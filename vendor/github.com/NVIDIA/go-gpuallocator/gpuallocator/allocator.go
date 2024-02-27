@@ -19,7 +19,7 @@ type Allocator struct {
 	allocated DeviceSet
 }
 
-// Policy defines an interface for plugagable allocation policies to be added
+// Policy defines an interface for pluggable allocation policies to be added
 // to an Allocator.
 type Policy interface {
 	// Allocate is meant to do the heavy-lifting of implementing the actual
