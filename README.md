@@ -70,61 +70,22 @@ Please see: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/in
 
 #### Example for debian-based systems with `docker` and `containerd`
 
-##### Install the `nvidia-container-toolkit`
-```bash
-distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-curl -s -L https://nvidia.github.io/libnvidia-container/gpgkey | sudo apt-key add -
-curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list | sudo tee /etc/apt/sources.list.d/libnvidia-container.list
+##### Install the NVIDIA Container Toolkit
 
-sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
-```
+For instructions on installing and getting started with the NVIDIA Container Toolkit, refer to the [installation guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#installation-guide).
 
-##### Configure `docker`
-When running `kubernetes` with `docker`, edit the config file which is usually
-present at `/etc/docker/daemon.json` to set up `nvidia-container-runtime` as
-the default low-level runtime:
-```json
-{
-    "default-runtime": "nvidia",
-    "runtimes": {
-        "nvidia": {
-            "path": "/usr/bin/nvidia-container-runtime",
-            "runtimeArgs": []
-        }
-    }
-}
-```
-And then restart `docker`:
-```
-$ sudo systemctl restart docker
-```
 
-##### Configure `containerd`
-When running `kubernetes` with `containerd`, edit the config file which is
-usually present at `/etc/containerd/config.toml` to set up
-`nvidia-container-runtime` as the default low-level runtime:
-```
-version = 2
-[plugins]
-  [plugins."io.containerd.grpc.v1.cri"]
-    [plugins."io.containerd.grpc.v1.cri".containerd]
-      default_runtime_name = "nvidia"
+Also note the configuration instructions for:
+* [`containerd`](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html#configuring-containerd-for-kubernetes)
+* [`CRI-O`](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html#configuring-cri-o)
+* [`docker` (Deprecated)](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html#configuring-docker)
 
-      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
-        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
-          privileged_without_host_devices = false
-          runtime_engine = ""
-          runtime_root = ""
-          runtime_type = "io.containerd.runc.v2"
-          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia.options]
-            BinaryName = "/usr/bin/nvidia-container-runtime"
-```
-And then restart `containerd`:
-```
-$ sudo systemctl restart containerd
-```
+Remembering to restart each runtime after applying the configuration changes.
 
-##### Configure `CRI-O`
+If the `nvidia` runtime should be set as the default runtime (required for `docker`), the `--set-as-default` argument
+must also be included in the commands above. If this is not done, a RuntimeClass needs to be defined.
+
+##### Notes on `CRI-O` configuration
 When running `kubernetes` with `CRI-O`, add the config file to set the
 `nvidia-container-runtime` as the default low-level OCI runtime under
 `/etc/crio/crio.conf.d/99-nvidia.conf`. This will take priority over the default
@@ -141,7 +102,7 @@ When running `kubernetes` with `CRI-O`, add the config file to set the
         runtime_path = "/usr/bin/nvidia-container-runtime"
         runtime_type = "oci"
 ```
-This file can automatically be generated with the nvidia-ctk command:
+As stated in the linked documentation, this file can automatically be generated with the nvidia-ctk command:
 ```
 $ sudo nvidia-ctk runtime configure --runtime=crio --set-as-default --config=/etc/crio/crio.conf.d/99-nvidia.conf
 ```
