@@ -14,12 +14,12 @@
 
 MODULE := github.com/NVIDIA/k8s-device-plugin
 
-VERSION  ?= v0.14.4
+VERSION  ?= v0.14.5
 
 # vVERSION represents the version with a guaranteed v-prefix
 vVERSION := v$(VERSION:v%=%)
 
-CUDA_VERSION ?= 12.3.0
+CUDA_VERSION ?= 12.3.2
 GOLANG_VERSION ?= 1.20.5
 
 BUILDIMAGE_TAG ?= devel-go$(GOLANG_VERSION)
