@@ -14,7 +14,7 @@
 
 MODULE := github.com/NVIDIA/k8s-device-plugin
 
-VERSION  ?= v0.14.4
+VERSION  ?= v0.14.5
 
 # vVERSION represents the version with a guaranteed v-prefix
 vVERSION := v$(VERSION:v%=%)
