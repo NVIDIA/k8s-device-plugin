@@ -164,11 +164,15 @@ func start(c *cli.Context, cfg *Config) error {
 		}
 		klog.Info("Start running")
 		d := &gfd{
-			manager:    manager,
-			vgpu:       vgpul,
-			config:     config,
-			clientsets: clientSets,
-			nodeconfig: cfg.nodeConfig,
+			manager: manager,
+			vgpu:    vgpul,
+			config:  config,
+
+			labelOutputer: lm.NewOutputer(
+				config,
+				cfg.nodeConfig,
+				clientSets,
+			),
 		}
 		restart, err := d.run(sigs)
 		if err != nil {
@@ -186,8 +190,7 @@ type gfd struct {
 	vgpu    vgpu.Interface
 	config  *spec.Config
 
-	clientsets flags.ClientSets
-	nodeconfig flags.NodeConfig
+	labelOutputer lm.Outputer
 }
 
 func (d *gfd) run(sigs chan os.Signal) (bool, error) {
@@ -229,9 +232,7 @@ rerun:
 	}
 
 	klog.Info("Creating Labels")
-	useNodeFeatureAPI := d.config.Flags.UseNodeFeatureAPI != nil && *d.config.Flags.UseNodeFeatureAPI
-	err = labels.Output(*d.config.Flags.GFD.OutputFile, useNodeFeatureAPI, d.nodeconfig, d.clientsets)
-	if err != nil {
+	if err := d.labelOutputer.Output(labels); err != nil {
 		return false, err
 	}
 

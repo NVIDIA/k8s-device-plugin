@@ -18,6 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/flags"
+	"github.com/NVIDIA/k8s-device-plugin/internal/lm"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 	rt "github.com/NVIDIA/k8s-device-plugin/internal/resource/testing"
 	"github.com/NVIDIA/k8s-device-plugin/internal/vgpu"
@@ -113,9 +115,10 @@ func TestRunOneshot(t *testing.T) {
 	defer removeMachineFile(t)
 
 	d := gfd{
-		manager: nvmlMock,
-		vgpu:    vgpuMock,
-		config:  conf,
+		manager:       nvmlMock,
+		vgpu:          vgpuMock,
+		config:        conf,
+		labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
 	}
 	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
@@ -164,9 +167,10 @@ func TestRunWithNoTimestamp(t *testing.T) {
 	defer removeMachineFile(t)
 
 	d := gfd{
-		manager: nvmlMock,
-		vgpu:    vgpuMock,
-		config:  conf,
+		manager:       nvmlMock,
+		vgpu:          vgpuMock,
+		config:        conf,
+		labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
 	}
 	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
@@ -227,9 +231,10 @@ func TestRunSleep(t *testing.T) {
 	var runError error
 	go func() {
 		d := gfd{
-			manager: nvmlMock,
-			vgpu:    vgpuMock,
-			config:  conf,
+			manager:       nvmlMock,
+			vgpu:          vgpuMock,
+			config:        conf,
+			labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
 		}
 		runRestart, runError = d.run(sigs)
 	}()
@@ -386,9 +391,10 @@ func TestFailOnNVMLInitError(t *testing.T) {
 			nvmlMock := rt.NewManagerMockWithDevices(rt.NewFullGPU()).WithErrorOnInit(tc.errorOnInit)
 
 			d := gfd{
-				manager: resource.WithConfig(nvmlMock, conf),
-				vgpu:    vgpuMock,
-				config:  conf,
+				manager:       resource.WithConfig(nvmlMock, conf),
+				vgpu:          vgpuMock,
+				config:        conf,
+				labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
 			}
 			restart, err := d.run(nil)
 			if tc.expectError {
