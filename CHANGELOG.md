@@ -1,5 +1,7 @@
 ## Changelog
 
+- Bump CUDA base image version to 12.3.2
+
 ### Version v0.15.0-rc.1
 - Import GPU Feature Discovery into the GPU Device Plugin repo. This means that
   the same version and container image is used for both components.
