@@ -11,6 +11,12 @@
 - Add support for MPS sharing.
 - Bump CUDA base image version to 12.3.1
 
+### Version v0.14.5
+
+- Fix bug in CDI spec generation on systems with `lib -> usr/lib` symlinks.
+- Bump CUDA base image version to 12.3.2.
+
+
 ### Version v0.14.4
 
 - Update to refactored go-gpuallocator code. This permanently fixes the NVML_NVLINK_MAX_LINKS value addressed in a
