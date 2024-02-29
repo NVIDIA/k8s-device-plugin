@@ -26,9 +26,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	k8s "github.com/NVIDIA/k8s-device-plugin/internal/kubernetes"
+	"github.com/NVIDIA/k8s-device-plugin/internal/flags"
 
 	nfdv1alpha1 "sigs.k8s.io/node-feature-discovery/pkg/apis/nfd/v1alpha1"
+	nfdclientset "sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -46,10 +47,10 @@ func (labels Labels) Labels() (Labels, error) {
 }
 
 // Output creates labels according to the specified output format.
-func (labels Labels) Output(path string, nodeFeatureAPI bool) error {
+func (labels Labels) Output(path string, nodeFeatureAPI bool, nodeConifg flags.NodeConfig, clientSets flags.ClientSets) error {
 	if nodeFeatureAPI {
 		log.Print("Writing labels to NodeFeature CR")
-		return labels.UpdateNodeFeatureObject()
+		return labels.UpdateNodeFeatureObject(nodeConifg, clientSets.NFD)
 	}
 
 	return labels.UpdateFile(path)
@@ -138,14 +139,9 @@ func writeFileAtomically(path string, contents []byte, perm os.FileMode) error {
 }
 
 // UpdateNodeFeatureObject creates/updates the node-specific NodeFeature custom resource.
-func (labels Labels) UpdateNodeFeatureObject() error {
-	cli, err := k8s.GetKubernetesClient()
-	if err != nil {
-		return fmt.Errorf("failed to get Kubernetes client: %v", err)
-	}
-
-	nodename := k8s.NodeName()
-	namespace := k8s.GetKubernetesNamespace()
+func (labels Labels) UpdateNodeFeatureObject(nodeConfig flags.NodeConfig, cli nfdclientset.Interface) error {
+	nodename := nodeConfig.Name
+	namespace := nodeConfig.Namespace
 	nodeFeatureName := strings.Join([]string{nodeFeatureVendorPrefix, nodename}, "-")
 
 	if nfr, err := cli.NfdV1alpha1().NodeFeatures(namespace).Get(context.TODO(), nodeFeatureName, metav1.GetOptions{}); errors.IsNotFound(err) {

@@ -45,7 +45,12 @@ func TestMigStrategyNone(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
-	restart, err := run(nvmlMock, vgpuMock, conf, nil)
+	d := gfd{
+		manager: nvmlMock,
+		vgpu:    vgpuMock,
+		config:  conf,
+	}
+	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
 	require.False(t, restart)
 
@@ -97,7 +102,12 @@ func TestMigStrategySingleForNoMigDevices(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
-	restart, err := run(nvmlMock, vgpuMock, conf, nil)
+	d := gfd{
+		manager: nvmlMock,
+		vgpu:    vgpuMock,
+		config:  conf,
+	}
+	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
 	require.False(t, restart)
 
@@ -156,7 +166,12 @@ func TestMigStrategySingleForMigDeviceMigDisabled(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
-	restart, err := run(nvmlMock, vgpuMock, conf, nil)
+	d := gfd{
+		manager: nvmlMock,
+		vgpu:    vgpuMock,
+		config:  conf,
+	}
+	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
 	require.False(t, restart)
 
@@ -215,7 +230,12 @@ func TestMigStrategySingle(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
-	restart, err := run(nvmlMock, vgpuMock, conf, nil)
+	d := gfd{
+		manager: nvmlMock,
+		vgpu:    vgpuMock,
+		config:  conf,
+	}
+	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
 	require.False(t, restart)
 
@@ -275,7 +295,12 @@ func TestMigStrategyMixed(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
-	restart, err := run(nvmlMock, vgpuMock, conf, nil)
+	d := gfd{
+		manager: nvmlMock,
+		vgpu:    vgpuMock,
+		config:  conf,
+	}
+	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
 	require.False(t, restart)
 

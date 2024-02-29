@@ -112,7 +112,12 @@ func TestRunOneshot(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
-	restart, err := run(nvmlMock, vgpuMock, conf, nil)
+	d := gfd{
+		manager: nvmlMock,
+		vgpu:    vgpuMock,
+		config:  conf,
+	}
+	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
 	require.False(t, restart)
 
@@ -158,7 +163,12 @@ func TestRunWithNoTimestamp(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
-	restart, err := run(nvmlMock, vgpuMock, conf, nil)
+	d := gfd{
+		manager: nvmlMock,
+		vgpu:    vgpuMock,
+		config:  conf,
+	}
+	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
 	require.False(t, restart)
 
@@ -216,7 +226,12 @@ func TestRunSleep(t *testing.T) {
 	var runRestart bool
 	var runError error
 	go func() {
-		runRestart, runError = run(nvmlMock, vgpuMock, conf, sigs)
+		d := gfd{
+			manager: nvmlMock,
+			vgpu:    vgpuMock,
+			config:  conf,
+		}
+		runRestart, runError = d.run(sigs)
 	}()
 
 	outFileModificationTime := make([]int64, 2)
@@ -370,7 +385,12 @@ func TestFailOnNVMLInitError(t *testing.T) {
 
 			nvmlMock := rt.NewManagerMockWithDevices(rt.NewFullGPU()).WithErrorOnInit(tc.errorOnInit)
 
-			restart, err := run(resource.WithConfig(nvmlMock, conf), vgpuMock, conf, nil)
+			d := gfd{
+				manager: resource.WithConfig(nvmlMock, conf),
+				vgpu:    vgpuMock,
+				config:  conf,
+			}
+			restart, err := d.run(nil)
 			if tc.expectError {
 				require.Error(t, err)
 			} else {
