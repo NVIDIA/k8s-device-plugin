@@ -22,8 +22,6 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
 )
 
-var nodeFeatureAPI bool
-
 func main() {
 	var configFile string
 
@@ -85,11 +83,9 @@ func main() {
 			EnvVars:     []string{"GFD_CONFIG_FILE", "CONFIG_FILE"},
 		},
 		&cli.BoolFlag{
-			Name:        "use-node-feature-api",
-			Value:       false,
-			Destination: &nodeFeatureAPI,
-			Usage:       "Use NFD NodeFeature API to publish labels",
-			EnvVars:     []string{"GFD_USE_NODE_FEATURE_API"},
+			Name:    "use-node-feature-api",
+			Usage:   "Use NFD NodeFeature API to publish labels",
+			EnvVars: []string{"GFD_USE_NODE_FEATURE_API", "USE_NODE_FEATURE_API"},
 		},
 	}
 
@@ -113,6 +109,7 @@ func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 		return nil, fmt.Errorf("unable to validate flags: %v", err)
 	}
 	config.Flags.Plugin = nil
+
 	return config, nil
 }
 
@@ -157,11 +154,18 @@ func start(c *cli.Context, flags []cli.Flag) error {
 
 func run(manager resource.Manager, vgpu vgpu.Interface, config *spec.Config, sigs chan os.Signal) (bool, error) {
 	defer func() {
-		if !nodeFeatureAPI && !*config.Flags.GFD.Oneshot && *config.Flags.GFD.OutputFile != "" {
-			err := removeOutputFile(*config.Flags.GFD.OutputFile)
-			if err != nil {
-				klog.Warningf("Error removing output file: %v", err)
-			}
+		if config.Flags.UseNodeFeatureAPI != nil && *config.Flags.UseNodeFeatureAPI {
+			return
+		}
+		if config.Flags.GFD.Oneshot != nil && *config.Flags.GFD.Oneshot {
+			return
+		}
+		if config.Flags.GFD.OutputFile != nil && *config.Flags.GFD.OutputFile == "" {
+			return
+		}
+		err := removeOutputFile(*config.Flags.GFD.OutputFile)
+		if err != nil {
+			klog.Warningf("Error removing output file: %v", err)
 		}
 	}()
 
@@ -187,7 +191,8 @@ rerun:
 	}
 
 	klog.Info("Creating Labels")
-	err = labels.Output(*config.Flags.GFD.OutputFile, nodeFeatureAPI)
+	useNodeFeatureAPI := config.Flags.UseNodeFeatureAPI != nil && *config.Flags.UseNodeFeatureAPI
+	err = labels.Output(*config.Flags.GFD.OutputFile, useNodeFeatureAPI)
 	if err != nil {
 		return false, err
 	}
