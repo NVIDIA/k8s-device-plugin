@@ -17,7 +17,10 @@
 package mps
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"reflect"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvml"
 	"k8s.io/klog/v2"
@@ -28,6 +31,7 @@ import (
 
 type Manager interface {
 	Daemons() ([]*Daemon, error)
+	AssertReady() error
 }
 
 type manager struct {
@@ -102,7 +106,30 @@ func (m *manager) Daemons() ([]*Daemon, error) {
 	return daemons, nil
 }
 
+func (m *manager) AssertReady() error {
+	readyFile, err := os.Open("/mps/.ready")
+	if err != nil {
+		return fmt.Errorf("failed to process .ready file: %w", err)
+	}
+	defer readyFile.Close()
+
+	var mpsConfig spec.ReplicatedResources
+	if err := json.NewDecoder(readyFile).Decode(&mpsConfig); err != nil {
+		return fmt.Errorf("failed to load .ready config: %w", err)
+	}
+	if !reflect.DeepEqual(mpsConfig, *m.config.Sharing.MPS) {
+		klog.InfoS("mismatched sharing configs", "config", mpsConfig)
+		return fmt.Errorf("mismatched sharing config; assuming MPS is not ready")
+	}
+	return nil
+}
+
 // Daemons always returns an empty slice for a nullManager.
 func (m *nullManager) Daemons() ([]*Daemon, error) {
 	return nil, nil
+}
+
+// AssertReady always returns nil for a nullManager.
+func (m *nullManager) AssertReady() error {
+	return nil
 }

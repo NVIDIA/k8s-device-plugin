@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"reflect"
 	"syscall"
 	"time"
 
@@ -32,6 +31,7 @@ import (
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mps"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
 	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/plugin"
@@ -226,34 +226,28 @@ restart:
 				klog.Infof("inotify: %s created, restarting.", pluginapi.KubeletSocket)
 				goto restart
 			}
-			if event.Name == "/mps/.ready" {
+			if event.Name == mps.ReadyFilePath {
 				if config == nil || config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
-					klog.InfoS("Ignoring /mps/.ready event", "event", event)
+					klog.InfoS("Ignoring event", "event", event)
 					continue
 				}
 				switch {
 				case event.Op&fsnotify.Remove == fsnotify.Remove:
-					klog.Infof("/mps/.ready removed; restarting")
+					klog.Infof("%s removed; restarting", mps.ReadyFilePath)
 					goto restart
 				case event.Op&(fsnotify.Create|fsnotify.Write) != 0:
-					klog.Infof("/mps/.ready created or modified; checking config")
-					readyFile, err := os.Open("/mps/.ready")
+					klog.Infof("%s created or modified; checking config", mps.ReadyFilePath)
+					readyFile := mps.ReadyFile{}
+
+					matches, err := readyFile.Matches(config)
 					if err != nil {
-						return fmt.Errorf("failed to process .ready file: %w", err)
-					}
-					defer readyFile.Close()
-					var mpsConfig spec.ReplicatedResources
-					if err := json.NewDecoder(readyFile).Decode(&mpsConfig); err != nil {
-						readyFile.Close()
-						klog.ErrorS(err, "failed to load .ready config")
+						klog.ErrorS(err, "failed to check .ready file")
 						goto restart
 					}
-					if !reflect.DeepEqual(mpsConfig, *config.Sharing.MPS) {
-						readyFile.Close()
-						klog.Info("mismatched sharing config; restarting.")
+					if !matches {
+						klog.Info("mismatched MPS sharing config; restarting.")
 						goto restart
 					}
-					readyFile.Close()
 					continue
 				}
 			}

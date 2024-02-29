@@ -92,6 +92,25 @@ spec:
             mountPath: /available-configs
           - name: config
             mountPath: /config
+      - image: {{ include "nvidia-device-plugin.fullimage" . }}
+        name: nvidia-device-plugin-mps-sync
+        command:
+        - mps-control-daemon
+        - wait
+        env:
+          - name: CONFIG_FILE
+            value: /config/config.yaml
+        securityContext:
+          {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
+        volumeMounts:
+          - name: mps-shm
+            mountPath: /dev/shm
+          - name: mps-root
+            mountPath: /mps
+          - name: cdi-root
+            mountPath: /var/run/cdi
+          - name: config
+            mountPath: /config
       {{- end }}
       containers:
       {{- if eq $hasConfigMap "true" }}
