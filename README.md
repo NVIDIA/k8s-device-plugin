@@ -29,6 +29,8 @@ TODO: We are still in the process of migrating GFD to this repo. Once this is re
 -->
   * [Deploying via `helm install` with a direct URL to the `helm` package](#deploying-via-helm-install-with-a-direct-url-to-the-helm-package)
 - [Building and Running Locally](#building-and-running-locally)
+- Advanced Topics
+  * [Using CDI](#docs/cdi/md)
 - [Changelog](#changelog)
 - [Issues and Contributing](#issues-and-contributing)
 
@@ -752,7 +754,7 @@ These values are as follows:
       (default 'false')
   deviceListStrategy:
       the desired strategy for passing the device list to the underlying runtime
-      [envvar | volume-mounts] (default "envvar")
+      [envvar | volume-mounts | cdi-annotations ] (default "envvar")
   deviceIDStrategy:
       the desired strategy for passing device IDs to the underlying runtime
       [uuid | index] (default "uuid")
@@ -924,6 +926,7 @@ $ helm upgrade -i nvdp \
     https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.14.4.tgz
 ```
 -->
+
 ## Building and Running Locally
 
 The next sections are focused on building the device plugin locally and running it.
