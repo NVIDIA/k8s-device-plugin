@@ -19,13 +19,10 @@ package image
 import (
 	"fmt"
 	"strings"
-
-	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 type builder struct {
-	env            map[string]string
-	mounts         []specs.Mount
+	env            []string
 	disableRequire bool
 }
 
@@ -33,12 +30,7 @@ type builder struct {
 func New(opt ...Option) (CUDA, error) {
 	b := &builder{}
 	for _, o := range opt {
-		if err := o(b); err != nil {
-			return CUDA{}, err
-		}
-	}
-	if b.env == nil {
-		b.env = make(map[string]string)
+		o(b)
 	}
 
 	return b.build()
@@ -46,57 +38,36 @@ func New(opt ...Option) (CUDA, error) {
 
 // build creates a CUDA image from the builder.
 func (b builder) build() (CUDA, error) {
-	if b.disableRequire {
-		b.env[envNVDisableRequire] = "true"
+	c := make(CUDA)
+
+	for _, e := range b.env {
+		parts := strings.SplitN(e, "=", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid environment variable: %v", e)
+		}
+		c[parts[0]] = parts[1]
 	}
 
-	c := CUDA{
-		env:    b.env,
-		mounts: b.mounts,
+	if b.disableRequire {
+		c[envNVDisableRequire] = "true"
 	}
+
 	return c, nil
 }
 
 // Option is a functional option for creating a CUDA image.
-type Option func(*builder) error
+type Option func(*builder)
 
 // WithDisableRequire sets the disable require option.
 func WithDisableRequire(disableRequire bool) Option {
-	return func(b *builder) error {
+	return func(b *builder) {
 		b.disableRequire = disableRequire
-		return nil
 	}
 }
 
 // WithEnv sets the environment variables to use when creating the CUDA image.
-// Note that this also overwrites the values set with WithEnvMap.
 func WithEnv(env []string) Option {
-	return func(b *builder) error {
-		envmap := make(map[string]string)
-		for _, e := range env {
-			parts := strings.SplitN(e, "=", 2)
-			if len(parts) != 2 {
-				return fmt.Errorf("invalid environment variable: %v", e)
-			}
-			envmap[parts[0]] = parts[1]
-		}
-		return WithEnvMap(envmap)(b)
-	}
-}
-
-// WithEnvMap sets the environment variable map to use when creating the CUDA image.
-// Note that this also overwrites the values set with WithEnv.
-func WithEnvMap(env map[string]string) Option {
-	return func(b *builder) error {
+	return func(b *builder) {
 		b.env = env
-		return nil
-	}
-}
-
-// WithMounts sets the mounts associated with the CUDA image.
-func WithMounts(mounts []specs.Mount) Option {
-	return func(b *builder) error {
-		b.mounts = mounts
-		return nil
 	}
 }
