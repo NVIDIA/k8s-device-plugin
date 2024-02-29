@@ -871,6 +871,8 @@ $ ./k8s-device-plugin --pass-device-specs
 
 ## Changelog
 
+- Bump CUDA base image version to 12.3.2
+
 ### Version v0.14.4
 
 - Update to refactored go-gpuallocator code. This permanently fixes the NVML_NVLINK_MAX_LINKS value addressed in a
