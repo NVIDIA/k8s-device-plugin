@@ -23,24 +23,21 @@ import (
 	"strings"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"golang.org/x/sys/unix"
+
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/cuda"
-	"golang.org/x/sys/unix"
 )
 
 // NewDriverDiscoverer creates a discoverer for the libraries and binaries associated with a driver installation.
 // The supplied NVML Library is used to query the expected driver version.
 func NewDriverDiscoverer(logger logger.Interface, driverRoot string, nvidiaCTKPath string, nvmllib nvml.Interface) (discover.Discover, error) {
 	if r := nvmllib.Init(); r != nvml.SUCCESS {
-		return nil, fmt.Errorf("failed to initialize NVML: %v", r)
+		return nil, fmt.Errorf("failed to initalize NVML: %v", r)
 	}
-	defer func() {
-		if r := nvmllib.Shutdown(); r != nvml.SUCCESS {
-			logger.Warningf("failed to shutdown NVML: %v", r)
-		}
-	}()
+	defer nvmllib.Shutdown()
 
 	version, r := nvmllib.SystemGetDriverVersion()
 	if r != nvml.SUCCESS {
@@ -128,9 +125,9 @@ func getFirmwareSearchPaths(logger logger.Interface) ([]string, error) {
 
 	standardPaths := []string{
 		filepath.Join("/lib/firmware/updates/", utsRelease),
-		"/lib/firmware/updates/",
+		filepath.Join("/lib/firmware/updates/"),
 		filepath.Join("/lib/firmware/", utsRelease),
-		"/lib/firmware/",
+		filepath.Join("/lib/firmware/"),
 	}
 
 	return append(firmwarePaths, standardPaths...), nil

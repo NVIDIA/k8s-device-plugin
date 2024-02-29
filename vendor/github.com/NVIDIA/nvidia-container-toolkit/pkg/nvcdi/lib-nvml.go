@@ -21,10 +21,11 @@ import (
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvlib/pkg/nvml"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/edits"
-	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/spec"
 	"tags.cncf.io/container-device-interface/pkg/cdi"
 	"tags.cncf.io/container-device-interface/specs-go"
+
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/edits"
+	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/spec"
 )
 
 type nvmllib nvcdilib
@@ -41,13 +42,9 @@ func (l *nvmllib) GetAllDeviceSpecs() ([]specs.Device, error) {
 	var deviceSpecs []specs.Device
 
 	if r := l.nvmllib.Init(); r != nvml.SUCCESS {
-		return nil, fmt.Errorf("failed to initialize NVML: %v", r)
+		return nil, fmt.Errorf("failed to initalize NVML: %v", r)
 	}
-	defer func() {
-		if r := l.nvmllib.Shutdown(); r != nvml.SUCCESS {
-			l.logger.Warningf("failed to shutdown NVML: %v", r)
-		}
-	}()
+	defer l.nvmllib.Shutdown()
 
 	gpuDeviceSpecs, err := l.getGPUDeviceSpecs()
 	if err != nil {
