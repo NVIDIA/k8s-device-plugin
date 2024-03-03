@@ -16,7 +16,7 @@ require (
 	github.com/onsi/gomega v1.31.1
 	github.com/prometheus/procfs v0.12.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.27.1
 	golang.org/x/net v0.21.0
 	google.golang.org/grpc v1.62.0
