@@ -271,19 +271,26 @@ options outside of this section are shared.
 **`DEVICE_LIST_STRATEGY`**:
   the desired strategy for passing the device list to the underlying runtime
 
-  `[envvar | volume-mounts] (default 'envvar')`
+  `[envvar | volume-mounts | cdi-annotations | cdi-cri ] (default 'envvar')`
+
+  **Note**: Multiple device list strategies can be specified (as a comma-separated list).
 
   The `DEVICE_LIST_STRATEGY` flag allows one to choose which strategy the plugin
-  will use to advertise the list of GPUs allocated to a container. This is
-  traditionally done by setting the `NVIDIA_VISIBLE_DEVICES` environment variable
+  will use to advertise the list of GPUs allocated to a container. Possible values are:
+
+  * `envvar` (default): the `NVIDIA_VISIBLE_DEVICES` environment variable
   as described
-  [here](https://github.com/NVIDIA/nvidia-container-runtime#nvidia_visible_devices).
-  This strategy can be selected via the (default) `envvar` option. Support has
-  been added to the `nvidia-container-toolkit` to also allow passing the list
-  of devices as a set of volume mounts instead of as an environment variable.
-  This strategy can be selected via the `volume-mounts` option. Details for the
+  [here](https://github.com/NVIDIA/nvidia-container-runtime#nvidia_visible_devices)
+  is used to select the devices that are to be injected by the NVIDIA Container Runtime.
+  * `volume-mounts`: the list of devices is passed as a set of volume mounts instead of as an environment variable
+  to instruct the NVIDIA Container Runtime to inject the devices.
+  Details for the
   rationale behind this strategy can be found
   [here](https://docs.google.com/document/d/1uXVF-NWZQXgP1MLb87_kMkQvidpnkNWicdpO2l9g-fw/edit#heading=h.b3ti65rojfy5).
+  * `cdi-annotations`: CDI annotations are used to select the devices that are to be injected.
+  Note that this does not require the NVIDIA Container Runtime, but does required a CDI-enabled container engine.
+  * `cdi-cri`: the `CDIDevices` CRI field is used to select the CDI devices that are to be injected.
+  This requries support in Kubernetes to forward these requests in the CRI to a CDI-enabled container engine.
 
 **`DEVICE_ID_STRATEGY`**:
   the desired strategy for passing device IDs to the underlying runtime
@@ -752,7 +759,7 @@ These values are as follows:
       (default 'false')
   deviceListStrategy:
       the desired strategy for passing the device list to the underlying runtime
-      [envvar | volume-mounts] (default "envvar")
+      [envvar | volume-mounts | cdi-annotations | cdi-cri] (default "envvar")
   deviceIDStrategy:
       the desired strategy for passing device IDs to the underlying runtime
       [uuid | index] (default "uuid")
