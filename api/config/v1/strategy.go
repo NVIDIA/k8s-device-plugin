@@ -31,6 +31,7 @@ func NewDeviceListStrategies(strategies []string) (DeviceListStrategies, error) 
 		DeviceListStrategyEnvvar:         false,
 		DeviceListStrategyVolumeMounts:   false,
 		DeviceListStrategyCDIAnnotations: false,
+		DeviceListStrategyCDICRI:         false,
 	}
 	for _, s := range strategies {
 		if _, ok := ret[s]; !ok {

@@ -422,6 +422,14 @@ func (plugin *NvidiaDevicePlugin) updateResponseForCDI(response *pluginapi.Conta
 		}
 		response.Annotations = annotations
 	}
+	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyCDICRI) {
+		for _, device := range devices {
+			cdiDevice := pluginapi.CDIDevice{
+				Name: device,
+			}
+			response.CDIDevices = append(response.CDIDevices, &cdiDevice)
+		}
+	}
 
 	return nil
 }
