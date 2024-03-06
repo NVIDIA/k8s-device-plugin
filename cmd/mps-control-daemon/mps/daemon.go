@@ -143,6 +143,12 @@ func (d *Daemon) Stop() error {
 	if err != nil && err != os.ErrNotExist {
 		return fmt.Errorf("failed to remove started file: %w", err)
 	}
+
+	logDir := d.LogDir()
+	if err := os.RemoveAll(logDir); err != nil {
+		klog.ErrorS(err, "Failed to remove pipe directory", "path", logDir)
+	}
+
 	return nil
 }
 
