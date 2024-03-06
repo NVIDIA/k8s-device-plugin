@@ -14,6 +14,7 @@ import (
 	"k8s.io/klog/v2"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/flags"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
 	"github.com/NVIDIA/k8s-device-plugin/internal/lm"
 	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
@@ -22,20 +23,29 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
 )
 
-var nodeFeatureAPI bool
+// Config represents a collection of config options for GFD.
+type Config struct {
+	configFile string
+
+	kubeClientConfig flags.KubeClientConfig
+	nodeConfig       flags.NodeConfig
+
+	// flags stores the CLI flags for later processing.
+	flags []cli.Flag
+}
 
 func main() {
-	var configFile string
+	config := &Config{}
 
 	c := cli.NewApp()
 	c.Name = "GPU Feature Discovery"
 	c.Usage = "generate labels for NVIDIA devices"
 	c.Version = info.GetVersionString()
 	c.Action = func(ctx *cli.Context) error {
-		return start(ctx, c.Flags)
+		return start(ctx, config)
 	}
 
-	c.Flags = []cli.Flag{
+	config.flags = []cli.Flag{
 		&cli.StringFlag{
 			Name:    "mig-strategy",
 			Value:   spec.MigStrategyNone,
@@ -81,17 +91,20 @@ func main() {
 		&cli.StringFlag{
 			Name:        "config-file",
 			Usage:       "the path to a config file as an alternative to command line options or environment variables",
-			Destination: &configFile,
+			Destination: &config.configFile,
 			EnvVars:     []string{"GFD_CONFIG_FILE", "CONFIG_FILE"},
 		},
 		&cli.BoolFlag{
-			Name:        "use-node-feature-api",
-			Value:       false,
-			Destination: &nodeFeatureAPI,
-			Usage:       "Use NFD NodeFeature API to publish labels",
-			EnvVars:     []string{"GFD_USE_NODE_FEATURE_API"},
+			Name:    "use-node-feature-api",
+			Usage:   "Use NFD NodeFeature API to publish labels",
+			EnvVars: []string{"GFD_USE_NODE_FEATURE_API", "USE_NODE_FEATURE_API"},
 		},
 	}
+
+	config.flags = append(config.flags, config.kubeClientConfig.Flags()...)
+	config.flags = append(config.flags, config.nodeConfig.Flags()...)
+
+	c.Flags = config.flags
 
 	if err := c.Run(os.Args); err != nil {
 		klog.Error(err)
@@ -103,8 +116,9 @@ func validateFlags(config *spec.Config) error {
 	return nil
 }
 
-func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
-	config, err := spec.NewConfig(c, flags)
+// loadConfig loads the config from the spec file.
+func (cfg *Config) loadConfig(c *cli.Context) (*spec.Config, error) {
+	config, err := spec.NewConfig(c, cfg.flags)
 	if err != nil {
 		return nil, fmt.Errorf("unable to finalize config: %v", err)
 	}
@@ -113,10 +127,11 @@ func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 		return nil, fmt.Errorf("unable to validate flags: %v", err)
 	}
 	config.Flags.Plugin = nil
+
 	return config, nil
 }
 
-func start(c *cli.Context, flags []cli.Flag) error {
+func start(c *cli.Context, cfg *Config) error {
 	defer func() {
 		klog.Info("Exiting")
 	}()
@@ -127,7 +142,7 @@ func start(c *cli.Context, flags []cli.Flag) error {
 	for {
 		// Load the configuration file
 		klog.Info("Loading configuration.")
-		config, err := loadConfig(c, flags)
+		config, err := cfg.loadConfig(c)
 		if err != nil {
 			return fmt.Errorf("unable to load config: %v", err)
 		}
@@ -143,8 +158,23 @@ func start(c *cli.Context, flags []cli.Flag) error {
 		manager := resource.NewManager(config)
 		vgpul := vgpu.NewVGPULib(vgpu.NewNvidiaPCILib())
 
+		clientSets, err := cfg.kubeClientConfig.NewClientSets()
+		if err != nil {
+			return fmt.Errorf("failed to create clientsets: %w", err)
+		}
 		klog.Info("Start running")
-		restart, err := run(manager, vgpul, config, sigs)
+		d := &gfd{
+			manager: manager,
+			vgpu:    vgpul,
+			config:  config,
+
+			labelOutputer: lm.NewOutputer(
+				config,
+				cfg.nodeConfig,
+				clientSets,
+			),
+		}
+		restart, err := d.run(sigs)
 		if err != nil {
 			return err
 		}
@@ -155,19 +185,34 @@ func start(c *cli.Context, flags []cli.Flag) error {
 	}
 }
 
-func run(manager resource.Manager, vgpu vgpu.Interface, config *spec.Config, sigs chan os.Signal) (bool, error) {
+type gfd struct {
+	manager resource.Manager
+	vgpu    vgpu.Interface
+	config  *spec.Config
+
+	labelOutputer lm.Outputer
+}
+
+func (d *gfd) run(sigs chan os.Signal) (bool, error) {
 	defer func() {
-		if !nodeFeatureAPI && !*config.Flags.GFD.Oneshot && *config.Flags.GFD.OutputFile != "" {
-			err := removeOutputFile(*config.Flags.GFD.OutputFile)
-			if err != nil {
-				klog.Warningf("Error removing output file: %v", err)
-			}
+		if d.config.Flags.UseNodeFeatureAPI != nil && *d.config.Flags.UseNodeFeatureAPI {
+			return
+		}
+		if d.config.Flags.GFD.Oneshot != nil && *d.config.Flags.GFD.Oneshot {
+			return
+		}
+		if d.config.Flags.GFD.OutputFile != nil && *d.config.Flags.GFD.OutputFile == "" {
+			return
+		}
+		err := removeOutputFile(*d.config.Flags.GFD.OutputFile)
+		if err != nil {
+			klog.Warningf("Error removing output file: %v", err)
 		}
 	}()
 
-	timestampLabeler := lm.NewTimestampLabeler(config)
+	timestampLabeler := lm.NewTimestampLabeler(d.config)
 rerun:
-	loopLabelers, err := lm.NewLabelers(manager, vgpu, config)
+	loopLabelers, err := lm.NewLabelers(d.manager, d.vgpu, d.config)
 	if err != nil {
 		return false, err
 	}
@@ -187,17 +232,16 @@ rerun:
 	}
 
 	klog.Info("Creating Labels")
-	err = labels.Output(*config.Flags.GFD.OutputFile, nodeFeatureAPI)
-	if err != nil {
+	if err := d.labelOutputer.Output(labels); err != nil {
 		return false, err
 	}
 
-	if *config.Flags.GFD.Oneshot {
+	if *d.config.Flags.GFD.Oneshot {
 		return false, nil
 	}
 
-	klog.Info("Sleeping for ", *config.Flags.GFD.SleepInterval)
-	rerunTimeout := time.After(time.Duration(*config.Flags.GFD.SleepInterval))
+	klog.Info("Sleeping for ", *d.config.Flags.GFD.SleepInterval)
+	rerunTimeout := time.After(time.Duration(*d.config.Flags.GFD.SleepInterval))
 
 	for {
 		select {

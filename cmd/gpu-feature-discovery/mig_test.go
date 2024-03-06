@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/flags"
+	"github.com/NVIDIA/k8s-device-plugin/internal/lm"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 	rt "github.com/NVIDIA/k8s-device-plugin/internal/resource/testing"
 )
@@ -45,7 +47,13 @@ func TestMigStrategyNone(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
-	restart, err := run(nvmlMock, vgpuMock, conf, nil)
+	d := gfd{
+		manager:       nvmlMock,
+		vgpu:          vgpuMock,
+		config:        conf,
+		labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
+	}
+	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
 	require.False(t, restart)
 
@@ -97,7 +105,13 @@ func TestMigStrategySingleForNoMigDevices(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
-	restart, err := run(nvmlMock, vgpuMock, conf, nil)
+	d := gfd{
+		manager:       nvmlMock,
+		vgpu:          vgpuMock,
+		config:        conf,
+		labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
+	}
+	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
 	require.False(t, restart)
 
@@ -156,7 +170,13 @@ func TestMigStrategySingleForMigDeviceMigDisabled(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
-	restart, err := run(nvmlMock, vgpuMock, conf, nil)
+	d := gfd{
+		manager:       nvmlMock,
+		vgpu:          vgpuMock,
+		config:        conf,
+		labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
+	}
+	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
 	require.False(t, restart)
 
@@ -215,7 +235,13 @@ func TestMigStrategySingle(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
-	restart, err := run(nvmlMock, vgpuMock, conf, nil)
+	d := gfd{
+		manager:       nvmlMock,
+		vgpu:          vgpuMock,
+		config:        conf,
+		labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
+	}
+	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
 	require.False(t, restart)
 
@@ -275,7 +301,13 @@ func TestMigStrategyMixed(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
-	restart, err := run(nvmlMock, vgpuMock, conf, nil)
+	d := gfd{
+		manager:       nvmlMock,
+		vgpu:          vgpuMock,
+		config:        conf,
+		labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
+	}
+	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
 	require.False(t, restart)
 
