@@ -134,7 +134,8 @@ func (r *resourceManager) ValidateRequest(ids AnnotatedIDs) error {
 			return fmt.Errorf("%w: maximum request size for shared resources is 1; found %d", errInvalidRequest, numRequestedDevices)
 		}
 	case spec.SharingStrategyMPS:
-		if includesReplicas && numRequestedDevices > 1 {
+		numPhysicalDevices := len(ids.GetUniqueIDs())
+		if includesReplicas && numRequestedDevices > 1 && numPhysicalDevices > 1 {
 			return fmt.Errorf("%w: maximum request size for shared resources is 1; found %d", errInvalidRequest, numRequestedDevices)
 		}
 	}

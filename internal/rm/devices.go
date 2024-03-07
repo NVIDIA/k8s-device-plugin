@@ -271,3 +271,17 @@ func (rs AnnotatedIDs) GetIDs() []string {
 	}
 	return res
 }
+
+// GetUniqueIDs returns the unique IDs of the annotated IDs as a []string
+func (rs AnnotatedIDs) GetUniqueIDs() []string {
+	seen := make(map[string]bool)
+	var uniqueIDs []string
+	for _, id := range rs.GetIDs() {
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		uniqueIDs = append(uniqueIDs, id)
+	}
+	return uniqueIDs
+}
