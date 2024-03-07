@@ -17,6 +17,7 @@
 package rm
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -42,6 +43,7 @@ type ResourceManager interface {
 	GetDevicePaths([]string) []string
 	GetPreferredAllocation(available, required []string, size int) ([]string, error)
 	CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error
+	ValidateRequest(AnnotatedIDs) error
 }
 
 // NewResourceManagers returns a []ResourceManager, one for each resource in 'config'.
@@ -108,6 +110,26 @@ func (r *resourceManager) Resource() spec.ResourceName {
 // Resource gets the devices managed by the ResourceManager
 func (r *resourceManager) Devices() Devices {
 	return r.devices
+}
+
+var errInvalidRequest = errors.New("invalid request")
+
+// ValidateRequests checks the requested IDs against the resource manager configuration.
+// This asserts that all requested IDs are known to the resource manager and that the request is
+// valid for a specified sharing configuration.
+// specified sharing configuration is respected.
+func (r *resourceManager) ValidateRequest(ids AnnotatedIDs) error {
+	for _, id := range ids {
+		if !r.devices.Contains(id) {
+			return fmt.Errorf("%w: unknown device: %s", errInvalidRequest, id)
+		}
+	}
+	// If the devices being allocated are replicas, then (conditionally)
+	// error out if more than one resource is being allocated.
+	if len(ids) > 1 && r.config.Sharing.ReplicatedResources().FailRequestsGreaterThanOne && ids.AnyHasAnnotations() {
+		return fmt.Errorf("%w: maximum request size for shared resources is 1; found %d", errInvalidRequest, len(ids))
+	}
+	return nil
 }
 
 // AddDefaultResourcesToConfig adds default resource matching rules to config.Resources
