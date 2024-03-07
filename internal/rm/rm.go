@@ -115,19 +115,36 @@ func (r *resourceManager) Devices() Devices {
 var errInvalidRequest = errors.New("invalid request")
 
 // ValidateRequests checks the requested IDs against the resource manager configuration.
-// This asserts that all requested IDs are known to the resource manager and that the request is
+// It asserts that all requested IDs are known to the resource manager and that the request is
 // valid for a specified sharing configuration.
-// specified sharing configuration is respected.
 func (r *resourceManager) ValidateRequest(ids AnnotatedIDs) error {
+	// Assert that all requested IDs are known to the resource manager
 	for _, id := range ids {
 		if !r.devices.Contains(id) {
 			return fmt.Errorf("%w: unknown device: %s", errInvalidRequest, id)
 		}
 	}
+
 	// If the devices being allocated are replicas, then (conditionally)
 	// error out if more than one resource is being allocated.
-	if len(ids) > 1 && r.config.Sharing.ReplicatedResources().FailRequestsGreaterThanOne && ids.AnyHasAnnotations() {
-		return fmt.Errorf("%w: maximum request size for shared resources is 1; found %d", errInvalidRequest, len(ids))
+	includesReplicas := ids.AnyHasAnnotations()
+	numRequestedDevices := len(ids)
+	switch r.config.Sharing.SharingStrategy() {
+	case spec.SharingStrategyTimeSlicing:
+		if includesReplicas && numRequestedDevices > 1 && r.config.Sharing.ReplicatedResources().FailRequestsGreaterThanOne {
+			return fmt.Errorf("%w: maximum request size for shared resources is 1; found %d", errInvalidRequest, numRequestedDevices)
+		}
+	case spec.SharingStrategyMPS:
+		// For MPS sharing, we explicitly ignore the FailRequestsGreaterThanOne
+		// value in the sharing settings.
+		// This setting was added to timeslicing after the initial release and
+		// is set to `false` to maintain backward compatibility with existing
+		// deployments. If we do extend MPS to allow multiple devices to be
+		// requested, the MPS API will be extended separately from the
+		// time-slicing API.
+		if includesReplicas && numRequestedDevices > 1 {
+			return fmt.Errorf("%w: maximum request size for shared resources is 1; found %d", errInvalidRequest, numRequestedDevices)
+		}
 	}
 	return nil
 }

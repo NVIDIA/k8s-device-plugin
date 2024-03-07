@@ -151,6 +151,7 @@ func TestValidateRequest(t *testing.T) {
 				"device1::1": nil,
 			},
 			requestDevicesIDs: []string{"device0::1", "device1::0"},
+			expectedError:     errInvalidRequest,
 		},
 		{
 			description: "MPS with two devices -- failRequestsGreaterThanOne",
