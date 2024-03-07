@@ -1,5 +1,7 @@
 # NVIDIA device plugin for Kubernetes
 
+[![End-to-end Tests](https://github.com/NVIDIA/k8s-device-plugin/actions/workflows/e2e.yaml/badge.svg)](https://github.com/NVIDIA/k8s-device-plugin/actions/workflows/e2e.yaml) [![Go Report Card](https://goreportcard.com/badge/github.com/NVIDIA/k8s-device-plugin)](https://goreportcard.com/report/github.com/NVIDIA/k8s-device-plugin) [![Latest Release](https://img.shields.io/github/v/release/NVIDIA/k8s-device-plugin)](https://github.com/NVIDIA/k8s-device-plugin/releases/latest)
+
 ## Table of Contents
 
 - [About](#about)
