@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -363,7 +364,7 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 		plugin.updateResponseForDeviceMounts(response, deviceIDs...)
 	}
 	if plugin.config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
-		plugin.updateResponseForMPS(response)
+		plugin.updateResponseForMPS(response, requestIds)
 	}
 	if *plugin.config.Flags.Plugin.PassDeviceSpecs {
 		response.Devices = append(response.Devices, plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDriverRoot, requestIds)...)
@@ -380,7 +381,22 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 // updateResponseForMPS ensures that the ContainerAllocate response contains the information required to use MPS.
 // This includes per-resource pipe and log directories as well as a global daemon-specific shm
 // and assumes that an MPS control daemon has already been started.
-func (plugin NvidiaDevicePlugin) updateResponseForMPS(response *pluginapi.ContainerAllocateResponse) {
+func (plugin NvidiaDevicePlugin) updateResponseForMPS(response *pluginapi.ContainerAllocateResponse, requestIds rm.AnnotatedIDs) {
+	var totalMemory uint64
+	var count int
+	var replicas int
+	for _, id := range requestIds.GetIDs() {
+		count += 1
+		device := plugin.Devices().GetByID(id)
+		totalMemory = device.TotalMemory
+		replicas = device.Replicas
+	}
+	activeThreadLimit := count * 100 / max(replicas, 1)
+	memoryLimitInBytes := uint64(count) * totalMemory / max(uint64(replicas), 1)
+
+	response.Envs["CUDA_MPS_ACTIVE_THREAD_PERCENTAGE"] = strconv.Itoa(activeThreadLimit)
+	response.Envs["CUDA_MPS_PINNED_DEVICE_MEM_LIMIT"] = fmt.Sprintf("0=%dM", memoryLimitInBytes/(1024*1024))
+
 	// TODO: We should check that the deviceIDs are shared using MPS.
 	response.Envs["CUDA_MPS_PIPE_DIRECTORY"] = plugin.mpsDaemon.PipeDir()
 

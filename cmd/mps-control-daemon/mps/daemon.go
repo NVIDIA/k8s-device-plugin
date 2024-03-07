@@ -105,19 +105,6 @@ func (d *Daemon) Start() error {
 		return err
 	}
 
-	for uuid, limit := range d.perDevicePinnedDeviceMemoryLimits() {
-		_, err := d.EchoPipeToControl(fmt.Sprintf("set_default_device_pinned_mem_limit %s %s", uuid, limit))
-		if err != nil {
-			return fmt.Errorf("error setting pinned memory limit for device %v: %w", uuid, err)
-		}
-	}
-	if threadPercentage := d.activeThreadPercentage(); threadPercentage != "" {
-		_, err := d.EchoPipeToControl(fmt.Sprintf("set_default_active_thread_percentage %s", threadPercentage))
-		if err != nil {
-			return fmt.Errorf("error setting active thread percentage: %w", err)
-		}
-	}
-
 	statusFile, err := os.Create(d.startedFile())
 	if err != nil {
 		return err
@@ -209,34 +196,4 @@ func (d *Daemon) setComputeMode(mode computeMode) error {
 		}
 	}
 	return nil
-}
-
-// perDevicePinnedMemoryLimits returns the pinned memory limits for each device.
-func (m *Daemon) perDevicePinnedDeviceMemoryLimits() map[string]string {
-	totalMemoryInBytesPerDevice := make(map[string]uint64)
-	replicasPerDevice := make(map[string]uint64)
-	for _, device := range m.Devices() {
-		uuid := device.GetUUID()
-		totalMemoryInBytesPerDevice[uuid] = device.TotalMemory
-		replicasPerDevice[uuid] += 1
-	}
-
-	limits := make(map[string]string)
-	for uuid, totalMemory := range totalMemoryInBytesPerDevice {
-		if totalMemory == 0 {
-			continue
-		}
-		replicas := replicasPerDevice[uuid]
-		limits[uuid] = fmt.Sprintf("%vM", totalMemory/replicas/1024/1024)
-	}
-	return limits
-}
-
-func (m *Daemon) activeThreadPercentage() string {
-	if len(m.Devices()) == 0 {
-		return ""
-	}
-	replicasPerDevice := len(m.Devices()) / len(m.Devices().GetUUIDs())
-
-	return fmt.Sprintf("%d", 100/replicasPerDevice)
 }

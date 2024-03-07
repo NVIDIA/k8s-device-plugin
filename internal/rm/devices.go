@@ -29,6 +29,7 @@ type Device struct {
 	pluginapi.Device
 	Paths       []string
 	Index       string
+	Replicas    int
 	TotalMemory uint64
 }
 
@@ -224,6 +225,14 @@ func (d Device) IsMigDevice() bool {
 // GetUUID returns the UUID for the device from the annotated ID.
 func (d Device) GetUUID() string {
 	return AnnotatedID(d.ID).GetID()
+}
+
+// MemoryPerReplica returns the memory per replica for a given device.
+func (d Device) MemoryPerReplica() uint64 {
+	if d.Replicas < 2 {
+		return d.TotalMemory
+	}
+	return d.TotalMemory / uint64(d.Replicas)
 }
 
 // NewAnnotatedID creates a new AnnotatedID from an ID and a replica number.
