@@ -126,8 +126,17 @@ func (r *resourceManager) ValidateRequest(ids AnnotatedIDs) error {
 	}
 	// If the devices being allocated are replicas, then (conditionally)
 	// error out if more than one resource is being allocated.
-	if len(ids) > 1 && r.config.Sharing.ReplicatedResources().FailRequestsGreaterThanOne && ids.AnyHasAnnotations() {
-		return fmt.Errorf("%w: maximum request size for shared resources is 1; found %d", errInvalidRequest, len(ids))
+	includesReplicas := ids.AnyHasAnnotations()
+	numRequestedDevices := len(ids)
+	switch r.config.Sharing.SharingStrategy() {
+	case spec.SharingStrategyTimeSlicing:
+		if includesReplicas && numRequestedDevices > 1 && r.config.Sharing.ReplicatedResources().FailRequestsGreaterThanOne {
+			return fmt.Errorf("%w: maximum request size for shared resources is 1; found %d", errInvalidRequest, numRequestedDevices)
+		}
+	case spec.SharingStrategyMPS:
+		if includesReplicas && numRequestedDevices > 1 {
+			return fmt.Errorf("%w: maximum request size for shared resources is 1; found %d", errInvalidRequest, numRequestedDevices)
+		}
 	}
 	return nil
 }
