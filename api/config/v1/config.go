@@ -53,6 +53,14 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 
 	config.Flags.UpdateFromCLIFlags(c, flags)
 
+	// We explicitly set sharing.mps.failRequestsGreaterThanOne = true
+	// This can be relaxed in certain cases -- such as a single GPU -- but
+	// requires additional logic around when it's OK to combine requests and
+	// makes the semantics of a request unclear.
+	if config.Sharing.MPS != nil {
+		config.Sharing.MPS.FailRequestsGreaterThanOne = true
+	}
+
 	return config, nil
 }
 
