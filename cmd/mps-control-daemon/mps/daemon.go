@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"k8s.io/klog/v2"
 
@@ -46,6 +47,8 @@ type Daemon struct {
 	// root represents the root at which the files and folders controlled by the
 	// daemon are created. These include the log and pipe directories.
 	root Root
+	// logTailer tails the MPS control daemon logs.
+	logTailer *tailer
 }
 
 // NewDaemon creates an MPS daemon instance.
@@ -124,23 +127,31 @@ func (d *Daemon) Start() error {
 	}
 	defer statusFile.Close()
 
+	d.logTailer = newTailer(filepath.Join(logDir, "control.log"))
+	klog.InfoS("Starting log tailer", "resource", d.rm.Resource())
+	if err := d.logTailer.Start(); err != nil {
+		klog.ErrorS(err, "Could not start tail command on control.log; ignoring logs")
+	}
+
 	return nil
 }
 
 // Stop ensures that the MPS daemon is quit.
 func (d *Daemon) Stop() error {
-	output, err := d.EchoPipeToControl("quit")
+	_, err := d.EchoPipeToControl("quit")
 	if err != nil {
 		return fmt.Errorf("error sending quit message: %w", err)
 	}
-	klog.InfoS("Shut down MPS", "output", output)
+	klog.InfoS("Stopped MPS control daemon", "resource", d.rm.Resource())
+
+	err = d.logTailer.Stop()
+	klog.InfoS("Stopped log tailer", "resource", d.rm.Resource(), "error", err)
 
 	if err := d.setComputeMode(computeModeDefault); err != nil {
 		return fmt.Errorf("error setting compute mode %v: %w", computeModeDefault, err)
 	}
 
-	err = os.Remove(d.startedFile())
-	if err != nil && err != os.ErrNotExist {
+	if err := os.Remove(d.startedFile()); err != nil && err != os.ErrNotExist {
 		return fmt.Errorf("failed to remove started file: %w", err)
 	}
 
