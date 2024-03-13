@@ -48,7 +48,6 @@ Please note that:
 - The NVIDIA device plugin is currently lacking
     - Comprehensive GPU health checking features
     - GPU cleanup features
-    - ...
 - Support will only be provided for the official NVIDIA device plugin (and not
   for forks or other variants of this plugin).
 
@@ -1016,38 +1015,29 @@ See the [changelog](CHANGELOG.md)
 * You can report a bug by [filing a new issue](https://github.com/NVIDIA/k8s-device-plugin/issues/new)
 * You can contribute by opening a [pull request](https://help.github.com/articles/using-pull-requests/)
 
-### Versioning
+## Documentation
 
-Before v1.10 the versioning scheme of the device plugin had to match exactly the version of Kubernetes.
-After the promotion of device plugins to beta this condition was was no longer required.
-We quickly noticed that this versioning scheme was very confusing for users as they still expected to see
-a version of the device plugin for each version of Kubernetes.
-
-This versioning scheme applies to the tags `v1.8`, `v1.9`, `v1.10`, `v1.11`, `v1.12`.
-
-We have now changed the versioning to follow [SEMVER](https://semver.org/). The
-first version following this scheme has been tagged `v0.0.0`.
-
-Going forward, the major version of the device plugin will only change
-following a change in the device plugin API itself. For example, version
-`v1beta1` of the device plugin API corresponds to version `v0.x.x` of the
-device plugin. If a new `v2beta2` version of the device plugin API comes out,
-then the device plugin will increase its major version to `1.x.x`.
-
-As of now, the device plugin API for Kubernetes >= v1.10 is `v1beta1`.  If you
-have a version of Kubernetes >= 1.10 you can deploy any device plugin version >
-`v0.0.0`.
-
-### Upgrading Kubernetes with the Device Plugin
-
-Upgrading Kubernetes when you have a device plugin deployed doesn't require you
-to do any, particular changes to your workflow.  The API is versioned and is
-pretty stable (though it is not guaranteed to be non breaking). Starting with
-Kubernetes version 1.10, you can use `v0.3.0` of the device plugin to perform
-upgrades, and Kubernetes won't require you to deploy a different version of the
-device plugin. Once a node comes back online after the upgrade, you will see
-GPUs re-registering themselves automatically.
-
-Upgrading the device plugin itself is a more complex task. It is recommended to
-drain GPU tasks as we cannot guarantee that GPU tasks will survive a rolling
-upgrade. However we make best efforts to preserve GPU tasks during an upgrade.
+- [Quick Start](docs/quick_start.md)
+  * [Prerequisites](docs/quick_start.md#prerequisites)
+  * [Preparing your GPU Nodes](docs/quick_start.md#preparing-your-gpu-nodes)
+  * [Node Feature Discovery (NFD)](docs/quick_start.md#node-feature-discovery-nfd)
+  * [Enabling GPU Support in Kubernetes](docs/quick_start.md#enabling-gpu-support-in-kubernetes)
+  * [Running GPU Jobs](docs/quick_start.md#running-gpu-jobs)
+- [Configuring the NVIDIA device plugin binary](docs/customizing.md)
+  * [As command line flags or envvars](docs/customizing.md#as-command-line-flags-or-envvars)
+  * [As a configuration file](docs/customizing.md#as-a-configuration-file)
+  * [Configuration Option Details](docs/customizing.md#configuration-option-details)
+  * [Shared Access to GPUs with CUDA Time-Slicing](docs/customizing.md#shared-access-to-gpus-with-cuda-time-slicing)
+- [Deployment via `helm`](docs/deployment_via_helm.md)
+  * [Configuring the device plugin's `helm` chart](docs/deployment_via_helm.md#configuring-the-device-plugins-helm-chart)
+    + [Passing configuration to the plugin via a `ConfigMap`.](docs/deployment_via_helm.md#passing-configuration-to-the-plugin-via-a-configmap)
+      - [Single Config File Example](docs/deployment_via_helm.md#single-config-file-example)
+      - [Multiple Config File Example](docs/deployment_via_helm.md#multiple-config-file-example)
+      - [Updating Per-Node Configuration With a Node Label](docs/deployment_via_helm.md#updating-per-node-configuration-with-a-node-label)
+    + [Setting other helm chart values](docs/deployment_via_helm.md#setting-other-helm-chart-values)
+    + [Deploying with gpu-feature-discovery for automatic node labels](docs/deployment_via_helm.md#deploying-with-gpu-feature-discovery-for-automatic-node-labels)
+  * [Deploying via `helm install` with a direct URL to the `helm` package](docs/deployment_via_helm.md#deploying-via-helm-install-with-a-direct-url-to-the-helm-package)
+- [Building and Running Locally](docs/building_and_running.md)
+- [GPU Feature Discovery CMD](docs/gfd_cmd.md)
+- [GPU Feature Discovery Labels](docs/gfd_labels.md)
+- [Changelog](CHANGELOG.md)
