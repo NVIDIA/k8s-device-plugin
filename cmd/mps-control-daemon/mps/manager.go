@@ -86,10 +86,13 @@ func (m *manager) Daemons() ([]*Daemon, error) {
 			continue
 		}
 		// Check if MIG devices are included.
-		for _, device := range resourceManager.Devices() {
-			if device.IsMigDevice() {
+		for _, rmDevice := range resourceManager.Devices() {
+			if rmDevice.IsMigDevice() {
 				klog.Warning("MPS sharing is not supported for MIG devices; skipping daemon creation")
 				continue
+			}
+			if err := (*device)(rmDevice).assertReplicas(); err != nil {
+				return nil, fmt.Errorf("invalid MPS configuration: %w", err)
 			}
 		}
 		daemon := NewDaemon(resourceManager, ContainerRoot)

@@ -39,3 +39,8 @@ func (d wslDevice) GetNumaNode() (bool, int, error) {
 func (d wslDevice) GetTotalMemory() (uint64, error) {
 	return nvmlDevice(d).GetTotalMemory()
 }
+
+// GetComputeCapability returns the CUDA compute capability for the device.
+func (d wslDevice) GetComputeCapability() (string, error) {
+	return nvmlDevice(d).GetComputeCapability()
+}

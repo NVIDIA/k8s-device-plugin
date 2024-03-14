@@ -27,9 +27,13 @@ import (
 // Device wraps pluginapi.Device with extra metadata and functions.
 type Device struct {
 	pluginapi.Device
-	Paths       []string
-	Index       string
-	TotalMemory uint64
+	Paths             []string
+	Index             string
+	TotalMemory       uint64
+	ComputeCapability string
+	// Replicas stores the total number of times this device is replicated.
+	// If this is 0 or 1 then the device is not shared.
+	Replicas int
 }
 
 // deviceInfo defines the information the required to construct a Device
@@ -38,6 +42,7 @@ type deviceInfo interface {
 	GetPaths() ([]string, error)
 	GetNumaNode() (bool, int, error)
 	GetTotalMemory() (uint64, error)
+	GetComputeCapability() (string, error)
 }
 
 // Devices wraps a map[string]*Device with some functions.
@@ -71,8 +76,14 @@ func BuildDevice(index string, d deviceInfo) (*Device, error) {
 		return nil, fmt.Errorf("error getting device memory: %w", err)
 	}
 
+	computeCapability, err := d.GetComputeCapability()
+	if err != nil {
+		return nil, fmt.Errorf("error getting device compute capability: %w", err)
+	}
+
 	dev := Device{
-		TotalMemory: totalMemory,
+		TotalMemory:       totalMemory,
+		ComputeCapability: computeCapability,
 	}
 	dev.ID = uuid
 	dev.Index = index
