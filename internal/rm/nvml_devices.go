@@ -84,6 +84,24 @@ func (d nvmlDevice) GetPaths() ([]string, error) {
 	return []string{path}, nil
 }
 
+// GetComputeCapability returns the CUDA Compute Capability for the device.
+func (d nvmlDevice) GetComputeCapability() (string, error) {
+	major, minor, ret := d.Device.GetCudaComputeCapability()
+	if ret != nvml.SUCCESS {
+		return "", ret
+	}
+	return fmt.Sprintf("%d.%d", major, minor), nil
+}
+
+// GetComputeCapability returns the CUDA Compute Capability for the device.
+func (d nvmlMigDevice) GetComputeCapability() (string, error) {
+	parent, ret := d.Device.GetDeviceHandleFromMigDeviceHandle()
+	if ret != nvml.SUCCESS {
+		return "", fmt.Errorf("failed to get parent device: %w", ret)
+	}
+	return nvmlDevice{parent}.GetComputeCapability()
+}
+
 // GetPaths returns the paths for a MIG device
 func (d nvmlMigDevice) GetPaths() ([]string, error) {
 	capDevicePaths, err := mig.GetMigCapabilityDevicePaths()

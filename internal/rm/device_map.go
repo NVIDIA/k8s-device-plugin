@@ -314,6 +314,7 @@ func updateDeviceMapWithReplicas(replicatedResources *spec.ReplicatedResources, 
 				annotatedID := string(NewAnnotatedID(id, i))
 				replicatedDevice := *(oDevices[r.Name][id])
 				replicatedDevice.ID = annotatedID
+				replicatedDevice.Replicas = r.Replicas
 				devices.insert(name, &replicatedDevice)
 			}
 		}
