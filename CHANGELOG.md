@@ -1,10 +1,15 @@
 ## Changelog
 
+### Version v0.15.0-rc.2
 - Bump CUDA base image version to 12.3.2
 - Add `cdi-cri` device list strategy. This uses the CDIDevices CRI field to request CDI devices instead of annotations.
 - Set MPS memory limit by device index and not device UUID. This is a workaround for an issue where
   these limits are not applied for devices if set by UUID.
 - Update MPS sharing to disallow requests for multiple devices if MPS sharing is configured.
+- Set mps device memory limit by index.
+- Explicitly set sharing.mps.failRequestsGreaterThanOne = true.
+- Run tail -f for each MPS daemon to output logs.
+- Enforce replica limits for MPS sharing.
 
 ### Version v0.15.0-rc.1
 - Import GPU Feature Discovery into the GPU Device Plugin repo. This means that
