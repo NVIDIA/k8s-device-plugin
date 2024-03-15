@@ -207,3 +207,9 @@ func (d nvmlDevice) GetNvLinkRemotePciInfo(link int) (PciInfo, Return) {
 	p, r := nvml.Device(d).GetNvLinkRemotePciInfo(link)
 	return PciInfo(p), Return(r)
 }
+
+// SetComputeMode sets the compute mode for the device.
+func (d nvmlDevice) SetComputeMode(mode ComputeMode) Return {
+	r := nvml.Device(d).SetComputeMode(nvml.ComputeMode(mode))
+	return Return(r)
+}

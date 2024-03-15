@@ -99,6 +99,9 @@ var _ Device = &DeviceMock{}
 //			RegisterEventsFunc: func(v uint64, eventSet EventSet) Return {
 //				panic("mock out the RegisterEvents method")
 //			},
+//			SetComputeModeFunc: func(computeMode ComputeMode) Return {
+//				panic("mock out the SetComputeMode method")
+//			},
 //			SetMigModeFunc: func(Mode int) (Return, Return) {
 //				panic("mock out the SetMigMode method")
 //			},
@@ -192,6 +195,9 @@ type DeviceMock struct {
 
 	// RegisterEventsFunc mocks the RegisterEvents method.
 	RegisterEventsFunc func(v uint64, eventSet EventSet) Return
+
+	// SetComputeModeFunc mocks the SetComputeMode method.
+	SetComputeModeFunc func(computeMode ComputeMode) Return
 
 	// SetMigModeFunc mocks the SetMigMode method.
 	SetMigModeFunc func(Mode int) (Return, Return)
@@ -306,6 +312,11 @@ type DeviceMock struct {
 			// EventSet is the eventSet argument value.
 			EventSet EventSet
 		}
+		// SetComputeMode holds details about calls to the SetComputeMode method.
+		SetComputeMode []struct {
+			// ComputeMode is the computeMode argument value.
+			ComputeMode ComputeMode
+		}
 		// SetMigMode holds details about calls to the SetMigMode method.
 		SetMigMode []struct {
 			// Mode is the Mode argument value.
@@ -342,6 +353,7 @@ type DeviceMock struct {
 	lockGetUUID                            sync.RWMutex
 	lockIsMigDeviceHandle                  sync.RWMutex
 	lockRegisterEvents                     sync.RWMutex
+	lockSetComputeMode                     sync.RWMutex
 	lockSetMigMode                         sync.RWMutex
 	locknvmlDeviceHandle                   sync.RWMutex
 }
@@ -1130,6 +1142,38 @@ func (mock *DeviceMock) RegisterEventsCalls() []struct {
 	mock.lockRegisterEvents.RLock()
 	calls = mock.calls.RegisterEvents
 	mock.lockRegisterEvents.RUnlock()
+	return calls
+}
+
+// SetComputeMode calls SetComputeModeFunc.
+func (mock *DeviceMock) SetComputeMode(computeMode ComputeMode) Return {
+	if mock.SetComputeModeFunc == nil {
+		panic("DeviceMock.SetComputeModeFunc: method is nil but Device.SetComputeMode was just called")
+	}
+	callInfo := struct {
+		ComputeMode ComputeMode
+	}{
+		ComputeMode: computeMode,
+	}
+	mock.lockSetComputeMode.Lock()
+	mock.calls.SetComputeMode = append(mock.calls.SetComputeMode, callInfo)
+	mock.lockSetComputeMode.Unlock()
+	return mock.SetComputeModeFunc(computeMode)
+}
+
+// SetComputeModeCalls gets all the calls that were made to SetComputeMode.
+// Check the length with:
+//
+//	len(mockedDevice.SetComputeModeCalls())
+func (mock *DeviceMock) SetComputeModeCalls() []struct {
+	ComputeMode ComputeMode
+} {
+	var calls []struct {
+		ComputeMode ComputeMode
+	}
+	mock.lockSetComputeMode.RLock()
+	calls = mock.calls.SetComputeMode
+	mock.lockSetComputeMode.RUnlock()
 	return calls
 }
 
