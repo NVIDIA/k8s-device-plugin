@@ -1,3 +1,6 @@
 /nvidia-device-plugin
+/config-manager
+/gpu-feature-discovery
+/mps-control-daemon
 /releases
 deployments/helm/gpu-feature-discovery
