@@ -146,8 +146,8 @@ github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5y
 github.com/golang/protobuf v1.3.2/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.5.0/go.mod h1:FsONVRAS9T7sI+LIUmWTfcYkHO4aIWwzhcaSAoJOfIk=
 github.com/golang/protobuf v1.5.2/go.mod h1:XVQd3VNwM+JqD3oG2Ue2ip4fOMUkwXdXDdiuN0vRsmY=
-github.com/golang/protobuf v1.5.3 h1:KhyjKVUg7Usr/dYsdSqoFveMYd5ko72D+zANwlG1mmg=
-github.com/golang/protobuf v1.5.3/go.mod h1:XVQd3VNwM+JqD3oG2Ue2ip4fOMUkwXdXDdiuN0vRsmY=
+github.com/golang/protobuf v1.5.4 h1:i7eJL8qZTpSEXOPTxNKhASYpMn+8e5Q6AdndVa1dWek=
+github.com/golang/protobuf v1.5.4/go.mod h1:lnTiLA8Wa4RWRcIUkrtSVa5nRhsEGBg48fD6rSs7xps=
 github.com/gomodule/redigo v1.8.2 h1:H5XSIre1MB5NbPYFp+i1NBbb5qN1W8Y8YAQoAYbkm8k=
 github.com/gomodule/redigo v1.8.2/go.mod h1:P9dn9mFrCBvWhGE1wpxx6fgq7BAeLBk+UUUzlpkBYO0=
 github.com/google/btree v1.1.2 h1:xf4v41cLI2Z6FxbKm+8Bu+m8ifhj15JuZ9sa0jZCMUU=
@@ -540,8 +540,8 @@ sigs.k8s.io/kustomize/api v0.16.0 h1:/zAR4FOQDCkgSDmVzV2uiFbuy9bhu3jEzthrHCuvm1g
 sigs.k8s.io/kustomize/api v0.16.0/go.mod h1:MnFZ7IP2YqVyVwMWoRxPtgl/5hpA+eCCrQR/866cm5c=
 sigs.k8s.io/kustomize/kyaml v0.16.0 h1:6J33uKSoATlKZH16unr2XOhDI+otoe2sR3M8PDzW3K0=
 sigs.k8s.io/kustomize/kyaml v0.16.0/go.mod h1:xOK/7i+vmE14N2FdFyugIshB8eF6ALpy7jI87Q2nRh4=
-sigs.k8s.io/node-feature-discovery v0.15.1 h1:d+VEgp1qXQhO7GPOv1dHBnJWi5liky6KSMrv+oKVBeg=
-sigs.k8s.io/node-feature-discovery v0.15.1/go.mod h1:trXFyMt5uQJwxa/UGqgyCKHDYC12thkqmt71tjII/SI=
+sigs.k8s.io/node-feature-discovery v0.15.3 h1:lTniAJva4VvmIDM84SVOJLdd9jMIqA20oVtTkEiXkEo=
+sigs.k8s.io/node-feature-discovery v0.15.3/go.mod h1:vp165AxVdzCWYIKuaLkckGo53/D5OR+WSyePSUEIYQw=
 sigs.k8s.io/structured-merge-diff/v4 v4.4.1 h1:150L+0vs/8DA78h1u02ooW1/fFq/Lwr+sGiqlzvrtq4=
 sigs.k8s.io/structured-merge-diff/v4 v4.4.1/go.mod h1:N8hJocpFajUSSeSJ9bOZ77VzejKZaXsTtZo4/u7Io08=
 sigs.k8s.io/yaml v1.4.0 h1:Mk1wCc2gy/F0THH0TAp1QYyJNzRm2KCLy3o5ASXVI5E=
