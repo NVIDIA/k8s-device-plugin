@@ -17,10 +17,7 @@
 package mps
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"reflect"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvml"
 	"k8s.io/klog/v2"
@@ -107,18 +104,13 @@ func (m *manager) Daemons() ([]*Daemon, error) {
 }
 
 func (m *manager) AssertReady() error {
-	readyFile, err := os.Open("/mps/.ready")
-	if err != nil {
-		return fmt.Errorf("failed to process .ready file: %w", err)
-	}
-	defer readyFile.Close()
+	readyFile := ReadyFile{}
 
-	var mpsConfig spec.ReplicatedResources
-	if err := json.NewDecoder(readyFile).Decode(&mpsConfig); err != nil {
+	matched, err := readyFile.Matches(m.config)
+	if err != nil {
 		return fmt.Errorf("failed to load .ready config: %w", err)
 	}
-	if !reflect.DeepEqual(mpsConfig, *m.config.Sharing.MPS) {
-		klog.InfoS("mismatched sharing configs", "config", mpsConfig)
+	if !matched {
 		return fmt.Errorf("mismatched sharing config; assuming MPS is not ready")
 	}
 	return nil
