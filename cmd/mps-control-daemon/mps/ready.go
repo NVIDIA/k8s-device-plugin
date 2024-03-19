@@ -61,14 +61,14 @@ func (f ReadyFile) Save(config *spec.Config) error {
 }
 
 // Load loads the contents of th read file.
-func (f ReadyFile) Load() (*spec.Config, error) {
+func (f ReadyFile) Load() (*spec.ReplicatedResources, error) {
 	readyFile, err := os.Open(ReadyFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open .ready file: %w", err)
 	}
 	defer readyFile.Close()
 
-	var readyConfig spec.Config
+	var readyConfig spec.ReplicatedResources
 	if err := json.NewDecoder(readyFile).Decode(&readyConfig); err != nil {
 		return nil, fmt.Errorf("faled to load .ready config: %w", err)
 	}
@@ -87,5 +87,5 @@ func (f ReadyFile) Matches(config *spec.Config) (bool, error) {
 	if readyConfig == nil {
 		return false, nil
 	}
-	return reflect.DeepEqual(config.Sharing.MPS, readyConfig.Sharing.MPS), nil
+	return reflect.DeepEqual(config.Sharing.MPS, readyConfig), nil
 }
