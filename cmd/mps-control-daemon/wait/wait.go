@@ -23,13 +23,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/urfave/cli/v2"
+	"k8s.io/klog/v2"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mps"
 	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
-	"github.com/urfave/cli/v2"
-	"k8s.io/klog/v2"
 )
 
 // NewCommand constructs a mount command.
