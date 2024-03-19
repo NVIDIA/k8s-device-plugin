@@ -39,7 +39,7 @@ func NewCommand() *cli.Command {
 		Name:  "wait",
 		Usage: "Waits for the mps-daemon(s) to be ready",
 		Action: func(ctx *cli.Context) error {
-			return waitForMps(ctx, ctx.Command.Flags)
+			return waitForMps(ctx, append(ctx.Command.Flags, ctx.App.Flags...))
 		},
 	}
 }
