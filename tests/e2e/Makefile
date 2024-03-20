@@ -13,7 +13,6 @@
 # limitations under the License.
 
 GO_CMD ?= go
-GO_FMT ?= gofmt
 
 include $(CURDIR)/versions.mk
 
@@ -22,6 +21,7 @@ DRIVER_ENABLED ?= true
 E2E_IMAGE_REPO ?= $(REGISTRY)/$(DRIVER_NAME)
 E2E_IMAGE_TAG ?= $(VERSION)
 E2E_IMAGE_PULL_POLICY ?= IfNotPresent
+
 HELM_CHART ?= $(CURDIR)/deployments/helm/nvidia-device-plugin
 
 .PHONY: e2e-test
@@ -36,6 +36,7 @@ e2e-test:
 		-image.repo=$(E2E_IMAGE_REPO) \
 		-image.tag=$(E2E_IMAGE_TAG) \
 		-image.pull-policy=$(E2E_IMAGE_PULL_POLICY) \
+		-runtime-class-name=nvidia \
 		-helm-chart=$(HELM_CHART) \
-		-ginkgo.focus="\[nvidia\]" \
+		-ginkgo.focus="GPU\ Device\ Plugin" \
 		-test.timeout=1h

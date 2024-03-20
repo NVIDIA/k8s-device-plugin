@@ -38,7 +38,7 @@ import (
 )
 
 // Actual test suite
-var _ = NVDescribe("GPU Device Plugin", func() {
+var _ = Describe("GPU Device Plugin", func() {
 	f := framework.NewFramework("k8s-device-plugin")
 
 	Context("When deploying k8s-device-plugin", Ordered, func() {
@@ -60,14 +60,21 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 
 		values := helmValues.Options{
 			Values: []string{
-				fmt.Sprintf("image.repository=%s", *ImageRepo),
-				fmt.Sprintf("image.tag=%s", *ImageTag),
-				fmt.Sprintf("image.pullPolicy=%s", *ImagePullPolicy),
+				"image.pullPolicy=" + *ImagePullPolicy,
 				"devicePlugin.enabled=true",
 				// We need to make affinity is none if not deploying NFD/GFD
 				// test will fail if not run on a GPU node
 				"affinity=",
 			},
+		}
+		if *ImageRepo != "" {
+			values.Values = append(values.Values, "image.repository="+*ImageRepo)
+		}
+		if *ImageTag != "" {
+			values.Values = append(values.Values, "image.tag="+*ImageTag)
+		}
+		if *RuntimeClassName != "" {
+			values.Values = append(values.Values, "runtimeClassName="+*RuntimeClassName)
 		}
 
 		BeforeAll(func(ctx context.Context) {
@@ -144,6 +151,8 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 			It("it should run GPU jobs", func(ctx context.Context) {
 				By("Creating GPU job")
 				job := common.GPUJob.DeepCopy()
+				runtimeClassName := "nvidia"
+				job.Spec.Template.Spec.RuntimeClassName = &runtimeClassName
 				job.Namespace = f.Namespace.Name
 				_, err := f.ClientSet.BatchV1().Jobs(f.Namespace.Name).Create(ctx, job, metav1.CreateOptions{})
 				Expect(err).NotTo(HaveOccurred())
