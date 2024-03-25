@@ -22,6 +22,7 @@ import (
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"tags.cncf.io/container-device-interface/pkg/cdi"
 
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/root"
@@ -44,7 +45,7 @@ type nvcdilib struct {
 	nvmllib            nvml.Interface
 	mode               string
 	devicelib          device.Interface
-	deviceNamer        DeviceNamer
+	deviceNamers       DeviceNamers
 	driverRoot         string
 	devRoot            string
 	nvidiaCTKPath      string
@@ -75,8 +76,9 @@ func New(opts ...Option) (Interface, error) {
 	if l.logger == nil {
 		l.logger = logger.New()
 	}
-	if l.deviceNamer == nil {
-		l.deviceNamer, _ = NewDeviceNamer(DeviceNameStrategyIndex)
+	if len(l.deviceNamers) == 0 {
+		indexNamer, _ := NewDeviceNamer(DeviceNameStrategyIndex)
+		l.deviceNamers = []DeviceNamer{indexNamer}
 	}
 	if l.driverRoot == "" {
 		l.driverRoot = "/"
@@ -159,6 +161,17 @@ func (l *wrapper) GetSpec() (spec.Interface, error) {
 		spec.WithClass(l.class),
 		spec.WithMergedDeviceOptions(l.mergedDeviceOptions...),
 	)
+}
+
+// GetCommonEdits returns the wrapped edits and adds additional edits on top.
+func (m *wrapper) GetCommonEdits() (*cdi.ContainerEdits, error) {
+	edits, err := m.Interface.GetCommonEdits()
+	if err != nil {
+		return nil, err
+	}
+	edits.Env = append(edits.Env, "NVIDIA_VISIBLE_DEVICES=void")
+
+	return edits, nil
 }
 
 // resolveMode resolves the mode for CDI spec generation based on the current system.

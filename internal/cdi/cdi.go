@@ -99,7 +99,7 @@ func newHandler(opts ...Option) (Interface, error) {
 		nvcdi.WithDeviceLib(c.nvdevice),
 		nvcdi.WithNVIDIACTKPath(c.nvidiaCTKPath),
 		nvcdi.WithDriverRoot(c.driverRoot),
-		nvcdi.WithDeviceNamer(deviceNamer),
+		nvcdi.WithDeviceNamers(deviceNamer),
 		nvcdi.WithVendor(c.vendor),
 		nvcdi.WithClass("gpu"),
 	)
