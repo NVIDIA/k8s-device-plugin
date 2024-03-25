@@ -10,6 +10,6 @@ home: https://github.com/NVIDIA/k8s-device-plugin
 dependencies:
   - name: node-feature-discovery
     alias: nfd
-    version: "0.13.0"
+    version: "0.15.3"
     condition: nfd.enabled,gfd.enabled
     repository: https://kubernetes-sigs.github.io/node-feature-discovery/charts
