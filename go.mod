@@ -8,7 +8,7 @@ require (
 	github.com/NVIDIA/go-gpuallocator v0.3.2
 	github.com/NVIDIA/go-nvlib v0.2.0
 	github.com/NVIDIA/go-nvml v0.12.0-3
-	github.com/NVIDIA/nvidia-container-toolkit v1.15.0-rc.3
+	github.com/NVIDIA/nvidia-container-toolkit v1.15.0-rc.4
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/uuid v1.6.0
 	github.com/mittwald/go-helm-client v0.12.8
@@ -18,7 +18,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.27.1
-	golang.org/x/mod v0.15.0
+	golang.org/x/mod v0.16.0
 	golang.org/x/net v0.22.0
 	google.golang.org/grpc v1.62.1
 	k8s.io/api v0.29.2
@@ -116,7 +116,7 @@ require (
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
-	github.com/opencontainers/runtime-spec v1.1.0 // indirect
+	github.com/opencontainers/runtime-spec v1.2.0 // indirect
 	github.com/opencontainers/runtime-tools v0.9.1-0.20221107090550-2e043c6bd626 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
