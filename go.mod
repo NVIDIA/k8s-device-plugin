@@ -21,13 +21,13 @@ require (
 	golang.org/x/mod v0.16.0
 	golang.org/x/net v0.22.0
 	google.golang.org/grpc v1.62.1
-	k8s.io/api v0.29.2
-	k8s.io/apiextensions-apiserver v0.29.2
-	k8s.io/apimachinery v0.29.2
-	k8s.io/client-go v0.29.2
+	k8s.io/api v0.29.3
+	k8s.io/apiextensions-apiserver v0.29.3
+	k8s.io/apimachinery v0.29.3
+	k8s.io/client-go v0.29.3
 	k8s.io/klog/v2 v2.120.1
-	k8s.io/kubelet v0.29.2
-	k8s.io/mount-utils v0.29.2
+	k8s.io/kubelet v0.29.3
+	k8s.io/mount-utils v0.29.3
 	sigs.k8s.io/node-feature-discovery v0.15.3
 	sigs.k8s.io/yaml v1.4.0
 	tags.cncf.io/container-device-interface v0.6.2
@@ -159,9 +159,9 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	helm.sh/helm/v3 v3.14.2 // indirect
-	k8s.io/apiserver v0.29.2 // indirect
+	k8s.io/apiserver v0.29.3 // indirect
 	k8s.io/cli-runtime v0.29.2 // indirect
-	k8s.io/component-base v0.29.2 // indirect
+	k8s.io/component-base v0.29.3 // indirect
 	k8s.io/kube-openapi v0.0.0-20240227032403-f107216b40e2 // indirect
 	k8s.io/kubectl v0.29.2 // indirect
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e // indirect
