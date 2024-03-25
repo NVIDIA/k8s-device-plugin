@@ -334,7 +334,7 @@ github.com/mitchellh/go-wordwrap
 # github.com/mitchellh/reflectwalk v1.0.2
 ## explicit
 github.com/mitchellh/reflectwalk
-# github.com/mittwald/go-helm-client v0.12.8
+# github.com/mittwald/go-helm-client v0.12.9
 ## explicit; go 1.21
 github.com/mittwald/go-helm-client
 github.com/mittwald/go-helm-client/values

@@ -926,6 +926,7 @@ func mergeInstallOptions(chartSpec *ChartSpec, installOptions *action.Install) {
 	installOptions.Atomic = chartSpec.Atomic
 	installOptions.SkipCRDs = chartSpec.SkipCRDs
 	installOptions.DryRun = chartSpec.DryRun
+	installOptions.DryRunOption = chartSpec.DryRunOption
 	installOptions.SubNotes = chartSpec.SubNotes
 	installOptions.WaitForJobs = chartSpec.WaitForJobs
 }
@@ -946,6 +947,7 @@ func mergeUpgradeOptions(chartSpec *ChartSpec, upgradeOptions *action.Upgrade) {
 	upgradeOptions.Atomic = chartSpec.Atomic
 	upgradeOptions.CleanupOnFail = chartSpec.CleanupOnFail
 	upgradeOptions.DryRun = chartSpec.DryRun
+	upgradeOptions.DryRunOption = chartSpec.DryRunOption
 	upgradeOptions.SubNotes = chartSpec.SubNotes
 	upgradeOptions.WaitForJobs = chartSpec.WaitForJobs
 }
