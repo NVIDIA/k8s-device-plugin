@@ -44,22 +44,26 @@ CLI_VERSION = $(VERSION)
 endif
 CLI_VERSION_PACKAGE = github.com/NVIDIA/k8s-device-plugin/internal/info
 
-GOOS ?= linux
-
 binaries: cmds
 ifneq ($(PREFIX),)
 cmd-%: COMMAND_BUILD_OPTIONS = -o $(PREFIX)/$(*)
 endif
+ifneq ($(shell uname),Darwin)
+EXTLDFLAGS = -Wl,--export-dynamic -Wl,--unresolved-symbols=ignore-in-object-files
+else
+EXTLDFLAGS = -Wl,-undefined,dynamic_lookup
+endif
+BUILDFLAGS = -ldflags "-s -w '-extldflags=$(EXTLDFLAGS)' -X $(CLI_VERSION_PACKAGE).gitCommit=$(GIT_COMMIT) -X $(CLI_VERSION_PACKAGE).version=$(CLI_VERSION)"
+build:
+	go build $(BUILDFLAGS) ./...
+
 cmds: $(CMD_TARGETS)
 $(CMD_TARGETS): cmd-%:
-	CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' GOOS=$(GOOS) \
-		go build -ldflags "-s -w -X $(CLI_VERSION_PACKAGE).gitCommit=$(GIT_COMMIT) -X $(CLI_VERSION_PACKAGE).version=$(CLI_VERSION)" $(COMMAND_BUILD_OPTIONS) $(MODULE)/cmd/$(*)
-build:
-	GOOS=$(GOOS) go build ./...
+	go build $(BUILDFLAGS) $(COMMAND_BUILD_OPTIONS) $(MODULE)/cmd/$(*)
 
 examples: $(EXAMPLE_TARGETS)
 $(EXAMPLE_TARGETS): example-%:
-	GOOS=$(GOOS) go build ./examples/$(*)
+	go build $(BUILDFLAGS) $(COMMAND_BUILD_OPTIONS) ./examples/$(*)
 
 all: check test build binary
 check: $(CHECK_TARGETS)
