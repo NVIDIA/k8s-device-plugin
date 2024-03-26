@@ -101,6 +101,10 @@ runtimeClassName: null
 devicePlugin:
   enabled: true
 
+# directory location on host
+hostDir: /var/lib/kubelet
+
+# Subcharts
 gfd:
   enabled: false
   nameOverride: gpu-feature-discovery
