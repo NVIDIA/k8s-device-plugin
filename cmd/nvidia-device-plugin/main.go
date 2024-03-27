@@ -31,6 +31,7 @@ import (
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mps"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
 	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/plugin"
@@ -176,9 +177,9 @@ func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 
 func start(c *cli.Context, flags []cli.Flag) error {
 	klog.Info("Starting FS watcher.")
-	watcher, err := watch.Files(pluginapi.DevicePluginPath)
+	watcher, err := watch.Files(pluginapi.DevicePluginPath, "/mps")
 	if err != nil {
-		return fmt.Errorf("failed to create FS watcher for %s: %v", pluginapi.DevicePluginPath, err)
+		return fmt.Errorf("failed to create FS watcher: %v", err)
 	}
 	defer watcher.Close()
 
@@ -198,7 +199,7 @@ restart:
 	}
 
 	klog.Info("Starting Plugins.")
-	plugins, restartPlugins, err := startPlugins(c, flags)
+	plugins, config, restartPlugins, err := startPlugins(c, flags)
 	if err != nil {
 		return fmt.Errorf("error starting plugins: %v", err)
 	}
@@ -224,6 +225,31 @@ restart:
 			if event.Name == pluginapi.KubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
 				klog.Infof("inotify: %s created, restarting.", pluginapi.KubeletSocket)
 				goto restart
+			}
+			if event.Name == mps.ReadyFilePath {
+				if config == nil || config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
+					klog.InfoS("Ignoring event", "event", event)
+					continue
+				}
+				switch {
+				case event.Op&fsnotify.Remove == fsnotify.Remove:
+					klog.Infof("%s removed; restarting", mps.ReadyFilePath)
+					goto restart
+				case event.Op&(fsnotify.Create|fsnotify.Write) != 0:
+					klog.Infof("%s created or modified; checking config", mps.ReadyFilePath)
+					readyFile := mps.ReadyFile{}
+
+					matches, err := readyFile.Matches(config)
+					if err != nil {
+						klog.ErrorS(err, "failed to check .ready file")
+						goto restart
+					}
+					if !matches {
+						klog.Info("mismatched MPS sharing config; restarting.")
+						goto restart
+					}
+					continue
+				}
 			}
 
 		// Watch for any other fs errors and log them.
@@ -252,12 +278,12 @@ exit:
 	return nil
 }
 
-func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, bool, error) {
+func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, *spec.Config, bool, error) {
 	// Load the configuration file
 	klog.Info("Loading configuration.")
 	config, err := loadConfig(c, flags)
 	if err != nil {
-		return nil, false, fmt.Errorf("unable to load config: %v", err)
+		return nil, nil, false, fmt.Errorf("unable to load config: %v", err)
 	}
 	spec.DisableResourceNamingInConfig(logger.ToKlog, config)
 
@@ -265,13 +291,13 @@ func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, bool, e
 	klog.Info("Updating config with default resource matching patterns.")
 	err = rm.AddDefaultResourcesToConfig(config)
 	if err != nil {
-		return nil, false, fmt.Errorf("unable to add default resources to config: %v", err)
+		return nil, nil, false, fmt.Errorf("unable to add default resources to config: %v", err)
 	}
 
 	// Print the config to the output.
 	configJSON, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
-		return nil, false, fmt.Errorf("failed to marshal config to JSON: %v", err)
+		return nil, nil, false, fmt.Errorf("failed to marshal config to JSON: %v", err)
 	}
 	klog.Infof("\nRunning with config:\n%v", string(configJSON))
 
@@ -279,11 +305,11 @@ func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, bool, e
 	klog.Info("Retrieving plugins.")
 	pluginManager, err := NewPluginManager(config)
 	if err != nil {
-		return nil, false, fmt.Errorf("error creating plugin manager: %v", err)
+		return nil, nil, false, fmt.Errorf("error creating plugin manager: %v", err)
 	}
 	plugins, err := pluginManager.GetPlugins()
 	if err != nil {
-		return nil, false, fmt.Errorf("error getting plugins: %v", err)
+		return nil, nil, false, fmt.Errorf("error getting plugins: %v", err)
 	}
 
 	// Loop through all plugins, starting them if they have any devices
@@ -299,7 +325,7 @@ func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, bool, e
 		// Start the gRPC server for plugin p and connect it with the kubelet.
 		if err := p.Start(); err != nil {
 			klog.Errorf("Failed to start plugin: %v", err)
-			return plugins, true, nil
+			return plugins, nil, true, nil
 		}
 		started++
 	}
@@ -308,7 +334,7 @@ func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, bool, e
 		klog.Info("No devices found. Waiting indefinitely.")
 	}
 
-	return plugins, false, nil
+	return plugins, config, false, nil
 }
 
 func stopPlugins(plugins []plugin.Interface) error {
