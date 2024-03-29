@@ -30,3 +30,11 @@ func (s int8Slice) String() string {
 	}
 	return string(b)
 }
+
+func StringSliceToInterfaceSlice(slice []string) []interface{} {
+	interfaceSlice := make([]interface{}, len(slice))
+	for i, v := range slice {
+		interfaceSlice[i] = v
+	}
+	return interfaceSlice
+}

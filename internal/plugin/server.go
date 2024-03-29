@@ -19,6 +19,10 @@ package plugin
 import (
 	"errors"
 	"fmt"
+	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
+	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
+	"github.com/fsnotify/fsnotify"
+	"log"
 	"net"
 	"os"
 	"path"
@@ -66,6 +70,8 @@ type NvidiaDevicePlugin struct {
 
 	mpsDaemon   *mps.Daemon
 	mpsHostRoot mps.Root
+
+	watcher *fsnotify.Watcher
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
@@ -104,9 +110,10 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 
 		// These will be reinitialized every
 		// time the plugin server is restarted.
-		server: nil,
-		health: nil,
-		stop:   nil,
+		server:  nil,
+		health:  nil,
+		stop:    nil,
+		watcher: nil,
 	}
 	return &plugin, nil
 }
@@ -115,6 +122,12 @@ func (plugin *NvidiaDevicePlugin) initialize() {
 	plugin.server = grpc.NewServer([]grpc.ServerOption{}...)
 	plugin.health = make(chan *rm.Device)
 	plugin.stop = make(chan interface{})
+	fsWatcher, err := watch.Files(resource.DevicePluginConfigPath)
+	if err != nil {
+		log.Println("failed to create file system watcher.")
+		return
+	}
+	plugin.watcher = fsWatcher
 }
 
 func (plugin *NvidiaDevicePlugin) cleanup() {
@@ -122,6 +135,7 @@ func (plugin *NvidiaDevicePlugin) cleanup() {
 	plugin.server = nil
 	plugin.health = nil
 	plugin.stop = nil
+	plugin.watcher.Close()
 }
 
 // Devices returns the full set of devices associated with the plugin.
@@ -278,7 +292,7 @@ func (plugin *NvidiaDevicePlugin) GetDevicePluginOptions(context.Context, *plugi
 
 // ListAndWatch lists devices and update that list according to the health status
 func (plugin *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
-	if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
+	if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.healthyDevices()}); err != nil {
 		return err
 	}
 
@@ -293,6 +307,11 @@ func (plugin *NvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.D
 			if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
 				return nil
 			}
+		case _ = <-plugin.watcher.Events:
+			klog.Infof("find file %s changed, start resubmit devices", resource.IsolatedDevicesFilePath)
+			s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.healthyDevices()})
+		case err := <-plugin.watcher.Errors:
+			klog.Infof("inotify: %s", err)
 		}
 	}
 }
@@ -481,6 +500,10 @@ func (plugin *NvidiaDevicePlugin) deviceIDsFromAnnotatedDeviceIDs(ids []string) 
 
 func (plugin *NvidiaDevicePlugin) apiDevices() []*pluginapi.Device {
 	return plugin.rm.Devices().GetPluginDevices()
+}
+
+func (plugin *NvidiaDevicePlugin) healthyDevices() []*pluginapi.Device {
+	return plugin.rm.Devices().GetHealthyDevice()
 }
 
 // updateResponseForDeviceListEnvvar sets the environment variable for the requested devices.

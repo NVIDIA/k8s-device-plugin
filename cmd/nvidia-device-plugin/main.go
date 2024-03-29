@@ -20,7 +20,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 	"os"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -37,6 +39,8 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
 )
+
+var healthyCheckPortFlag string
 
 func main() {
 	var configFile string
@@ -125,6 +129,13 @@ func main() {
 			Usage:   "the path on the host where MPS-specific mounts and files are created by the MPS control daemon manager",
 			EnvVars: []string{"MPS_ROOT"},
 		},
+		&cli.StringFlag{
+			Name:        "healthy-check-port",
+			Value:       resource.HealthyServerPort,
+			Usage:       "the healthy check server port of nvidia device plugin",
+			Destination: &healthyCheckPortFlag,
+			EnvVars:     []string{"HEALTHY_CHECK_PORT"},
+		},
 	}
 
 	err := c.Run(os.Args)
@@ -147,6 +158,10 @@ func validateFlags(config *spec.Config) error {
 
 	if *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyUUID && *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyIndex {
 		return fmt.Errorf("invalid --device-id-strategy option: %v", *config.Flags.Plugin.DeviceIDStrategy)
+	}
+
+	if _, err := strconv.Atoi(healthyCheckPortFlag); err != nil {
+		return fmt.Errorf("invalid healthy-check-port option: %v", healthyCheckPortFlag)
 	}
 
 	if config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
@@ -184,6 +199,17 @@ func start(c *cli.Context, flags []cli.Flag) error {
 
 	klog.Info("Starting OS watcher.")
 	sigs := watch.Signals(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	healthServer, err := resource.NewHealthServer(healthyCheckPortFlag)
+	if err != nil {
+		return fmt.Errorf("failed to start health server: %v", err)
+	}
+	go func() {
+		klog.Info("Starting health server.")
+		if err := healthServer.Serve(); err != nil {
+			klog.Infof("Health server error: %v", err)
+		}
+	}()
 
 	var started bool
 	var restartTimeout <-chan time.Time
