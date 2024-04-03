@@ -5,3 +5,5 @@
 /releases
 deployments/helm/gpu-feature-discovery
 e2e_logs
+
+*.out
