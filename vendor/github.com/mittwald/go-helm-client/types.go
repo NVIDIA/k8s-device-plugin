@@ -188,6 +188,8 @@ type ChartSpec struct {
 	// DryRun indicates whether to perform a dry run.
 	// +optional
 	DryRun bool `json:"dryRun,omitempty"`
+	// DryRunOption controls whether the operation is prepared, but not executed with options on whether or not to interact with the remote cluster.
+	DryRunOption string `json:"dryRunOption,omitempty"`
 	// Description specifies a custom description for the uninstalled release
 	// +optional
 	Description string `json:"description,omitempty"`

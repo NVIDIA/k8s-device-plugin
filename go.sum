@@ -248,8 +248,8 @@ github.com/mitchellh/go-wordwrap v1.0.1/go.mod h1:R62XHJLzvMFRBbcrT7m7WgmE1eOyTS
 github.com/mitchellh/reflectwalk v1.0.0/go.mod h1:mSTlrgnPZtwu0c4WaC2kGObEpuNDbx0jmZXqmk4esnw=
 github.com/mitchellh/reflectwalk v1.0.2 h1:G2LzWKi524PWgd3mLHV8Y5k7s6XUvT0Gef6zxSIeXaQ=
 github.com/mitchellh/reflectwalk v1.0.2/go.mod h1:mSTlrgnPZtwu0c4WaC2kGObEpuNDbx0jmZXqmk4esnw=
-github.com/mittwald/go-helm-client v0.12.8 h1:i85RsE+9j9onkju/Pp0j5dxD+QdDSUB9TknmAq3MLG4=
-github.com/mittwald/go-helm-client v0.12.8/go.mod h1:ukR3Et5zbfBij7bFL1ZnLvPytsbBXCrI2qQYr2yVi9I=
+github.com/mittwald/go-helm-client v0.12.9 h1:tfI5ECgrbfAolA9TnlCeA5F2TEIvdsOxVmoSyW80lCI=
+github.com/mittwald/go-helm-client v0.12.9/go.mod h1:ukR3Et5zbfBij7bFL1ZnLvPytsbBXCrI2qQYr2yVi9I=
 github.com/mndrix/tap-go v0.0.0-20171203230836-629fa407e90b/go.mod h1:pzzDgJWZ34fGzaAZGFW22KVZDfyrYW+QABMrWnJBnSs=
 github.com/moby/locker v1.0.1 h1:fOXqR41zeveg4fFODix+1Ch4mj/gT0NE1XJbp/epuBg=
 github.com/moby/locker v1.0.1/go.mod h1:S7SDdo5zpBK84bzzVlKr2V0hz+7x9hWbYC/kq7oQppc=

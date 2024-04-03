@@ -11,7 +11,7 @@ require (
 	github.com/NVIDIA/nvidia-container-toolkit v1.15.0-rc.4
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/uuid v1.6.0
-	github.com/mittwald/go-helm-client v0.12.8
+	github.com/mittwald/go-helm-client v0.12.9
 	github.com/onsi/ginkgo/v2 v2.17.1
 	github.com/onsi/gomega v1.31.1
 	github.com/prometheus/procfs v0.13.0
