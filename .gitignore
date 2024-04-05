@@ -4,3 +4,4 @@
 /mps-control-daemon
 /releases
 deployments/helm/gpu-feature-discovery
+e2e_logs
