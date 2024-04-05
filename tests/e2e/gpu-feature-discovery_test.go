@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -135,6 +136,11 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 
 		// Cleanup before next test run
 		AfterEach(func(ctx context.Context) {
+			// Gather logs
+			if CurrentSpecReport().Failed() {
+				err := common.MustGather(filepath.Join(*LogArtifactDir, f.UniqueName), "gpu-feature-discovery", f.Namespace.Name)
+				Expect(err).NotTo(HaveOccurred())
+			}
 			// Delete Helm release
 			err := helmClient.UninstallReleaseByName(helmReleaseName)
 			Expect(err).NotTo(HaveOccurred())

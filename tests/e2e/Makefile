@@ -23,6 +23,7 @@ E2E_IMAGE_REPO ?= $(REGISTRY)/$(DRIVER_NAME)
 E2E_IMAGE_TAG ?= $(VERSION)
 E2E_IMAGE_PULL_POLICY ?= IfNotPresent
 HELM_CHART ?= $(CURDIR)/deployments/helm/nvidia-device-plugin
+LOG_ARTIFACTS ?= $(CURDIR)/e2e_logs
 
 .PHONY: e2e-test
 e2e-test:
@@ -36,6 +37,7 @@ e2e-test:
 		-image.repo=$(E2E_IMAGE_REPO) \
 		-image.tag=$(E2E_IMAGE_TAG) \
 		-image.pull-policy=$(E2E_IMAGE_PULL_POLICY) \
+		-log-artifacts=$(LOG_ARTIFACTS) \
 		-helm-chart=$(HELM_CHART) \
 		-ginkgo.focus="\[nvidia\]" \
 		-test.timeout=1h

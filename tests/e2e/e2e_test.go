@@ -35,6 +35,7 @@ import (
 var (
 	NVIDIA_DRIVER_ENABLED = flag.Bool("driver-enabled", false, "NVIDIA driver is installed on test infra")
 	HelmChart             = flag.String("helm-chart", "", "Helm chart to use")
+	LogArtifactDir        = flag.String("log-artifacts", "", "Directory to store logs")
 	ImageRepo             = flag.String("image.repo", "", "Image repository to fetch image from")
 	ImageTag              = flag.String("image.tag", "", "Image tag to use")
 	ImagePullPolicy       = flag.String("image.pull-policy", "IfNotPresent", "Image pull policy")
