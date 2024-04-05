@@ -138,8 +138,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 		AfterEach(func(ctx context.Context) {
 			// Gather logs
 			if CurrentSpecReport().Failed() {
-				err := common.MustGather(filepath.Join(*LogArtifactDir, f.UniqueName), "gpu-feature-discovery", f.Namespace.Name)
-				Expect(err).NotTo(HaveOccurred())
+				_ = common.MustGather("gpu-feature-discovery", f.Namespace.Name, filepath.Join(*LogArtifactDir, f.UniqueName))
 			}
 			// Delete Helm release
 			err := helmClient.UninstallReleaseByName(helmReleaseName)

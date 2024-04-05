@@ -110,8 +110,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 		AfterEach(func(ctx context.Context) {
 			// Gather logs
 			if CurrentSpecReport().Failed() {
-				err := common.MustGather(filepath.Join(*LogArtifactDir, f.UniqueName), "k8s-device-plugin", f.Namespace.Name)
-				Expect(err).NotTo(HaveOccurred())
+				_ = common.MustGather("k8s-device-plugin", f.Namespace.Name, filepath.Join(*LogArtifactDir, f.UniqueName))
 			}
 			// Delete Helm release
 			err := helmClient.UninstallReleaseByName(helmReleaseName)

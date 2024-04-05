@@ -22,18 +22,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/yaml"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/kubectl/pkg/scheme"
 )
 
-func MustGather(artifactDir, component, namespace string) error {
+func MustGather(component, namespace, artifactDir string) error {
 	// Get the kubeconfig
 	kubeconfig := os.Getenv("KUBECONFIG")
 
@@ -55,21 +52,6 @@ func MustGather(artifactDir, component, namespace string) error {
 	defer errLogFile.Close()
 
 	// Create the Kubernetes client
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		if _, lerr := errLogFile.WriteString(fmt.Sprintf("Error creating Kubernetes rest config: %v\n", err)); lerr != nil {
-			err = fmt.Errorf("%v+ error writing to stderr log file: %v", err, lerr)
-		}
-		return err
-	}
-	err = setKubernetesDefaults(config)
-	if err != nil {
-		if _, lerr := errLogFile.WriteString(fmt.Sprintf("Error Setting up Kubernetes rest config: %v\n", err)); lerr != nil {
-			err = fmt.Errorf("%v+ error writing to stderr log file: %v", err, lerr)
-		}
-		return err
-	}
-
 	clientset, err := createKubernetesClient(kubeconfig)
 	if err != nil {
 		if _, lerr := errLogFile.WriteString(fmt.Sprintf("Error creating Kubernetes client: %v\n", err)); lerr != nil {
@@ -268,22 +250,4 @@ func createKubernetesClient(kubeconfig string) (*kubernetes.Clientset, error) {
 	}
 
 	return clientset, nil
-}
-
-// setKubernetesDefaults sets default values on the provided client config for accessing the
-// Kubernetes API or returns an error if any of the defaults are impossible or invalid.
-func setKubernetesDefaults(config *rest.Config) error {
-	// TODO remove this hack.  This is allowing the GetOptions to be serialized.
-	config.GroupVersion = &schema.GroupVersion{Group: "", Version: "v1"}
-
-	if config.APIPath == "" {
-		config.APIPath = "/api"
-	}
-	if config.NegotiatedSerializer == nil {
-		// This codec factory ensures the resources are not converted. Therefore, resources
-		// will not be round-tripped through internal versions. Defaulting does not happen
-		// on the client.
-		config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
-	}
-	return rest.SetKubernetesDefaults(config)
 }
