@@ -1203,7 +1203,7 @@ sigs.k8s.io/kustomize/kyaml/yaml/merge2
 sigs.k8s.io/kustomize/kyaml/yaml/merge3
 sigs.k8s.io/kustomize/kyaml/yaml/schema
 sigs.k8s.io/kustomize/kyaml/yaml/walk
-# sigs.k8s.io/node-feature-discovery v0.15.3
+# sigs.k8s.io/node-feature-discovery v0.15.4
 ## explicit; go 1.21
 sigs.k8s.io/node-feature-discovery/pkg/apis/nfd/v1alpha1
 sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned
