@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -107,6 +108,10 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 
 		// Cleanup before next test run
 		AfterEach(func(ctx context.Context) {
+			// Gather logs
+			if CurrentSpecReport().Failed() {
+				_ = common.MustGather("k8s-device-plugin", f.Namespace.Name, filepath.Join(*LogArtifactDir, f.UniqueName))
+			}
 			// Delete Helm release
 			err := helmClient.UninstallReleaseByName(helmReleaseName)
 			Expect(err).NotTo(HaveOccurred())

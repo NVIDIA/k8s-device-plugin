@@ -160,10 +160,10 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	helm.sh/helm/v3 v3.14.2 // indirect
 	k8s.io/apiserver v0.29.3 // indirect
-	k8s.io/cli-runtime v0.29.2 // indirect
+	k8s.io/cli-runtime v0.29.3 // indirect
 	k8s.io/component-base v0.29.3 // indirect
 	k8s.io/kube-openapi v0.0.0-20240227032403-f107216b40e2 // indirect
-	k8s.io/kubectl v0.29.2 // indirect
+	k8s.io/kubectl v0.29.3 // indirect
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e // indirect
 	oras.land/oras-go v1.2.5 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect

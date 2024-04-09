@@ -46,5 +46,13 @@ jobs:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
           E2E_IMAGE_REPO: ghcr.io/nvidia/k8s-device-plugin
           E2E_IMAGE_TAG: ${COMMIT_SHORT_SHA}-ubuntu20.04
+          LOG_ARTIFACTS: ${{ github.workspace }}/e2e_logs
         run: |
           make -f tests/e2e/Makefile e2e-test
+      - name: Archive test logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-logs
+          path: ./e2e_logs/
+          retention-days: 15
