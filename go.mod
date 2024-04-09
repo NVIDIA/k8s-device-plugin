@@ -18,7 +18,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.27.1
-	golang.org/x/mod v0.16.0
+	golang.org/x/mod v0.17.0
 	golang.org/x/net v0.24.0
 	google.golang.org/grpc v1.62.1
 	k8s.io/api v0.29.3
