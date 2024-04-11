@@ -27,10 +27,10 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 )
 
-// NewNVMLLabeler creates a new NVML-based labeler using the provided NVML library and config.
-func NewNVMLLabeler(manager resource.Manager, config *spec.Config) (Labeler, error) {
+// NewDeviceLabeler creates a new labeler for the specified resource manager.
+func NewDeviceLabeler(manager resource.Manager, config *spec.Config) (Labeler, error) {
 	if err := manager.Init(); err != nil {
-		return nil, fmt.Errorf("failed to initialize NVML: %v", err)
+		return nil, fmt.Errorf("failed to initialize resource manager: %v", err)
 	}
 	defer func() {
 		_ = manager.Shutdown()
