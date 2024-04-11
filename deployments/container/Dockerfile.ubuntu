@@ -50,6 +50,7 @@ RUN make PREFIX=/artifacts cmds
 FROM nvidia/${CUDA_IMAGE}:${CUDA_VERSION}-base-${BASE_DIST}
 
 # Remove CUDA libs(compat etc) in favor of libs installed by the NVIDIA driver
+RUN rm -f cuda-*.deb
 RUN apt-get --purge -y autoremove cuda-*
 
 ENV NVIDIA_DISABLE_REQUIRE="true"
