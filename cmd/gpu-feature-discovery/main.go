@@ -159,7 +159,7 @@ func start(c *cli.Context, cfg *Config) error {
 		vgpul := vgpu.NewVGPULib(vgpu.NewNvidiaPCILib())
 
 		var clientSets flags.ClientSets
-		if config.Flags.UseNodeFeatureAPI == nil || !*config.Flags.UseNodeFeatureAPI {
+		if config.Flags.UseNodeFeatureAPI != nil && *config.Flags.UseNodeFeatureAPI {
 			cs, err := cfg.kubeClientConfig.NewClientSets()
 			if err != nil {
 				return fmt.Errorf("failed to create clientsets: %w", err)
