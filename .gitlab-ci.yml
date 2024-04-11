@@ -36,7 +36,7 @@ image-ubi8:
     - .image-build
     - .dist-ubi8
 
-image-ubuntu20.04:
+image-ubuntu22.04:
   extends:
     - .image-build
-    - .dist-ubuntu20.04
+    - .dist-ubuntu22.04

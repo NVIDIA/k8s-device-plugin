@@ -70,10 +70,10 @@ image-ubi8:
     - .image-pull
     - .dist-ubi8
 
-image-ubuntu20.04:
+image-ubuntu22.04:
   extends:
     - .image-pull
-    - .dist-ubuntu20.04
+    - .dist-ubuntu22.04
 
 # We skip the integration tests for the internal CI:
 .integration:
@@ -118,10 +118,10 @@ image-ubuntu20.04:
 
 # Define the external release targets
 # Release to NGC
-release:ngc-ubuntu20.04:
+release:ngc-ubuntu22.04:
   extends:
     - .release:ngc
-    - .dist-ubuntu20.04
+    - .dist-ubuntu22.04
 
 release:ngc-ubi8:
   extends:

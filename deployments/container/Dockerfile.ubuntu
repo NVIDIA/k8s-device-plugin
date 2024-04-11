@@ -15,7 +15,7 @@
 ARG GOLANG_VERSION=1.20.5
 ARG CUDA_IMAGE=cuda
 ARG CUDA_VERSION=12.2.0
-ARG BASE_DIST=ubuntu20.04
+ARG BASE_DIST=ubuntu22.04
 FROM nvidia/cuda:${CUDA_VERSION}-base-${BASE_DIST} as build
 
 RUN apt-get update && \
