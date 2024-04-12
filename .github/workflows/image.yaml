@@ -25,7 +25,6 @@ on:
       - release-*
   push:
     branches:
-      - use-ubuntu22.04-image
       - main
       - release-*
 
