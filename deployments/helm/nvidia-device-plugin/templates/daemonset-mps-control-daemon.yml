@@ -89,9 +89,9 @@ spec:
         - name: CONFIG_FILE_DST
           value: "/config/config.yaml"
         - name: DEFAULT_CONFIG
-          value: "{{ .Values.config.default }}"
+          value: {{ .Values.config.default }}
         - name: FALLBACK_STRATEGIES
-          value: "{{ join "," .Values.config.fallbackStrategies }}"
+          value: {{ join "," .Values.config.fallbackStrategies }}
         - name: SEND_SIGNAL
           value: "false"
         - name: SIGNAL
@@ -126,9 +126,9 @@ spec:
           - name: CONFIG_FILE_DST
             value: "/config/config.yaml"
           - name: DEFAULT_CONFIG
-            value: "{{ .Values.config.default }}"
+            value: {{ .Values.config.default }}
           - name: FALLBACK_STRATEGIES
-            value: "{{ join "," .Values.config.fallbackStrategies }}"
+            value: {{ join "," .Values.config.fallbackStrategies }}
           - name: SEND_SIGNAL
             value: "true"
           - name: SIGNAL
@@ -153,7 +153,7 @@ spec:
                 fieldPath: spec.nodeName
         {{- if typeIs "string" .Values.migStrategy }}
           - name: MIG_STRATEGY
-            value: "{{ .Values.migStrategy }}"
+            value: {{ .Values.migStrategy }}
         {{- end }}
         {{- if eq $hasConfigMap "true" }}
           - name: CONFIG_FILE
@@ -195,7 +195,7 @@ spec:
       {{- if eq $hasConfigMap "true" }}
       - name: available-configs
         configMap:
-          name: "{{ $configMapName }}"
+          name: {{ $configMapName }}
       - name: config
         emptyDir: {}
       {{- end }}

@@ -78,9 +78,9 @@ spec:
         - name: CONFIG_FILE_DST
           value: "/config/config.yaml"
         - name: DEFAULT_CONFIG
-          value: "{{ .Values.config.default }}"
+          value: {{ .Values.config.default }}
         - name: FALLBACK_STRATEGIES
-          value: "{{ join "," .Values.config.fallbackStrategies }}"
+          value: {{ join "," .Values.config.fallbackStrategies }}
         - name: SEND_SIGNAL
           value: "false"
         - name: SIGNAL
@@ -114,9 +114,9 @@ spec:
         - name: CONFIG_FILE_DST
           value: "/config/config.yaml"
         - name: DEFAULT_CONFIG
-          value: "{{ .Values.config.default }}"
+          value: {{ .Values.config.default }}
         - name: FALLBACK_STRATEGIES
-          value: "{{ join "," .Values.config.fallbackStrategies }}"
+          value: {{ join "," .Values.config.fallbackStrategies }}
         - name: SEND_SIGNAL
           value: "true"
         - name: SIGNAL
@@ -146,23 +146,23 @@ spec:
                 fieldPath: metadata.namespace
         {{- if typeIs "string" .Values.migStrategy }}
           - name: MIG_STRATEGY
-            value: "{{ .Values.migStrategy }}"
+            value: {{ .Values.migStrategy }}
         {{- end }}
         {{- if typeIs "bool" .Values.failOnInitError }}
           - name: FAIL_ON_INIT_ERROR
-            value: "{{ .Values.failOnInitError }}"
+            value: {{ .Values.failOnInitError | quote }}
         {{- end }}
         {{- if typeIs "bool" .Values.noTimestamp }}
           - name: GFD_NO_TIMESTAMP
-            value: "{{ .Values.noTimestamp}}"
+            value: {{ .Values.noTimestamp | quote }}
         {{- end }}
         {{- if or (typeIs "string" .Values.sleepInterval) (typeIs "int" .Values.sleepInterval) }}
           - name: GFD_SLEEP_INTERVAL
-            value: "{{ .Values.sleepInterval }}"
+            value: {{ .Values.sleepInterval | quote }}
         {{- end }}
         {{- if typeIs "bool" .Values.nfd.enableNodeFeatureApi }}
           - name: GFD_USE_NODE_FEATURE_API
-            value: "{{ .Values.nfd.enableNodeFeatureApi }}"
+            value: {{ .Values.nfd.enableNodeFeatureApi | quote }}
         {{- end }}
         {{- if eq $hasConfigMap "true" }}
           - name: CONFIG_FILE
@@ -199,7 +199,7 @@ spec:
       {{- if eq $hasConfigMap "true" }}
         - name: available-configs
           configMap:
-            name: "{{ $configMapName }}"
+            name: {{ $configMapName }}
         - name: config
           emptyDir: {}
       {{- end }}
