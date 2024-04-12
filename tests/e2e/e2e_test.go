@@ -18,10 +18,8 @@ package e2e
 
 import (
 	"flag"
-	"math/rand"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -52,7 +50,6 @@ func TestMain(m *testing.M) {
 		e2elog.Failf("Required flags not set. Please set -image.repo, -image.tag and -helm-chart")
 	}
 
-	rand.New(rand.NewSource(time.Now().UnixNano()))
 	os.Exit(m.Run())
 }
 
