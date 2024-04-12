@@ -25,7 +25,6 @@ on:
       - release-*
   push:
     branches:
-      - use-ubuntu22.04-image
       - main
       - release-*
 
@@ -56,7 +55,7 @@ jobs:
             GENERATE_ARTIFACTS="true"
           fi
           echo "PUSH_ON_BUILD=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
-          echo "BUILD_MULTI_ARCH_IMAGES=true" >> $GITHUB_ENV
+          echo "BUILD_MULTI_ARCH_IMAGES=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
