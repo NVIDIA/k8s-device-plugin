@@ -22,7 +22,6 @@ VERSION  ?= v0.15.0-rc.2
 # vVERSION represents the version with a guaranteed v-prefix
 vVERSION := v$(VERSION:v%=%)
 
-CUDA_VERSION ?= 12.3.2
 GOLANG_VERSION ?= 1.21.5
 
 BUILDIMAGE_TAG ?= devel-go$(GOLANG_VERSION)

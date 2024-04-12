@@ -18,6 +18,11 @@ updates:
         exclude-patterns:
         - k8s.io/klog/*
 
+  - package-ecosystem: "docker"
+    directory: "/deployments/container"
+    schedule:
+      interval: "daily"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
