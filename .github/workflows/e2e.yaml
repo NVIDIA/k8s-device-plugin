@@ -45,7 +45,7 @@ jobs:
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
           E2E_IMAGE_REPO: ghcr.io/nvidia/k8s-device-plugin
-          E2E_IMAGE_TAG: ${COMMIT_SHORT_SHA}-ubuntu20.04
+          E2E_IMAGE_TAG: ${COMMIT_SHORT_SHA}-ubuntu22.04
           LOG_ARTIFACTS: ${{ github.workspace }}/e2e_logs
         run: |
           make -f tests/e2e/Makefile e2e-test
