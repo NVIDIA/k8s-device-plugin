@@ -1,5 +1,5 @@
 run:
-  deadline: 10m
+  timeout: 10m
 
 linters:
   enable:
@@ -28,11 +28,6 @@ issues:
     linters:
     - gosec
     text: "G404"
-  # We disable the memory aliasing checks in tests
-  - path: ".*_test.go"
-    linters:
-    - gosec
-    text: "G601: Implicit memory aliasing in for loop"
   # We create world-readable files in tests.
   - path: ".*_test.go"
     linters:
