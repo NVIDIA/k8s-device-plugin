@@ -139,10 +139,7 @@ nfd:
         pci:
           deviceClassWhitelist:
           - "02"
-          - "0200"
-          - "0207"
-          - "0300"
-          - "0302"
+          - "03"
           deviceLabelFields:
           - vendor
 
