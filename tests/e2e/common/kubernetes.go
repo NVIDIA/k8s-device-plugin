@@ -165,29 +165,8 @@ func CleanupNode(ctx context.Context, cs clientset.Interface) {
 	}
 }
 
-func CleanupNodeFeatures(ctx context.Context, cli *nfdclient.Clientset, namespace string) {
-	// Clean NodeFeatureRule objects
-	nfrs, err := cli.NfdV1alpha1().NodeFeatureRules().List(ctx, metav1.ListOptions{})
-	if errors.IsNotFound(err) {
-		// Omitted error, nothing to do.
-	} else {
-		Expect(err).NotTo(HaveOccurred())
-
-		if len(nfrs.Items) != 0 {
-			By("Deleting NodeFeatureRule objects from the cluster")
-			for _, nfr := range nfrs.Items {
-				err = cli.NfdV1alpha1().NodeFeatureRules().Delete(ctx, nfr.Name, metav1.DeleteOptions{})
-				if errors.IsNotFound(err) {
-					// Omitted error
-					continue
-				} else {
-					Expect(err).NotTo(HaveOccurred())
-				}
-			}
-		}
-	}
-
-	// Clean NodeFeature objects
+// cleanupNodeFeatures deletes all NodeFeature objects in the given namespace
+func cleanupNodeFeatures(ctx context.Context, cli *nfdclient.Clientset, namespace string) {
 	nfs, err := cli.NfdV1alpha1().NodeFeatures(namespace).List(ctx, metav1.ListOptions{})
 	if errors.IsNotFound(err) {
 		// Omitted error, nothing to do.
@@ -207,4 +186,32 @@ func CleanupNodeFeatures(ctx context.Context, cli *nfdclient.Clientset, namespac
 			}
 		}
 	}
+}
+
+// cleanupNodeFeatureRules deletes all NodeFeatureRule objects
+func cleanupNodeFeatureRules(ctx context.Context, cli *nfdclient.Clientset) {
+	nfrs, err := cli.NfdV1alpha1().NodeFeatureRules().List(ctx, metav1.ListOptions{})
+	if errors.IsNotFound(err) {
+		// Omitted error, nothing to do.
+	} else {
+		Expect(err).NotTo(HaveOccurred())
+
+		if len(nfrs.Items) != 0 {
+			By("Deleting NodeFeatureRule objects from the cluster")
+			for _, nfr := range nfrs.Items {
+				err = cli.NfdV1alpha1().NodeFeatureRules().Delete(ctx, nfr.Name, metav1.DeleteOptions{})
+				if errors.IsNotFound(err) {
+					// Omitted error
+					continue
+				} else {
+					Expect(err).NotTo(HaveOccurred())
+				}
+			}
+		}
+	}
+}
+
+func CleanupNFDObjects(ctx context.Context, cli *nfdclient.Clientset, namespace string) {
+	cleanupNodeFeatureRules(ctx, cli)
+	cleanupNodeFeatures(ctx, cli, namespace)
 }

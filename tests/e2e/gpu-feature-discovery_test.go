@@ -145,7 +145,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 			// Cleanup node
 			common.CleanupNode(ctx, f.ClientSet)
-			common.CleanupNodeFeatures(ctx, nfdClient, f.Namespace.Name)
+			common.CleanupNFDObjects(ctx, nfdClient, f.Namespace.Name)
 		})
 
 		AfterAll(func(ctx context.Context) {
