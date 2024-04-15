@@ -143,9 +143,9 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 			// Delete Helm release
 			err := helmClient.UninstallReleaseByName(helmReleaseName)
 			Expect(err).NotTo(HaveOccurred())
-			// cleanup node
+			// Cleanup node
 			common.CleanupNode(ctx, f.ClientSet)
-			common.CleanupNodeFeatureRules(ctx, nfdClient, f.Namespace.Name)
+			common.CleanupNodeFeatures(ctx, nfdClient, f.Namespace.Name)
 		})
 
 		AfterAll(func(ctx context.Context) {

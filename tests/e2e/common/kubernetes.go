@@ -26,6 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	nfdv1alpha1 "sigs.k8s.io/node-feature-discovery/pkg/apis/nfd/v1alpha1"
@@ -164,27 +165,46 @@ func CleanupNode(ctx context.Context, cs clientset.Interface) {
 	}
 }
 
-func CleanupNodeFeatureRules(ctx context.Context, cli *nfdclient.Clientset, namespace string) {
-	// Drop NodeFeatureRule objects
+func CleanupNodeFeatures(ctx context.Context, cli *nfdclient.Clientset, namespace string) {
+	// Clean NodeFeatureRule objects
 	nfrs, err := cli.NfdV1alpha1().NodeFeatureRules().List(ctx, metav1.ListOptions{})
-	Expect(err).NotTo(HaveOccurred())
+	if errors.IsNotFound(err) {
+		// Omitted error, nothing to do.
+	} else {
+		Expect(err).NotTo(HaveOccurred())
 
-	if len(nfrs.Items) != 0 {
-		By("Deleting NodeFeatureRule objects from the cluster")
-		for _, nfr := range nfrs.Items {
-			err = cli.NfdV1alpha1().NodeFeatureRules().Delete(ctx, nfr.Name, metav1.DeleteOptions{})
-			Expect(err).NotTo(HaveOccurred())
+		if len(nfrs.Items) != 0 {
+			By("Deleting NodeFeatureRule objects from the cluster")
+			for _, nfr := range nfrs.Items {
+				err = cli.NfdV1alpha1().NodeFeatureRules().Delete(ctx, nfr.Name, metav1.DeleteOptions{})
+				if errors.IsNotFound(err) {
+					// Omitted error
+					continue
+				} else {
+					Expect(err).NotTo(HaveOccurred())
+				}
+			}
 		}
 	}
 
+	// Clean NodeFeature objects
 	nfs, err := cli.NfdV1alpha1().NodeFeatures(namespace).List(ctx, metav1.ListOptions{})
-	Expect(err).NotTo(HaveOccurred())
+	if errors.IsNotFound(err) {
+		// Omitted error, nothing to do.
+	} else {
+		Expect(err).NotTo(HaveOccurred())
 
-	if len(nfs.Items) != 0 {
-		By("Deleting NodeFeature objects from namespace " + namespace)
-		for _, nf := range nfs.Items {
-			err = cli.NfdV1alpha1().NodeFeatures(namespace).Delete(ctx, nf.Name, metav1.DeleteOptions{})
-			Expect(err).NotTo(HaveOccurred())
+		if len(nfs.Items) != 0 {
+			By("Deleting NodeFeature objects from namespace " + namespace)
+			for _, nf := range nfs.Items {
+				err = cli.NfdV1alpha1().NodeFeatures(namespace).Delete(ctx, nf.Name, metav1.DeleteOptions{})
+				if errors.IsNotFound(err) {
+					// Omitted error
+					continue
+				} else {
+					Expect(err).NotTo(HaveOccurred())
+				}
+			}
 		}
 	}
 }
