@@ -50,6 +50,7 @@ type nvcdilib struct {
 	devRoot            string
 	nvidiaCTKPath      string
 	ldconfigPath       string
+	configSearchPaths  []string
 	librarySearchPaths []string
 
 	csvFiles          []string
@@ -93,8 +94,11 @@ func New(opts ...Option) (Interface, error) {
 		l.infolib = info.New()
 	}
 
-	// TODO: We need to improve the construction of this driver root.
-	l.driver = root.New(l.logger, l.driverRoot, l.librarySearchPaths)
+	l.driver = root.New(
+		root.WithLogger(l.logger),
+		root.WithDriverRoot(l.driverRoot),
+		root.WithLibrarySearchPaths(l.librarySearchPaths...),
+	)
 
 	var lib Interface
 	switch l.resolveMode() {
