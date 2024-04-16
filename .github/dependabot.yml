@@ -23,6 +23,31 @@ updates:
     schedule:
       interval: "daily"
 
+  - package-ecosystem: "gomod"
+    target-branch: release-0.15
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    labels:
+    - dependencies
+    - maintenance
+    groups:
+      k8sio:
+        patterns:
+        - k8s.io/*
+        exclude-patterns:
+        - k8s.io/klog/*
+
+  - package-ecosystem: "docker"
+    target-branch: release-0.15
+    directory: "/deployments/container"
+    schedule:
+      interval: "daily"
+    labels:
+    - dependencies
+    - maintenance
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
