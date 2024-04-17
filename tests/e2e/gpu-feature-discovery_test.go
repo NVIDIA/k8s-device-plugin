@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -35,6 +35,7 @@ import (
 	nfdclient "sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned"
 
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common"
+	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common/diagnostics"
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework"
 	e2elog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework/logs"
 )
@@ -63,6 +64,15 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 		"nvidia.com/mps.capable":          "[true|false]",
 	}
 
+	defaultCollectorObjects := []string{
+		"pods",
+		"nodes",
+		"namespaces",
+		"deployments",
+		"demonsets",
+		"nodefeatures",
+	}
+
 	Context("When deploying GFD", Ordered, func() {
 		// helm-chart is required
 		if *HelmChart == "" {
@@ -79,6 +89,9 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 			chartSpec       helm.ChartSpec
 			helmReleaseName string
 			kubeconfig      []byte
+
+			collectLogsFrom      []string
+			diagnosticsCollector diagnostics.Collector
 		)
 
 		values := helmValues.Options{
@@ -90,11 +103,18 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 				"devicePlugin.enabled=false",
 			},
 		}
+
 		// checkNodeFeatureObject is a helper function to check if NodeFeature object was created
 		checkNodeFeatureObject := func(ctx context.Context, name string) bool {
 			gfdNodeFeature := fmt.Sprintf("nvidia-features-for-%s", name)
 			_, err := nfdClient.NfdV1alpha1().NodeFeatures(f.Namespace.Name).Get(ctx, gfdNodeFeature, metav1.GetOptions{})
 			return err == nil
+		}
+
+		// check Collector objects
+		collectLogsFrom = defaultCollectorObjects
+		if *CollectLogsFrom != "" && *CollectLogsFrom != "default" {
+			collectLogsFrom = strings.Split(*CollectLogsFrom, ",")
 		}
 
 		BeforeAll(func(ctx context.Context) {
@@ -127,6 +147,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 				ValuesOptions: values,
 				CleanupOnFail: true,
 			}
+
 			helmClient, err = helm.NewClientFromKubeConf(opt)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -136,9 +157,23 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 
 		// Cleanup before next test run
 		AfterEach(func(ctx context.Context) {
-			// Gather logs
+			// Run diagnostic collector if test failed
 			if CurrentSpecReport().Failed() {
-				_ = common.MustGather("gpu-feature-discovery", f.Namespace.Name, filepath.Join(*LogArtifactDir, f.UniqueName))
+				var err error
+				diagnosticsCollector, err = diagnostics.New(
+					diagnostics.WithNamespace(f.Namespace.Name),
+					diagnostics.WithArtifactDir(*LogArtifactDir),
+					diagnostics.WithKubernetesClient(f.ClientSet),
+					diagnostics.WithNFDClient(nfdClient),
+					diagnostics.WithObjects(collectLogsFrom...),
+				)
+				if err != nil {
+					e2elog.Logf("Failed to create diagnostic collector: %v", err)
+				} else {
+					if err = diagnosticsCollector.Collect(ctx); err != nil {
+						e2elog.Logf("Diagnostic collector failed: %v", err)
+					}
+				}
 			}
 			// Delete Helm release
 			err := helmClient.UninstallReleaseByName(helmReleaseName)

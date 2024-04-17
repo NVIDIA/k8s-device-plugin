@@ -37,6 +37,7 @@ var (
 	ImageRepo             = flag.String("image.repo", "", "Image repository to fetch image from")
 	ImageTag              = flag.String("image.tag", "", "Image tag to use")
 	ImagePullPolicy       = flag.String("image.pull-policy", "IfNotPresent", "Image pull policy")
+	CollectLogsFrom       = flag.String("collect-logs-from", "default", "Comma separated list of objects to collect logs from after test")
 )
 
 func TestMain(m *testing.M) {
