@@ -45,6 +45,7 @@ type cdiHandler struct {
 
 	logger           *logrus.Logger
 	driverRoot       string
+	devRoot          string
 	targetDriverRoot string
 	nvidiaCTKPath    string
 	vendor           string
@@ -83,11 +84,11 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 	if c.logger == nil {
 		c.logger = logrus.StandardLogger()
 	}
-	if c.deviceIDStrategy == "" {
-		c.deviceIDStrategy = "uuid"
-	}
 	if c.driverRoot == "" {
 		c.driverRoot = "/"
+	}
+	if c.deviceIDStrategy == "" {
+		c.deviceIDStrategy = "uuid"
 	}
 	if c.targetDriverRoot == "" {
 		c.targetDriverRoot = c.driverRoot
@@ -107,6 +108,7 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 		nvcdi.WithLogger(c.logger),
 		nvcdi.WithNVIDIACDIHookPath(c.nvidiaCTKPath),
 		nvcdi.WithDriverRoot(c.driverRoot),
+		nvcdi.WithDevRoot(c.devRoot),
 		nvcdi.WithDeviceNamers(deviceNamer),
 		nvcdi.WithVendor(c.vendor),
 		nvcdi.WithClass("gpu"),
@@ -129,6 +131,7 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 			nvcdi.WithLogger(c.logger),
 			nvcdi.WithNVIDIACDIHookPath(c.nvidiaCTKPath),
 			nvcdi.WithDriverRoot(c.driverRoot),
+			nvcdi.WithDevRoot(c.devRoot),
 			nvcdi.WithVendor(c.vendor),
 			nvcdi.WithMode(mode),
 		)

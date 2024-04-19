@@ -39,6 +39,9 @@ func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib 
 		return nil, fmt.Errorf("unknown strategy: %v", *config.Flags.MigStrategy)
 	}
 
+	// TODO: We could consider passing this as an argument since it should already be used to construct nvmllib.
+	driverRoot := root(*config.Flags.Plugin.ContainerDriverRoot)
+
 	deviceListStrategies, err := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
 	if err != nil {
 		return nil, fmt.Errorf("invalid device list strategy: %v", err)
@@ -46,7 +49,8 @@ func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib 
 
 	cdiHandler, err := cdi.New(infolib, nvmllib, devicelib,
 		cdi.WithDeviceListStrategies(deviceListStrategies),
-		cdi.WithDriverRoot(*config.Flags.Plugin.ContainerDriverRoot),
+		cdi.WithDriverRoot(string(driverRoot)),
+		cdi.WithDevRoot(driverRoot.getDevRoot()),
 		cdi.WithTargetDriverRoot(*config.Flags.NvidiaDriverRoot),
 		cdi.WithNvidiaCTKPath(*config.Flags.Plugin.NvidiaCTKPath),
 		cdi.WithDeviceIDStrategy(*config.Flags.Plugin.DeviceIDStrategy),

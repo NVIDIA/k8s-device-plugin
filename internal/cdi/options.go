@@ -30,10 +30,17 @@ func WithDeviceListStrategies(deviceListStrategies spec.DeviceListStrategies) Op
 	}
 }
 
-// WithDriverRoot provides an Option to set the driver root used by the 'cdi' interface
+// WithDriverRoot provides an Option to set the driver root used by the 'cdi' interface.
 func WithDriverRoot(root string) Option {
 	return func(c *cdiHandler) {
 		c.driverRoot = root
+	}
+}
+
+// WithDevRoot sets the dev root for the `cdi` interface.
+func WithDevRoot(root string) Option {
+	return func(c *cdiHandler) {
+		c.devRoot = root
 	}
 }
 

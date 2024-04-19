@@ -274,7 +274,12 @@ func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, bool, e
 	}
 	spec.DisableResourceNamingInConfig(logger.ToKlog, config)
 
-	nvmllib := nvml.New()
+	driverRoot := root(*config.Flags.Plugin.ContainerDriverRoot)
+	// We construct an NVML library specifying the path to libnvidia-ml.so.1
+	// explicitly so that we don't have to rely on the library path.
+	nvmllib := nvml.New(
+		nvml.WithLibraryPath(driverRoot.tryResolveLibrary("libnvidia-ml.so.1")),
+	)
 	devicelib := device.New(nvmllib)
 	infolib := nvinfo.New(
 		nvinfo.WithNvmlLib(nvmllib),
