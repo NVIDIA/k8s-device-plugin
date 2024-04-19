@@ -17,7 +17,7 @@
 package cdi
 
 import (
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
