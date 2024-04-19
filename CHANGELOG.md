@@ -1,5 +1,13 @@
 ## Changelog
 
+### Version v0.15.0
+- Moved `nvidia-device-plugin.yml` static deployment at the root of the repository to `deployments/static/nvidia-device-plugin.yml`.
+- Simplify PCI device clases in NFD worker configuration.
+- Update CUDA base image version to 12.4.1.
+- Switch to Ubuntu22.04-based CUDA image for default image.
+- Add new CUDA driver and runtime version labels to align with other NFD version labels.
+- Update NFD dependency to v0.15.3.
+
 ### Version v0.15.0-rc.2
 - Bump CUDA base image version to 12.3.2
 - Add `cdi-cri` device list strategy. This uses the CDIDevices CRI field to request CDI devices instead of annotations.
