@@ -28,7 +28,7 @@ require (
 	k8s.io/mount-utils v0.29.3
 	sigs.k8s.io/node-feature-discovery v0.15.4
 	sigs.k8s.io/yaml v1.4.0
-	tags.cncf.io/container-device-interface v0.7.1
+	tags.cncf.io/container-device-interface v0.7.2
 )
 
 require (
