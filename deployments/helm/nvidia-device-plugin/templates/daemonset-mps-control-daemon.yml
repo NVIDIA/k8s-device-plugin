@@ -56,6 +56,11 @@ spec:
       shareProcessNamespace: true
       {{- end }}
       initContainers:
+      - name: set-compute-mode
+        image: {{ include "nvidia-device-plugin.fullimage" . }}
+        command: [ 'nvidia-smi', '-c', 'EXCLUSIVE_PROCESS' ]
+        securityContext:
+          privileged: true
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         name: mps-control-daemon-mounts
         command: [mps-control-daemon, mount-shm]
