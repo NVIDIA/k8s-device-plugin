@@ -54,7 +54,9 @@ func New(opts ...Option) (Interface, error) {
 	}
 
 	if m.infolib == nil {
-		m.infolib = info.New()
+		m.infolib = info.New(
+			info.WithNvmlLib(m.nvmllib),
+		)
 	}
 
 	mode, err := m.resolveMode()
@@ -95,20 +97,13 @@ func New(opts ...Option) (Interface, error) {
 }
 
 func (m *manager) resolveMode() (string, error) {
-	// logWithReason logs the output of the has* / is* checks from the info.Interface
-	logWithReason := func(f func() (bool, string), tag string) bool {
-		is, reason := f()
-		if !is {
-			tag = "non-" + tag
-		}
-		klog.Infof("Detected %v platform: %v", tag, reason)
-		return is
-	}
-
-	hasNVML := logWithReason(m.infolib.HasNvml, "NVML")
-	isTegra := logWithReason(m.infolib.IsTegraSystem, "Tegra")
-
-	if !hasNVML && !isTegra {
+	platform := m.infolib.ResolvePlatform()
+	switch platform {
+	case info.PlatformNVML, info.PlatformWSL:
+		return "nvml", nil
+	case info.PlatformTegra:
+		return "tegra", nil
+	default:
 		klog.Error("Incompatible platform detected")
 		klog.Error("If this is a GPU node, did you configure the NVIDIA Container Toolkit?")
 		klog.Error("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
@@ -119,15 +114,4 @@ func (m *manager) resolveMode() (string, error) {
 		}
 		return "null", nil
 	}
-
-	// The NVIDIA container stack does not yet support the use of integrated AND discrete GPUs on the same node.
-	if isTegra {
-		if hasNVML {
-			klog.Warning("Disabling Tegra-based resources on NVML system")
-			return "nvml", nil
-		}
-		return "tegra", nil
-	}
-
-	return "nvml", nil
 }

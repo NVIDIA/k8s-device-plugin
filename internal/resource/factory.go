@@ -40,7 +40,6 @@ func WithConfig(manager Manager, config *spec.Config) Manager {
 
 // getManager returns the resource manager depending on the system configuration.
 func getManager(mode string) Manager {
-
 	resolved := resolveMode(mode)
 	switch resolved {
 	case "nvml":
@@ -62,34 +61,15 @@ func resolveMode(mode string) string {
 	if mode != "" && mode != "auto" {
 		return mode
 	}
-
-	// logWithReason logs the output of the has* / is* checks from the info.Interface
-	logWithReason := func(f func() (bool, string), tag string) bool {
-		is, reason := f()
-		if !is {
-			tag = "non-" + tag
-		}
-		klog.Infof("Detected %v platform: %v", tag, reason)
-		return is
-	}
-
 	infolib := info.New()
 
-	hasNVML := logWithReason(infolib.HasNvml, "NVML")
-	isTegra := logWithReason(infolib.IsTegraSystem, "Tegra")
-
-	// The NVIDIA container stack does not yet support the use of integrated AND discrete GPUs on the same node.
-	if hasNVML && isTegra {
-		klog.Warning("Disabling Tegra-based resources on NVML system")
-		isTegra = false
-	}
-
-	if hasNVML {
+	platform := infolib.ResolvePlatform()
+	switch platform {
+	case info.PlatformNVML, info.PlatformWSL:
 		return "nvml"
-	}
-
-	if isTegra {
+	case info.PlatformTegra:
 		return "tegra"
+	default:
+		return "unknown"
 	}
-	return mode
 }
