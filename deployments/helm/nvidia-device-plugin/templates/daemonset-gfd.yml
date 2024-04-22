@@ -172,6 +172,8 @@ spec:
           - name: NVIDIA_MIG_MONITOR_DEVICES
             value: all
         {{- end }}
+          - name: GFD_MODE
+            value: "{{ .Values.gfdMode }}"
         securityContext:
           {{- include "gpu-feature-discovery.securityContext" . | nindent 10 }}
         volumeMounts:

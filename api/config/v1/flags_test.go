@@ -162,7 +162,8 @@ func TestMarshalFlags(t *testing.T) {
 				"failOnInitError": null,
 				"gdsEnabled": null,
 				"mofedEnabled": null,
-				"useNodeFeatureAPI": null
+				"useNodeFeatureAPI": null,
+				"mode": null
 			}`,
 		},
 		{
@@ -179,6 +180,7 @@ func TestMarshalFlags(t *testing.T) {
 				"gdsEnabled": null,
 				"mofedEnabled": null,
 				"useNodeFeatureAPI": null,
+				"mode": null,
 				"gfd": {
 					"oneshot": null,
 					"noTimestamp": null,
@@ -202,6 +204,7 @@ func TestMarshalFlags(t *testing.T) {
 				"gdsEnabled": null,
 				"mofedEnabled": null,
 				"useNodeFeatureAPI": null,
+				"mode": null,
 				"gfd": {
 					"oneshot": null,
 					"noTimestamp": null,

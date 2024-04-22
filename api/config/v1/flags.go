@@ -62,6 +62,7 @@ type CommandLineFlags struct {
 	GDSEnabled        *bool                   `json:"gdsEnabled"                 yaml:"gdsEnabled"`
 	MOFEDEnabled      *bool                   `json:"mofedEnabled"               yaml:"mofedEnabled"`
 	UseNodeFeatureAPI *bool                   `json:"useNodeFeatureAPI"          yaml:"useNodeFeatureAPI"`
+	Mode              *string                 `json:"mode"                       yaml:"mode"`
 	Plugin            *PluginCommandLineFlags `json:"plugin,omitempty"           yaml:"plugin,omitempty"`
 	GFD               *GFDCommandLineFlags    `json:"gfd,omitempty"              yaml:"gfd,omitempty"`
 }
@@ -128,6 +129,8 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.MOFEDEnabled, c, n)
 			case "use-node-feature-api":
 				updateFromCLIFlag(&f.UseNodeFeatureAPI, c, n)
+			case "mode":
+				updateFromCLIFlag(&f.Mode, c, n)
 			}
 			// Plugin specific flags
 			if f.Plugin == nil {
