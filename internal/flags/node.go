@@ -38,7 +38,6 @@ func (n *NodeConfig) Flags() []cli.Flag {
 		&cli.StringFlag{
 			Name:        "node-name",
 			Usage:       "The name of the node to be worked on.",
-			Required:    true,
 			Destination: &n.Name,
 			EnvVars:     []string{"NODE_NAME"},
 		},

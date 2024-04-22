@@ -167,17 +167,21 @@ func start(c *cli.Context, cfg *Config) error {
 			clientSets = cs
 		}
 
+		labelOutputer, err := lm.NewOutputer(
+			config,
+			cfg.nodeConfig,
+			clientSets,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create label outputer: %w", err)
+		}
+
 		klog.Info("Start running")
 		d := &gfd{
-			manager: manager,
-			vgpu:    vgpul,
-			config:  config,
-
-			labelOutputer: lm.NewOutputer(
-				config,
-				cfg.nodeConfig,
-				clientSets,
-			),
+			manager:       manager,
+			vgpu:          vgpul,
+			config:        config,
+			labelOutputer: labelOutputer,
 		}
 		restart, err := d.run(sigs)
 		if err != nil {

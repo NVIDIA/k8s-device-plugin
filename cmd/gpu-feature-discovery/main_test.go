@@ -114,11 +114,14 @@ func TestRunOneshot(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
+	labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+	require.NoError(t, err)
+
 	d := gfd{
 		manager:       nvmlMock,
 		vgpu:          vgpuMock,
 		config:        conf,
-		labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
+		labelOutputer: labelOutputer,
 	}
 	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
@@ -166,11 +169,14 @@ func TestRunWithNoTimestamp(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
+	labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+	require.NoError(t, err)
+
 	d := gfd{
 		manager:       nvmlMock,
 		vgpu:          vgpuMock,
 		config:        conf,
-		labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
+		labelOutputer: labelOutputer,
 	}
 	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
@@ -230,11 +236,14 @@ func TestRunSleep(t *testing.T) {
 	var runRestart bool
 	var runError error
 	go func() {
+		labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+		require.NoError(t, err)
+
 		d := gfd{
 			manager:       nvmlMock,
 			vgpu:          vgpuMock,
 			config:        conf,
-			labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
+			labelOutputer: labelOutputer,
 		}
 		runRestart, runError = d.run(sigs)
 	}()
@@ -390,11 +399,14 @@ func TestFailOnNVMLInitError(t *testing.T) {
 
 			nvmlMock := rt.NewManagerMockWithDevices(rt.NewFullGPU()).WithErrorOnInit(tc.errorOnInit)
 
+			labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+			require.NoError(t, err)
+
 			d := gfd{
 				manager:       resource.WithConfig(nvmlMock, conf),
 				vgpu:          vgpuMock,
 				config:        conf,
-				labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
+				labelOutputer: labelOutputer,
 			}
 			restart, err := d.run(nil)
 			if tc.expectError {
