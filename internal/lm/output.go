@@ -153,6 +153,9 @@ type nodeFeatureObject struct {
 // UpdateNodeFeatureObject creates/updates the node-specific NodeFeature custom resource.
 func (n *nodeFeatureObject) Output(labels Labels) error {
 	nodename := n.nodeConfig.Name
+	if nodename == "" {
+		return fmt.Errorf("required flag %q not set", "node-name")
+	}
 	namespace := n.nodeConfig.Namespace
 	nodeFeatureName := strings.Join([]string{nodeFeatureVendorPrefix, nodename}, "-")
 
