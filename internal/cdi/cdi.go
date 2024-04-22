@@ -26,6 +26,7 @@ import (
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi"
 	transformroot "github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform/root"
 	"github.com/sirupsen/logrus"
+	"k8s.io/klog/v2"
 	cdiapi "tags.cncf.io/container-device-interface/pkg/cdi"
 	cdiparser "tags.cncf.io/container-device-interface/pkg/parser"
 
@@ -59,8 +60,8 @@ type cdiHandler struct {
 
 var _ Interface = &cdiHandler{}
 
-// newHandler constructs a new instance of the 'cdi' interface
-func newHandler(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, opts ...Option) (Interface, error) {
+// New constructs a new instance of the 'cdi' interface
+func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, opts ...Option) (Interface, error) {
 	c := &cdiHandler{
 		infolib:   infolib,
 		nvmllib:   nvmllib,
@@ -71,6 +72,11 @@ func newHandler(infolib info.Interface, nvmllib nvml.Interface, devicelib device
 	}
 
 	if !c.deviceListStrategies.IsCDIEnabled() {
+		return &null{}, nil
+	}
+	hasNVML, _ := infolib.HasNvml()
+	if !hasNVML {
+		klog.Warning("No valid resources detected, creating a null CDI handler")
 		return &null{}, nil
 	}
 
