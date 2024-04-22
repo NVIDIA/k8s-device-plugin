@@ -23,7 +23,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 )
 
 // PciInfo is a type alias to nvml.PciInfo to allow for functions to be defined on the type.
