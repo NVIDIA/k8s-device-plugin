@@ -130,7 +130,7 @@ Check if migStrategy (from all possible configurations) is "none"
   {{- if ne .Values.migStrategy "none" -}}
     {{- $result = false -}}
   {{- end -}}
-{{- else if ne (include "nvidia-device-plugin.configMapName" .) "true" -}}
+{{- else if eq (include "nvidia-device-plugin.hasConfigMap" .) "true" -}}
     {{- $result = false -}}
 {{- else -}}
   {{- range $name, $contents := $.Values.config.map -}}
