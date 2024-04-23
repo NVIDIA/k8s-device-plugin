@@ -19,7 +19,6 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -54,10 +53,8 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 			crds      []*apiextensionsv1.CustomResourceDefinition
 			extClient *extclient.Clientset
 
-			helmClient      helm.Client
-			chartSpec       helm.ChartSpec
 			helmReleaseName string
-			kubeconfig      []byte
+			chartSpec       helm.ChartSpec
 
 			collectLogsFrom      []string
 			diagnosticsCollector *diagnostics.Diagnostic
@@ -91,25 +88,13 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 		}
 
 		BeforeAll(func(ctx context.Context) {
-			var err error
 			// Create clients for apiextensions and our CRD api
 			extClient = extclient.NewForConfigOrDie(f.ClientConfig())
 			helmReleaseName = "nvdp-e2e-test" + rand.String(5)
-			kubeconfig, err = os.ReadFile(os.Getenv("KUBECONFIG"))
-			Expect(err).NotTo(HaveOccurred())
 		})
 
 		JustBeforeEach(func(ctx context.Context) {
 			// reset Helm Client
-			var err error
-			opt := &helm.KubeConfClientOptions{
-				Options: &helm.Options{
-					Namespace:        f.Namespace.Name,
-					RepositoryCache:  "/tmp/.helmcache",
-					RepositoryConfig: "/tmp/.helmrepo",
-				},
-				KubeConfig: kubeconfig,
-			}
 			chartSpec = helm.ChartSpec{
 				ReleaseName:   helmReleaseName,
 				ChartName:     *HelmChart,
@@ -119,9 +104,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 				ValuesOptions: values,
 				CleanupOnFail: true,
 			}
-			helmClient, err = helm.NewClientFromKubeConf(opt)
-			Expect(err).NotTo(HaveOccurred())
-			_, err = helmClient.InstallChart(ctx, &chartSpec, nil)
+			_, err := f.HelmClient.InstallChart(ctx, &chartSpec, nil)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -145,7 +128,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 				}
 			}
 			// Delete Helm release
-			err := helmClient.UninstallReleaseByName(helmReleaseName)
+			err := f.HelmClient.UninstallReleaseByName(helmReleaseName)
 			Expect(err).NotTo(HaveOccurred())
 		})
 

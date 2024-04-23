@@ -36,6 +36,8 @@ type TestContextType struct {
 	DeleteNamespace          bool
 	DeleteNamespaceOnFailure bool
 
+	HelmLogFile string
+
 	// CreateTestingNS is responsible for creating namespace used for executing e2e tests.
 	// It accepts namespace base name, which will be prepended with e2e prefix, kube client
 	// and labels to be applied to a namespace.
@@ -51,4 +53,5 @@ func RegisterClusterFlags(flags *flag.FlagSet) {
 	flags.BoolVar(&TestContext.DeleteNamespaceOnFailure, "delete-namespace-on-failure", true, "If true, framework will delete test namespace on failure. Used only during test debugging.")
 	flags.StringVar(&TestContext.KubeConfig, clientcmd.RecommendedConfigPathFlag, os.Getenv(clientcmd.RecommendedConfigPathEnvVar), "Path to kubeconfig containing embedded authinfo.")
 	flags.StringVar(&TestContext.KubeContext, clientcmd.FlagContext, "", "kubeconfig context to use/override. If unset, will use value from 'current-context'")
+	flags.StringVar(&TestContext.HelmLogFile, "helm-log-file", "e2e-helm", "Path to the file where helm logs will be written.")
 }
