@@ -53,6 +53,12 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 
 	config.Flags.UpdateFromCLIFlags(c, flags)
 
+	// If nvidiaDevRoot (the path to the device nodes on the host) is not set,
+	// we default to using the driver root on the host.
+	if config.Flags.NvidiaDevRoot == nil || *config.Flags.NvidiaDevRoot == "" {
+		config.Flags.NvidiaDevRoot = config.Flags.NvidiaDriverRoot
+	}
+
 	// We explicitly set sharing.mps.failRequestsGreaterThanOne = true
 	// This can be relaxed in certain cases -- such as a single GPU -- but
 	// requires additional logic around when it's OK to combine requests and

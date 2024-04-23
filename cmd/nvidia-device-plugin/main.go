@@ -65,10 +65,17 @@ func main() {
 			EnvVars: []string{"FAIL_ON_INIT_ERROR"},
 		},
 		&cli.StringFlag{
-			Name:    "nvidia-driver-root",
+			Name:    "driver-root",
+			Aliases: []string{"nvidia-driver-root"},
 			Value:   "/",
-			Usage:   "the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')",
+			Usage:   "the root path for the NVIDIA driver installation on the host (typical values are '/' or '/run/nvidia/driver')",
 			EnvVars: []string{"NVIDIA_DRIVER_ROOT"},
+		},
+		&cli.StringFlag{
+			Name:    "dev-root",
+			Aliases: []string{"nvidia-dev-root"},
+			Usage:   "the root path for the NVIDIA device nodes on the host (typical values are '/' or '/run/nvidia/driver')",
+			EnvVars: []string{"NVIDIA_DEV_ROOT"},
 		},
 		&cli.BoolFlag{
 			Name:    "pass-device-specs",

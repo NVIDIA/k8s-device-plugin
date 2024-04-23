@@ -52,6 +52,7 @@ func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib 
 		cdi.WithDriverRoot(string(driverRoot)),
 		cdi.WithDevRoot(driverRoot.getDevRoot()),
 		cdi.WithTargetDriverRoot(*config.Flags.NvidiaDriverRoot),
+		cdi.WithTargetDevRoot(*config.Flags.NvidiaDevRoot),
 		cdi.WithNvidiaCTKPath(*config.Flags.Plugin.NvidiaCTKPath),
 		cdi.WithDeviceIDStrategy(*config.Flags.Plugin.DeviceIDStrategy),
 		cdi.WithVendor("k8s.device-plugin.nvidia.com"),

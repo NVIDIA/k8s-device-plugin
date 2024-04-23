@@ -355,7 +355,7 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 		plugin.updateResponseForMPS(response)
 	}
 	if *plugin.config.Flags.Plugin.PassDeviceSpecs {
-		response.Devices = append(response.Devices, plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDriverRoot, requestIds)...)
+		response.Devices = append(response.Devices, plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDevRoot, requestIds)...)
 	}
 	if *plugin.config.Flags.GDSEnabled {
 		response.Envs["NVIDIA_GDS"] = "enabled"
@@ -500,7 +500,7 @@ func (plugin *NvidiaDevicePlugin) updateResponseForDeviceMounts(response *plugin
 	}
 }
 
-func (plugin *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, ids []string) []*pluginapi.DeviceSpec {
+func (plugin *NvidiaDevicePlugin) apiDeviceSpecs(devRoot string, ids []string) []*pluginapi.DeviceSpec {
 	optional := map[string]bool{
 		"/dev/nvidiactl":        true,
 		"/dev/nvidia-uvm":       true,
@@ -519,7 +519,7 @@ func (plugin *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, ids []string
 		}
 		spec := &pluginapi.DeviceSpec{
 			ContainerPath: p,
-			HostPath:      filepath.Join(driverRoot, p),
+			HostPath:      filepath.Join(devRoot, p),
 			Permissions:   "rw",
 		}
 		specs = append(specs, spec)

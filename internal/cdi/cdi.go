@@ -19,11 +19,13 @@ package cdi
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi"
+	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
 	transformroot "github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform/root"
 	"github.com/sirupsen/logrus"
 	"k8s.io/klog/v2"
@@ -47,6 +49,7 @@ type cdiHandler struct {
 	driverRoot       string
 	devRoot          string
 	targetDriverRoot string
+	targetDevRoot    string
 	nvidiaCTKPath    string
 	vendor           string
 	deviceIDStrategy string
@@ -92,6 +95,9 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 	}
 	if c.targetDriverRoot == "" {
 		c.targetDriverRoot = c.driverRoot
+	}
+	if c.targetDevRoot == "" {
+		c.targetDevRoot = c.devRoot
 	}
 
 	deviceNamer, err := nvcdi.NewDeviceNamer(c.deviceIDStrategy)
@@ -164,12 +170,9 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 			return fmt.Errorf("failed to get CDI spec: %v", err)
 		}
 
-		err = transformroot.New(
-			transformroot.WithRoot(cdi.driverRoot),
-			transformroot.WithTargetRoot(cdi.targetDriverRoot),
-			transformroot.WithRelativeTo("host"),
-		).Transform(spec.Raw())
-		if err != nil {
+		// TODO: Once the NewDriverTransformer is merged in container-toolkit we can instantiate it directly.
+		transformer := cdi.getRootTransformer()
+		if err := transformer.Transform(spec.Raw()); err != nil {
 			return fmt.Errorf("failed to transform driver root in CDI spec: %v", err)
 		}
 
@@ -185,6 +188,30 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 	}
 
 	return nil
+}
+
+func (cdi *cdiHandler) getRootTransformer() transform.Transformer {
+	driverRootTransformer := transformroot.New(
+		transformroot.WithRoot(cdi.driverRoot),
+		transformroot.WithTargetRoot(cdi.targetDriverRoot),
+		transformroot.WithRelativeTo("host"),
+	)
+
+	if cdi.devRoot == cdi.driverRoot || cdi.devRoot == "" {
+		return driverRootTransformer
+	}
+
+	ensureDev := func(p string) string {
+		return filepath.Join(strings.TrimSuffix(filepath.Clean(p), "/dev"), "/dev")
+	}
+
+	devRootTransformer := transformroot.New(
+		transformroot.WithRoot(ensureDev(cdi.devRoot)),
+		transformroot.WithTargetRoot(ensureDev(cdi.targetDevRoot)),
+		transformroot.WithRelativeTo("host"),
+	)
+
+	return transform.Merge(driverRootTransformer, devRootTransformer)
 }
 
 // QualifiedName constructs a CDI qualified device name for the specified resources.
