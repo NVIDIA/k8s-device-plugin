@@ -36,7 +36,6 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common"
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common/diagnostics"
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework"
-	e2elog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework/logs"
 )
 
 // Actual test suite
@@ -149,13 +148,10 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 					diagnostics.WithNFDClient(nfdClient),
 					diagnostics.WithObjects(collectLogsFrom...),
 				)
-				if err != nil {
-					e2elog.Logf("Failed to create diagnostic collector: %v", err)
-				} else {
-					if err = diagnosticsCollector.Collect(ctx); err != nil {
-						e2elog.Logf("Diagnostic collector failed: %v", err)
-					}
-				}
+				Expect(err).NotTo(HaveOccurred())
+
+				err = diagnosticsCollector.Collect(ctx)
+				Expect(err).NotTo(HaveOccurred())
 			}
 			// Delete Helm release
 			err := f.HelmClient.UninstallReleaseByName(helmReleaseName)
@@ -191,7 +187,6 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 					targetNodeName: {
 						"nvidia.com/gfd.timestamp": "[0-9]{10}",
 					}}
-				e2elog.Logf("verifying labels of node %q...", targetNodeName)
 				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(labelChecker, nodes))
 			})
 			Context("and the NodeFeature API is enabled", func() {
@@ -219,7 +214,6 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 						targetNodeName: {
 							"nvidia.com/gfd.timestamp": "[0-9]{10}",
 						}}
-					e2elog.Logf("verifying labels of node %q...", targetNodeName)
 					eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(labelChecker, nodes))
 				})
 			})
@@ -248,7 +242,6 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 				By("Check node labels")
 				labelChecker := map[string]k8sLabels{
 					targetNodeName: expectedLabelPatterns}
-				e2elog.Logf("verifying labels of node %q...", targetNodeName)
 				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(labelChecker, nodes))
 			})
 			Context("and the NodeFeature API is enabled", func() {
@@ -274,7 +267,6 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 					By("Check node labels are created from NodeFeature object")
 					checkForLabels := map[string]k8sLabels{
 						targetNodeName: expectedLabelPatterns}
-					e2elog.Logf("verifying labels of node %q...", targetNodeName)
 					eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(checkForLabels, nodes))
 				})
 			})

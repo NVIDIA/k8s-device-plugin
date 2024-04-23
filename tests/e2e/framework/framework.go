@@ -40,8 +40,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-
-	e2elog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework/logs"
 )
 
 const (
@@ -141,7 +139,7 @@ func (f *Framework) BeforeEach(ctx context.Context) {
 
 	ginkgo.By("Creating a kubernetes client")
 	config, err := LoadConfig()
-	ExpectNoError(err)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	config.QPS = f.Options.ClientQPS
 	config.Burst = f.Options.ClientBurst
@@ -150,14 +148,14 @@ func (f *Framework) BeforeEach(ctx context.Context) {
 	}
 	f.clientConfig = rest.CopyConfig(config)
 	f.ClientSet, err = clientset.NewForConfig(config)
-	ExpectNoError(err)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	if !f.SkipNamespaceCreation {
-		ginkgo.By(fmt.Sprintf("Building a namespace api object, basename %s", f.BaseName))
+		ginkgo.By(fmt.Sprintf("Building a namespace with basename %s", f.BaseName))
 		namespace, err := f.CreateNamespace(ctx, f.BaseName, map[string]string{
 			"e2e-framework": f.BaseName,
 		})
-		ExpectNoError(err)
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		f.Namespace = namespace
 
@@ -179,21 +177,19 @@ func (f *Framework) BeforeEach(ctx context.Context) {
 		},
 	}
 	f.HelmClient, err = helm.NewClientFromRestConf(helmRestConfOpt)
-	ExpectNoError(err)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 }
 
 // AfterEach deletes the namespace, after reading its events.
 func (f *Framework) AfterEach(ctx context.Context) {
 	// This should not happen. Given ClientSet is a public field a test must have updated it!
 	// Error out early before any API calls during cleanup.
-	if f.ClientSet == nil {
-		e2elog.Failf("The framework ClientSet must not be nil at this point")
-	}
+	gomega.Expect(f.ClientSet).NotTo(gomega.BeNil())
 
 	// DeleteNamespace at the very end in defer, to avoid any
 	// expectation failures preventing deleting the namespace.
 	defer func() {
-		nsDeletionErrors := map[string]error{}
+		nsDeletionErrors := []string{}
 		// Whether to delete namespace is determined by 3 factors: delete-namespace flag, delete-namespace-on-failure flag and the test result
 		// if delete-namespace set to false, namespace will always be preserved.
 		// if delete-namespace is true and delete-namespace-on-failure is false, namespace will be preserved if test failed.
@@ -202,18 +198,9 @@ func (f *Framework) AfterEach(ctx context.Context) {
 				ginkgo.By(fmt.Sprintf("Destroying namespace %q for this suite.", ns.Name))
 				if err := f.ClientSet.CoreV1().Namespaces().Delete(ctx, ns.Name, metav1.DeleteOptions{}); err != nil {
 					if !apierrors.IsNotFound(err) {
-						nsDeletionErrors[ns.Name] = err
-
-					} else {
-						e2elog.Logf("Namespace %v was already deleted", ns.Name)
+						nsDeletionErrors = append(nsDeletionErrors, ns.Name)
 					}
 				}
-			}
-		} else {
-			if !TestContext.DeleteNamespace {
-				e2elog.Logf("Found DeleteNamespace=false, skipping namespace deletion!")
-			} else {
-				e2elog.Logf("Found DeleteNamespaceOnFailure=false and current test failed, skipping namespace deletion!")
 			}
 		}
 
@@ -226,11 +213,7 @@ func (f *Framework) AfterEach(ctx context.Context) {
 
 		// if we had errors deleting, report them now.
 		if len(nsDeletionErrors) != 0 {
-			messages := []string{}
-			for namespaceKey, namespaceErr := range nsDeletionErrors {
-				messages = append(messages, fmt.Sprintf("Couldn't delete ns: %q: %s (%#v)", namespaceKey, namespaceErr, namespaceErr))
-			}
-			e2elog.Failf(strings.Join(messages, ","))
+			gomega.Expect(nsDeletionErrors).To(gomega.BeEmpty(), fmt.Sprintf("Error deleting namespaces: %v", nsDeletionErrors))
 		}
 	}()
 
@@ -267,13 +250,11 @@ func (f *Framework) DeleteNamespace(ctx context.Context, name string) {
 	defer func() {
 		err := f.ClientSet.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
-			e2elog.Logf("error deleting namespace %s: %v", name, err)
-			return
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
 		err = WaitForNamespacesDeleted(ctx, f.ClientSet, []string{name}, DefaultNamespaceDeletionTimeout)
 		if err != nil {
-			e2elog.Logf("error deleting namespace %s: %v", name, err)
-			return
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
 	}()
 }

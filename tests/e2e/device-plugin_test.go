@@ -35,7 +35,6 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common"
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common/diagnostics"
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework"
-	e2elog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework/logs"
 )
 
 // Actual test suite
@@ -119,13 +118,10 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 					diagnostics.WithKubernetesClient(f.ClientSet),
 					diagnostics.WithObjects(collectLogsFrom...),
 				)
-				if err != nil {
-					e2elog.Logf("Failed to create diagnostic collector: %v", err)
-				} else {
-					if err = diagnosticsCollector.Collect(ctx); err != nil {
-						e2elog.Logf("Diagnostic collector failed: %v", err)
-					}
-				}
+				Expect(err).NotTo(HaveOccurred())
+
+				err = diagnosticsCollector.Collect(ctx)
+				Expect(err).NotTo(HaveOccurred())
 			}
 			// Delete Helm release
 			err := f.HelmClient.UninstallReleaseByName(helmReleaseName)
@@ -158,7 +154,6 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 					targetNodeName: {
 						"nvidia.com/gpu": "^[1-9]$",
 					}}
-				e2elog.Logf("verifying capacity of node %q...", targetNodeName)
 				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchCapacity(capacityChecker, nodes))
 			})
 			It("it should run GPU jobs", func(ctx context.Context) {
