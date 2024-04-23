@@ -40,4 +40,5 @@ e2e-test:
 		-log-artifacts=$(LOG_ARTIFACTS) \
 		-helm-chart=$(HELM_CHART) \
 		-ginkgo.focus="\[nvidia\]" \
-		-test.timeout=1h
+		-test.timeout=1h \
+		-ginkgo.v
