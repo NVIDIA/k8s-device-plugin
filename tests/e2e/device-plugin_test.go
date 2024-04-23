@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common"
+	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common/diagnostics"
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework"
 	e2elog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework/logs"
 )
@@ -57,7 +58,19 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 			chartSpec       helm.ChartSpec
 			helmReleaseName string
 			kubeconfig      []byte
+
+			collectLogsFrom      []string
+			diagnosticsCollector *diagnostics.Diagnostic
 		)
+
+		defaultCollectorObjects := []string{
+			"pods",
+			"nodes",
+			"namespaces",
+			"deployments",
+			"demonsets",
+			"jobs",
+		}
 
 		values := helmValues.Options{
 			Values: []string{
@@ -69,6 +82,12 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 				// test will fail if not run on a GPU node
 				"affinity=",
 			},
+		}
+
+		// check Collector objects
+		collectLogsFrom = defaultCollectorObjects
+		if *CollectLogsFrom != "" && *CollectLogsFrom != "default" {
+			collectLogsFrom = strings.Split(*CollectLogsFrom, ",")
 		}
 
 		BeforeAll(func(ctx context.Context) {
@@ -108,9 +127,22 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 
 		// Cleanup before next test run
 		AfterEach(func(ctx context.Context) {
-			// Gather logs
+			// Run diagnostic collector if test failed
 			if CurrentSpecReport().Failed() {
-				_ = common.MustGather("k8s-device-plugin", f.Namespace.Name, filepath.Join(*LogArtifactDir, f.UniqueName))
+				var err error
+				diagnosticsCollector, err = diagnostics.New(
+					diagnostics.WithNamespace(f.Namespace.Name),
+					diagnostics.WithArtifactDir(*LogArtifactDir),
+					diagnostics.WithKubernetesClient(f.ClientSet),
+					diagnostics.WithObjects(collectLogsFrom...),
+				)
+				if err != nil {
+					e2elog.Logf("Failed to create diagnostic collector: %v", err)
+				} else {
+					if err = diagnosticsCollector.Collect(ctx); err != nil {
+						e2elog.Logf("Diagnostic collector failed: %v", err)
+					}
+				}
 			}
 			// Delete Helm release
 			err := helmClient.UninstallReleaseByName(helmReleaseName)
