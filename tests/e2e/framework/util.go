@@ -123,7 +123,7 @@ func CreateTestingNS(ctx context.Context, baseName string, c clientset.Interface
 				// regenerate on conflict
 				namespaceObj.Name = fmt.Sprintf("%v-%v", baseName, RandomSuffix())
 			} else {
-				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to create namespace %s", namespaceObj.Name)
 			}
 			return false, nil
 		}

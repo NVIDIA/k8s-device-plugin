@@ -132,6 +132,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 				CleanupOnFail: true,
 			}
 
+			By("Installing GFD Helm chart")
 			_, err := f.HelmClient.InstallChart(ctx, &chartSpec, nil)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -156,7 +157,8 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 			// Delete Helm release
 			err := f.HelmClient.UninstallReleaseByName(helmReleaseName)
 			Expect(err).NotTo(HaveOccurred())
-			// Cleanup node
+			// Cleanup environment
+			By("[Cleanup]\tCleaning up environment")
 			common.CleanupNode(ctx, f.ClientSet)
 			common.CleanupNFDObjects(ctx, nfdClient, f.Namespace.Name)
 		})
@@ -170,7 +172,6 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 
 		Context("and NV Driver is not installed", func() {
 			It("it should create nvidia.com timestamp label", func(ctx context.Context) {
-				By("Getting node objects")
 				nodeList, err := f.ClientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(nodeList.Items)).ToNot(BeZero())
@@ -180,9 +181,9 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				targetNodeName := nodes[0].Name
-				Expect(targetNodeName).ToNot(BeEmpty(), "No suitable worker node found")
+				Expect(targetNodeName).ToNot(BeEmpty())
 
-				By("Check node labels")
+				By("Checking the node labels")
 				labelChecker := map[string]k8sLabels{
 					targetNodeName: {
 						"nvidia.com/gfd.timestamp": "[0-9]{10}",
@@ -199,17 +200,17 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 					_, err := f.HelmClient.UpgradeChart(ctx, &chartSpec, nil)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("Checking if node feature object is created")
+					By("Checking if NodeFeature CR object is created")
 					nodes, err := common.GetNonControlPlaneNodes(ctx, f.ClientSet)
 					Expect(err).NotTo(HaveOccurred())
 
 					targetNodeName := nodes[0].Name
-					Expect(targetNodeName).ToNot(BeEmpty(), "No suitable worker node found")
+					Expect(targetNodeName).ToNot(BeEmpty())
 					Eventually(func() bool {
 						return checkNodeFeatureObject(ctx, targetNodeName)
-					}, 2*time.Minute, 5*time.Second).Should(BeTrue(), "Node feature object is not created")
+					}, 2*time.Minute, 5*time.Second).Should(BeTrue())
 
-					By("Check node labels are created from NodeFeature object")
+					By("Checking that node labels are created from NodeFeature object")
 					labelChecker := map[string]k8sLabels{
 						targetNodeName: {
 							"nvidia.com/gfd.timestamp": "[0-9]{10}",
@@ -227,7 +228,6 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 				}
 			})
 			It("it should create nvidia.com labels", func(ctx context.Context) {
-				By("Getting node objects")
 				nodeList, err := f.ClientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(nodeList.Items)).ToNot(BeZero())
@@ -237,9 +237,9 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				targetNodeName := nodes[0].Name
-				Expect(targetNodeName).ToNot(BeEmpty(), "No suitable worker node found")
+				Expect(targetNodeName).ToNot(BeEmpty())
 
-				By("Check node labels")
+				By("Checking the node labels")
 				labelChecker := map[string]k8sLabels{
 					targetNodeName: expectedLabelPatterns}
 				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(labelChecker, nodes))
@@ -254,17 +254,17 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 					_, err := f.HelmClient.UpgradeChart(ctx, &chartSpec, nil)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("Checking if node feature object is created")
+					By("Checking if NodeFeature CR object is created")
 					nodes, err := common.GetNonControlPlaneNodes(ctx, f.ClientSet)
 					Expect(err).NotTo(HaveOccurred())
 
 					targetNodeName := nodes[0].Name
-					Expect(targetNodeName).ToNot(BeEmpty(), "No suitable worker node found")
+					Expect(targetNodeName).ToNot(BeEmpty())
 					Eventually(func() bool {
 						return checkNodeFeatureObject(ctx, targetNodeName)
-					}, 2*time.Minute, 5*time.Second).Should(BeTrue(), "Node feature object is not created")
+					}, 2*time.Minute, 5*time.Second).Should(BeTrue())
 
-					By("Check node labels are created from NodeFeature object")
+					By("Checking that node labels are created from NodeFeature CR object")
 					checkForLabels := map[string]k8sLabels{
 						targetNodeName: expectedLabelPatterns}
 					eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(checkForLabels, nodes))

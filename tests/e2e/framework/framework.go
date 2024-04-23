@@ -195,12 +195,15 @@ func (f *Framework) AfterEach(ctx context.Context) {
 		// if delete-namespace is true and delete-namespace-on-failure is false, namespace will be preserved if test failed.
 		if TestContext.DeleteNamespace && (TestContext.DeleteNamespaceOnFailure || !ginkgo.CurrentSpecReport().Failed()) {
 			for _, ns := range f.namespacesToDelete {
-				ginkgo.By(fmt.Sprintf("Destroying namespace %q for this suite.", ns.Name))
+				ginkgo.By(fmt.Sprintf("[Cleanup]\tDeleting testing namespace %q.", ns.Name))
 				if err := f.ClientSet.CoreV1().Namespaces().Delete(ctx, ns.Name, metav1.DeleteOptions{}); err != nil {
 					if !apierrors.IsNotFound(err) {
 						nsDeletionErrors = append(nsDeletionErrors, ns.Name)
 					}
 				}
+				// remove the namespace from the list of namespaces to delete
+				// so that it is not deleted again in the defer block
+				f.namespacesToDelete = f.namespacesToDelete[1:]
 			}
 		}
 

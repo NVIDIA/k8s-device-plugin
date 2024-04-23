@@ -103,11 +103,12 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 				ValuesOptions: values,
 				CleanupOnFail: true,
 			}
+
+			By("Installing k8s-device-plugin Helm chart")
 			_, err := f.HelmClient.InstallChart(ctx, &chartSpec, nil)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		// Cleanup before next test run
 		AfterEach(func(ctx context.Context) {
 			// Run diagnostic collector if test failed
 			if CurrentSpecReport().Failed() {
@@ -123,6 +124,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 				err = diagnosticsCollector.Collect(ctx)
 				Expect(err).NotTo(HaveOccurred())
 			}
+			// Cleanup before next test run
 			// Delete Helm release
 			err := f.HelmClient.UninstallReleaseByName(helmReleaseName)
 			Expect(err).NotTo(HaveOccurred())
@@ -137,7 +139,6 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 
 		Context("and NV Driver is installed", func() {
 			It("it should create nvidia.com/gpu resource", func(ctx context.Context) {
-				By("Getting node objects")
 				nodeList, err := f.ClientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(nodeList.Items)).ToNot(BeZero())
@@ -147,24 +148,23 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				targetNodeName := nodes[0].Name
-				Expect(targetNodeName).ToNot(BeEmpty(), "No suitable worker node found")
+				Expect(targetNodeName).ToNot(BeEmpty())
 
-				By("Check node capacity")
+				By("Checking the node capacity")
 				capacityChecker := map[string]k8sLabels{
 					targetNodeName: {
 						"nvidia.com/gpu": "^[1-9]$",
 					}}
-				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchCapacity(capacityChecker, nodes))
+				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchCapacity(capacityChecker, nodes), "Node capacity does not match")
 			})
 			It("it should run GPU jobs", func(ctx context.Context) {
-				By("Creating GPU job")
+				By("Creating a GPU job")
 				job := common.GPUJob.DeepCopy()
 				job.Namespace = f.Namespace.Name
 				_, err := f.ClientSet.BatchV1().Jobs(f.Namespace.Name).Create(ctx, job, metav1.CreateOptions{})
 				Expect(err).NotTo(HaveOccurred())
 
 				By("Waiting for job to complete")
-
 				Eventually(func() error {
 					job, err := f.ClientSet.BatchV1().Jobs(f.Namespace.Name).Get(ctx, job.Name, metav1.GetOptions{})
 					if err != nil {
