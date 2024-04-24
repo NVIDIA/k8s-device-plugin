@@ -24,10 +24,9 @@ package framework
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	helm "github.com/mittwald/go-helm-client"
@@ -72,7 +71,11 @@ type Framework struct {
 
 	clientConfig *rest.Config
 	ClientSet    clientset.Interface
-	HelmClient   helm.Client
+
+	// Helm
+	HelmClient  helm.Client
+	HelmLogFile *os.File
+	HelmLogger  *log.Logger
 
 	// configuration for framework's client
 	Options Options
@@ -105,27 +108,6 @@ func (f *Framework) ClientConfig() *rest.Config {
 	ret.ContentType = runtime.ContentTypeJSON
 	ret.AcceptContentTypes = runtime.ContentTypeJSON
 	return ret
-}
-
-// helmDebugLog prints the debug log of the helm client into a file in the test directory.
-func (f *Framework) helmDebugLog(format string, v ...interface{}) {
-	// check if directory for logs exists and create it if not
-	if _, err := os.Stat(filepath.Dir(TestContext.HelmLogFile)); os.IsNotExist(err) {
-		err := os.MkdirAll(filepath.Dir(TestContext.HelmLogFile), 0755)
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
-	}
-
-	outFile, err := os.OpenFile(TestContext.HelmLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-	defer outFile.Close()
-
-	// if formart doesn't end with newline, add it
-	if !strings.HasSuffix(format, "\n") {
-		format += "\n"
-	}
-
-	fmt.Fprintf(outFile, format, v...)
 }
 
 // BeforeEach gets a client and makes a namespace.
@@ -164,20 +146,6 @@ func (f *Framework) BeforeEach(ctx context.Context) {
 		// not guaranteed to be unique, but very likely
 		f.UniqueName = fmt.Sprintf("%s-%08x", f.BaseName, rand.Int31())
 	}
-
-	ginkgo.By("Creating a helm client")
-	helmRestConfOpt := &helm.RestConfClientOptions{
-		RestConfig: config,
-		Options: &helm.Options{
-			Namespace:        f.Namespace.Name,
-			RepositoryCache:  "/tmp/.helmcache",
-			RepositoryConfig: "/tmp/.helmrepo",
-			Debug:            true,
-			DebugLog:         f.helmDebugLog,
-		},
-	}
-	f.HelmClient, err = helm.NewClientFromRestConf(helmRestConfOpt)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 }
 
 // AfterEach deletes the namespace, after reading its events.
@@ -220,6 +188,9 @@ func (f *Framework) AfterEach(ctx context.Context) {
 		}
 	}()
 
+	// Close helm log file
+	err := f.HelmLogFile.Close()
+	gomega.Expect(err).To(gomega.BeNil())
 }
 
 // CreateNamespace creates a namespace for e2e testing.
