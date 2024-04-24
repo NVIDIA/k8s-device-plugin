@@ -216,6 +216,40 @@ func TestGPUResourceLabeler(t *testing.T) {
 
 }
 
+func TestSanitise(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected string
+	}{
+		{
+			input:    "a space separated string",
+			expected: "a-space-separated-string",
+		},
+		{
+			input:    "some(thing)else",
+			expected: "somethingelse",
+		},
+		{
+			input:    "some ( thing )else",
+			expected: "some-thing-else",
+		},
+		{
+			input:    "NVIDIA-TITAN-X-(Pascal)",
+			expected: "NVIDIA-TITAN-X-Pascal",
+		},
+		{
+			input:    " input  with multiple   spaces   ",
+			expected: "input-with-multiple-spaces",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.input, func(t *testing.T) {
+			require.EqualValues(t, tc.expected, sanitise(tc.input))
+		})
+	}
+
+}
+
 func TestMigResourceLabeler(t *testing.T) {
 
 	device := rt.NewMigDevice(1, 2, 300)

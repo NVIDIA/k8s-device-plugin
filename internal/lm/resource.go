@@ -187,7 +187,8 @@ func (rl resourceLabeler) getProductName(parts ...string) string {
 	var strippedParts []string
 	for _, p := range parts {
 		if p != "" {
-			strippedParts = append(strippedParts, strings.ReplaceAll(p, " ", "-"))
+			sanitisedPart := sanitise(p)
+			strippedParts = append(strippedParts, sanitisedPart)
 		}
 	}
 
@@ -301,4 +302,14 @@ func getArchFamily(computeMajor, computeMinor int) string {
 		return "hopper"
 	}
 	return "undefined"
+}
+
+func sanitise(input string) string {
+	var sanitised string
+	sanitised = strings.ReplaceAll(input, "(", "")
+	sanitised = strings.ReplaceAll(sanitised, ")", "")
+	// remove redundant blank spaces
+	sanitised = strings.Join(strings.Fields(sanitised), "-")
+
+	return sanitised
 }
