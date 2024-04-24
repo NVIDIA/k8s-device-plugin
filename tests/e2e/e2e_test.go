@@ -18,16 +18,14 @@ package e2e
 
 import (
 	"flag"
+	"log"
 	"os"
 	"testing"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/klog/v2"
 
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework"
-	e2elog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework/logs"
 )
 
 var (
@@ -44,28 +42,21 @@ func TestMain(m *testing.M) {
 	// Register test flags, then parse flags.
 	framework.RegisterClusterFlags(flag.CommandLine)
 	flag.Parse()
-	klog.SetOutput(ginkgo.GinkgoWriter)
 
 	// check if flags are set and if not cancel the test run
 	if *ImageRepo == "" || *ImageTag == "" || *HelmChart == "" {
-		e2elog.Failf("Required flags not set. Please set -image.repo, -image.tag and -helm-chart")
+		log.Fatal("Required flags not set. Please set -image.repo, -image.tag and -helm-chart")
 	}
 
 	os.Exit(m.Run())
 }
 
 func TestE2E(t *testing.T) {
-	e2elog.InitLogs()
-	defer e2elog.FlushLogs()
-	klog.EnableContextualLogging(true)
 	gomega.RegisterFailHandler(ginkgo.Fail)
 	// Run tests through the Ginkgo runner with output to console + JUnit for Jenkins
 	suiteConfig, reporterConfig := ginkgo.GinkgoConfiguration()
 	// Randomize specs as well as suites
 	suiteConfig.RandomizeAllSpecs = true
 
-	var runID = uuid.NewUUID()
-
-	klog.Infof("Starting e2e run %q on Ginkgo node %d", runID, suiteConfig.ParallelProcess)
 	ginkgo.RunSpecs(t, "nvidia k8s-device-plugin e2e suite", suiteConfig, reporterConfig)
 }

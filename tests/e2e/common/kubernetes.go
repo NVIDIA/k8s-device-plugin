@@ -134,18 +134,19 @@ func CleanupNode(ctx context.Context, cs clientset.Interface) {
 		}
 
 		if updateStatus {
-			By("Deleting NFD extended resources from node " + nodeName)
+			By("[Cleanup]\tDeleting NFD extended resources from node " + nodeName)
 			if _, err := cs.CoreV1().Nodes().UpdateStatus(ctx, node, metav1.UpdateOptions{}); err != nil {
 				return err
 			}
 		}
 
 		if update {
-			By("Deleting NFD labels, annotations and taints from node " + node.Name)
+			By("[Cleanup]\tDeleting NFD labels, annotations and taints from node " + node.Name)
 			if _, err := cs.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{}); err != nil {
 				return err
 			}
 		}
+
 		return nil
 	}
 
@@ -180,7 +181,7 @@ func cleanupNodeFeatures(ctx context.Context, cli *nfdclient.Clientset, namespac
 	Expect(err).NotTo(HaveOccurred())
 
 	if len(nfs.Items) != 0 {
-		By("Deleting NodeFeature objects from namespace " + namespace)
+		By("[Cleanup]\tDeleting NodeFeature objects from namespace " + namespace)
 		for _, nf := range nfs.Items {
 			err = cli.NfdV1alpha1().NodeFeatures(namespace).Delete(ctx, nf.Name, metav1.DeleteOptions{})
 			if errors.IsNotFound(err) {
@@ -202,7 +203,7 @@ func cleanupNodeFeatureRules(ctx context.Context, cli *nfdclient.Clientset) {
 	Expect(err).NotTo(HaveOccurred())
 
 	if len(nfrs.Items) != 0 {
-		By("Deleting NodeFeatureRule objects from the cluster")
+		By("[Cleanup]\tDeleting NodeFeatureRule objects from the cluster")
 		for _, nfr := range nfrs.Items {
 			err = cli.NfdV1alpha1().NodeFeatureRules().Delete(ctx, nfr.Name, metav1.DeleteOptions{})
 			if errors.IsNotFound(err) {

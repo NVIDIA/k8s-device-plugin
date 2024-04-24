@@ -16,7 +16,9 @@
 
 package e2e
 
-import "github.com/onsi/ginkgo/v2"
+import (
+	"github.com/onsi/ginkgo/v2"
+)
 
 // NVDescribe annotates the test with the NVIDIA label.
 func NVDescribe(text string, body func()) bool {

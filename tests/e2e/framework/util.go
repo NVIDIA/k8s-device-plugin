@@ -34,8 +34,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-
-	e2elog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework/logs"
 )
 
 const (
@@ -80,7 +78,6 @@ func LoadConfig() (config *restclient.Config, err error) {
 
 // restclientConfig returns a config holds the information needed to build connection to kubernetes clusters.
 func restclientConfig(kubeContext string) (*clientcmdapi.Config, error) {
-	e2elog.Logf(">>> kubeConfig: %s", TestContext.KubeConfig)
 	if TestContext.KubeConfig == "" {
 		return nil, fmt.Errorf("KubeConfig must be specified to load client config")
 	}
@@ -89,7 +86,6 @@ func restclientConfig(kubeContext string) (*clientcmdapi.Config, error) {
 		return nil, fmt.Errorf("error loading KubeConfig: %v", err.Error())
 	}
 	if kubeContext != "" {
-		e2elog.Logf(">>> kubeContext: %s", kubeContext)
 		c.CurrentContext = kubeContext
 	}
 	return c, nil
@@ -124,10 +120,7 @@ func CreateTestingNS(ctx context.Context, baseName string, c clientset.Interface
 		if err != nil {
 			if apierrors.IsAlreadyExists(err) {
 				// regenerate on conflict
-				e2elog.Logf("Namespace name %q was already taken, generate a new name and retry", namespaceObj.Name)
 				namespaceObj.Name = fmt.Sprintf("%v-%v", baseName, RandomSuffix())
-			} else {
-				e2elog.Logf("Unexpected error while creating namespace: %w", err)
 			}
 			return false, nil
 		}

@@ -39,5 +39,7 @@ e2e-test:
 		-image.pull-policy=$(E2E_IMAGE_PULL_POLICY) \
 		-log-artifacts=$(LOG_ARTIFACTS) \
 		-helm-chart=$(HELM_CHART) \
+		-helm-log-file=$(LOG_ARTIFACTS)/helm.log \
 		-ginkgo.focus="\[nvidia\]" \
-		-test.timeout=1h
+		-test.timeout=1h \
+		-ginkgo.v

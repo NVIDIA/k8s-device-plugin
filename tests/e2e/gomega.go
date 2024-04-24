@@ -31,7 +31,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common"
-	e2elog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework/logs"
 )
 
 type k8sLabels map[string]string
@@ -97,7 +96,6 @@ func (m *nodeListPropertyRegexpMatcher[T]) matchLabels(nodes []corev1.Node) bool
 	for _, node := range nodes {
 		_, ok := m.expected[node.Name]
 		if !ok {
-			e2elog.Logf("Skipping node %q as no expected was specified", node.Name)
 			continue
 		}
 		targetNode = node
@@ -128,7 +126,6 @@ func (m *nodeListPropertyRegexpMatcher[T]) matchCapacity(nodes []corev1.Node) bo
 	for _, node := range nodes {
 		_, ok := m.expected[node.Name]
 		if !ok {
-			e2elog.Logf("Skipping node %q as no expected was specified", node.Name)
 			continue
 		}
 		targetNode = node

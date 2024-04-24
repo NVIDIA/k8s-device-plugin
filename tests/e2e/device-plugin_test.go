@@ -19,7 +19,6 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -36,7 +35,6 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common"
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common/diagnostics"
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework"
-	e2elog "github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework/logs"
 )
 
 // Actual test suite
@@ -54,10 +52,8 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 			crds      []*apiextensionsv1.CustomResourceDefinition
 			extClient *extclient.Clientset
 
-			helmClient      helm.Client
-			chartSpec       helm.ChartSpec
 			helmReleaseName string
-			kubeconfig      []byte
+			chartSpec       helm.ChartSpec
 
 			collectLogsFrom      []string
 			diagnosticsCollector *diagnostics.Diagnostic
@@ -68,7 +64,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 			"nodes",
 			"namespaces",
 			"deployments",
-			"demonsets",
+			"daemonsets",
 			"jobs",
 		}
 
@@ -91,25 +87,13 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 		}
 
 		BeforeAll(func(ctx context.Context) {
-			var err error
 			// Create clients for apiextensions and our CRD api
 			extClient = extclient.NewForConfigOrDie(f.ClientConfig())
 			helmReleaseName = "nvdp-e2e-test" + rand.String(5)
-			kubeconfig, err = os.ReadFile(os.Getenv("KUBECONFIG"))
-			Expect(err).NotTo(HaveOccurred())
 		})
 
 		JustBeforeEach(func(ctx context.Context) {
 			// reset Helm Client
-			var err error
-			opt := &helm.KubeConfClientOptions{
-				Options: &helm.Options{
-					Namespace:        f.Namespace.Name,
-					RepositoryCache:  "/tmp/.helmcache",
-					RepositoryConfig: "/tmp/.helmrepo",
-				},
-				KubeConfig: kubeconfig,
-			}
 			chartSpec = helm.ChartSpec{
 				ReleaseName:   helmReleaseName,
 				ChartName:     *HelmChart,
@@ -119,13 +103,12 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 				ValuesOptions: values,
 				CleanupOnFail: true,
 			}
-			helmClient, err = helm.NewClientFromKubeConf(opt)
-			Expect(err).NotTo(HaveOccurred())
-			_, err = helmClient.InstallChart(ctx, &chartSpec, nil)
+
+			By("Installing k8s-device-plugin Helm chart")
+			_, err := f.HelmClient.InstallChart(ctx, &chartSpec, nil)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		// Cleanup before next test run
 		AfterEach(func(ctx context.Context) {
 			// Run diagnostic collector if test failed
 			if CurrentSpecReport().Failed() {
@@ -136,16 +119,14 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 					diagnostics.WithKubernetesClient(f.ClientSet),
 					diagnostics.WithObjects(collectLogsFrom...),
 				)
-				if err != nil {
-					e2elog.Logf("Failed to create diagnostic collector: %v", err)
-				} else {
-					if err = diagnosticsCollector.Collect(ctx); err != nil {
-						e2elog.Logf("Diagnostic collector failed: %v", err)
-					}
-				}
+				Expect(err).NotTo(HaveOccurred())
+
+				err = diagnosticsCollector.Collect(ctx)
+				Expect(err).NotTo(HaveOccurred())
 			}
+			// Cleanup before next test run
 			// Delete Helm release
-			err := helmClient.UninstallReleaseByName(helmReleaseName)
+			err := f.HelmClient.UninstallReleaseByName(helmReleaseName)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -158,7 +139,6 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 
 		Context("and NV Driver is installed", func() {
 			It("it should create nvidia.com/gpu resource", func(ctx context.Context) {
-				By("Getting node objects")
 				nodeList, err := f.ClientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(nodeList.Items)).ToNot(BeZero())
@@ -170,23 +150,21 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 				targetNodeName := nodes[0].Name
 				Expect(targetNodeName).ToNot(BeEmpty(), "No suitable worker node found")
 
-				By("Check node capacity")
+				By("Checking the node capacity")
 				capacityChecker := map[string]k8sLabels{
 					targetNodeName: {
 						"nvidia.com/gpu": "^[1-9]$",
 					}}
-				e2elog.Logf("verifying capacity of node %q...", targetNodeName)
-				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchCapacity(capacityChecker, nodes))
+				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchCapacity(capacityChecker, nodes), "Node capacity does not match")
 			})
 			It("it should run GPU jobs", func(ctx context.Context) {
-				By("Creating GPU job")
+				By("Creating a GPU job")
 				job := common.GPUJob.DeepCopy()
 				job.Namespace = f.Namespace.Name
 				_, err := f.ClientSet.BatchV1().Jobs(f.Namespace.Name).Create(ctx, job, metav1.CreateOptions{})
 				Expect(err).NotTo(HaveOccurred())
 
 				By("Waiting for job to complete")
-
 				Eventually(func() error {
 					job, err := f.ClientSet.BatchV1().Jobs(f.Namespace.Name).Get(ctx, job.Name, metav1.GetOptions{})
 					if err != nil {
