@@ -23,10 +23,12 @@ package framework
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"time"
 
 	helm "github.com/mittwald/go-helm-client"
@@ -146,6 +148,30 @@ func (f *Framework) BeforeEach(ctx context.Context) {
 		// not guaranteed to be unique, but very likely
 		f.UniqueName = fmt.Sprintf("%s-%08x", f.BaseName, rand.Int31())
 	}
+
+	// Create a Helm client
+	ginkgo.By("Creating a Helm client")
+
+	err = os.MkdirAll(filepath.Dir(TestContext.HelmLogFile), 0755)
+	gomega.Expect(err).To(gomega.BeNil())
+
+	f.HelmLogFile, err = os.OpenFile(TestContext.HelmLogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	gomega.Expect(err).To(gomega.BeNil())
+
+	f.HelmLogger = log.New(f.HelmLogFile, fmt.Sprintf("%s\t", f.UniqueName), log.Ldate|log.Ltime)
+	helmRestConf := &helm.RestConfClientOptions{
+		Options: &helm.Options{
+			Namespace:        f.Namespace.Name,
+			RepositoryCache:  "/tmp/.helmcache",
+			RepositoryConfig: "/tmp/.helmrepo",
+			Debug:            true,
+			DebugLog:         f.HelmLogger.Printf,
+		},
+		RestConfig: config,
+	}
+
+	f.HelmClient, err = helm.NewClientFromRestConf(helmRestConf)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 }
 
 // AfterEach deletes the namespace, after reading its events.
@@ -157,7 +183,7 @@ func (f *Framework) AfterEach(ctx context.Context) {
 	// DeleteNamespace at the very end in defer, to avoid any
 	// expectation failures preventing deleting the namespace.
 	defer func() {
-		nsDeletionErrors := []string{}
+		var nsDeletionErrors error
 		// Whether to delete namespace is determined by 3 factors: delete-namespace flag, delete-namespace-on-failure flag and the test result
 		// if delete-namespace set to false, namespace will always be preserved.
 		// if delete-namespace is true and delete-namespace-on-failure is false, namespace will be preserved if test failed.
@@ -166,7 +192,7 @@ func (f *Framework) AfterEach(ctx context.Context) {
 				ginkgo.By(fmt.Sprintf("[Cleanup]\tDeleting testing namespace %q.", ns.Name))
 				if err := f.ClientSet.CoreV1().Namespaces().Delete(ctx, ns.Name, metav1.DeleteOptions{}); err != nil {
 					if !apierrors.IsNotFound(err) {
-						nsDeletionErrors = append(nsDeletionErrors, ns.Name)
+						nsDeletionErrors = errors.Join(nsDeletionErrors, fmt.Errorf("error deleting %v: %w", ns.Name, err))
 					}
 				}
 				// remove the namespace from the list of namespaces to delete
@@ -183,9 +209,7 @@ func (f *Framework) AfterEach(ctx context.Context) {
 		f.ClientSet = nil
 
 		// if we had errors deleting, report them now.
-		if len(nsDeletionErrors) != 0 {
-			gomega.Expect(nsDeletionErrors).To(gomega.BeEmpty(), fmt.Sprintf("Error deleting namespaces: %v", nsDeletionErrors))
-		}
+		gomega.Expect(nsDeletionErrors).NotTo(gomega.HaveOccurred())
 	}()
 
 	// Close helm log file
@@ -227,9 +251,7 @@ func (f *Framework) DeleteNamespace(ctx context.Context, name string) {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
 		err = WaitForNamespacesDeleted(ctx, f.ClientSet, []string{name}, DefaultNamespaceDeletionTimeout)
-		if err != nil {
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-		}
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	}()
 }
 

@@ -64,7 +64,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 			"nodes",
 			"namespaces",
 			"deployments",
-			"demonsets",
+			"daemonsets",
 			"jobs",
 		}
 
@@ -148,7 +148,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				targetNodeName := nodes[0].Name
-				Expect(targetNodeName).ToNot(BeEmpty())
+				Expect(targetNodeName).ToNot(BeEmpty(), "No suitable worker node found")
 
 				By("Checking the node capacity")
 				capacityChecker := map[string]k8sLabels{
