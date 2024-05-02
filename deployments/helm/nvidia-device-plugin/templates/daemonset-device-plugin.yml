@@ -38,6 +38,7 @@ spec:
     metadata:
       labels:
         {{- include "nvidia-device-plugin.templateLabels" . | nindent 8 }}
+        {{- toYaml .Values.podLabels | nindent 8 }}
       annotations:
         {{- include "nvidia-device-plugin.podAnnotations" (dict "local" . "root" .) | nindent 8 }}
     spec:

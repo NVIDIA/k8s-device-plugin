@@ -54,6 +54,7 @@ updateStrategy:
   type: RollingUpdate
 
 podAnnotations: {}
+podLabels: {}
 podSecurityContext: {}
 securityContext: {}
 
