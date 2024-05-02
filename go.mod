@@ -5,7 +5,7 @@ go 1.22.2
 require (
 	github.com/NVIDIA/go-gpuallocator v0.4.0
 	github.com/NVIDIA/go-nvlib v0.3.0
-	github.com/NVIDIA/go-nvml v0.12.0-4
+	github.com/NVIDIA/go-nvml v0.12.0-5
 	github.com/NVIDIA/nvidia-container-toolkit v1.15.1-0.20240419094620-0aed9a16addf
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/uuid v1.6.0
