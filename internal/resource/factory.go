@@ -25,7 +25,7 @@ import (
 
 // NewManager is a factory method that creates a resource Manager based on the specified config.
 func NewManager(config *spec.Config) Manager {
-	return WithConfig(getManager(), config)
+	return WithConfig(getManager(*config.Flags.Mode), config)
 }
 
 // WithConfig modifies a manager depending on the specified config.
@@ -39,7 +39,30 @@ func WithConfig(manager Manager, config *spec.Config) Manager {
 }
 
 // getManager returns the resource manager depending on the system configuration.
-func getManager() Manager {
+func getManager(mode string) Manager {
+
+	resolved := resolveMode(mode)
+	switch resolved {
+	case "nvml":
+		klog.Info("Using NVML manager")
+		return NewNVMLManager()
+	case "tegra":
+		klog.Info("Using CUDA manager")
+		return NewCudaManager()
+	case "vfio":
+		klog.Info("Using Vfio manager")
+		return NewVfioManager()
+	}
+
+	klog.Warningf("Unsupported mode detected: %v using empty manager.", resolved)
+	return NewNullManager()
+}
+
+func resolveMode(mode string) string {
+	if mode != "" && mode != "auto" {
+		return mode
+	}
+
 	// logWithReason logs the output of the has* / is* checks from the info.Interface
 	logWithReason := func(f func() (bool, string), tag string) bool {
 		is, reason := f()
@@ -62,13 +85,11 @@ func getManager() Manager {
 	}
 
 	if hasNVML {
-		klog.Info("Using NVML manager")
-		return NewNVMLManager()
-	} else if isTegra {
-		klog.Info("Using CUDA manager")
-		return NewCudaManager()
+		return "nvml"
 	}
 
-	klog.Warning("No valid resources detected; using empty manager.")
-	return NewNullManager()
+	if isTegra {
+		return "tegra"
+	}
+	return mode
 }

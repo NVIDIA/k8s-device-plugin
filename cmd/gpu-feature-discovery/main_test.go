@@ -208,6 +208,7 @@ func TestRunSleep(t *testing.T) {
 			CommandLineFlags: spec.CommandLineFlags{
 				MigStrategy:     ptr("none"),
 				FailOnInitError: ptr(true),
+				Mode:            ptr("auto"),
 				GFD: &spec.GFDCommandLineFlags{
 					Oneshot:         ptr(false),
 					OutputFile:      ptr("./gfd-test-loop"),

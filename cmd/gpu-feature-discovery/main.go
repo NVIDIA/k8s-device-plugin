@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"syscall"
 	"time"
 
@@ -99,6 +100,12 @@ func main() {
 			Usage:   "Use NFD NodeFeature API to publish labels",
 			EnvVars: []string{"GFD_USE_NODE_FEATURE_API", "USE_NODE_FEATURE_API"},
 		},
+		&cli.StringFlag{
+			Name:    "mode",
+			Value:   "auto",
+			Usage:   "Select GFD mode between 'auto','nvml','tegra' or 'vfio'",
+			EnvVars: []string{"MODE", "GFD_MODE"},
+		},
 	}
 
 	config.flags = append(config.flags, config.kubeClientConfig.Flags()...)
@@ -113,6 +120,10 @@ func main() {
 }
 
 func validateFlags(config *spec.Config) error {
+	validModes := []string{"auto", "nvml", "tegra", "vfio"}
+	if !slices.Contains(validModes, *config.Flags.Mode) {
+		return fmt.Errorf("%s invalid mode option must be 'auto','nvml','tegra' or 'vfio'", *config.Flags.Mode)
+	}
 	return nil
 }
 
