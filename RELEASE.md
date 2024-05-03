@@ -8,12 +8,13 @@ Publishing the container is automated through gitlab-ci and only requires one to
 Publishing the helm chart is currently manual, and we should move to an automated process ASAP
 
 # Release Process Checklist
-- [ ] Update the README changelog
-- [ ] Update the README to change occurances of the old version (e.g: `v0.15.0`) with the new version
+- [ ] Run the `./hack/prepare-release.sh` script to update the version in all the needed files
+- [ ] Run the `./hack/package-helm-charts.sh` script to generate the helm charts
+- [ ] Run the `./hack/generate-changelog.sh` script to generate the a draft changelog
+- [ ] Update the CHANGELOG.md file with the generated changelog
 - [ ] Commit, Tag and Push to Gitlab
-- [ ] Build a new helm package with `./hack/package-helm-charts.sh`
 - [ ] Switch to the `gh-pages` branch and move the newly generated package to the `stable` helm repo
-- [ ] Run the `./build-index.sh` script to rebuild the indices for each repo
+- [ ] While on the `gh-pages` branch, run the `./build-index.sh` script to rebuild the indices for each repo
 - [ ] Commit and push the `gh-pages` branch to GitHub
 - [ ] Wait for the [CI job associated with your tag] (https://gitlab.com/nvidia/kubernetes/device-plugin/-/pipelines) to complete
 - [ ] Create a [new release](https://github.com/NVIDIA/k8s-device-plugin/releases) on Github with the changelog
