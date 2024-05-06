@@ -269,59 +269,66 @@ func (s *ReplicatedResource) UnmarshalJSON(b []byte) error {
 
 // UnmarshalJSON unmarshals raw bytes into a 'ReplicatedDevices' struct.
 func (s *ReplicatedDevices) UnmarshalJSON(b []byte) error {
-	// Match the string 'all'
-	var str string
-	err := json.Unmarshal(b, &str)
-	if err == nil {
-		if str != "all" {
-			return fmt.Errorf("devices set as '%v' but the only valid string input is 'all'", str)
-		}
-		s.All = true
-		return nil
+	var target interface{}
+	if err := json.Unmarshal(b, &target); err != nil {
+		return fmt.Errorf("unrecognized type for devices spec: %w", err)
 	}
 
-	// Match a count
-	var count int
-	err = json.Unmarshal(b, &count)
-	if err == nil {
-		if count <= 0 {
-			return fmt.Errorf("devices set as '%v' but a count of devices must be > 0", count)
+	switch t := target.(type) {
+	case string:
+		if err := handleStringInput(t, s); err != nil {
+			return err
 		}
-		s.Count = count
-		return nil
+	case float64:
+		if err := handleFloatInput(int(t), s); err != nil {
+			return err
+		}
+	case []interface{}:
+		if err := handleListInput(t, s); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unsupported type for devices spec: %T", target)
 	}
 
-	// Match a list
-	var slice []json.RawMessage
-	err = json.Unmarshal(b, &slice)
-	if err == nil {
-		// For each item in the list check its format and convert it to a string (if necessary)
-		result := make([]ReplicatedDeviceRef, len(slice))
-		for i, s := range slice {
-			// Match a uint as a GPU index and convert it to a string
-			var index uint
-			if err = json.Unmarshal(s, &index); err == nil {
-				result[i] = ReplicatedDeviceRef(strconv.Itoa(int(index)))
-				continue
+	return nil
+}
+
+func handleStringInput(str string, s *ReplicatedDevices) error {
+	if str != "all" {
+		return fmt.Errorf("devices set as '%v' but the only valid string input is 'all'", str)
+	}
+	s.All = true
+	return nil
+}
+
+func handleFloatInput(count int, s *ReplicatedDevices) error {
+	if count <= 0 {
+		return fmt.Errorf("devices set as '%v' but a count of devices must be > 0", count)
+	}
+	s.Count = count
+	return nil
+}
+
+func handleListInput(items []interface{}, s *ReplicatedDevices) error {
+	result := make([]ReplicatedDeviceRef, len(items))
+	for i, item := range items {
+		switch v := item.(type) {
+		case float64:
+			result[i] = ReplicatedDeviceRef(strconv.Itoa(int(v)))
+		case string:
+			rd := ReplicatedDeviceRef(v)
+			if rd.IsGPUIndex() || rd.IsMigIndex() || rd.IsUUID() {
+				result[i] = rd
+			} else {
+				return fmt.Errorf("unsupported type for device in devices list: %v", v)
 			}
-			// Match strings as valid entries if they are GPU indices, MIG indices, or UUIDs
-			var item string
-			if err = json.Unmarshal(s, &item); err == nil {
-				rd := ReplicatedDeviceRef(item)
-				if rd.IsGPUIndex() || rd.IsMigIndex() || rd.IsUUID() {
-					result[i] = rd
-					continue
-				}
-			}
-			// Treat any other entries as errors
+		default:
 			return fmt.Errorf("unsupported type for device in devices list: %v, %T", item, item)
 		}
-		s.List = result
-		return nil
 	}
-
-	// No matches found
-	return fmt.Errorf("unrecognized type for devices spec: %v", string(b))
+	s.List = result
+	return nil
 }
 
 // MarshalJSON marshals ReplicatedDevices to its raw bytes representation
