@@ -154,7 +154,10 @@ func (c podLogCollector) Collect(ctx context.Context) error {
 	buf := bufio.NewScanner(podLogs)
 	for buf.Scan() {
 		if _, err := podLogFile.Write(buf.Bytes()); err != nil {
-			return fmt.Errorf("error getting pod logs: %w", err)
+			return fmt.Errorf("error writing pod logs: %w", err)
+		}
+		if _, err := podLogFile.Write([]byte("\n")); err != nil {
+			return fmt.Errorf("error writing pod logs: %w", err)
 		}
 	}
 	if err := buf.Err(); err != nil {
