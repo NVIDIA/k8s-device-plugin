@@ -21,8 +21,8 @@ github.com/Microsoft/go-winio v0.6.1 h1:9/kr64B9VUZrLm5YYwbGtUJnMgqWVOdUAXu6Migc
 github.com/Microsoft/go-winio v0.6.1/go.mod h1:LRdKpFKfdobln8UmuiYcKPot9D2v6svN5+sAH+4kjUM=
 github.com/Microsoft/hcsshim v0.11.4 h1:68vKo2VN8DE9AdN4tnkWnmdhqdbpUFM8OF3Airm7fz8=
 github.com/Microsoft/hcsshim v0.11.4/go.mod h1:smjE4dvqPX9Zldna+t5FG3rnoHhaB7QYxPRqGcpAD9w=
-github.com/NVIDIA/go-gpuallocator v0.4.0 h1:GWiCS6sBCKO/9YYcAi8sAe+NBZ19W3IZQ5eB6TN8z+M=
-github.com/NVIDIA/go-gpuallocator v0.4.0/go.mod h1:Mo/KUZtnsf1Wc3NDMfXxErP/IS5iB1xS+0IBoNyd7e0=
+github.com/NVIDIA/go-gpuallocator v0.4.1 h1:4tHKIDcTLGmRhm27w60NrX6GZ2GvWPWAt4KKSZWMyrk=
+github.com/NVIDIA/go-gpuallocator v0.4.1/go.mod h1:KJZPY7f6Nq7bFphcFpMRRyIELSNkNjlcO0zWQz03Hfg=
 github.com/NVIDIA/go-nvlib v0.3.0 h1:vd7jSOthJTqzqIWZrv317xDr1+Mnjoy5X4N69W9YwQM=
 github.com/NVIDIA/go-nvlib v0.3.0/go.mod h1:NasUuId9hYFvwzuOHCu9F2X6oTU2tG0JHTfbJYuDAbA=
 github.com/NVIDIA/go-nvml v0.12.0-5 h1:4DYsngBqJEAEj+/RFmBZ43Q3ymoR3tyS0oBuJk12Fag=
