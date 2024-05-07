@@ -1,0 +1,216 @@
+# Copyright 2024 NVIDIA CORPORATION
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+{{- if .Values.devicePlugin.enabled }}
+---
+{{- $hasConfigMap := (include "nvidia-device-plugin.hasConfigMap" .) | trim }}
+{{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}
+{{- $migStrategiesAreAllNone := (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) | trim }}
+{{- $daemonsetName := printf "%s-mps-control-daemon" (include "nvidia-device-plugin.fullname" .) | trunc 63 | trimSuffix "-" }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ $daemonsetName }}
+  namespace: {{ include "nvidia-device-plugin.namespace" . }}
+  labels:
+    {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "nvidia-device-plugin.selectorLabels" . | nindent 6 }}
+  {{- with .Values.updateStrategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "nvidia-device-plugin.templateLabels" . | nindent 8 }}
+      annotations:
+        {{- include "nvidia-device-plugin.podAnnotations" (dict "local" . "root" .) | nindent 8 }}
+    spec:
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
+      {{- if .Values.runtimeClassName }}
+      runtimeClassName: {{ .Values.runtimeClassName }}
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if eq $hasConfigMap "true" }}
+      serviceAccountName: {{ include "nvidia-device-plugin.fullname" . }}-service-account
+      shareProcessNamespace: true
+      {{- end }}
+      initContainers:
+      - image: {{ include "nvidia-device-plugin.fullimage" . }}
+        name: mps-control-daemon-mounts
+        command: [mps-control-daemon, mount-shm]
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: mps-root
+          mountPath: /mps
+          mountPropagation: Bidirectional
+        {{- with .Values.resources }}
+        resources:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
+      {{- if eq $hasConfigMap "true" }}
+      - image: {{ include "nvidia-device-plugin.fullimage" . }}
+        name: mps-control-daemon-init
+        command: ["config-manager"]
+        env:
+        - name: ONESHOT
+          value: "true"
+        - name: KUBECONFIG
+          value: ""
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: "spec.nodeName"
+        - name: NODE_LABEL
+          value: "nvidia.com/device-plugin.config"
+        - name: CONFIG_FILE_SRCDIR
+          value: "/available-configs"
+        - name: CONFIG_FILE_DST
+          value: "/config/config.yaml"
+        - name: DEFAULT_CONFIG
+          value: "{{ .Values.config.default }}"
+        - name: FALLBACK_STRATEGIES
+          value: "{{ join "," .Values.config.fallbackStrategies }}"
+        - name: SEND_SIGNAL
+          value: "false"
+        - name: SIGNAL
+          value: ""
+        - name: PROCESS_TO_SIGNAL
+          value: ""
+        volumeMounts:
+          - name: available-configs
+            mountPath: /available-configs
+          - name: config
+            mountPath: /config
+      {{- end }}
+      containers:
+      {{- if eq $hasConfigMap "true" }}
+        # TODO: How do we synchronize the plugin and control-daemon on restart.
+        - image: {{ include "nvidia-device-plugin.fullimage" . }}
+          name: mps-control-daemon-sidecar
+          command: ["config-manager"]
+          env:
+          - name: ONESHOT
+            value: "false"
+          - name: KUBECONFIG
+            value: ""
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: "spec.nodeName"
+          - name: NODE_LABEL
+            value: "nvidia.com/device-plugin.config"
+          - name: CONFIG_FILE_SRCDIR
+            value: "/available-configs"
+          - name: CONFIG_FILE_DST
+            value: "/config/config.yaml"
+          - name: DEFAULT_CONFIG
+            value: "{{ .Values.config.default }}"
+          - name: FALLBACK_STRATEGIES
+            value: "{{ join "," .Values.config.fallbackStrategies }}"
+          - name: SEND_SIGNAL
+            value: "true"
+          - name: SIGNAL
+            value: "1"
+          - name: PROCESS_TO_SIGNAL
+            value: "/usr/bin/mps-control-daemon"
+          volumeMounts:
+            - name: available-configs
+              mountPath: /available-configs
+            - name: config
+              mountPath: /config
+      {{- end }}
+        - image: {{ include "nvidia-device-plugin.fullimage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          name: mps-control-daemon-ctr
+          command: [mps-control-daemon]
+          env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: spec.nodeName
+        {{- if typeIs "string" .Values.migStrategy }}
+          - name: MIG_STRATEGY
+            value: "{{ .Values.migStrategy }}"
+        {{- end }}
+        {{- if eq $hasConfigMap "true" }}
+          - name: CONFIG_FILE
+            value: /config/config.yaml
+        {{- end }}
+        {{- if ne $migStrategiesAreAllNone "true" }}
+          - name: NVIDIA_MIG_MONITOR_DEVICES
+            value: all
+        {{- end }}
+          - name: NVIDIA_VISIBLE_DEVICES
+            value: all
+          - name: NVIDIA_DRIVER_CAPABILITIES
+            value: compute,utility
+          securityContext:
+            privileged: true
+          volumeMounts:
+          - name: mps-shm
+            mountPath: /dev/shm
+          - name: mps-root
+            mountPath: /mps
+          {{- if eq $hasConfigMap "true" }}
+          - name: available-configs
+            mountPath: /available-configs
+          - name: config
+            mountPath: /config
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+      - name: mps-root
+        hostPath:
+          path: {{ .Values.mps.root }}
+          type: DirectoryOrCreate
+      - name: mps-shm
+        hostPath:
+          path: {{ .Values.mps.root }}/shm
+      {{- if eq $hasConfigMap "true" }}
+      - name: available-configs
+        configMap:
+          name: "{{ $configMapName }}"
+      - name: config
+        emptyDir: {}
+      {{- end }}
+      nodeSelector:
+        # We only deploy this pod if the following sharing label is applied.
+        nvidia.com/mps.capable: "true"
+      {{- with .Values.nodeSelector }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
