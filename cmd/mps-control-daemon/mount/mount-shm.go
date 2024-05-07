@@ -20,23 +20,55 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 
 	"github.com/urfave/cli/v2"
 	"k8s.io/mount-utils"
 )
 
+type options struct {
+	shmSize string
+}
+
 // NewCommand constructs a mount command.
 func NewCommand() *cli.Command {
-	// Create the 'generate-cdi' command
-	return &cli.Command{
-		Name:   "mount-shm",
-		Usage:  "Set up the /dev/shm mount required by the MPS daemon",
-		Action: mountShm,
+	opts := options{}
+
+	c := cli.Command{
+		Name:  "mount-shm",
+		Usage: "Set up the /dev/shm mount required by the MPS daemon",
+		Before: func(ctx *cli.Context) error {
+			return validateFlags(ctx, &opts)
+		},
+		Action: func(ctx *cli.Context) error {
+			return mountShm(ctx, &opts)
+		},
 	}
+
+	c.Flags = []cli.Flag{
+		&cli.StringFlag{
+			Name:        "dev-shm-size",
+			Usage:       "Specify the size of the tmpfs that will be created at for use by the MPS daemon",
+			Value:       "65536k",
+			Destination: &opts.shmSize,
+			EnvVars:     []string{"MPS_DEV_SHM_SIZE"},
+		},
+	}
+
+	return &c
+}
+
+func validateFlags(c *cli.Context, opts *options) error {
+	format := "[0-9]+[kmg%]?"
+	if !regexp.MustCompile(format).MatchString(opts.shmSize) {
+		return fmt.Errorf("dev-shm-size does not match format %q: %q", format, opts.shmSize)
+	}
+
+	return nil
 }
 
 // mountShm creates a tmpfs mount at /mps/shm to be used by the mps control daemon.
-func mountShm(c *cli.Context) error {
+func mountShm(c *cli.Context, opts *options) error {
 	mountExecutable, err := exec.LookPath("mount")
 	if err != nil {
 		return fmt.Errorf("error finding 'mount' executable: %w", err)
@@ -54,8 +86,8 @@ func mountShm(c *cli.Context) error {
 		return fmt.Errorf("error creating directory %v: %w", shmDir, err)
 	}
 
-	//  TODO: What should the size of the shm be
-	mountOptions := []string{"rw", "nosuid", "nodev", "noexec", "relatime", "size=65536k"}
+	sizeArg := fmt.Sprintf("size=%v", opts.shmSize)
+	mountOptions := []string{"rw", "nosuid", "nodev", "noexec", "relatime", sizeArg}
 	if err := mounter.Mount("shm", shmDir, "tmpfs", mountOptions); err != nil {
 		return fmt.Errorf("error mounting %v as tmpfs: %w", shmDir, err)
 	}

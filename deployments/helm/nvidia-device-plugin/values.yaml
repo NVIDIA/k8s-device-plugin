@@ -150,3 +150,9 @@ mps:
   # directories.
   # Pipe directories will be created at {{ mps.root }}/{{ .ResourceName }}
   root: "/run/nvidia/mps"
+  # devShmSize specifies the size in bytes of the tmpfs created for the MPS
+  # control daemon.
+  # The format should match that of the size argument (excluding the size=)
+  # prefix when mounting a tmpfs:
+  #    See https://man7.org/linux/man-pages/man5/tmpfs.5.html
+  devShmSize: null

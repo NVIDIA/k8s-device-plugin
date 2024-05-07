@@ -61,6 +61,11 @@ spec:
         command: [mps-control-daemon, mount-shm]
         securityContext:
           privileged: true
+        env:
+        {{- if typeIs "string" .Values.mps.devShmSize }}
+        - name: MPS_DEV_SHM_SIZE
+          value: {{ .Values.mps.devShmSize }}
+        {{- end }}
         volumeMounts:
         - name: mps-root
           mountPath: /mps
