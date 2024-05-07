@@ -269,29 +269,22 @@ func (s *ReplicatedResource) UnmarshalJSON(b []byte) error {
 
 // UnmarshalJSON unmarshals raw bytes into a 'ReplicatedDevices' struct.
 func (s *ReplicatedDevices) UnmarshalJSON(b []byte) error {
-	var target interface{}
-	if err := json.Unmarshal(b, &target); err != nil {
-		return fmt.Errorf("unrecognized type for devices spec: %w", err)
+	var str string
+	if err := json.Unmarshal(b, &str); err == nil {
+		return handleStringInput(str, s)
 	}
 
-	switch t := target.(type) {
-	case string:
-		if err := handleStringInput(t, s); err != nil {
-			return err
-		}
-	case float64:
-		if err := handleFloatInput(int(t), s); err != nil {
-			return err
-		}
-	case []interface{}:
-		if err := handleListInput(t, s); err != nil {
-			return err
-		}
-	default:
-		return fmt.Errorf("unsupported type for devices spec: %T", target)
+	var count int
+	if err := json.Unmarshal(b, &count); err == nil {
+		return handleIntInput(count, s)
 	}
 
-	return nil
+	var slice []json.RawMessage
+	if err := json.Unmarshal(b, &slice); err == nil {
+		return handleListInput(slice, s)
+	}
+
+	return fmt.Errorf("unrecognized type for devices spec: %s", string(b))
 }
 
 func handleStringInput(str string, s *ReplicatedDevices) error {
@@ -302,7 +295,7 @@ func handleStringInput(str string, s *ReplicatedDevices) error {
 	return nil
 }
 
-func handleFloatInput(count int, s *ReplicatedDevices) error {
+func handleIntInput(count int, s *ReplicatedDevices) error {
 	if count <= 0 {
 		return fmt.Errorf("devices set as '%v' but a count of devices must be > 0", count)
 	}
@@ -310,22 +303,24 @@ func handleFloatInput(count int, s *ReplicatedDevices) error {
 	return nil
 }
 
-func handleListInput(items []interface{}, s *ReplicatedDevices) error {
-	result := make([]ReplicatedDeviceRef, len(items))
-	for i, item := range items {
-		switch v := item.(type) {
-		case float64:
-			result[i] = ReplicatedDeviceRef(strconv.Itoa(int(v)))
-		case string:
-			rd := ReplicatedDeviceRef(v)
+func handleListInput(slice []json.RawMessage, s *ReplicatedDevices) error {
+	result := make([]ReplicatedDeviceRef, len(slice))
+	for i, raw := range slice {
+		var index uint
+		if err := json.Unmarshal(raw, &index); err == nil {
+			result[i] = ReplicatedDeviceRef(strconv.Itoa(int(index)))
+			continue
+		}
+
+		var item string
+		if err := json.Unmarshal(raw, &item); err == nil {
+			rd := ReplicatedDeviceRef(item)
 			if rd.IsGPUIndex() || rd.IsMigIndex() || rd.IsUUID() {
 				result[i] = rd
-			} else {
-				return fmt.Errorf("unsupported type for device in devices list: %v", v)
+				continue
 			}
-		default:
-			return fmt.Errorf("unsupported type for device in devices list: %v, %T", item, item)
 		}
+		return fmt.Errorf("unsupported type for device in devices list: %v, %T", item, item)
 	}
 	s.List = result
 	return nil
