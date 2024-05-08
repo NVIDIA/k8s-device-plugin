@@ -242,7 +242,7 @@ func TestSanitise(t *testing.T) {
 			expected: "input-with-multiple-spaces",
 		},
 		{
-			input:    "some [ thing ]else",
+			input:    "some [ / thing / ]else",
 			expected: "some-thing-else",
 		},
 		{
@@ -250,8 +250,8 @@ func TestSanitise(t *testing.T) {
 			expected: "some-thing-else",
 		},
 		{
-			input:    "some/[]thing{}else",
-			expected: "somethingelse",
+			input:    "some-thing.else_new",
+			expected: "some-thing.else_new",
 		},
 	}
 	for _, tc := range testCases {

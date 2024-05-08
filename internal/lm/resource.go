@@ -307,7 +307,7 @@ func getArchFamily(computeMajor, computeMinor int) string {
 
 func sanitise(input string) string {
 	var sanitised string
-	re := regexp.MustCompile("[^a-zA-Z0-9-. ]")
+	re := regexp.MustCompile("[^A-Za-z0-9-_. ]")
 	input = re.ReplaceAllString(input, "")
 	// remove redundant blank spaces
 	sanitised = strings.Join(strings.Fields(input), "-")
