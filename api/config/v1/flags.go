@@ -148,7 +148,7 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.Plugin.DeviceIDStrategy, c, n)
 			case "cdi-annotation-prefix":
 				updateFromCLIFlag(&f.Plugin.CDIAnnotationPrefix, c, n)
-			case "nvidia-ctk-path":
+			case "nvidia-cdi-hook-path", "nvidia-ctk-path":
 				updateFromCLIFlag(&f.Plugin.NvidiaCTKPath, c, n)
 			case "container-driver-root":
 				updateFromCLIFlag(&f.Plugin.ContainerDriverRoot, c, n)

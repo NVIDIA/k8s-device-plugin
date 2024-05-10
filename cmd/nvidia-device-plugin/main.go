@@ -118,10 +118,11 @@ func main() {
 			EnvVars: []string{"CDI_ANNOTATION_PREFIX"},
 		},
 		&cli.StringFlag{
-			Name:    "nvidia-ctk-path",
+			Name:    "nvidia-cdi-hook-path",
+			Aliases: []string{"nvidia-ctk-path"},
 			Value:   spec.DefaultNvidiaCTKPath,
-			Usage:   "the path to use for the nvidia-ctk in the generated CDI specification",
-			EnvVars: []string{"NVIDIA_CTK_PATH"},
+			Usage:   "the path to use for NVIDIA CDI hooks in the generated CDI specification",
+			EnvVars: []string{"NVIDIA_CDI_HOOK_PATH", "NVIDIA_CTK_PATH"},
 		},
 		&cli.StringFlag{
 			Name:    "driver-root-ctr-path",
