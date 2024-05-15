@@ -115,10 +115,11 @@ func main() {
 			EnvVars: []string{"NVIDIA_CTK_PATH"},
 		},
 		&cli.StringFlag{
-			Name:    "container-driver-root",
+			Name:    "driver-root-ctr-path",
+			Aliases: []string{"container-driver-root"},
 			Value:   spec.DefaultContainerDriverRoot,
 			Usage:   "the path where the NVIDIA driver root is mounted in the container; used for generating CDI specifications",
-			EnvVars: []string{"CONTAINER_DRIVER_ROOT"},
+			EnvVars: []string{"DRIVER_ROOT_CTR_PATH", "CONTAINER_DRIVER_ROOT"},
 		},
 		&cli.StringFlag{
 			Name:    "mps-root",
