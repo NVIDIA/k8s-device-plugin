@@ -177,6 +177,12 @@ spec:
           - name: NVIDIA_MIG_MONITOR_DEVICES
             value: all
         {{- end }}
+        {{- if typeIs "string" .Values.deviceDiscoveryStrategy }}
+          - name: DEVICE_DISCOVERY_STRATEGY
+            value: {{ .Values.deviceDiscoveryStrategy }}
+        {{- end }}
+          - name: DEVICE_PLUGIN_MODE
+            value: "{{ .Values.devicePlugin.mode }}"
           - name: NVIDIA_VISIBLE_DEVICES
             value: all
           - name: NVIDIA_DRIVER_CAPABILITIES

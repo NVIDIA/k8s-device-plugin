@@ -128,6 +128,12 @@ func main() {
 			Usage:   "the path on the host where MPS-specific mounts and files are created by the MPS control daemon manager",
 			EnvVars: []string{"MPS_ROOT"},
 		},
+		&cli.StringFlag{
+			Name:    "device-discovery-strategy",
+			Value:   "auto",
+			Usage:   "the strategy to use to discover devices: 'auto', 'nvml', or 'tegra'",
+			EnvVars: []string{"DEVICE_DISCOVERY_STRATEGY"},
+		},
 	}
 
 	err := c.Run(os.Args)
@@ -159,6 +165,14 @@ func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 		if config.Flags.MpsRoot == nil || *config.Flags.MpsRoot == "" {
 			return fmt.Errorf("using MPS requires --mps-root to be specified")
 		}
+	}
+
+	switch *config.Flags.DeviceDiscoveryStrategy {
+	case "auto":
+	case "nvml":
+	case "tegra":
+	default:
+		return fmt.Errorf("invalid --device-discovery-strategy option %v", *config.Flags.DeviceDiscoveryStrategy)
 	}
 
 	return nil
