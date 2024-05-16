@@ -173,7 +173,7 @@ spec:
             value: all
         {{- end }}
           - name: GFD_MODE
-            value: "{{ .Values.gfdMode }}"
+            value: "{{ .Values.gfd.mode }}"
         securityContext:
           {{- include "gpu-feature-discovery.securityContext" . | nindent 10 }}
         volumeMounts:

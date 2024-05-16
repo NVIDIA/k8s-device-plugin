@@ -35,7 +35,6 @@ deviceIDStrategy: null
 nvidiaDriverRoot: null
 gdsEnabled: null
 mofedEnabled: null
-gfdMode: "auto"
 
 nameOverride: ""
 fullnameOverride: ""
@@ -104,6 +103,7 @@ devicePlugin:
 
 gfd:
   enabled: false
+  mode: "auto"
   nameOverride: gpu-feature-discovery
   namespaceOverride: ""
   noTimestamp: null
