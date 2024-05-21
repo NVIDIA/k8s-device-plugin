@@ -241,6 +241,18 @@ func TestSanitise(t *testing.T) {
 			input:    " input  with multiple   spaces   ",
 			expected: "input-with-multiple-spaces",
 		},
+		{
+			input:    "some [ / thing / ]else",
+			expected: "some-thing-else",
+		},
+		{
+			input:    "some / thing /else",
+			expected: "some-thing-else",
+		},
+		{
+			input:    "some-thing.else_new",
+			expected: "some-thing.else_new",
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.input, func(t *testing.T) {

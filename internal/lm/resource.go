@@ -18,6 +18,7 @@ package lm
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
@@ -306,10 +307,10 @@ func getArchFamily(computeMajor, computeMinor int) string {
 
 func sanitise(input string) string {
 	var sanitised string
-	sanitised = strings.ReplaceAll(input, "(", "")
-	sanitised = strings.ReplaceAll(sanitised, ")", "")
+	re := regexp.MustCompile("[^A-Za-z0-9-_. ]")
+	input = re.ReplaceAllString(input, "")
 	// remove redundant blank spaces
-	sanitised = strings.Join(strings.Fields(sanitised), "-")
+	sanitised = strings.Join(strings.Fields(input), "-")
 
 	return sanitised
 }
