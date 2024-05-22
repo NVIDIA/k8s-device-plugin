@@ -17,15 +17,16 @@
 package lm
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
-	"k8s.io/klog/v2"
-
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 )
+
+var errMPSSharingNotSupported = errors.New("MPS sharing is not supported")
 
 // NewDeviceLabeler creates a new labeler for the specified resource manager.
 func NewDeviceLabeler(manager resource.Manager, config *spec.Config) (Labeler, error) {
@@ -60,6 +61,11 @@ func NewDeviceLabeler(manager resource.Manager, config *spec.Config) (Labeler, e
 		return nil, fmt.Errorf("error creating mig capability labeler: %v", err)
 	}
 
+	sharingLabeler, err := newSharingLabeler(manager, config)
+	if err != nil {
+		return nil, fmt.Errorf("error creating sharing labeler: %w", err)
+	}
+
 	resourceLabeler, err := NewResourceLabeler(manager, config)
 	if err != nil {
 		return nil, fmt.Errorf("error creating resource labeler: %v", err)
@@ -69,8 +75,8 @@ func NewDeviceLabeler(manager resource.Manager, config *spec.Config) (Labeler, e
 		machineTypeLabeler,
 		versionLabeler,
 		migCapabilityLabeler,
+		sharingLabeler,
 		resourceLabeler,
-		newSharingLabeler(manager, config),
 	)
 
 	return l, nil
@@ -151,24 +157,23 @@ func newMigCapabilityLabeler(manager resource.Manager) (Labeler, error) {
 	return labels, nil
 }
 
-func newSharingLabeler(manager resource.Manager, config *spec.Config) Labeler {
+func newSharingLabeler(manager resource.Manager, config *spec.Config) (Labeler, error) {
 	if config == nil || config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
-		return Labels{
+		labels := Labels{
 			"nvidia.com/mps.capable": "false",
 		}
+		return labels, nil
 	}
 
 	capable, err := isMPSCapable(manager)
 	if err != nil {
-		klog.ErrorS(err, "MPS-capable check failed")
-		return Labels{
-			"nvidia.com/mps.capable": "false",
-		}
+		return nil, fmt.Errorf("failed to check MPS-capable: %w", err)
 	}
 
-	return Labels{
+	labels := Labels{
 		"nvidia.com/mps.capable": strconv.FormatBool(capable),
 	}
+	return labels, nil
 }
 
 func isMPSCapable(manager resource.Manager) (bool, error) {
@@ -180,11 +185,10 @@ func isMPSCapable(manager resource.Manager) (bool, error) {
 	for _, d := range devices {
 		isMigEnabled, err := d.IsMigEnabled()
 		if err != nil {
-			return false, fmt.Errorf("faled to check if device is MIG-enabled: %w", err)
+			return false, fmt.Errorf("failed to check if device is MIG-enabled: %w", err)
 		}
 		if isMigEnabled {
-			klog.Warning("Seting mps.capable to false for MIG devices")
-			return false, nil
+			return false, fmt.Errorf("%w for mig devices", errMPSSharingNotSupported)
 		}
 	}
 	return true, nil
