@@ -84,6 +84,7 @@ func TestSharingLabeler(t *testing.T) {
 		manager        resource.Manager
 		config         *spec.Config
 		expectedLabels map[string]string
+		expectedError  error
 	}{
 		{
 			description: "nil config",
@@ -186,15 +187,20 @@ func TestSharingLabeler(t *testing.T) {
 					},
 				},
 			},
-			expectedLabels: map[string]string{
-				"nvidia.com/mps.capable": "false",
-			},
+			expectedError:  errMPSSharingNotSupported,
+			expectedLabels: nil,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			require.EqualValues(t, tc.expectedLabels, newSharingLabeler(tc.manager, tc.config))
+			labels, err := newSharingLabeler(tc.manager, tc.config)
+			require.ErrorIs(t, err, tc.expectedError)
+			if tc.expectedError != nil {
+				require.Nil(t, labels)
+			} else {
+				require.EqualValues(t, tc.expectedLabels, labels)
+			}
 		})
 	}
 }
