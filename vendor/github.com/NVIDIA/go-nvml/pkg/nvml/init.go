@@ -17,31 +17,31 @@ package nvml
 import "C"
 
 // nvml.Init()
-func Init() Return {
-	if err := libnvml.load(); err != nil {
+func (l *library) Init() Return {
+	if err := l.load(); err != nil {
 		return ERROR_LIBRARY_NOT_FOUND
 	}
 	return nvmlInit()
 }
 
 // nvml.InitWithFlags()
-func InitWithFlags(Flags uint32) Return {
-	if err := libnvml.load(); err != nil {
+func (l *library) InitWithFlags(flags uint32) Return {
+	if err := l.load(); err != nil {
 		return ERROR_LIBRARY_NOT_FOUND
 	}
-	return nvmlInitWithFlags(Flags)
+	return nvmlInitWithFlags(flags)
 }
 
 // nvml.Shutdown()
-func Shutdown() Return {
+func (l *library) Shutdown() Return {
 	ret := nvmlShutdown()
 	if ret != SUCCESS {
 		return ret
 	}
 
-	err := libnvml.close()
+	err := l.close()
 	if err != nil {
-		panic(err)
+		return ERROR_UNKNOWN
 	}
 
 	return ret
