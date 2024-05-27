@@ -151,4 +151,7 @@ mps:
   # Pipe directories will be created at {{ mps.root }}/{{ .ResourceName }}
   root: "/run/nvidia/mps"
 
-microshift: "enabled"
+# Set "enabled" if using Red Hat Build of MicroShift https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.15
+# e.g.
+# microshift: "enabled"
+microshift: ""
