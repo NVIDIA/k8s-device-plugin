@@ -39,16 +39,16 @@ type deviceMapBuilder struct {
 type DeviceMap map[spec.ResourceName]Devices
 
 // NewDeviceMap creates a device map for the specified NVML library and config.
-func NewDeviceMap(nvmllib nvml.Interface, config *spec.Config) (DeviceMap, error) {
+func NewDeviceMap(infolib info.Interface, devicelib device.Interface, config *spec.Config) (DeviceMap, error) {
 	b := deviceMapBuilder{
-		Interface:           device.New(nvmllib),
+		Interface:           devicelib,
 		migStrategy:         config.Flags.MigStrategy,
 		resources:           &config.Resources,
 		replicatedResources: config.Sharing.ReplicatedResources(),
 		newGPUDevice:        newNvmlGPUDevice,
 	}
 
-	if info.New().ResolvePlatform() == info.PlatformWSL {
+	if infolib.ResolvePlatform() == info.PlatformWSL {
 		b.newGPUDevice = newWslGPUDevice
 	}
 

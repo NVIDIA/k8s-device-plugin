@@ -17,8 +17,6 @@
 package mps
 
 import (
-	"github.com/NVIDIA/go-nvml/pkg/nvml"
-
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
@@ -29,12 +27,5 @@ type Option func(*manager)
 func WithConfig(config *spec.Config) Option {
 	return func(m *manager) {
 		m.config = config
-	}
-}
-
-// WithNvmlLib sets the NVML library associated with the MPS manager.
-func WithNvmlLib(nvmllib nvml.Interface) Option {
-	return func(m *manager) {
-		m.nvmllib = nvmllib
 	}
 }

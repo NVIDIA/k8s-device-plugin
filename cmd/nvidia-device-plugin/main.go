@@ -24,7 +24,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	nvinfo "github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/fsnotify/fsnotify"
 	"github.com/urfave/cli/v2"
 	"k8s.io/klog/v2"
@@ -135,13 +137,13 @@ func main() {
 	}
 }
 
-func validateFlags(config *spec.Config) error {
+func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 	deviceListStrategies, err := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
 	if err != nil {
 		return fmt.Errorf("invalid --device-list-strategy option: %v", err)
 	}
 
-	hasNvml, _ := nvinfo.New().HasNvml()
+	hasNvml, _ := infolib.HasNvml()
 	if deviceListStrategies.IsCDIEnabled() && !hasNvml {
 		return fmt.Errorf("CDI --device-list-strategy options are only supported on NVML-based systems")
 	}
@@ -166,10 +168,6 @@ func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 	config, err := spec.NewConfig(c, flags)
 	if err != nil {
 		return nil, fmt.Errorf("unable to finalize config: %v", err)
-	}
-	err = validateFlags(config)
-	if err != nil {
-		return nil, fmt.Errorf("unable to validate flags: %v", err)
 	}
 	config.Flags.GFD = nil
 	return config, nil
@@ -262,9 +260,21 @@ func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, bool, e
 	}
 	spec.DisableResourceNamingInConfig(logger.ToKlog, config)
 
+	nvmllib := nvml.New()
+	devicelib := device.New(nvmllib)
+	infolib := nvinfo.New(
+		nvinfo.WithNvmlLib(nvmllib),
+		nvinfo.WithDeviceLib(devicelib),
+	)
+
+	err = validateFlags(infolib, config)
+	if err != nil {
+		return nil, false, fmt.Errorf("unable to validate flags: %v", err)
+	}
+
 	// Update the configuration file with default resources.
 	klog.Info("Updating config with default resource matching patterns.")
-	err = rm.AddDefaultResourcesToConfig(config)
+	err = rm.AddDefaultResourcesToConfig(infolib, nvmllib, devicelib, config)
 	if err != nil {
 		return nil, false, fmt.Errorf("unable to add default resources to config: %v", err)
 	}
@@ -278,7 +288,7 @@ func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, bool, e
 
 	// Get the set of plugins.
 	klog.Info("Retrieving plugins.")
-	pluginManager, err := NewPluginManager(config)
+	pluginManager, err := NewPluginManager(infolib, nvmllib, devicelib, config)
 	if err != nil {
 		return nil, false, fmt.Errorf("error creating plugin manager: %v", err)
 	}

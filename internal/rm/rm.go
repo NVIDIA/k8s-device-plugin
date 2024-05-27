@@ -94,7 +94,7 @@ func (r *resourceManager) ValidateRequest(ids AnnotatedIDs) error {
 }
 
 // AddDefaultResourcesToConfig adds default resource matching rules to config.Resources
-func AddDefaultResourcesToConfig(config *spec.Config) error {
+func AddDefaultResourcesToConfig(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) error {
 	_ = config.Resources.AddGPUResource("*", "gpu")
 	if config.Flags.MigStrategy == nil {
 		return nil
@@ -103,14 +103,13 @@ func AddDefaultResourcesToConfig(config *spec.Config) error {
 	case spec.MigStrategySingle:
 		return config.Resources.AddMIGResource("*", "gpu")
 	case spec.MigStrategyMixed:
-		hasNVML, reason := info.New().HasNvml()
+		hasNVML, reason := infolib.HasNvml()
 		if !hasNVML {
 			klog.Warningf("mig-strategy=%q is only supported with NVML", spec.MigStrategyMixed)
 			klog.Warningf("NVML not detected: %v", reason)
 			return nil
 		}
 
-		nvmllib := nvml.New()
 		ret := nvmllib.Init()
 		if ret != nvml.SUCCESS {
 			if *config.Flags.FailOnInitError {
@@ -125,9 +124,6 @@ func AddDefaultResourcesToConfig(config *spec.Config) error {
 			}
 		}()
 
-		devicelib := device.New(
-			nvmllib,
-		)
 		return devicelib.VisitMigProfiles(func(p device.MigProfile) error {
 			info := p.GetInfo()
 			if info.C != info.G {

@@ -17,20 +17,20 @@
 package cdi
 
 import (
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 
 	"k8s.io/klog/v2"
 )
 
 // New is a factory method that creates a CDI handler for creating CDI specs.
-func New(opts ...Option) (Interface, error) {
-	infolib := info.New()
-
+func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, opts ...Option) (Interface, error) {
 	hasNVML, _ := infolib.HasNvml()
 	if !hasNVML {
 		klog.Warning("No valid resources detected, creating a null CDI handler")
 		return NewNullHandler(), nil
 	}
 
-	return newHandler(opts...)
+	return newHandler(infolib, nvmllib, devicelib, opts...)
 }

@@ -20,7 +20,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	nvdevice "github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi"
 	transformroot "github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform/root"
@@ -37,9 +38,11 @@ const (
 
 // cdiHandler creates CDI specs for devices assocatied with the device plugin
 type cdiHandler struct {
+	infolib   info.Interface
+	nvmllib   nvml.Interface
+	devicelib device.Interface
+
 	logger           *logrus.Logger
-	nvml             nvml.Interface
-	nvdevice         nvdevice.Interface
 	driverRoot       string
 	targetDriverRoot string
 	nvidiaCTKPath    string
@@ -57,8 +60,12 @@ type cdiHandler struct {
 var _ Interface = &cdiHandler{}
 
 // newHandler constructs a new instance of the 'cdi' interface
-func newHandler(opts ...Option) (Interface, error) {
-	c := &cdiHandler{}
+func newHandler(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, opts ...Option) (Interface, error) {
+	c := &cdiHandler{
+		infolib:   infolib,
+		nvmllib:   nvmllib,
+		devicelib: devicelib,
+	}
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -69,12 +76,6 @@ func newHandler(opts ...Option) (Interface, error) {
 
 	if c.logger == nil {
 		c.logger = logrus.StandardLogger()
-	}
-	if c.nvml == nil {
-		c.nvml = nvml.New()
-	}
-	if c.nvdevice == nil {
-		c.nvdevice = nvdevice.New(c.nvml)
 	}
 	if c.deviceIDStrategy == "" {
 		c.deviceIDStrategy = "uuid"
@@ -94,9 +95,10 @@ func newHandler(opts ...Option) (Interface, error) {
 	c.cdilibs = make(map[string]nvcdi.Interface)
 
 	c.cdilibs["gpu"], err = nvcdi.New(
+		nvcdi.WithInfoLib(c.infolib),
+		nvcdi.WithNvmlLib(c.nvmllib),
+		nvcdi.WithDeviceLib(c.devicelib),
 		nvcdi.WithLogger(c.logger),
-		nvcdi.WithNvmlLib(c.nvml),
-		nvcdi.WithDeviceLib(c.nvdevice),
 		nvcdi.WithNVIDIACDIHookPath(c.nvidiaCTKPath),
 		nvcdi.WithDriverRoot(c.driverRoot),
 		nvcdi.WithDeviceNamers(deviceNamer),
@@ -139,12 +141,12 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 		cdi.logger.Infof("Generating CDI spec for resource: %s/%s", cdi.vendor, class)
 
 		if class == "gpu" {
-			ret := cdi.nvml.Init()
+			ret := cdi.nvmllib.Init()
 			if ret != nvml.SUCCESS {
 				return fmt.Errorf("failed to initialize NVML: %v", ret)
 			}
 			defer func() {
-				_ = cdi.nvml.Shutdown()
+				_ = cdi.nvmllib.Shutdown()
 			}()
 		}
 

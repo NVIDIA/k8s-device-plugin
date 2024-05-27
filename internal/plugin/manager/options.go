@@ -17,6 +17,7 @@
 package manager
 
 import (
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
@@ -37,6 +38,13 @@ func WithCDIHandler(handler cdi.Interface) Option {
 func WithNVML(nvmllib nvml.Interface) Option {
 	return func(m *manager) {
 		m.nvmllib = nvmllib
+	}
+}
+
+// WithInfoLib sets the info lib for the manager.
+func WithInfoLib(infolib info.Interface) Option {
+	return func(m *manager) {
+		m.infolib = infolib
 	}
 }
 

@@ -20,6 +20,8 @@ import (
 	"fmt"
 
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"k8s.io/klog/v2"
 
@@ -34,7 +36,7 @@ type nvmlResourceManager struct {
 var _ ResourceManager = (*nvmlResourceManager)(nil)
 
 // NewNVMLResourceManagers returns a set of ResourceManagers, one for each NVML resource in 'config'.
-func NewNVMLResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]ResourceManager, error) {
+func NewNVMLResourceManagers(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) ([]ResourceManager, error) {
 	ret := nvmllib.Init()
 	if ret != nvml.SUCCESS {
 		return nil, fmt.Errorf("failed to initialize NVML: %v", ret)
@@ -46,7 +48,7 @@ func NewNVMLResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]Res
 		}
 	}()
 
-	deviceMap, err := NewDeviceMap(nvmllib, config)
+	deviceMap, err := NewDeviceMap(infolib, devicelib, config)
 	if err != nil {
 		return nil, fmt.Errorf("error building device map: %v", err)
 	}

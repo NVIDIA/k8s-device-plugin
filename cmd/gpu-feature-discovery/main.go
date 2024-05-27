@@ -14,6 +14,10 @@ import (
 	"github.com/urfave/cli/v2"
 	"k8s.io/klog/v2"
 
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	nvinfo "github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/flags"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
@@ -166,7 +170,14 @@ func start(c *cli.Context, cfg *Config) error {
 		}
 		klog.Infof("\nRunning with config:\n%v", string(configJSON))
 
-		manager := resource.NewManager(config)
+		nvmllib := nvml.New()
+		devicelib := device.New(nvmllib)
+		infolib := nvinfo.New(
+			nvinfo.WithNvmlLib(nvmllib),
+			nvinfo.WithDeviceLib(devicelib),
+		)
+
+		manager := resource.NewManager(infolib, nvmllib, devicelib, config)
 		vgpul := vgpu.NewVGPULib(vgpu.NewNvidiaPCILib())
 
 		var clientSets flags.ClientSets
