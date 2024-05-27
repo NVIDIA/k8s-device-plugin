@@ -106,7 +106,7 @@ func (m *manager) resolveMode() (string, error) {
 	}
 
 	hasNVML := logWithReason(m.infolib.HasNvml, "NVML")
-	isTegra := logWithReason(m.infolib.IsTegraSystem, "Tegra")
+	isTegra := logWithReason(m.infolib.HasTegraFiles, "Tegra")
 
 	if !hasNVML && !isTegra {
 		klog.Error("Incompatible platform detected")

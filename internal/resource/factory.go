@@ -76,7 +76,7 @@ func resolveMode(mode string) string {
 	infolib := info.New()
 
 	hasNVML := logWithReason(infolib.HasNvml, "NVML")
-	isTegra := logWithReason(infolib.IsTegraSystem, "Tegra")
+	isTegra := logWithReason(infolib.HasTegraFiles, "Tegra")
 
 	// The NVIDIA container stack does not yet support the use of integrated AND discrete GPUs on the same node.
 	if hasNVML && isTegra {
