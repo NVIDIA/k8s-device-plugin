@@ -61,7 +61,7 @@ func NewResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]Resourc
 	infolib := info.New()
 
 	hasNVML := logWithReason(infolib.HasNvml, "NVML")
-	isTegra := logWithReason(infolib.IsTegraSystem, "Tegra")
+	isTegra := logWithReason(infolib.HasTegraFiles, "Tegra")
 
 	if !hasNVML && !isTegra {
 		klog.Error("Incompatible platform detected")
