@@ -10,6 +10,7 @@ rules:
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list", "watch"]
+  {{ if eq .Values.microshift "enabled" }}
   - apiGroups:
       - security.openshift.io
     resourceNames:
@@ -18,11 +19,13 @@ rules:
       - securitycontextconstraints
     verbs:
       - use
+  {{- end }}
   {{- if and .Values.gfd.enabled .Values.nfd.enableNodeFeatureApi }}
   - apiGroups: ["nfd.k8s-sigs.io"]
     resources: ["nodefeatures"]
     verbs: ["get", "list", "watch", "create", "update"]
   {{- end }}
+{{ if eq .Values.microshift "enabled" }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -35,7 +38,7 @@ rules:
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list", "watch"]
-  - apiGroups:
+  - apiGroups: 
       - security.openshift.io
     resourceNames:
       - privileged
@@ -43,4 +46,5 @@ rules:
       - securitycontextconstraints
     verbs:
       - use
+  {{- end }}
 {{- end }}

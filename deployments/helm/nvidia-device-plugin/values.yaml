@@ -150,3 +150,5 @@ mps:
   # directories.
   # Pipe directories will be created at {{ mps.root }}/{{ .ResourceName }}
   root: "/run/nvidia/mps"
+
+microshift: "enabled"
