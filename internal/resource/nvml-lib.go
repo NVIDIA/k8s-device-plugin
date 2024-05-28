@@ -29,7 +29,7 @@ type nvmlLib struct {
 // NewNVMLManager creates a new manager that uses NVML to query and manage devices
 func NewNVMLManager() Manager {
 	nvmllib := nvml.New()
-	devicelib := device.New(device.WithNvml(nvmllib))
+	devicelib := device.New(nvmllib)
 
 	m := nvmlLib{
 		Interface: nvmllib,

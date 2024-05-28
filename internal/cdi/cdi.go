@@ -74,7 +74,7 @@ func newHandler(opts ...Option) (Interface, error) {
 		c.nvml = nvml.New()
 	}
 	if c.nvdevice == nil {
-		c.nvdevice = nvdevice.New(nvdevice.WithNvml(c.nvml))
+		c.nvdevice = nvdevice.New(c.nvml)
 	}
 	if c.deviceIDStrategy == "" {
 		c.deviceIDStrategy = "uuid"

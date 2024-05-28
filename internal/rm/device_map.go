@@ -38,7 +38,7 @@ type DeviceMap map[spec.ResourceName]Devices
 // NewDeviceMap creates a device map for the specified NVML library and config.
 func NewDeviceMap(nvmllib nvml.Interface, config *spec.Config) (DeviceMap, error) {
 	b := deviceMapBuilder{
-		Interface:           device.New(device.WithNvml(nvmllib)),
+		Interface:           device.New(nvmllib),
 		migStrategy:         config.Flags.MigStrategy,
 		resources:           &config.Resources,
 		replicatedResources: config.Sharing.ReplicatedResources(),

@@ -126,7 +126,7 @@ func AddDefaultResourcesToConfig(config *spec.Config) error {
 		}()
 
 		devicelib := device.New(
-			device.WithNvml(nvmllib),
+			nvmllib,
 		)
 		return devicelib.VisitMigProfiles(func(p device.MigProfile) error {
 			info := p.GetInfo()
