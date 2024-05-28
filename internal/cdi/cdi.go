@@ -97,7 +97,7 @@ func newHandler(opts ...Option) (Interface, error) {
 		nvcdi.WithLogger(c.logger),
 		nvcdi.WithNvmlLib(c.nvml),
 		nvcdi.WithDeviceLib(c.nvdevice),
-		nvcdi.WithNVIDIACTKPath(c.nvidiaCTKPath),
+		nvcdi.WithNVIDIACDIHookPath(c.nvidiaCTKPath),
 		nvcdi.WithDriverRoot(c.driverRoot),
 		nvcdi.WithDeviceNamers(deviceNamer),
 		nvcdi.WithVendor(c.vendor),
@@ -117,8 +117,9 @@ func newHandler(opts ...Option) (Interface, error) {
 
 	for _, mode := range additionalModes {
 		lib, err := nvcdi.New(
+			nvcdi.WithInfoLib(c.infolib),
 			nvcdi.WithLogger(c.logger),
-			nvcdi.WithNVIDIACTKPath(c.nvidiaCTKPath),
+			nvcdi.WithNVIDIACDIHookPath(c.nvidiaCTKPath),
 			nvcdi.WithDriverRoot(c.driverRoot),
 			nvcdi.WithVendor(c.vendor),
 			nvcdi.WithMode(mode),
