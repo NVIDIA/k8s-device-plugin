@@ -82,9 +82,7 @@ func NewDevices(opts ...Option) (DeviceList, error) {
 		o.nvmllib = nvmlNew()
 	}
 	if o.devicelib == nil {
-		o.devicelib = device.New(
-			device.WithNvml(o.nvmllib),
-		)
+		o.devicelib = device.New(o.nvmllib)
 	}
 
 	return o.build()
