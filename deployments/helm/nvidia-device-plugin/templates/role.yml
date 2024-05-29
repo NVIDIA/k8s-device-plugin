@@ -10,7 +10,7 @@ rules:
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list", "watch"]
-  {{ if eq .Values.microshift "enabled" }}
+  {{- if .Capabilities.APIVersions.Has "security.openshift.io/v1/SecurityContextConstraints" }}
   - apiGroups:
       - security.openshift.io
     resourceNames:
@@ -25,7 +25,7 @@ rules:
     resources: ["nodefeatures"]
     verbs: ["get", "list", "watch", "create", "update"]
   {{- end }}
-{{ if eq .Values.microshift "enabled" }}
+{{- if .Capabilities.APIVersions.Has "security.openshift.io/v1/SecurityContextConstraints" }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

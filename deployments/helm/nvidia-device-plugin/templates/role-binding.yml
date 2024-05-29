@@ -14,7 +14,7 @@ roleRef:
   kind: ClusterRole
   name: {{ include "nvidia-device-plugin.fullname" . }}-role
   apiGroup: rbac.authorization.k8s.io
-{{ if eq .Values.microshift "enabled" }}
+{{- if .Capabilities.APIVersions.Has "security.openshift.io/v1/SecurityContextConstraints" }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
