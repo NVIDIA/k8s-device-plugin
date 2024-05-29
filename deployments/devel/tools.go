@@ -1,4 +1,8 @@
-# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+//go:build tools
+// +build tools
+
+/**
+# Copyright 2024 NVIDIA CORPORATION
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,20 +15,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+**/
 
-DRIVER_NAME := k8s-device-plugin
-MODULE := github.com/NVIDIA/$(DRIVER_NAME)
+package main
 
-REGISTRY ?= nvcr.io/nvidia
-
-VERSION ?= v0.16.0-rc.1
-
-# vVERSION represents the version with a guaranteed v-prefix
-vVERSION := v$(VERSION:v%=%)
-
-GOLANG_VERSION ?= 1.22.4
-
-BUILDIMAGE_TAG ?= devel-go$(GOLANG_VERSION)
-BUILDIMAGE ?=  $(DRIVER_NAME):$(BUILDIMAGE_TAG)
-
-GIT_COMMIT ?= $(shell git describe --match="" --dirty --long --always --abbrev=40 2> /dev/null || echo "")
+// Define the tooling required to build the device plugin.
+import (
+	_ "github.com/matryer/moq"
+)

@@ -1,4 +1,4 @@
-# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2024, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,19 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-DRIVER_NAME := k8s-device-plugin
-MODULE := github.com/NVIDIA/$(DRIVER_NAME)
+ARG GOLANG_VERSION=x.x.x
+FROM golang:${GOLANG_VERSION}
 
-REGISTRY ?= nvcr.io/nvidia
+WORKDIR /work
+COPY * .
 
-VERSION ?= v0.16.0-rc.1
+RUN make install-tools
 
-# vVERSION represents the version with a guaranteed v-prefix
-vVERSION := v$(VERSION:v%=%)
+# We need to set the /work directory as a safe directory.
+# This allows git commands to run in the container.
+RUN git config --file=/.gitconfig --add safe.directory /work
 
-GOLANG_VERSION ?= 1.22.4
-
-BUILDIMAGE_TAG ?= devel-go$(GOLANG_VERSION)
-BUILDIMAGE ?=  $(DRIVER_NAME):$(BUILDIMAGE_TAG)
-
-GIT_COMMIT ?= $(shell git describe --match="" --dirty --long --always --abbrev=40 2> /dev/null || echo "")
