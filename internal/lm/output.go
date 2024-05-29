@@ -42,15 +42,22 @@ type Outputer interface {
 }
 
 // TODO: Replace this with functional options.
-func NewOutputer(config *spec.Config, nodeConfig flags.NodeConfig, clientSets flags.ClientSets) Outputer {
+func NewOutputer(config *spec.Config, nodeConfig flags.NodeConfig, clientSets flags.ClientSets) (Outputer, error) {
 	if config.Flags.UseNodeFeatureAPI == nil || !*config.Flags.UseNodeFeatureAPI {
-		return ToFile(*config.Flags.GFD.OutputFile)
+		return ToFile(*config.Flags.GFD.OutputFile), nil
 	}
 
-	return &nodeFeatureObject{
+	if nodeConfig.Name == "" {
+		return nil, fmt.Errorf("required flag node-name not set")
+	}
+	if nodeConfig.Namespace == "" {
+		return nil, fmt.Errorf("required flag namespace not set")
+	}
+	o := nodeFeatureObject{
 		nodeConfig:   nodeConfig,
 		nfdClientset: clientSets.NFD,
 	}
+	return &o, nil
 }
 
 func ToFile(path string) Outputer {

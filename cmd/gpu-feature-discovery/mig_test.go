@@ -47,11 +47,14 @@ func TestMigStrategyNone(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
+	labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+	require.NoError(t, err)
+
 	d := gfd{
 		manager:       nvmlMock,
 		vgpu:          vgpuMock,
 		config:        conf,
-		labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
+		labelOutputer: labelOutputer,
 	}
 	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
@@ -105,11 +108,14 @@ func TestMigStrategySingleForNoMigDevices(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
+	labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+	require.NoError(t, err)
+
 	d := gfd{
 		manager:       nvmlMock,
 		vgpu:          vgpuMock,
 		config:        conf,
-		labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
+		labelOutputer: labelOutputer,
 	}
 	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
@@ -170,11 +176,14 @@ func TestMigStrategySingleForMigDeviceMigDisabled(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
+	labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+	require.NoError(t, err)
+
 	d := gfd{
 		manager:       nvmlMock,
 		vgpu:          vgpuMock,
 		config:        conf,
-		labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
+		labelOutputer: labelOutputer,
 	}
 	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
@@ -235,11 +244,14 @@ func TestMigStrategySingle(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
+	labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+	require.NoError(t, err)
+
 	d := gfd{
 		manager:       nvmlMock,
 		vgpu:          vgpuMock,
 		config:        conf,
-		labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
+		labelOutputer: labelOutputer,
 	}
 	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
@@ -301,11 +313,14 @@ func TestMigStrategyMixed(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
+	labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+	require.NoError(t, err)
+
 	d := gfd{
 		manager:       nvmlMock,
 		vgpu:          vgpuMock,
 		config:        conf,
-		labelOutputer: lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{}),
+		labelOutputer: labelOutputer,
 	}
 	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
