@@ -1,5 +1,8 @@
 ## Changelog
 
+### Version v0.15.1
+- Fix inconsistent usage of `hasConfigMap` helm template. This addresses cases where certain resources (roles and service accounts) would be created even if they were not required.
+
 ### Version v0.15.0
 - Moved `nvidia-device-plugin.yml` static deployment at the root of the repository to `deployments/static/nvidia-device-plugin.yml`.
 - Simplify PCI device clases in NFD worker configuration.

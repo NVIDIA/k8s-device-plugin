@@ -13,7 +13,7 @@
 # limitations under the License.
 {{- if .Values.devicePlugin.enabled }}
 ---
-{{- $hasConfigMap := (include "nvidia-device-plugin.hasConfigMap" .) | trim }}
+{{- $options := (include "nvidia-device-plugin.options" . | fromJson) }}
 {{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}
 {{- $migStrategiesAreAllNone := (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) | trim }}
 {{- $daemonsetName := printf "%s-mps-control-daemon" (include "nvidia-device-plugin.fullname" .) | trunc 63 | trimSuffix "-" }}
@@ -51,7 +51,7 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
       serviceAccountName: {{ include "nvidia-device-plugin.fullname" . }}-service-account
       shareProcessNamespace: true
       {{- end }}
@@ -69,7 +69,7 @@ spec:
         resources:
           {{- toYaml . | nindent 12 }}
         {{- end }}
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         name: mps-control-daemon-init
         command: ["config-manager"]
@@ -105,7 +105,7 @@ spec:
             mountPath: /config
       {{- end }}
       containers:
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
         # TODO: How do we synchronize the plugin and control-daemon on restart.
         - image: {{ include "nvidia-device-plugin.fullimage" . }}
           name: mps-control-daemon-sidecar
@@ -155,7 +155,7 @@ spec:
           - name: MIG_STRATEGY
             value: "{{ .Values.migStrategy }}"
         {{- end }}
-        {{- if eq $hasConfigMap "true" }}
+        {{- if $options.hasConfigMap }}
           - name: CONFIG_FILE
             value: /config/config.yaml
         {{- end }}
@@ -174,7 +174,7 @@ spec:
             mountPath: /dev/shm
           - name: mps-root
             mountPath: /mps
-          {{- if eq $hasConfigMap "true" }}
+          {{- if $options.hasConfigMap }}
           - name: available-configs
             mountPath: /available-configs
           - name: config
@@ -192,7 +192,7 @@ spec:
       - name: mps-shm
         hostPath:
           path: {{ .Values.mps.root }}/shm
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
       - name: available-configs
         configMap:
           name: "{{ $configMapName }}"

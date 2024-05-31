@@ -14,8 +14,8 @@
 
 {{- if .Values.devicePlugin.enabled }}
 ---
-{{- $hasConfigMap := (include "nvidia-device-plugin.hasConfigMap" .) | trim }}
-{{- $useServiceAccount := eq $hasConfigMap "true" }}
+{{- $options := (include "nvidia-device-plugin.options" . | fromJson) }}
+{{- $useServiceAccount := $options.hasConfigMap }}
 {{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}
 {{- $migStrategiesAreAllNone := (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) | trim }}
 {{- $daemonsetName := printf "%s" (include "nvidia-device-plugin.fullname" .) | trunc 63 | trimSuffix "-" }}
@@ -56,7 +56,7 @@ spec:
       {{- if $useServiceAccount }}
       serviceAccountName: {{ include "nvidia-device-plugin.fullname" . }}-service-account
       {{- end }}
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
       shareProcessNamespace: true
       initContainers:
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
@@ -94,7 +94,7 @@ spec:
             mountPath: /config
       {{- end }}
       containers:
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         name: nvidia-device-plugin-sidecar
         command: ["config-manager"]
@@ -170,7 +170,7 @@ spec:
           - name: MOFED_ENABLED
             value: "{{ .Values.mofedEnabled }}"
         {{- end }}
-        {{- if eq $hasConfigMap "true" }}
+        {{- if $options.hasConfigMap }}
           - name: CONFIG_FILE
             value: /config/config.yaml
         {{- end }}
@@ -201,7 +201,7 @@ spec:
             mountPath: /mps
           - name: cdi-root
             mountPath: /var/run/cdi
-        {{- if eq $hasConfigMap "true" }}
+        {{- if $options.hasConfigMap }}
           - name: available-configs
             mountPath: /available-configs
           - name: config
@@ -231,7 +231,7 @@ spec:
           hostPath:
             path: /var/run/cdi
             type: DirectoryOrCreate
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
         - name: available-configs
           configMap:
             name: "{{ $configMapName }}"
