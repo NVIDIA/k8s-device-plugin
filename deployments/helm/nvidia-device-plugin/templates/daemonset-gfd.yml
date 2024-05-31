@@ -14,8 +14,8 @@
 
 {{- if .Values.gfd.enabled }}
 ---
-{{- $hasConfigMap := (include "nvidia-device-plugin.hasConfigMap" .) | trim }}
-{{- $useServiceAccount := or ( eq $hasConfigMap "true" ) ( and .Values.gfd.enabled .Values.nfd.enableNodeFeatureApi ) }}
+{{- $options := (include "nvidia-device-plugin.options" . | fromJson) }}
+{{- $useServiceAccount := or ( $options.hasConfigMap ) ( and .Values.gfd.enabled .Values.nfd.enableNodeFeatureApi ) }}
 {{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}
 {{- $migStrategiesAreAllNone := (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) | trim }}
 {{- $daemonsetName := printf "%s-gpu-feature-discovery" (include "nvidia-device-plugin.fullname" .) | trunc 63 | trimSuffix "-" }}
@@ -56,7 +56,7 @@ spec:
       {{- if $useServiceAccount }}
       serviceAccountName: {{ include "nvidia-device-plugin.fullname" . }}-service-account
       {{- end }}
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
       shareProcessNamespace: true
       initContainers:
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
@@ -94,7 +94,7 @@ spec:
             mountPath: /config
       {{- end }}
       containers:
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         name: gpu-feature-discovery-sidecar
         command: ["config-manager"]
@@ -164,7 +164,7 @@ spec:
           - name: GFD_USE_NODE_FEATURE_API
             value: "{{ .Values.nfd.enableNodeFeatureApi }}"
         {{- end }}
-        {{- if eq $hasConfigMap "true" }}
+        {{- if $options.hasConfigMap }}
           - name: CONFIG_FILE
             value: /config/config.yaml
         {{- end }}
@@ -181,7 +181,7 @@ spec:
             mountPath: "/etc/kubernetes/node-feature-discovery/features.d"
           - name: host-sys
             mountPath: "/sys"
-        {{- if eq $hasConfigMap "true" }}
+        {{- if $options.hasConfigMap }}
           - name: available-configs
             mountPath: /available-configs
           - name: config
@@ -198,7 +198,7 @@ spec:
         - name: host-sys
           hostPath:
             path: "/sys"
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
         - name: available-configs
           configMap:
             name: "{{ $configMapName }}"
