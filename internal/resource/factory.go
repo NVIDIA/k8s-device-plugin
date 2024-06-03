@@ -17,15 +17,17 @@
 package resource
 
 import (
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"k8s.io/klog/v2"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 // NewManager is a factory method that creates a resource Manager based on the specified config.
-func NewManager(config *spec.Config) Manager {
-	return WithConfig(getManager(*config.Flags.Mode), config)
+func NewManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) Manager {
+	return WithConfig(getManager(infolib, nvmllib, devicelib, *config.Flags.Mode), config)
 }
 
 // WithConfig modifies a manager depending on the specified config.
@@ -39,13 +41,13 @@ func WithConfig(manager Manager, config *spec.Config) Manager {
 }
 
 // getManager returns the resource manager depending on the system configuration.
-func getManager(mode string) Manager {
+func getManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, mode string) Manager {
 
-	resolved := resolveMode(mode)
+	resolved := resolveMode(infolib, mode)
 	switch resolved {
 	case "nvml":
 		klog.Info("Using NVML manager")
-		return NewNVMLManager()
+		return NewNVMLManager(nvmllib, devicelib)
 	case "tegra":
 		klog.Info("Using CUDA manager")
 		return NewCudaManager()
@@ -58,7 +60,7 @@ func getManager(mode string) Manager {
 	return NewNullManager()
 }
 
-func resolveMode(mode string) string {
+func resolveMode(infolib info.Interface, mode string) string {
 	if mode != "" && mode != "auto" {
 		return mode
 	}
@@ -72,8 +74,6 @@ func resolveMode(mode string) string {
 		klog.Infof("Detected %v platform: %v", tag, reason)
 		return is
 	}
-
-	infolib := info.New()
 
 	hasNVML := logWithReason(infolib.HasNvml, "NVML")
 	isTegra := logWithReason(infolib.HasTegraFiles, "Tegra")

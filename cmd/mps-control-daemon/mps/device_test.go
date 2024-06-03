@@ -25,14 +25,14 @@ import (
 func TestDevice(t *testing.T) {
 	testCases := []struct {
 		description            string
-		input                  device
+		input                  mpsDevice
 		expectedIsAtLeastVolta bool
 		expectedMaxClients     int
 		expectedAssertReplicas error
 	}{
 		{
 			description: "leading v ignored",
-			input: device{
+			input: mpsDevice{
 				ComputeCapability: "v7.5",
 			},
 			expectedIsAtLeastVolta: true,
@@ -40,7 +40,7 @@ func TestDevice(t *testing.T) {
 		},
 		{
 			description: "no-leading v supported",
-			input: device{
+			input: mpsDevice{
 				ComputeCapability: "7.5",
 			},
 			expectedIsAtLeastVolta: true,
@@ -48,7 +48,7 @@ func TestDevice(t *testing.T) {
 		},
 		{
 			description: "pre-volta clients",
-			input: device{
+			input: mpsDevice{
 				ComputeCapability: "7.0",
 			},
 			expectedIsAtLeastVolta: false,
@@ -56,7 +56,7 @@ func TestDevice(t *testing.T) {
 		},
 		{
 			description: "post-volta clients",
-			input: device{
+			input: mpsDevice{
 				ComputeCapability: "9.0",
 			},
 			expectedIsAtLeastVolta: true,
@@ -64,7 +64,7 @@ func TestDevice(t *testing.T) {
 		},
 		{
 			description: "pre-volta clients exceeded",
-			input: device{
+			input: mpsDevice{
 				ComputeCapability: "7.0",
 				Replicas:          29,
 			},
@@ -74,7 +74,7 @@ func TestDevice(t *testing.T) {
 		},
 		{
 			description: "post-volta clients exceeded",
-			input: device{
+			input: mpsDevice{
 				ComputeCapability: "9.0",
 				Replicas:          49,
 			},
@@ -84,7 +84,7 @@ func TestDevice(t *testing.T) {
 		},
 		{
 			description: "pre-volta clients max",
-			input: device{
+			input: mpsDevice{
 				ComputeCapability: "7.0",
 				Replicas:          16,
 			},
@@ -93,7 +93,7 @@ func TestDevice(t *testing.T) {
 		},
 		{
 			description: "post-volta clients max",
-			input: device{
+			input: mpsDevice{
 				ComputeCapability: "9.0",
 				Replicas:          48,
 			},

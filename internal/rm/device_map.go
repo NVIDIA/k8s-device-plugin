@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
@@ -30,19 +31,27 @@ type deviceMapBuilder struct {
 	migStrategy         *string
 	resources           *spec.Resources
 	replicatedResources *spec.ReplicatedResources
+
+	newGPUDevice func(i int, gpu nvml.Device) (string, deviceInfo)
 }
 
 // DeviceMap stores a set of devices per resource name.
 type DeviceMap map[spec.ResourceName]Devices
 
 // NewDeviceMap creates a device map for the specified NVML library and config.
-func NewDeviceMap(nvmllib nvml.Interface, config *spec.Config) (DeviceMap, error) {
+func NewDeviceMap(infolib info.Interface, devicelib device.Interface, config *spec.Config) (DeviceMap, error) {
 	b := deviceMapBuilder{
-		Interface:           device.New(device.WithNvml(nvmllib)),
+		Interface:           devicelib,
 		migStrategy:         config.Flags.MigStrategy,
 		resources:           &config.Resources,
 		replicatedResources: config.Sharing.ReplicatedResources(),
+		newGPUDevice:        newNvmlGPUDevice,
 	}
+
+	if infolib.ResolvePlatform() == info.PlatformWSL {
+		b.newGPUDevice = newWslGPUDevice
+	}
+
 	return b.build()
 }
 
@@ -112,7 +121,7 @@ func (b *deviceMapBuilder) buildGPUDeviceMap() (DeviceMap, error) {
 		}
 		for _, resource := range b.resources.GPUs {
 			if resource.Pattern.Matches(name) {
-				index, info := newGPUDevice(i, gpu)
+				index, info := b.newGPUDevice(i, gpu)
 				return devices.setEntry(resource.Name, index, info)
 			}
 		}

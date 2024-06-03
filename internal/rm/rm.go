@@ -46,62 +46,6 @@ type ResourceManager interface {
 	ValidateRequest(AnnotatedIDs) error
 }
 
-// NewResourceManagers returns a []ResourceManager, one for each resource in 'config'.
-func NewResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]ResourceManager, error) {
-	// logWithReason logs the output of the has* / is* checks from the info.Interface
-	logWithReason := func(f func() (bool, string), tag string) bool {
-		is, reason := f()
-		if !is {
-			tag = "non-" + tag
-		}
-		klog.Infof("Detected %v platform: %v", tag, reason)
-		return is
-	}
-
-	infolib := info.New()
-
-	hasNVML := logWithReason(infolib.HasNvml, "NVML")
-	isTegra := logWithReason(infolib.HasTegraFiles, "Tegra")
-
-	if !hasNVML && !isTegra {
-		klog.Error("Incompatible platform detected")
-		klog.Error("If this is a GPU node, did you configure the NVIDIA Container Toolkit?")
-		klog.Error("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
-		klog.Error("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
-		klog.Error("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
-		if *config.Flags.FailOnInitError {
-			return nil, fmt.Errorf("platform detection failed")
-		}
-		return nil, nil
-	}
-
-	// The NVIDIA container stack does not yet support the use of integrated AND discrete GPUs on the same node.
-	if hasNVML && isTegra {
-		klog.Warning("Disabling Tegra-based resources on NVML system")
-		isTegra = false
-	}
-
-	var resourceManagers []ResourceManager
-
-	if hasNVML {
-		nvmlManagers, err := NewNVMLResourceManagers(nvmllib, config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to construct NVML resource managers: %v", err)
-		}
-		resourceManagers = append(resourceManagers, nvmlManagers...)
-	}
-
-	if isTegra {
-		tegraManagers, err := NewTegraResourceManagers(config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to construct Tegra resource managers: %v", err)
-		}
-		resourceManagers = append(resourceManagers, tegraManagers...)
-	}
-
-	return resourceManagers, nil
-}
-
 // Resource gets the resource name associated with the ResourceManager
 func (r *resourceManager) Resource() spec.ResourceName {
 	return r.resource
@@ -150,7 +94,7 @@ func (r *resourceManager) ValidateRequest(ids AnnotatedIDs) error {
 }
 
 // AddDefaultResourcesToConfig adds default resource matching rules to config.Resources
-func AddDefaultResourcesToConfig(config *spec.Config) error {
+func AddDefaultResourcesToConfig(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) error {
 	_ = config.Resources.AddGPUResource("*", "gpu")
 	if config.Flags.MigStrategy == nil {
 		return nil
@@ -159,14 +103,13 @@ func AddDefaultResourcesToConfig(config *spec.Config) error {
 	case spec.MigStrategySingle:
 		return config.Resources.AddMIGResource("*", "gpu")
 	case spec.MigStrategyMixed:
-		hasNVML, reason := info.New().HasNvml()
+		hasNVML, reason := infolib.HasNvml()
 		if !hasNVML {
 			klog.Warningf("mig-strategy=%q is only supported with NVML", spec.MigStrategyMixed)
 			klog.Warningf("NVML not detected: %v", reason)
 			return nil
 		}
 
-		nvmllib := nvml.New()
 		ret := nvmllib.Init()
 		if ret != nvml.SUCCESS {
 			if *config.Flags.FailOnInitError {
@@ -181,9 +124,6 @@ func AddDefaultResourcesToConfig(config *spec.Config) error {
 			}
 		}()
 
-		devicelib := device.New(
-			device.WithNvml(nvmllib),
-		)
 		return devicelib.VisitMigProfiles(func(p device.MigProfile) error {
 			info := p.GetInfo()
 			if info.C != info.G {

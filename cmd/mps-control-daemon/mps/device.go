@@ -28,11 +28,11 @@ import (
 
 var errInvalidDevice = errors.New("invalid device")
 
-// device represents an MPS-specific alias for an rm.Device.
-type device rm.Device
+// mpsDevice represents an MPS-specific alias for an rm.Device.
+type mpsDevice rm.Device
 
 // assertReplicas checks whether the number of replicas specified is valid.
-func (d *device) assertReplicas() error {
+func (d *mpsDevice) assertReplicas() error {
 	maxClients := d.maxClients()
 	if d.Replicas > maxClients {
 		return fmt.Errorf("%w maximum allowed replicas exceeded: %d > %d", errInvalidDevice, d.Replicas, maxClients)
@@ -41,7 +41,7 @@ func (d *device) assertReplicas() error {
 }
 
 // maxClients returns the maximum number of clients supported by an MPS server.
-func (d *device) maxClients() int {
+func (d *mpsDevice) maxClients() int {
 	if d.isAtLeastVolta() {
 		return 48
 	}
@@ -49,7 +49,7 @@ func (d *device) maxClients() int {
 }
 
 // isAtLeastVolta checks whether the specified device is a volta device or newer.
-func (d *device) isAtLeastVolta() bool {
+func (d *mpsDevice) isAtLeastVolta() bool {
 	vCc := "v" + strings.TrimPrefix(d.ComputeCapability, "v")
 	return semver.Compare(semver.Canonical(vCc), semver.Canonical("v7.5")) >= 0
 }

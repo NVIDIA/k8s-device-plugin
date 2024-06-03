@@ -27,11 +27,11 @@ github.com/Masterminds/squirrel
 # github.com/Microsoft/hcsshim v0.11.4
 ## explicit; go 1.18
 github.com/Microsoft/hcsshim/osversion
-# github.com/NVIDIA/go-gpuallocator v0.4.2
+# github.com/NVIDIA/go-gpuallocator v0.5.0
 ## explicit; go 1.20
 github.com/NVIDIA/go-gpuallocator/gpuallocator
 github.com/NVIDIA/go-gpuallocator/internal/links
-# github.com/NVIDIA/go-nvlib v0.4.0
+# github.com/NVIDIA/go-nvlib v0.5.0
 ## explicit; go 1.20
 github.com/NVIDIA/go-nvlib/pkg/nvlib/device
 github.com/NVIDIA/go-nvlib/pkg/nvlib/info
@@ -43,7 +43,7 @@ github.com/NVIDIA/go-nvlib/pkg/pciids
 ## explicit; go 1.20
 github.com/NVIDIA/go-nvml/pkg/dl
 github.com/NVIDIA/go-nvml/pkg/nvml
-# github.com/NVIDIA/nvidia-container-toolkit v1.15.1-0.20240419094620-0aed9a16addf
+# github.com/NVIDIA/nvidia-container-toolkit v1.15.1-0.20240528113255-e4b46a09a77e
 ## explicit; go 1.20
 github.com/NVIDIA/nvidia-container-toolkit/internal/config/image
 github.com/NVIDIA/nvidia-container-toolkit/internal/discover

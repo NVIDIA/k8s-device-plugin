@@ -19,6 +19,7 @@ package manager
 import (
 	"fmt"
 
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"k8s.io/klog/v2"
@@ -28,18 +29,24 @@ import (
 )
 
 type manager struct {
+	infolib   info.Interface
+	nvmllib   nvml.Interface
+	devicelib device.Interface
+
 	migStrategy     string
 	failOnInitError bool
-	nvmllib         nvml.Interface
 
 	cdiHandler cdi.Interface
 	config     *spec.Config
-	infolib    info.Interface
 }
 
 // New creates a new plugin manager with the supplied options.
-func New(opts ...Option) (Interface, error) {
-	m := &manager{}
+func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, opts ...Option) (Interface, error) {
+	m := &manager{
+		infolib:   infolib,
+		nvmllib:   nvmllib,
+		devicelib: devicelib,
+	}
 	for _, opt := range opts {
 		opt(m)
 	}
@@ -53,10 +60,6 @@ func New(opts ...Option) (Interface, error) {
 		m.cdiHandler = cdi.NewNullHandler()
 	}
 
-	if m.infolib == nil {
-		m.infolib = info.New()
-	}
-
 	mode, err := m.resolveMode()
 	if err != nil {
 		return nil, err
@@ -64,9 +67,6 @@ func New(opts ...Option) (Interface, error) {
 
 	switch mode {
 	case "nvml":
-		if m.nvmllib == nil {
-			m.nvmllib = nvml.New()
-		}
 		ret := m.nvmllib.Init()
 		if ret != nvml.SUCCESS {
 			klog.Errorf("Failed to initialize NVML: %v.", ret)

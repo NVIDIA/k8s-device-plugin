@@ -17,8 +17,6 @@
 package cdi
 
 import (
-	"github.com/NVIDIA/go-nvml/pkg/nvml"
-
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
@@ -50,13 +48,6 @@ func WithTargetDriverRoot(root string) Option {
 func WithNvidiaCTKPath(path string) Option {
 	return func(c *cdiHandler) {
 		c.nvidiaCTKPath = path
-	}
-}
-
-// WithNvml provides an Option to set the NVML library used by the 'cdi' interface
-func WithNvml(nvml nvml.Interface) Option {
-	return func(c *cdiHandler) {
-		c.nvml = nvml
 	}
 }
 

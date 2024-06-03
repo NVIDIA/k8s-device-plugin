@@ -27,6 +27,10 @@ import (
 	"github.com/urfave/cli/v2"
 	"k8s.io/klog/v2"
 
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	nvinfo "github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
+
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mount"
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mps"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
@@ -168,9 +172,16 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 	}
 	spec.DisableResourceNamingInConfig(logger.ToKlog, config)
 
+	nvmllib := nvml.New()
+	devicelib := device.New(nvmllib)
+	infolib := nvinfo.New(
+		nvinfo.WithNvmlLib(nvmllib),
+		nvinfo.WithDeviceLib(devicelib),
+	)
+
 	// Update the configuration file with default resources.
 	klog.Info("Updating config with default resource matching patterns.")
-	err = rm.AddDefaultResourcesToConfig(config)
+	err = rm.AddDefaultResourcesToConfig(infolib, nvmllib, devicelib, config)
 	if err != nil {
 		return nil, false, fmt.Errorf("unable to add default resources to config: %v", err)
 	}
@@ -185,7 +196,7 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 	// Get the set of daemons.
 	// Note that a daemon is only created for resources with at least one device.
 	klog.Info("Retrieving MPS daemons.")
-	mpsDaemons, err := mps.NewDaemons(
+	mpsDaemons, err := mps.NewDaemons(infolib, nvmllib, devicelib,
 		mps.WithConfig(config),
 	)
 	if err != nil {

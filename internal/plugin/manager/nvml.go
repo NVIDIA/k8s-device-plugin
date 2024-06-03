@@ -27,7 +27,7 @@ type nvmlmanager manager
 
 // GetPlugins returns the plugins associated with the NVML resources available on the node
 func (m *nvmlmanager) GetPlugins() ([]plugin.Interface, error) {
-	rms, err := rm.NewNVMLResourceManagers(m.nvmllib, m.config)
+	rms, err := rm.NewNVMLResourceManagers(m.infolib, m.nvmllib, m.devicelib, m.config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to construct NVML resource managers: %v", err)
 	}
