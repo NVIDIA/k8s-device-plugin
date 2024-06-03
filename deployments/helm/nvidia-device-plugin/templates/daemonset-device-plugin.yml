@@ -78,9 +78,9 @@ spec:
         - name: CONFIG_FILE_DST
           value: "/config/config.yaml"
         - name: DEFAULT_CONFIG
-          value: "{{ .Values.config.default }}"
+          value: {{ .Values.config.default }}
         - name: FALLBACK_STRATEGIES
-          value: "{{ join "," .Values.config.fallbackStrategies }}"
+          value: {{ join "," .Values.config.fallbackStrategies }}
         - name: SEND_SIGNAL
           value: "false"
         - name: SIGNAL
@@ -114,9 +114,9 @@ spec:
         - name: CONFIG_FILE_DST
           value: "/config/config.yaml"
         - name: DEFAULT_CONFIG
-          value: "{{ .Values.config.default }}"
+          value: {{ .Values.config.default }}
         - name: FALLBACK_STRATEGIES
-          value: "{{ join "," .Values.config.fallbackStrategies }}"
+          value: {{ join "," .Values.config.fallbackStrategies }}
         - name: SEND_SIGNAL
           value: "true"
         - name: SIGNAL
@@ -137,38 +137,38 @@ spec:
         command: ["nvidia-device-plugin"]
         env:
           - name: MPS_ROOT
-            value: "{{ .Values.mps.root }}"
+            value: {{ .Values.mps.root }}
         {{- if typeIs "string" .Values.migStrategy }}
           - name: MIG_STRATEGY
-            value: "{{ .Values.migStrategy }}"
+            value: {{ .Values.migStrategy }}
         {{- end }}
         {{- if typeIs "bool" .Values.failOnInitError }}
           - name: FAIL_ON_INIT_ERROR
-            value: "{{ .Values.failOnInitError }}"
+            value: {{ .Values.failOnInitError }}
         {{- end }}
         {{- if typeIs "bool" .Values.compatWithCPUManager }}
           - name: PASS_DEVICE_SPECS
-            value: "{{ .Values.compatWithCPUManager }}"
+            value: {{ .Values.compatWithCPUManager | quote }}
         {{- end }}
         {{- if typeIs "string" .Values.deviceListStrategy }}
           - name: DEVICE_LIST_STRATEGY
-            value: "{{ .Values.deviceListStrategy }}"
+            value: {{ .Values.deviceListStrategy }}
         {{- end }}
         {{- if typeIs "string" .Values.deviceIDStrategy }}
           - name: DEVICE_ID_STRATEGY
-            value: "{{ .Values.deviceIDStrategy }}"
+            value: {{ .Values.deviceIDStrategy }}
         {{- end }}
         {{- if typeIs "string" .Values.nvidiaDriverRoot }}
           - name: NVIDIA_DRIVER_ROOT
-            value: "{{ .Values.nvidiaDriverRoot }}"
+            value: {{ .Values.nvidiaDriverRoot }}
         {{- end }}
         {{- if typeIs "bool" .Values.gdsEnabled }}
           - name: GDS_ENABLED
-            value: "{{ .Values.gdsEnabled }}"
+            value: {{ .Values.gdsEnabled | quote }}
         {{- end }}
         {{- if typeIs "bool" .Values.mofedEnabled }}
           - name: MOFED_ENABLED
-            value: "{{ .Values.mofedEnabled }}"
+            value: {{ .Values.mofedEnabled | quote }}
         {{- end }}
         {{- if $options.hasConfigMap }}
           - name: CONFIG_FILE
@@ -234,7 +234,7 @@ spec:
       {{- if $options.hasConfigMap }}
         - name: available-configs
           configMap:
-            name: "{{ $configMapName }}"
+            name: {{ $configMapName }}
         - name: config
           emptyDir: {}
       {{- end }}
