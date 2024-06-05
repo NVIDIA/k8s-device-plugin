@@ -158,7 +158,7 @@ func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 	}
 
 	hasNvml, _ := infolib.HasNvml()
-	if deviceListStrategies.IsCDIEnabled() && !hasNvml {
+	if deviceListStrategies.AnyCDIEnabled() && !hasNvml {
 		return fmt.Errorf("CDI --device-list-strategy options are only supported on NVML-based systems")
 	}
 

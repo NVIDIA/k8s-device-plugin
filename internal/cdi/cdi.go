@@ -75,7 +75,7 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 		opt(c)
 	}
 
-	if !c.deviceListStrategies.IsCDIEnabled() {
+	if !c.deviceListStrategies.AnyCDIEnabled() {
 		return &null{}, nil
 	}
 	hasNVML, _ := infolib.HasNvml()
@@ -87,11 +87,14 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 	if c.logger == nil {
 		c.logger = logrus.StandardLogger()
 	}
+	if c.deviceIDStrategy == "" {
+		c.deviceIDStrategy = "uuid"
+	}
 	if c.driverRoot == "" {
 		c.driverRoot = "/"
 	}
-	if c.deviceIDStrategy == "" {
-		c.deviceIDStrategy = "uuid"
+	if c.devRoot == "" {
+		c.devRoot = c.driverRoot
 	}
 	if c.targetDriverRoot == "" {
 		c.targetDriverRoot = c.driverRoot
