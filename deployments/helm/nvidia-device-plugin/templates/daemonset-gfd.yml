@@ -17,7 +17,6 @@
 {{- $options := (include "nvidia-device-plugin.options" . | fromJson) }}
 {{- $useServiceAccount := or ( $options.hasConfigMap ) ( and .Values.gfd.enabled .Values.nfd.enableNodeFeatureApi ) }}
 {{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}
-{{- $migStrategiesAreAllNone := (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) | trim }}
 {{- $daemonsetName := printf "%s-gpu-feature-discovery" (include "nvidia-device-plugin.fullname" .) | trunc 63 | trimSuffix "-" }}
 apiVersion: apps/v1
 kind: DaemonSet
@@ -168,7 +167,7 @@ spec:
           - name: CONFIG_FILE
             value: /config/config.yaml
         {{- end }}
-        {{- if ne $migStrategiesAreAllNone "true" }}
+        {{- if $options.addMigMonitorDevices }}
           - name: NVIDIA_MIG_MONITOR_DEVICES
             value: all
         {{- end }}

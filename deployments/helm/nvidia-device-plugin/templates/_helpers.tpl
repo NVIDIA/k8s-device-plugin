@@ -130,7 +130,7 @@ Check if migStrategy (from all possible configurations) is "none"
   {{- if ne .Values.migStrategy "none" -}}
     {{- $result = false -}}
   {{- end -}}
-{{- else if ne (include "nvidia-device-plugin.configMapName" .) "true" -}}
+{{- else if eq (include "nvidia-device-plugin.hasConfigMap" .) "true" -}}
     {{- $result = false -}}
 {{- else -}}
   {{- range $name, $contents := $.Values.config.map -}}
@@ -227,5 +227,6 @@ We convert this to JSON so that it can be included and converted to an object us
 {{- define "nvidia-device-plugin.options" -}}
 {{- $options := dict "" "" -}}
 {{- $_ := set $options "hasConfigMap" ( eq ( (include "nvidia-device-plugin.hasConfigMap" . ) | trim ) "true" ) -}}
+{{- $_ := set $options "addMigMonitorDevices" ( ne ( (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" . ) | trim ) "true" )  -}}
 {{- mustToJson $options -}}
 {{- end -}}
