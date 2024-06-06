@@ -65,7 +65,7 @@ examples: $(EXAMPLE_TARGETS)
 $(EXAMPLE_TARGETS): example-%:
 	go build $(BUILDFLAGS) $(COMMAND_BUILD_OPTIONS) ./examples/$(*)
 
-all: check test build binary
+all: check test build binaries
 check: $(CHECK_TARGETS)
 
 # Apply go fmt to the codebase
