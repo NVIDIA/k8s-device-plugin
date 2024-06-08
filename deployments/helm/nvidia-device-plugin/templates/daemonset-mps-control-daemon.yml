@@ -103,6 +103,10 @@ spec:
             mountPath: /available-configs
           - name: config
             mountPath: /config
+        {{- with .Values.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
       {{- end }}
       containers:
       {{- if $options.hasConfigMap }}
@@ -140,6 +144,10 @@ spec:
               mountPath: /available-configs
             - name: config
               mountPath: /config
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 10 }}
+          {{- end }}
       {{- end }}
         - image: {{ include "nvidia-device-plugin.fullimage" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
