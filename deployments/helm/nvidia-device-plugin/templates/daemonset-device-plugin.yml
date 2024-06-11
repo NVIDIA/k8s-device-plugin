@@ -194,6 +194,9 @@ spec:
             value: compute,utility
         securityContext:
           {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
+          capabilities:
+            add:
+              - SYS_ADMIN
         volumeMounts:
           - name: device-plugin
             mountPath: /var/lib/kubelet/device-plugins
