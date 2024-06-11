@@ -98,6 +98,8 @@ spec:
           value: ""
         - name: PROCESS_TO_SIGNAL
           value: ""
+        securityContext:
+          {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
         volumeMounts:
           - name: available-configs
             mountPath: /available-configs
@@ -139,6 +141,8 @@ spec:
             value: "1"
           - name: PROCESS_TO_SIGNAL
             value: "/usr/bin/mps-control-daemon"
+          securityContext:
+            {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
           volumeMounts:
             - name: available-configs
               mountPath: /available-configs
