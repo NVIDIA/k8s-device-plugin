@@ -18,6 +18,8 @@ package rm
 
 import (
 	"fmt"
+	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
+	set "github.com/deckarep/golang-set"
 	"strconv"
 	"strings"
 
@@ -182,6 +184,26 @@ func (ds Devices) GetPluginDevices() []*pluginapi.Device {
 		res = append(res, &d.Device)
 	}
 	return res
+}
+
+// GetHealthyDevice returns the Devices from all devices in the Devices but not in isolated Devices
+func (ds Devices) GetHealthyDevice() []*pluginapi.Device {
+	var devs []*pluginapi.Device
+	unhealthyDevices, err := resource.FindUnhealthyDevices()
+	if err != nil || unhealthyDevices == nil {
+		for _, d := range ds {
+			devs = append(devs, &d.Device)
+		}
+		return devs
+	}
+	unhealthyIndex := set.NewSetFromSlice(StringSliceToInterfaceSlice(unhealthyDevices.GPUIndex))
+	unhealthyUuid := set.NewSetFromSlice(StringSliceToInterfaceSlice(unhealthyDevices.GPUUuid))
+	for _, d := range ds {
+		if !unhealthyUuid.Contains(d.GetID()) && !unhealthyIndex.Contains(d.Index) {
+			devs = append(devs, &d.Device)
+		}
+	}
+	return devs
 }
 
 // GetIndices returns the Indices from all devices in the Devices
