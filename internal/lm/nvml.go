@@ -71,12 +71,18 @@ func NewDeviceLabeler(manager resource.Manager, config *spec.Config) (Labeler, e
 		return nil, fmt.Errorf("error creating resource labeler: %v", err)
 	}
 
+	gpuModeLabeler, err := newGPUModeLabeler(manager)
+	if err != nil {
+		return nil, fmt.Errorf("error creating resource labeler: %v", err)
+	}
+
 	l := Merge(
 		machineTypeLabeler,
 		versionLabeler,
 		migCapabilityLabeler,
 		sharingLabeler,
 		resourceLabeler,
+		gpuModeLabeler,
 	)
 
 	return l, nil
@@ -192,4 +198,36 @@ func isMPSCapable(manager resource.Manager) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+func newGPUModeLabeler(manager resource.Manager) (Labeler, error) {
+
+	devices, err := manager.GetDevices()
+	if err != nil {
+		return nil, err
+	}
+	if len(devices) == 0 {
+		// no devices, return empty labels
+		return empty{}, nil
+	}
+
+	gpuMode := ""
+	// loop through all devices to check if all of them are on same gpu mode
+	for _, d := range devices {
+		val, err := d.GetDisplayMode()
+		if err != nil {
+			return nil, err
+		}
+		if gpuMode != "" && val != gpuMode {
+			gpuMode = "unknown"
+			break
+		} else {
+			gpuMode = val
+		}
+	}
+
+	labels := Labels{
+		"nvidia.com/gpu.mode": gpuMode,
+	}
+	return labels, nil
 }

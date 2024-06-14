@@ -324,3 +324,5 @@ func (mock *DeviceMock) IsMigEnabledCalls() []struct {
 	mock.lockIsMigEnabled.RUnlock()
 	return calls
 }
+
+func (mock *DeviceMock) GetDisplayMode() (string, error) { return "unknown", nil }

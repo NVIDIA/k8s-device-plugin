@@ -132,3 +132,5 @@ func totalMemory(attr map[string]interface{}) (uint64, error) {
 		return 0, fmt.Errorf("unsupported attribute type %v", t)
 	}
 }
+
+func (d nvmlMigDevice) GetDisplayMode() (string, error) { return "unknown", nil }

@@ -209,6 +209,7 @@ their meaning:
 | nvidia.com/gpu.machine         | String     | Machine type                                 | DGX-1          |
 | nvidia.com/gpu.memory          | Integer    | Memory of the GPU in Mb                      | 2048           |
 | nvidia.com/gpu.product         | String     | Model of the GPU                             | GeForce-GT-710 |
+| nvidia.com/gpu.mode            | String     | Display or Compute Mode of the GPU           | compute        |
 
 Depending on the MIG strategy used, the following set of labels may also be
 available (or override the default values for some of the labels listed above):

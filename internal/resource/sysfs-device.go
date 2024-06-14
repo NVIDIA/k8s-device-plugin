@@ -64,3 +64,7 @@ func (d vfioDevice) IsMigEnabled() (bool, error) {
 func (d vfioDevice) IsMigCapable() (bool, error) {
 	return false, nil
 }
+
+func (d vfioDevice) GetDisplayMode() (string, error) {
+	return resolvePCIAddressToMode(d.nvidiaPCIDevice.Address)
+}

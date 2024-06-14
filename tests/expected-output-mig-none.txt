@@ -18,6 +18,7 @@ nvidia\.com\/gpu\.sharing-strategy=[none|mps|time-slicing]
 nvidia\.com\/gpu\.product=[A-Za-z_-]+
 nvidia\.com\/gpu\.memory=[0-9]+
 nvidia\.com\/gpu\.family=[a-z]+
+nvidia\.com\/gpu\.mode=unknown
 nvidia\.com\/mig\.capable=[true|false]
 nvidia\.com\/gpu\.compute\.major=[0-9]+
 nvidia\.com\/gpu\.compute\.minor=[0-9]+
