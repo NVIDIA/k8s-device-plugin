@@ -163,7 +163,7 @@ func TestMarshalFlags(t *testing.T) {
 				"gdsEnabled": null,
 				"mofedEnabled": null,
 				"useNodeFeatureAPI": null,
-				"mode": null
+				"deviceDiscoveryStrategy": null
 			}`,
 		},
 		{
@@ -180,7 +180,7 @@ func TestMarshalFlags(t *testing.T) {
 				"gdsEnabled": null,
 				"mofedEnabled": null,
 				"useNodeFeatureAPI": null,
-				"mode": null,
+				"deviceDiscoveryStrategy": null,
 				"gfd": {
 					"oneshot": null,
 					"noTimestamp": null,
@@ -204,7 +204,7 @@ func TestMarshalFlags(t *testing.T) {
 				"gdsEnabled": null,
 				"mofedEnabled": null,
 				"useNodeFeatureAPI": null,
-				"mode": null,
+				"deviceDiscoveryStrategy": null,
 				"gfd": {
 					"oneshot": null,
 					"noTimestamp": null,

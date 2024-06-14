@@ -27,7 +27,8 @@ import (
 
 // NewManager is a factory method that creates a resource Manager based on the specified config.
 func NewManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) Manager {
-	return WithConfig(getManager(infolib, nvmllib, devicelib, *config.Flags.Mode), config)
+	manager := getManager(infolib, nvmllib, devicelib, *config.Flags.DeviceDiscoveryStrategy)
+	return WithConfig(manager, config)
 }
 
 // WithConfig modifies a manager depending on the specified config.
@@ -41,9 +42,8 @@ func WithConfig(manager Manager, config *spec.Config) Manager {
 }
 
 // getManager returns the resource manager depending on the system configuration.
-func getManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, mode string) Manager {
-
-	resolved := resolveMode(infolib, mode)
+func getManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, strategy string) Manager {
+	resolved := resolveMode(infolib, strategy)
 	switch resolved {
 	case "nvml":
 		klog.Info("Using NVML manager")
@@ -54,42 +54,23 @@ func getManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device
 	case "vfio":
 		klog.Info("Using Vfio manager")
 		return NewVfioManager()
+	default:
+		klog.Warningf("Unsupported strategy detected: %v using empty manager.", resolved)
+		return NewNullManager()
 	}
-
-	klog.Warningf("Unsupported mode detected: %v using empty manager.", resolved)
-	return NewNullManager()
 }
 
-func resolveMode(infolib info.Interface, mode string) string {
-	if mode != "" && mode != "auto" {
-		return mode
+func resolveMode(infolib info.Interface, strategy string) string {
+	if strategy != "" && strategy != "auto" {
+		return strategy
 	}
 
-	// logWithReason logs the output of the has* / is* checks from the info.Interface
-	logWithReason := func(f func() (bool, string), tag string) bool {
-		is, reason := f()
-		if !is {
-			tag = "non-" + tag
-		}
-		klog.Infof("Detected %v platform: %v", tag, reason)
-		return is
-	}
-
-	hasNVML := logWithReason(infolib.HasNvml, "NVML")
-	isTegra := logWithReason(infolib.HasTegraFiles, "Tegra")
-
-	// The NVIDIA container stack does not yet support the use of integrated AND discrete GPUs on the same node.
-	if hasNVML && isTegra {
-		klog.Warning("Disabling Tegra-based resources on NVML system")
-		isTegra = false
-	}
-
-	if hasNVML {
+	platform := infolib.ResolvePlatform()
+	switch platform {
+	case info.PlatformNVML, info.PlatformWSL:
 		return "nvml"
-	}
-
-	if isTegra {
+	case info.PlatformTegra:
 		return "tegra"
 	}
-	return mode
+	return strategy
 }
