@@ -56,7 +56,6 @@ func main() {
 	c.Name = "NVIDIA MPS Control Daemon"
 	c.Version = info.GetVersionString()
 	c.Action = func(ctx *cli.Context) error {
-		klog.InfoS("Starting "+ctx.App.Name, "version", ctx.App.Version)
 		return start(ctx, config)
 	}
 	c.Commands = []*cli.Command{
@@ -79,7 +78,7 @@ func main() {
 	}
 	c.Flags = config.flags
 
-	klog.Infof("Starting %v %v", c.Name, c.Version)
+	klog.InfoS(c.Name, "version", c.Version)
 	err := c.Run(os.Args)
 	if err != nil {
 		klog.Error(err)
