@@ -16,4 +16,22 @@ roleRef:
   kind: ClusterRole
   name: {{ include "nvidia-device-plugin.fullname" . }}-role
   apiGroup: rbac.authorization.k8s.io
+{{- if .Capabilities.APIVersions.Has "security.openshift.io/v1/SecurityContextConstraints" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "nvidia-device-plugin.fullname" . }}-role-binding
+  namespace: {{ include "nvidia-device-plugin.namespace" . }}
+  labels:
+    {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "nvidia-device-plugin.fullname" . }}-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "nvidia-device-plugin.fullname" . }}-service-account
+    namespace: {{ include "nvidia-device-plugin.namespace" . }}
+{{- end }}
 {{- end }}
