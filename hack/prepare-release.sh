@@ -23,7 +23,7 @@ cat << EOF
 Usage: $this [-h] [-a] RELEASE_VERSION
 
 Options:
-  --previous-version    specify the previous version (default: latest tag)      
+  --previous-version    specify the previous version (default: latest tag)
   --help/-h             show this help and exit
 
 Example:
@@ -154,6 +154,10 @@ echo Patching deployments/helm/Chart.yaml to refer to $semver
 $SED -i "s/^version: .*/version: \"$semver\"/" deployments/helm/nvidia-device-plugin/Chart.yaml
 $SED -i "s/^appVersion: .*/appVersion: \"$semver\"/" deployments/helm/nvidia-device-plugin/Chart.yaml
 
+if [[ $release == *-rc.* ]]; then
+    echo "Skipping README update"
+    exit 0
+fi
 # Patch README.md
 echo Patching README.md to refer to $release
 $SED -E -i -e "s/([^[:space:]])$previous_version([^[:alnum:]]|$)/\1$release\2/g" README.md
