@@ -51,6 +51,7 @@ func NewDeviceMock(migEnabled bool) *DeviceMock {
 		IsMigEnabledFunc:     func() (bool, error) { return migEnabled, nil },
 		IsMigCapableFunc:     func() (bool, error) { return migEnabled, nil },
 		GetMigDevicesFunc:    func() ([]resource.Device, error) { return nil, nil },
+		GetClassFunc:         func() (string, error) { return "0x030000", nil },
 	}}
 	return &d
 }

@@ -20,6 +20,9 @@ var _ Device = &DeviceMock{}
 //			GetAttributesFunc: func() (map[string]interface{}, error) {
 //				panic("mock out the GetAttributes method")
 //			},
+//			GetClassFunc: func() (string, error) {
+//				panic("mock out the GetClass method")
+//			},
 //			GetCudaComputeCapabilityFunc: func() (int, int, error) {
 //				panic("mock out the GetCudaComputeCapability method")
 //			},
@@ -51,6 +54,9 @@ type DeviceMock struct {
 	// GetAttributesFunc mocks the GetAttributes method.
 	GetAttributesFunc func() (map[string]interface{}, error)
 
+	// GetClassFunc mocks the GetClass method.
+	GetClassFunc func() (string, error)
+
 	// GetCudaComputeCapabilityFunc mocks the GetCudaComputeCapability method.
 	GetCudaComputeCapabilityFunc func() (int, int, error)
 
@@ -77,6 +83,9 @@ type DeviceMock struct {
 		// GetAttributes holds details about calls to the GetAttributes method.
 		GetAttributes []struct {
 		}
+		// GetClass holds details about calls to the GetClass method.
+		GetClass []struct {
+		}
 		// GetCudaComputeCapability holds details about calls to the GetCudaComputeCapability method.
 		GetCudaComputeCapability []struct {
 		}
@@ -100,6 +109,7 @@ type DeviceMock struct {
 		}
 	}
 	lockGetAttributes                      sync.RWMutex
+	lockGetClass                           sync.RWMutex
 	lockGetCudaComputeCapability           sync.RWMutex
 	lockGetDeviceHandleFromMigDeviceHandle sync.RWMutex
 	lockGetMigDevices                      sync.RWMutex
@@ -133,6 +143,33 @@ func (mock *DeviceMock) GetAttributesCalls() []struct {
 	mock.lockGetAttributes.RLock()
 	calls = mock.calls.GetAttributes
 	mock.lockGetAttributes.RUnlock()
+	return calls
+}
+
+// GetClass calls GetClassFunc.
+func (mock *DeviceMock) GetClass() (string, error) {
+	if mock.GetClassFunc == nil {
+		panic("DeviceMock.GetClassFunc: method is nil but Device.GetClass was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockGetClass.Lock()
+	mock.calls.GetClass = append(mock.calls.GetClass, callInfo)
+	mock.lockGetClass.Unlock()
+	return mock.GetClassFunc()
+}
+
+// GetClassCalls gets all the calls that were made to GetClass.
+// Check the length with:
+//
+//	len(mockedDevice.GetClassCalls())
+func (mock *DeviceMock) GetClassCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockGetClass.RLock()
+	calls = mock.calls.GetClass
+	mock.lockGetClass.RUnlock()
 	return calls
 }
 
@@ -324,5 +361,3 @@ func (mock *DeviceMock) IsMigEnabledCalls() []struct {
 	mock.lockIsMigEnabled.RUnlock()
 	return calls
 }
-
-func (mock *DeviceMock) GetDisplayMode() (string, error) { return "unknown", nil }

@@ -211,21 +211,29 @@ func newGPUModeLabeler(manager resource.Manager) (Labeler, error) {
 		return empty{}, nil
 	}
 
-	gpuMode := ""
+	class := ""
 	// loop through all devices to check if all of them are on same gpu mode
 	for _, d := range devices {
-		val, err := d.GetDisplayMode()
+		val, err := d.GetClass()
 		if err != nil {
 			return nil, err
 		}
-		if gpuMode != "" && val != gpuMode {
-			gpuMode = "unknown"
+		if class != "" && val != class {
 			break
 		} else {
-			gpuMode = val
+			class = val
 		}
 	}
 
+	gpuMode := ""
+	switch class {
+	case "0x030000":
+		gpuMode = "graphics"
+	case "0x030200":
+		gpuMode = "compute"
+	default:
+		gpuMode = "unknown"
+	}
 	labels := Labels{
 		"nvidia.com/gpu.mode": gpuMode,
 	}

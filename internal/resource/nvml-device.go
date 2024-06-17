@@ -91,7 +91,7 @@ func (d nvmlDevice) GetTotalMemoryMB() (uint64, error) {
 	return info.Total / (1024 * 1024), nil
 }
 
-func (d nvmlDevice) GetDisplayMode() (string, error) {
+func (d nvmlDevice) GetClass() (string, error) {
 	info, retVal := d.Device.GetPciInfo()
 	if retVal != nvml.SUCCESS {
 		return "", retVal
@@ -104,23 +104,14 @@ func (d nvmlDevice) GetDisplayMode() (string, error) {
 		bytes = append(bytes, byte(char))
 	}
 	pciID := strings.ToLower(strings.TrimPrefix(string(bytes), "0000"))
-	return resolvePCIAddressToMode(pciID)
+	return resolvePCIAddressToClass(pciID)
 }
 
-func resolvePCIAddressToMode(addr string) (string, error) {
+func resolvePCIAddressToClass(addr string) (string, error) {
 	class, err := os.ReadFile(fmt.Sprintf("/sys/bus/pci/devices/%s/class", addr))
 	if err != nil {
 		klog.Errorf("Error getting gpu class: %v", err)
 		return "unknown", fmt.Errorf("Error getting gpu class: %v", err)
 	}
-	classStr := string(class)
-	classStr = strings.TrimSpace(classStr)
-	switch classStr {
-	case "0x030000":
-		return "display", nil
-	case "0x030200":
-		return "compute", nil
-	default:
-		return "unknown", nil
-	}
+	return strings.TrimSpace(string(class)), nil
 }

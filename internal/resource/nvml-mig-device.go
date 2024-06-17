@@ -133,4 +133,18 @@ func totalMemory(attr map[string]interface{}) (uint64, error) {
 	}
 }
 
-func (d nvmlMigDevice) GetDisplayMode() (string, error) { return "unknown", nil }
+func (d nvmlMigDevice) GetClass() (string, error) {
+	info, retVal := d.MigDevice.GetPciInfo()
+	if retVal != nvml.SUCCESS {
+		return "", retVal
+	}
+	var bytes []byte
+	for _, char := range info.BusId {
+		if char == 0 {
+			break
+		}
+		bytes = append(bytes, byte(char))
+	}
+	pciID := strings.ToLower(strings.TrimPrefix(string(bytes), "0000"))
+	return resolvePCIAddressToClass(pciID)
+}

@@ -65,6 +65,7 @@ func (d vfioDevice) IsMigCapable() (bool, error) {
 	return false, nil
 }
 
-func (d vfioDevice) GetDisplayMode() (string, error) {
-	return resolvePCIAddressToMode(d.nvidiaPCIDevice.Address)
+func (d vfioDevice) GetClass() (string, error) {
+	class := fmt.Sprintf("0x0%x", d.nvidiaPCIDevice.Class)
+	return class, nil
 }
