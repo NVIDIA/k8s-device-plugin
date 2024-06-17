@@ -59,6 +59,7 @@ type CommandLineFlags struct {
 	FailOnInitError         *bool                   `json:"failOnInitError"            yaml:"failOnInitError"`
 	MpsRoot                 *string                 `json:"mpsRoot,omitempty"          yaml:"mpsRoot,omitempty"`
 	NvidiaDriverRoot        *string                 `json:"nvidiaDriverRoot,omitempty" yaml:"nvidiaDriverRoot,omitempty"`
+	NvidiaDevRoot           *string                 `json:"nvidiaDevRoot,omitempty"    yaml:"nvidiaDevRoot,omitempty"`
 	GDSEnabled              *bool                   `json:"gdsEnabled"                 yaml:"gdsEnabled"`
 	MOFEDEnabled            *bool                   `json:"mofedEnabled"               yaml:"mofedEnabled"`
 	UseNodeFeatureAPI       *bool                   `json:"useNodeFeatureAPI"          yaml:"useNodeFeatureAPI"`
@@ -121,8 +122,10 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.FailOnInitError, c, n)
 			case "mps-root":
 				updateFromCLIFlag(&f.MpsRoot, c, n)
-			case "nvidia-driver-root":
+			case "driver-root", "nvidia-driver-root":
 				updateFromCLIFlag(&f.NvidiaDriverRoot, c, n)
+			case "dev-root", "nvidia-dev-root":
+				updateFromCLIFlag(&f.NvidiaDevRoot, c, n)
 			case "gds-enabled":
 				updateFromCLIFlag(&f.GDSEnabled, c, n)
 			case "mofed-enabled":
@@ -145,7 +148,7 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.Plugin.DeviceIDStrategy, c, n)
 			case "cdi-annotation-prefix":
 				updateFromCLIFlag(&f.Plugin.CDIAnnotationPrefix, c, n)
-			case "nvidia-ctk-path":
+			case "nvidia-cdi-hook-path", "nvidia-ctk-path":
 				updateFromCLIFlag(&f.Plugin.NvidiaCTKPath, c, n)
 			case "container-driver-root":
 				updateFromCLIFlag(&f.Plugin.ContainerDriverRoot, c, n)

@@ -161,6 +161,14 @@ spec:
           - name: NVIDIA_DRIVER_ROOT
             value: {{ .Values.nvidiaDriverRoot }}
         {{- end }}
+        {{- if typeIs "string" .Values.nvidiaDevRoot }}
+          - name: NVIDIA_DEV_ROOT
+            value: "{{ .Values.nvidiaDevRoot }}"
+        {{- end }}
+        {{- if typeIs "string" .Values.cdi.nvidiaHookPath }}
+          - name: NVIDIA_CDI_HOOK_PATH
+            value: {{ .Values.cdi.nvidiaHookPath }}
+        {{- end }}
         {{- if typeIs "bool" .Values.gdsEnabled }}
           - name: GDS_ENABLED
             value: {{ .Values.gdsEnabled | quote }}
