@@ -1,5 +1,50 @@
 ## Changelog
 
+### Version v1.16.0-rc.1
+
+- Skip container updates if only CDI is selected
+- Allow cdi hook path to be set
+- Add nvidiaDevRoot config option
+- Detect devRoot for driver installation
+- Set /dev/shm size from /proc/meminfo
+- Remove redundant version log
+- Remove provenance information from image manifests
+- add ngc image signing job for auto signing
+- fix: target should be binaries
+- Allow device discovery strategy to be specified
+- Refactor cdi handler construction
+- Add addMigMonitorDevices field to nvidia-device-plugin.options helper
+- Fix allPossibleMigStrategiesAreNone helm chart helper
+- use the helm quote function to wrap boolean values in quotes
+- Fix usage of hasConfigMap
+- Make info, nvml, and device lib construction explicit
+- Clean up construction of WSL devices
+- Remove unused function
+- Don't require node-name to be set if not needed
+- Make vgpu failures non-fatal
+- Use HasTegraFiles over IsTegraSystem
+- Raise error for MPS when using MIG
+- Align container driver root envvars
+- Update github.com/NVIDIA/go-nvml to v0.12.0-6
+- Add unit tests cases for sanitise func
+- Improving logic to sanitize GFD generated node labels
+- Add newline to pod logs
+- Adding vfio manager
+- Add prepare-release.sh script
+- Don't require node-name to be set if not needed
+- Remove GitLab pipeline .gitlab.yml
+- E2E test: fix object names
+- strip parentheses from the gpu product name
+- E2E test: instanciate a logger for helm outputs
+- E2E test: enhance logging via ginkgo/gomega
+- E2E test: remove e2elogs helper pkg
+- E2E test: Create HelmClient during Framework init
+- E2E test: Add -ginkgo.v flag to increase verbosity
+- E2E test: Create DiagnosticsCollector
+- Update vendoring
+- Replace go-nvlib/pkg/nvml with go-nvml/pkg/nvml
+- Add dependabot updates for release-0.15
+
 ### Version v0.15.0
 - Moved `nvidia-device-plugin.yml` static deployment at the root of the repository to `deployments/static/nvidia-device-plugin.yml`.
 - Simplify PCI device clases in NFD worker configuration.
