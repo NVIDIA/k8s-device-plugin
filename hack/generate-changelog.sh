@@ -24,14 +24,12 @@ Usage: $this --reference <tag> [--remote <remote_name>]
 
 Options:
   --since     specify the tag to start the changelog from (default: latest tag)
-  --remote    specify the remote to fetch tags from (default: upstream)
   --version   specify the version to be released
   --help/-h   show this help and exit
 
 EOF
 }
 
-REMOTE="upstream"
 VERSION=""
 REFERENCE=
 
@@ -41,11 +39,6 @@ while [[ $# -gt 0 ]]; do
     case $key in
         --since)
         REFERENCE="$2"
-        shift # past argument
-        shift # past value
-        ;;
-        --remote)
-        REMOTE="$2"
         shift # past argument
         shift # past value
         ;;
@@ -64,11 +57,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Fetch the latest tags from the remote
-git fetch $REMOTE --tags
+remote=$( git remote -v | grep -E "NVIDIA/k8s-device-plugin(\.git)?\s" | grep -oE "^[a-z]+" | sort -u )
+git fetch ${remote} --tags
 
 # if REFERENCE is not set, get the latest tag
 if [ -z "$REFERENCE" ]; then
-    REFERENCE=$(git describe --tags $(git rev-list --tags --max-count=1))
+    most_recent_tag=$(git tag --sort=-creatordate | head -1)
+    if [ "${VERSION}" == "${most_recent_tag}" ]; then
+        REFERENCE=$(git tag --sort=-creatordate | head -2 | tail -1)
+    else
+        REFERENCE=${most_recent_tag}
+    fi
 fi
 
 # Print the changelog
