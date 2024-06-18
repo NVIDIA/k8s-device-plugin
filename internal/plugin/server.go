@@ -339,23 +339,30 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 	response := &pluginapi.ContainerAllocateResponse{
 		Envs: make(map[string]string),
 	}
-	if plugin.deviceListStrategies.IsCDIEnabled() {
+	if plugin.deviceListStrategies.AnyCDIEnabled() {
 		responseID := uuid.New().String()
 		if err := plugin.updateResponseForCDI(response, responseID, deviceIDs...); err != nil {
 			return nil, fmt.Errorf("failed to get allocate response for CDI: %v", err)
 		}
 	}
+	if plugin.config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
+		plugin.updateResponseForMPS(response)
+	}
+
+	// The following modifications are only made if at least one non-CDI device
+	// list strategy is selected.
+	if plugin.deviceListStrategies.AllCDIEnabled() {
+		return response, nil
+	}
+
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyEnvvar) {
 		plugin.updateResponseForDeviceListEnvvar(response, deviceIDs...)
 	}
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyVolumeMounts) {
 		plugin.updateResponseForDeviceMounts(response, deviceIDs...)
 	}
-	if plugin.config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
-		plugin.updateResponseForMPS(response)
-	}
 	if *plugin.config.Flags.Plugin.PassDeviceSpecs {
-		response.Devices = append(response.Devices, plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDriverRoot, requestIds)...)
+		response.Devices = append(response.Devices, plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDevRoot, requestIds)...)
 	}
 	if *plugin.config.Flags.GDSEnabled {
 		response.Envs["NVIDIA_GDS"] = "enabled"
@@ -500,7 +507,7 @@ func (plugin *NvidiaDevicePlugin) updateResponseForDeviceMounts(response *plugin
 	}
 }
 
-func (plugin *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, ids []string) []*pluginapi.DeviceSpec {
+func (plugin *NvidiaDevicePlugin) apiDeviceSpecs(devRoot string, ids []string) []*pluginapi.DeviceSpec {
 	optional := map[string]bool{
 		"/dev/nvidiactl":        true,
 		"/dev/nvidia-uvm":       true,
@@ -519,7 +526,7 @@ func (plugin *NvidiaDevicePlugin) apiDeviceSpecs(driverRoot string, ids []string
 		}
 		spec := &pluginapi.DeviceSpec{
 			ContainerPath: p,
-			HostPath:      filepath.Join(driverRoot, p),
+			HostPath:      filepath.Join(devRoot, p),
 			Permissions:   "rw",
 		}
 		specs = append(specs, spec)

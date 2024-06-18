@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"syscall"
 	"time"
 
@@ -104,11 +103,11 @@ func main() {
 			Usage:   "Use NFD NodeFeature API to publish labels",
 			EnvVars: []string{"GFD_USE_NODE_FEATURE_API", "USE_NODE_FEATURE_API"},
 		},
-		&cli.StringFlag{
-			Name:    "mode",
-			Value:   "auto",
-			Usage:   "Select GFD mode between 'auto','nvml','tegra' or 'vfio'",
-			EnvVars: []string{"MODE", "GFD_MODE"},
+		&cli.StringSliceFlag{
+			Name:    "device-discovery-strategy",
+			Value:   cli.NewStringSlice("auto"),
+			Usage:   "the strategy to use to discover devices: 'auto', 'nvml', 'tegra' or 'vfio'",
+			EnvVars: []string{"DEVICE_DISCOVERY_STRATEGY"},
 		},
 	}
 
@@ -124,9 +123,13 @@ func main() {
 }
 
 func validateFlags(config *spec.Config) error {
-	validModes := []string{"auto", "nvml", "tegra", "vfio"}
-	if !slices.Contains(validModes, *config.Flags.Mode) {
-		return fmt.Errorf("%s invalid mode option must be 'auto','nvml','tegra' or 'vfio'", *config.Flags.Mode)
+	switch *config.Flags.DeviceDiscoveryStrategy {
+	case "auto":
+	case "nvml":
+	case "tegra":
+	case "vfio":
+	default:
+		return fmt.Errorf("invalid --device-discovery-strategy option %v", *config.Flags.DeviceDiscoveryStrategy)
 	}
 	return nil
 }

@@ -171,8 +171,10 @@ spec:
           - name: NVIDIA_MIG_MONITOR_DEVICES
             value: all
         {{- end }}
-          - name: GFD_MODE
-            value: "{{ .Values.gfdMode }}"
+        {{- if typeIs "string" .Values.deviceDiscoveryStrategy }}
+          - name: DEVICE_DISCOVERY_STRATEGY
+            value: {{ .Values.deviceDiscoveryStrategy }}
+        {{- end }}
         securityContext:
           {{- include "gpu-feature-discovery.securityContext" . | nindent 10 }}
         volumeMounts:

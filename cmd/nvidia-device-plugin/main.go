@@ -65,10 +65,17 @@ func main() {
 			EnvVars: []string{"FAIL_ON_INIT_ERROR"},
 		},
 		&cli.StringFlag{
-			Name:    "nvidia-driver-root",
+			Name:    "driver-root",
+			Aliases: []string{"nvidia-driver-root"},
 			Value:   "/",
-			Usage:   "the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')",
+			Usage:   "the root path for the NVIDIA driver installation on the host (typical values are '/' or '/run/nvidia/driver')",
 			EnvVars: []string{"NVIDIA_DRIVER_ROOT"},
+		},
+		&cli.StringFlag{
+			Name:    "dev-root",
+			Aliases: []string{"nvidia-dev-root"},
+			Usage:   "the root path for the NVIDIA device nodes on the host (typical values are '/' or '/run/nvidia/driver')",
+			EnvVars: []string{"NVIDIA_DEV_ROOT"},
 		},
 		&cli.BoolFlag{
 			Name:    "pass-device-specs",
@@ -111,10 +118,11 @@ func main() {
 			EnvVars: []string{"CDI_ANNOTATION_PREFIX"},
 		},
 		&cli.StringFlag{
-			Name:    "nvidia-ctk-path",
+			Name:    "nvidia-cdi-hook-path",
+			Aliases: []string{"nvidia-ctk-path"},
 			Value:   spec.DefaultNvidiaCTKPath,
-			Usage:   "the path to use for the nvidia-ctk in the generated CDI specification",
-			EnvVars: []string{"NVIDIA_CTK_PATH"},
+			Usage:   "the path to use for NVIDIA CDI hooks in the generated CDI specification",
+			EnvVars: []string{"NVIDIA_CDI_HOOK_PATH", "NVIDIA_CTK_PATH"},
 		},
 		&cli.StringFlag{
 			Name:    "driver-root-ctr-path",
@@ -127,6 +135,12 @@ func main() {
 			Name:    "mps-root",
 			Usage:   "the path on the host where MPS-specific mounts and files are created by the MPS control daemon manager",
 			EnvVars: []string{"MPS_ROOT"},
+		},
+		&cli.StringFlag{
+			Name:    "device-discovery-strategy",
+			Value:   "auto",
+			Usage:   "the strategy to use to discover devices: 'auto', 'nvml', or 'tegra'",
+			EnvVars: []string{"DEVICE_DISCOVERY_STRATEGY"},
 		},
 	}
 
@@ -144,7 +158,7 @@ func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 	}
 
 	hasNvml, _ := infolib.HasNvml()
-	if deviceListStrategies.IsCDIEnabled() && !hasNvml {
+	if deviceListStrategies.AnyCDIEnabled() && !hasNvml {
 		return fmt.Errorf("CDI --device-list-strategy options are only supported on NVML-based systems")
 	}
 
@@ -159,6 +173,14 @@ func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 		if config.Flags.MpsRoot == nil || *config.Flags.MpsRoot == "" {
 			return fmt.Errorf("using MPS requires --mps-root to be specified")
 		}
+	}
+
+	switch *config.Flags.DeviceDiscoveryStrategy {
+	case "auto":
+	case "nvml":
+	case "tegra":
+	default:
+		return fmt.Errorf("invalid --device-discovery-strategy option %v", *config.Flags.DeviceDiscoveryStrategy)
 	}
 
 	return nil
@@ -260,7 +282,12 @@ func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, bool, e
 	}
 	spec.DisableResourceNamingInConfig(logger.ToKlog, config)
 
-	nvmllib := nvml.New()
+	driverRoot := root(*config.Flags.Plugin.ContainerDriverRoot)
+	// We construct an NVML library specifying the path to libnvidia-ml.so.1
+	// explicitly so that we don't have to rely on the library path.
+	nvmllib := nvml.New(
+		nvml.WithLibraryPath(driverRoot.tryResolveLibrary("libnvidia-ml.so.1")),
+	)
 	devicelib := device.New(nvmllib)
 	infolib := nvinfo.New(
 		nvinfo.WithNvmlLib(nvmllib),

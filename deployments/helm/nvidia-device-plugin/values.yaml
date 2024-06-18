@@ -35,7 +35,7 @@ deviceIDStrategy: null
 nvidiaDriverRoot: null
 gdsEnabled: null
 mofedEnabled: null
-gfdMode: "auto"
+deviceDiscoveryStrategy: null
 
 nameOverride: ""
 fullnameOverride: ""
@@ -150,3 +150,9 @@ mps:
   # directories.
   # Pipe directories will be created at {{ mps.root }}/{{ .ResourceName }}
   root: "/run/nvidia/mps"
+
+
+cdi:
+  # nvidiaHookPath specifies the path to the nvidia-cdi-hook or nvidia-ctk executables on the host.
+  # This is required to ensure that the generated CDI specification refers to the correct CDI hooks.
+  nvidiaHookPath: null

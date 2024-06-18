@@ -48,12 +48,22 @@ func (s DeviceListStrategies) Includes(strategy string) bool {
 	return s[strategy]
 }
 
-// IsCDIEnabled returns whether any of the strategies being used require CDI.
-func (s DeviceListStrategies) IsCDIEnabled() bool {
+// AnyCDIEnabled returns whether any of the strategies being used require CDI.
+func (s DeviceListStrategies) AnyCDIEnabled() bool {
 	for k, v := range s {
 		if strings.HasPrefix(k, "cdi-") && v {
 			return true
 		}
 	}
 	return false
+}
+
+// AllCDIEnabled returns whether all strategies being used require CDI.
+func (s DeviceListStrategies) AllCDIEnabled() bool {
+	for k, v := range s {
+		if !strings.HasPrefix(k, "cdi-") && v {
+			return false
+		}
+	}
+	return true
 }
