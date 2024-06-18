@@ -1,0 +1,65 @@
+# Copyright 2024 NVIDIA CORPORATION
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Run this workflow on new tags
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        name: Check out code
+
+      - name: Create Draft Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [[ ${{ github.ref_name }} == v*-rc.* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          gh release create ${{ github.ref_name }} \
+            --draft \
+            -t ${{ github.ref_name	}} \
+            -n $(./hack/generate-changelog.sh --version ${{ github.ref_name }}) \
+            -R $OWNER/$REPO \
+            --verify-tag \
+            $PRERELEASE_FLAG
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4.2.0
+        with:
+          version: 3.14.4
+
+      - name: Generate Helm Charts
+        run: |
+          ./hack/package-helm-charts.sh ${{ github.ref_name }}
+
+      - name: Upload Release Artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          HELM_PACKAGE_VERSION=${GITHUB_REF_NAME#v}
+          gh release upload ${{ github.ref_name }} ./nvidia-device-plugin-${HELM_PACKAGE_VERSION}.tgz -R $OWNER/$REPO
+          gh release upload ${{ github.ref_name }} ./gpu-feature-discovery-${HELM_PACKAGE_VERSION}.tgz -R $OWNER/$REPO

@@ -28,7 +28,7 @@ Options:
 
 Example:
 
-  $this v0.15.0
+  $this {{ VERSION }}
 
 EOF
 }
