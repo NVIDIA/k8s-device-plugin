@@ -22,6 +22,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/NVIDIA/go-nvlib/pkg/nvpci"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 )
@@ -220,7 +222,7 @@ func newGPUModeLabeler(manager resource.Manager) (Labeler, error) {
 	return labels, nil
 }
 
-func getModeForClasses(classes []string) string {
+func getModeForClasses(classes []uint32) string {
 	if len(classes) == 0 {
 		return "unknown"
 	}
@@ -230,27 +232,26 @@ func getModeForClasses(classes []string) string {
 		}
 	}
 	switch classes[0] {
-	case "0x030000":
+	case nvpci.PCIVgaControllerClass:
 		return "graphics"
-	case "0x030200":
+	case nvpci.PCI3dControllerClass:
 		return "compute"
 	default:
 		return "unknown"
 	}
 }
 
-func getDeviceClasses(devices []resource.Device) ([]string, error) {
-	seenClasses := make(map[string]bool)
+func getDeviceClasses(devices []resource.Device) ([]uint32, error) {
+	seenClasses := make(map[uint32]bool)
 	for _, d := range devices {
 		class, err := d.GetPIEClass()
 		if err != nil {
 			return nil, err
 		}
-		class = strings.TrimSpace(class)
 		seenClasses[class] = true
 	}
 
-	var classes []string
+	var classes []uint32
 	for class := range seenClasses {
 		classes = append(classes, class)
 	}

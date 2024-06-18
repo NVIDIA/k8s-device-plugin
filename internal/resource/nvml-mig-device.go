@@ -134,10 +134,10 @@ func totalMemory(attr map[string]interface{}) (uint64, error) {
 	}
 }
 
-func (d nvmlMigDevice) GetPIEClass() (string, error) {
+func (d nvmlMigDevice) GetPIEClass() (uint32, error) {
 	info, retVal := d.MigDevice.GetPciInfo()
 	if retVal != nvml.SUCCESS {
-		return "", retVal
+		return 0, retVal
 	}
 	var bytes []byte
 	for _, char := range info.BusId {
@@ -149,7 +149,7 @@ func (d nvmlMigDevice) GetPIEClass() (string, error) {
 	pciID := strings.ToLower(strings.TrimPrefix(string(bytes), "0000"))
 	nvDevice, err := nvpci.New().GetGPUByPciBusID(pciID)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
-	return fmt.Sprintf("%#06x", nvDevice.Class), nil
+	return nvDevice.Class, nil
 }

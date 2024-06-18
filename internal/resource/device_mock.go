@@ -20,9 +20,6 @@ var _ Device = &DeviceMock{}
 //			GetAttributesFunc: func() (map[string]interface{}, error) {
 //				panic("mock out the GetAttributes method")
 //			},
-//			GetClassFunc: func() (string, error) {
-//				panic("mock out the GetPIEClass method")
-//			},
 //			GetCudaComputeCapabilityFunc: func() (int, int, error) {
 //				panic("mock out the GetCudaComputeCapability method")
 //			},
@@ -34,6 +31,9 @@ var _ Device = &DeviceMock{}
 //			},
 //			GetNameFunc: func() (string, error) {
 //				panic("mock out the GetName method")
+//			},
+//			GetPIEClassFunc: func() (uint32, error) {
+//				panic("mock out the GetPIEClass method")
 //			},
 //			GetTotalMemoryMBFunc: func() (uint64, error) {
 //				panic("mock out the GetTotalMemoryMB method")
@@ -54,9 +54,6 @@ type DeviceMock struct {
 	// GetAttributesFunc mocks the GetAttributes method.
 	GetAttributesFunc func() (map[string]interface{}, error)
 
-	// GetPIEClassFunc mocks the GetClass method.
-	GetPIEClassFunc func() (string, error)
-
 	// GetCudaComputeCapabilityFunc mocks the GetCudaComputeCapability method.
 	GetCudaComputeCapabilityFunc func() (int, int, error)
 
@@ -68,6 +65,9 @@ type DeviceMock struct {
 
 	// GetNameFunc mocks the GetName method.
 	GetNameFunc func() (string, error)
+
+	// GetPIEClassFunc mocks the GetPIEClass method.
+	GetPIEClassFunc func() (uint32, error)
 
 	// GetTotalMemoryMBFunc mocks the GetTotalMemoryMB method.
 	GetTotalMemoryMBFunc func() (uint64, error)
@@ -83,9 +83,6 @@ type DeviceMock struct {
 		// GetAttributes holds details about calls to the GetAttributes method.
 		GetAttributes []struct {
 		}
-		// GetPIEClass holds details about calls to the GetClass method.
-		GetPIEClass []struct {
-		}
 		// GetCudaComputeCapability holds details about calls to the GetCudaComputeCapability method.
 		GetCudaComputeCapability []struct {
 		}
@@ -98,6 +95,9 @@ type DeviceMock struct {
 		// GetName holds details about calls to the GetName method.
 		GetName []struct {
 		}
+		// GetPIEClass holds details about calls to the GetPIEClass method.
+		GetPIEClass []struct {
+		}
 		// GetTotalMemoryMB holds details about calls to the GetTotalMemoryMB method.
 		GetTotalMemoryMB []struct {
 		}
@@ -109,11 +109,11 @@ type DeviceMock struct {
 		}
 	}
 	lockGetAttributes                      sync.RWMutex
-	lockGetClass                           sync.RWMutex
 	lockGetCudaComputeCapability           sync.RWMutex
 	lockGetDeviceHandleFromMigDeviceHandle sync.RWMutex
 	lockGetMigDevices                      sync.RWMutex
 	lockGetName                            sync.RWMutex
+	lockGetPIEClass                        sync.RWMutex
 	lockGetTotalMemoryMB                   sync.RWMutex
 	lockIsMigCapable                       sync.RWMutex
 	lockIsMigEnabled                       sync.RWMutex
@@ -143,33 +143,6 @@ func (mock *DeviceMock) GetAttributesCalls() []struct {
 	mock.lockGetAttributes.RLock()
 	calls = mock.calls.GetAttributes
 	mock.lockGetAttributes.RUnlock()
-	return calls
-}
-
-// GetPIEClass calls GetPIEClassFunc.
-func (mock *DeviceMock) GetPIEClass() (string, error) {
-	if mock.GetPIEClassFunc == nil {
-		panic("DeviceMock.GetClassFunc: method is nil but Device.GetPIEClass was just called")
-	}
-	callInfo := struct {
-	}{}
-	mock.lockGetClass.Lock()
-	mock.calls.GetPIEClass = append(mock.calls.GetPIEClass, callInfo)
-	mock.lockGetClass.Unlock()
-	return mock.GetPIEClassFunc()
-}
-
-// GetClassCalls gets all the calls that were made to GetClass.
-// Check the length with:
-//
-//	len(mockedDevice.GetPIEClassCalls())
-func (mock *DeviceMock) GetPIEClassCalls() []struct {
-} {
-	var calls []struct {
-	}
-	mock.lockGetClass.RLock()
-	calls = mock.calls.GetPIEClass
-	mock.lockGetClass.RUnlock()
 	return calls
 }
 
@@ -278,6 +251,33 @@ func (mock *DeviceMock) GetNameCalls() []struct {
 	mock.lockGetName.RLock()
 	calls = mock.calls.GetName
 	mock.lockGetName.RUnlock()
+	return calls
+}
+
+// GetPIEClass calls GetPIEClassFunc.
+func (mock *DeviceMock) GetPIEClass() (uint32, error) {
+	if mock.GetPIEClassFunc == nil {
+		panic("DeviceMock.GetPIEClassFunc: method is nil but Device.GetPIEClass was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockGetPIEClass.Lock()
+	mock.calls.GetPIEClass = append(mock.calls.GetPIEClass, callInfo)
+	mock.lockGetPIEClass.Unlock()
+	return mock.GetPIEClassFunc()
+}
+
+// GetPIEClassCalls gets all the calls that were made to GetPIEClass.
+// Check the length with:
+//
+//	len(mockedDevice.GetPIEClassCalls())
+func (mock *DeviceMock) GetPIEClassCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockGetPIEClass.RLock()
+	calls = mock.calls.GetPIEClass
+	mock.lockGetPIEClass.RUnlock()
 	return calls
 }
 

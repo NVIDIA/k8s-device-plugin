@@ -65,7 +65,6 @@ func (d vfioDevice) IsMigCapable() (bool, error) {
 	return false, nil
 }
 
-func (d vfioDevice) GetPIEClass() (string, error) {
-	class := fmt.Sprintf("%#06x\n", d.nvidiaPCIDevice.Class)
-	return class, nil
+func (d vfioDevice) GetPIEClass() (uint32, error) {
+	return d.nvidiaPCIDevice.Class, nil
 }

@@ -88,14 +88,14 @@ func (d nvmlDevice) GetTotalMemoryMB() (uint64, error) {
 	return info.Total / (1024 * 1024), nil
 }
 
-func (d nvmlDevice) GetPIEClass() (string, error) {
+func (d nvmlDevice) GetPIEClass() (uint32, error) {
 	pciBusID, err := d.GetPCIBusID()
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 	nvDevice, err := nvpci.New().GetGPUByPciBusID(pciBusID)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
-	return fmt.Sprintf("%#06x", nvDevice.Class), nil
+	return nvDevice.Class, nil
 }
