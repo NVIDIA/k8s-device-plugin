@@ -134,7 +134,7 @@ func totalMemory(attr map[string]interface{}) (uint64, error) {
 	}
 }
 
-func (d nvmlMigDevice) GetClass() (string, error) {
+func (d nvmlMigDevice) GetPIEClass() (string, error) {
 	info, retVal := d.MigDevice.GetPciInfo()
 	if retVal != nvml.SUCCESS {
 		return "", retVal

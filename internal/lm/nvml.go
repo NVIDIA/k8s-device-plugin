@@ -242,7 +242,7 @@ func getModeForClasses(classes []string) string {
 func getDeviceClasses(devices []resource.Device) ([]string, error) {
 	seenClasses := make(map[string]bool)
 	for _, d := range devices {
-		class, err := d.GetClass()
+		class, err := d.GetPIEClass()
 		if err != nil {
 			return nil, err
 		}
