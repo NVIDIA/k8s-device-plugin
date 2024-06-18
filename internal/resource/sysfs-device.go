@@ -66,6 +66,6 @@ func (d vfioDevice) IsMigCapable() (bool, error) {
 }
 
 func (d vfioDevice) GetClass() (string, error) {
-	class := fmt.Sprintf("0x0%x", d.nvidiaPCIDevice.Class)
+	class := fmt.Sprintf("%#06x\n", d.nvidiaPCIDevice.Class)
 	return class, nil
 }

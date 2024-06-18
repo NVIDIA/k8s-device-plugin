@@ -18,12 +18,10 @@ package resource
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
-	"k8s.io/klog/v2"
-
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvpci"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 )
 
@@ -104,14 +102,9 @@ func (d nvmlDevice) GetClass() (string, error) {
 		bytes = append(bytes, byte(char))
 	}
 	pciID := strings.ToLower(strings.TrimPrefix(string(bytes), "0000"))
-	return resolvePCIAddressToClass(pciID)
-}
-
-func resolvePCIAddressToClass(addr string) (string, error) {
-	class, err := os.ReadFile(fmt.Sprintf("/sys/bus/pci/devices/%s/class", addr))
+	nvDevice, err := nvpci.New().GetGPUByPciBusID(pciID)
 	if err != nil {
-		klog.Errorf("Error getting gpu class: %v", err)
-		return "unknown", fmt.Errorf("Error getting gpu class: %v", err)
+		return "", err
 	}
-	return strings.TrimSpace(string(class)), nil
+	return fmt.Sprintf("%#06x", nvDevice.Class), nil
 }

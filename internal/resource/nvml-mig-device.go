@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvpci"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 )
 
@@ -146,5 +147,9 @@ func (d nvmlMigDevice) GetClass() (string, error) {
 		bytes = append(bytes, byte(char))
 	}
 	pciID := strings.ToLower(strings.TrimPrefix(string(bytes), "0000"))
-	return resolvePCIAddressToClass(pciID)
+	nvDevice, err := nvpci.New().GetGPUByPciBusID(pciID)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%#06x", nvDevice.Class), nil
 }

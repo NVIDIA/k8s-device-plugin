@@ -201,7 +201,6 @@ func isMPSCapable(manager resource.Manager) (bool, error) {
 }
 
 func newGPUModeLabeler(manager resource.Manager) (Labeler, error) {
-
 	devices, err := manager.GetDevices()
 	if err != nil {
 		return nil, err
@@ -210,32 +209,50 @@ func newGPUModeLabeler(manager resource.Manager) (Labeler, error) {
 		// no devices, return empty labels
 		return empty{}, nil
 	}
-
-	class := ""
-	// loop through all devices to check if all of them are on same gpu mode
-	for _, d := range devices {
-		val, err := d.GetClass()
-		if err != nil {
-			return nil, err
-		}
-		if class != "" && val != class {
-			break
-		} else {
-			class = val
-		}
+	classes, err := getDeviceClasses(devices)
+	if err != nil {
+		return nil, err
 	}
-
-	gpuMode := ""
-	switch class {
-	case "0x030000":
-		gpuMode = "graphics"
-	case "0x030200":
-		gpuMode = "compute"
-	default:
-		gpuMode = "unknown"
-	}
+	gpuMode := getModeForClasses(classes)
 	labels := Labels{
 		"nvidia.com/gpu.mode": gpuMode,
 	}
 	return labels, nil
+}
+
+func getModeForClasses(classes []string) string {
+	if len(classes) == 0 {
+		return "unknown"
+	}
+	for _, class := range classes {
+		if class != classes[0] {
+			return "unknown"
+		}
+	}
+	switch classes[0] {
+	case "0x030000":
+		return "graphics"
+	case "0x030200":
+		return "compute"
+	default:
+		return "unknown"
+	}
+}
+
+func getDeviceClasses(devices []resource.Device) ([]string, error) {
+	seenClasses := make(map[string]bool)
+	for _, d := range devices {
+		class, err := d.GetClass()
+		if err != nil {
+			return nil, err
+		}
+		class = strings.TrimSpace(class)
+		seenClasses[class] = true
+	}
+
+	var classes []string
+	for class := range seenClasses {
+		classes = append(classes, class)
+	}
+	return classes, nil
 }
