@@ -18,7 +18,6 @@ package resource
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvlib/pkg/nvpci"
@@ -90,19 +89,11 @@ func (d nvmlDevice) GetTotalMemoryMB() (uint64, error) {
 }
 
 func (d nvmlDevice) GetClass() (string, error) {
-	info, retVal := d.Device.GetPciInfo()
-	if retVal != nvml.SUCCESS {
-		return "", retVal
+	pciBusID, err := d.GetPCIBusID()
+	if err != nil {
+		return "", err
 	}
-	var bytes []byte
-	for _, char := range info.BusId {
-		if char == 0 {
-			break
-		}
-		bytes = append(bytes, byte(char))
-	}
-	pciID := strings.ToLower(strings.TrimPrefix(string(bytes), "0000"))
-	nvDevice, err := nvpci.New().GetGPUByPciBusID(pciID)
+	nvDevice, err := nvpci.New().GetGPUByPciBusID(pciBusID)
 	if err != nil {
 		return "", err
 	}
