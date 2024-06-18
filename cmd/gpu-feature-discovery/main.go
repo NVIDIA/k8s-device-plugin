@@ -103,9 +103,9 @@ func main() {
 			Usage:   "Use NFD NodeFeature API to publish labels",
 			EnvVars: []string{"GFD_USE_NODE_FEATURE_API", "USE_NODE_FEATURE_API"},
 		},
-		&cli.StringSliceFlag{
+		&cli.StringFlag{
 			Name:    "device-discovery-strategy",
-			Value:   cli.NewStringSlice("auto"),
+			Value:   "auto",
 			Usage:   "the strategy to use to discover devices: 'auto', 'nvml', 'tegra' or 'vfio'",
 			EnvVars: []string{"DEVICE_DISCOVERY_STRATEGY"},
 		},
