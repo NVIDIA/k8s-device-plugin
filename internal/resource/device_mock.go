@@ -32,8 +32,8 @@ var _ Device = &DeviceMock{}
 //			GetNameFunc: func() (string, error) {
 //				panic("mock out the GetName method")
 //			},
-//			GetPIEClassFunc: func() (uint32, error) {
-//				panic("mock out the GetPIEClass method")
+//			GetPCIClassFunc: func() (uint32, error) {
+//				panic("mock out the GetPCIClass method")
 //			},
 //			GetTotalMemoryMBFunc: func() (uint64, error) {
 //				panic("mock out the GetTotalMemoryMB method")
@@ -66,8 +66,8 @@ type DeviceMock struct {
 	// GetNameFunc mocks the GetName method.
 	GetNameFunc func() (string, error)
 
-	// GetPIEClassFunc mocks the GetPIEClass method.
-	GetPIEClassFunc func() (uint32, error)
+	// GetPCIClassFunc mocks the GetPCIClass method.
+	GetPCIClassFunc func() (uint32, error)
 
 	// GetTotalMemoryMBFunc mocks the GetTotalMemoryMB method.
 	GetTotalMemoryMBFunc func() (uint64, error)
@@ -95,8 +95,8 @@ type DeviceMock struct {
 		// GetName holds details about calls to the GetName method.
 		GetName []struct {
 		}
-		// GetPIEClass holds details about calls to the GetPIEClass method.
-		GetPIEClass []struct {
+		// GetPCIClass holds details about calls to the GetPCIClass method.
+		GetPCIClass []struct {
 		}
 		// GetTotalMemoryMB holds details about calls to the GetTotalMemoryMB method.
 		GetTotalMemoryMB []struct {
@@ -113,7 +113,7 @@ type DeviceMock struct {
 	lockGetDeviceHandleFromMigDeviceHandle sync.RWMutex
 	lockGetMigDevices                      sync.RWMutex
 	lockGetName                            sync.RWMutex
-	lockGetPIEClass                        sync.RWMutex
+	lockGetPCIClass                        sync.RWMutex
 	lockGetTotalMemoryMB                   sync.RWMutex
 	lockIsMigCapable                       sync.RWMutex
 	lockIsMigEnabled                       sync.RWMutex
@@ -254,30 +254,30 @@ func (mock *DeviceMock) GetNameCalls() []struct {
 	return calls
 }
 
-// GetPIEClass calls GetPIEClassFunc.
-func (mock *DeviceMock) GetPIEClass() (uint32, error) {
-	if mock.GetPIEClassFunc == nil {
-		panic("DeviceMock.GetPIEClassFunc: method is nil but Device.GetPIEClass was just called")
+// GetPCIClass calls GetPCIClassFunc.
+func (mock *DeviceMock) GetPCIClass() (uint32, error) {
+	if mock.GetPCIClassFunc == nil {
+		panic("DeviceMock.GetPCIClassFunc: method is nil but Device.GetPCIClass was just called")
 	}
 	callInfo := struct {
 	}{}
-	mock.lockGetPIEClass.Lock()
-	mock.calls.GetPIEClass = append(mock.calls.GetPIEClass, callInfo)
-	mock.lockGetPIEClass.Unlock()
-	return mock.GetPIEClassFunc()
+	mock.lockGetPCIClass.Lock()
+	mock.calls.GetPCIClass = append(mock.calls.GetPCIClass, callInfo)
+	mock.lockGetPCIClass.Unlock()
+	return mock.GetPCIClassFunc()
 }
 
-// GetPIEClassCalls gets all the calls that were made to GetPIEClass.
+// GetPCIClassCalls gets all the calls that were made to GetPCIClass.
 // Check the length with:
 //
-//	len(mockedDevice.GetPIEClassCalls())
-func (mock *DeviceMock) GetPIEClassCalls() []struct {
+//	len(mockedDevice.GetPCIClassCalls())
+func (mock *DeviceMock) GetPCIClassCalls() []struct {
 } {
 	var calls []struct {
 	}
-	mock.lockGetPIEClass.RLock()
-	calls = mock.calls.GetPIEClass
-	mock.lockGetPIEClass.RUnlock()
+	mock.lockGetPCIClass.RLock()
+	calls = mock.calls.GetPCIClass
+	mock.lockGetPCIClass.RUnlock()
 	return calls
 }
 

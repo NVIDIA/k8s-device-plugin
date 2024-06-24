@@ -73,7 +73,7 @@ func NewDeviceLabeler(manager resource.Manager, config *spec.Config) (Labeler, e
 		return nil, fmt.Errorf("error creating resource labeler: %v", err)
 	}
 
-	gpuModeLabeler, err := newGPUModeLabeler(manager)
+	gpuModeLabeler, err := newGPUModeLabeler(devices)
 	if err != nil {
 		return nil, fmt.Errorf("error creating resource labeler: %v", err)
 	}
@@ -202,15 +202,9 @@ func isMPSCapable(manager resource.Manager) (bool, error) {
 	return true, nil
 }
 
-func newGPUModeLabeler(manager resource.Manager) (Labeler, error) {
-	devices, err := manager.GetDevices()
-	if err != nil {
-		return nil, err
-	}
-	if len(devices) == 0 {
-		// no devices, return empty labels
-		return empty{}, nil
-	}
+// newGPUModeLabeler creates a new labeler that reports the mode of GPUs on the node.
+// GPUs can be in Graphics or Compute mode.
+func newGPUModeLabeler(devices []resource.Device) (Labeler, error) {
 	classes, err := getDeviceClasses(devices)
 	if err != nil {
 		return nil, err
@@ -244,7 +238,7 @@ func getModeForClasses(classes []uint32) string {
 func getDeviceClasses(devices []resource.Device) ([]uint32, error) {
 	seenClasses := make(map[uint32]bool)
 	for _, d := range devices {
-		class, err := d.GetPIEClass()
+		class, err := d.GetPCIClass()
 		if err != nil {
 			return nil, err
 		}

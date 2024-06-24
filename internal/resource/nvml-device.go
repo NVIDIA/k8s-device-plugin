@@ -88,7 +88,7 @@ func (d nvmlDevice) GetTotalMemoryMB() (uint64, error) {
 	return info.Total / (1024 * 1024), nil
 }
 
-func (d nvmlDevice) GetPIEClass() (uint32, error) {
+func (d nvmlDevice) GetPCIClass() (uint32, error) {
 	pciBusID, err := d.GetPCIBusID()
 	if err != nil {
 		return 0, err

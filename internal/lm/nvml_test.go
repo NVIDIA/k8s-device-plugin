@@ -204,3 +204,89 @@ func TestSharingLabeler(t *testing.T) {
 		})
 	}
 }
+
+func TestGPUModeLabeler(t *testing.T) {
+	testCases := []struct {
+		description    string
+		devices        []resource.Device
+		expectedError  bool
+		expectedLabels map[string]string
+	}{
+		{
+			description: "single device with compute PCI class",
+			devices: []resource.Device{
+				rt.NewDeviceWithPCIClassMock(0x030000),
+			},
+			expectedLabels: map[string]string{
+				"nvidia.com/gpu.mode": "graphics",
+			},
+		},
+		{
+			description: "single device with graphics PCI class",
+			devices: []resource.Device{
+				rt.NewDeviceWithPCIClassMock(0x030200),
+			},
+			expectedLabels: map[string]string{
+				"nvidia.com/gpu.mode": "compute",
+			},
+		},
+		{
+			description: "single device with switch PCI class",
+			devices: []resource.Device{
+				rt.NewDeviceWithPCIClassMock(0x068000),
+			},
+			expectedLabels: map[string]string{
+				"nvidia.com/gpu.mode": "unknown",
+			},
+		},
+		{
+			description: "multiple device have same graphics PCI class",
+			devices: []resource.Device{
+				rt.NewDeviceWithPCIClassMock(0x030200),
+				rt.NewDeviceWithPCIClassMock(0x030200),
+				rt.NewDeviceWithPCIClassMock(0x030200),
+			},
+			expectedLabels: map[string]string{
+				"nvidia.com/gpu.mode": "compute",
+			},
+		},
+		{
+			description: "multiple device have same compute PCI class",
+			devices: []resource.Device{
+				rt.NewDeviceWithPCIClassMock(0x030000),
+				rt.NewDeviceWithPCIClassMock(0x030000),
+				rt.NewDeviceWithPCIClassMock(0x030000),
+			},
+			expectedLabels: map[string]string{
+				"nvidia.com/gpu.mode": "graphics",
+			},
+		},
+		{
+			description: "multiple device with some with graphics and others with compute PCI class",
+			devices: []resource.Device{
+				rt.NewDeviceWithPCIClassMock(0x030000),
+				rt.NewDeviceWithPCIClassMock(0x030200),
+				rt.NewDeviceWithPCIClassMock(0x030000),
+			},
+			expectedLabels: map[string]string{
+				"nvidia.com/gpu.mode": "unknown",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+
+			gpuModeLabeler, _ := newGPUModeLabeler(tc.devices)
+
+			labels, err := gpuModeLabeler.Labels()
+			if tc.expectedError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			require.EqualValues(t, tc.expectedLabels, labels)
+		})
+	}
+}

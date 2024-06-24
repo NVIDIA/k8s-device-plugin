@@ -97,6 +97,6 @@ func (d *cudaDevice) IsMigEnabled() (bool, error) {
 	return false, nil
 }
 
-func (d *cudaDevice) GetPIEClass() (uint32, error) {
+func (d *cudaDevice) GetPCIClass() (uint32, error) {
 	return 0, nil
 }

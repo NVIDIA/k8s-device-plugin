@@ -134,11 +134,12 @@ func totalMemory(attr map[string]interface{}) (uint64, error) {
 	}
 }
 
-func (d nvmlMigDevice) GetPIEClass() (uint32, error) {
+func (d nvmlMigDevice) GetPCIClass() (uint32, error) {
 	info, retVal := d.MigDevice.GetPciInfo()
 	if retVal != nvml.SUCCESS {
 		return 0, retVal
 	}
+
 	var bytes []byte
 	for _, char := range info.BusId {
 		if char == 0 {
