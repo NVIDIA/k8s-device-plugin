@@ -143,13 +143,13 @@ if [[ "$FORCE_BRANCH" != "yes" && "$(git rev-parse --abbrev-ref HEAD)" != "main"
     exit 1
 fi
 
-git fetch
-git diff --quiet FETCH_HEAD
-if [[ $? -ne 0 ]]; then
-    echo "Local changes detected:"
-    git diff FETCH_HEAD | cat
-    echo "Exiting"
-    exit 1
+if [[ "$FORCE_BRANCH" != "yes" ]]; then
+    git fetch
+    git diff --quiet FETCH_HEAD
+    if [[ $? -ne 0 ]]; then
+        echo "Local changes detected; Exiting"
+        exit 1
+    fi
 fi
 
 # Create a release issue.
