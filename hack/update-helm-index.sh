@@ -23,7 +23,9 @@ cat << EOF
 Usage: $this [-h]
 
 Options:
+  --version             specify the version for the release.
   --helm-repo-path      specify the path to the Helm repo (defaults to HELM_REPO_PATH)
+                        If unspecified, the version is used to construct a path.
   --help/-h             show help for this command and exit
 
 Example:
@@ -44,7 +46,10 @@ while [[ $# -gt 0 ]]; do
 		--helm-repo-path)
 			HELM_REPO_PATH="$2"
 			shift 2
-			break
+			;;
+		--version)
+			VERSION=$2
+			shift 2
 			;;
 		--help/h) usage
 			exit 0
@@ -52,14 +57,33 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+
 if [ -z "${HELM_REPO_PATH}" ]; then
-	echo "helm repo path not specified"
-	usage
-	exit 1
+	if [ -z "${VERSION}" ]; then
+		echo "Either helm repo path or version must be specified"
+		usage
+		exit 1
+	else
+		HELM_REPO_PATH="releases/${VERSION}"
+	fi
 fi
 
-# now we take the input from the user and check if is a path or url http/https
-asset_path="$@"
+
+if [ -n ${VERSION} ]; then
+	if [ $# -gt 0 ]; then
+		echo "If a version is specified, then no assets should be specified"
+		usage
+		exit 1
+	fi
+	gh release download ${VERSION} \
+		--pattern '*.tgz' \
+		--dir /tmp/${VERSION}-assets/ \
+		--clobber
+	asset_path="$(ls /tmp/${VERSION}-assets/*.tgz)"
+else
+	# now we take the input from the user and check if is a path or url http/https
+	asset_path="$@"
+fi
 
 if [ -z "$asset_path" ]; then
 	echo "No assets provided"
@@ -82,21 +106,14 @@ if [ -n "$asset_local" ]; then
 	echo "Copying $asset_local..."
 	cp -f $asset_local $HELM_REPO_PATH/stable
 else
-	# Download charts from release assets
 	for asset_url in $asset_urls; do
-		if ! echo "$asset_url" | grep -q '.*tgz$'; then
+		if ! echo "$asset_url" | grep -q '.*\.tgz$'; then
 			echo "Skipping $asset_url, does not look like a Helm chart archive"
 			continue
 		fi
 		echo "Downloading $asset_url..."
-		curl -sSfLO -o $HELM_REPO_PATH/stable/$(basename $asset_url) $asset_url
-		# We rely on all release assets having the same baseurl
-		download_baseurl=`dirname $HELM_REPO_PATH/stable/$(basename $asset_url)`
+		curl -sSfLO --output-dir "${HELM_REPO_PATH}/stable" ${asset_url}
 	done
-	if [ -z "$download_baseurl" ]; then
-		echo "No Helm chart release assets found"
-		exit 0
-	fi
 fi
 
 echo "Updating helm index"
@@ -111,19 +128,21 @@ if [ -z "${changes}" ]; then
     exit 0
 fi
 
-VERSION=$( echo "${changes}" | grep -v index | grep -oE "\-[0-9\.]+(\-[\-\.rc0-9]+)?.tgz" | sort -u )
-VERSION=${VERSION#-}
-VERSION=${VERSION%.tgz}
+if [[ -z ${VERSION} ]]; then
+	VERSION=$( echo "${changes}" | grep -v index | grep -oE "\-[0-9\.]+(\-[\-\.rc0-9]+)?.tgz" | sort -u )
+	VERSION=${VERSION#-}
+	VERSION=${VERSION%.tgz}
 
-if [ -z "${VERSION}" ]; then
-	echo "Could not extract version information"
-	exit 1
+	if [ -z "${VERSION}" ]; then
+		echo "Could not extract version information"
+		exit 1
+	fi
+
+	VERSION="v$VERSION"
 fi
 
-VERSION="v$VERSION"
-
 # Create a new commit
-echo "Committing changes..."
+echo "Committing changes: \n${changes}"
 git -C $HELM_REPO_PATH add index.yaml stable
 
 cat <<EOF | git -C $HELM_REPO_PATH commit --signoff -F -

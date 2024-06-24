@@ -27,24 +27,6 @@ jobs:
       - uses: actions/checkout@v4
         name: Check out code
 
-      - name: Create Draft Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
-        run: |
-          PRERELEASE_FLAG=""
-          if [[ ${{ github.ref_name }} == v*-rc.* ]]; then
-            PRERELEASE_FLAG="--prerelease"
-          fi
-          gh release create ${{ github.ref_name }} \
-            --draft \
-            -t ${{ github.ref_name	}} \
-            -n $(./hack/generate-changelog.sh --version ${{ github.ref_name }}) \
-            -R $OWNER/$REPO \
-            --verify-tag \
-            $PRERELEASE_FLAG
-
       - name: Install Helm
         uses: azure/setup-helm@v4.2.0
         with:
@@ -54,12 +36,8 @@ jobs:
         run: |
           ./hack/package-helm-charts.sh ${{ github.ref_name }}
 
-      - name: Upload Release Artifacts
+      - name: Create Draft Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
         run: |
-          HELM_PACKAGE_VERSION=${GITHUB_REF_NAME#v}
-          gh release upload ${{ github.ref_name }} ./nvidia-device-plugin-${HELM_PACKAGE_VERSION}.tgz -R $OWNER/$REPO
-          gh release upload ${{ github.ref_name }} ./gpu-feature-discovery-${HELM_PACKAGE_VERSION}.tgz -R $OWNER/$REPO
+          ./hack/create-release.sh --version ${{ github.ref_name }}
