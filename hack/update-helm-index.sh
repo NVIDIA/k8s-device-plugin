@@ -54,12 +54,15 @@ while [[ $# -gt 0 ]]; do
 		--help/h) usage
 			exit 0
 			;;
+		*)
+			break
+			;;
 	esac
 done
 
 
-if [ -z "${HELM_REPO_PATH}" ]; then
-	if [ -z "${VERSION}" ]; then
+if [[ -z "${HELM_REPO_PATH}" ]]; then
+	if [[ -z "${VERSION}" ]]; then
 		echo "Either helm repo path or version must be specified"
 		usage
 		exit 1
@@ -69,8 +72,8 @@ if [ -z "${HELM_REPO_PATH}" ]; then
 fi
 
 
-if [ -n ${VERSION} ]; then
-	if [ $# -gt 0 ]; then
+if [[ -n "${VERSION}" ]]; then
+	if [[ $# -gt 0 ]]; then
 		echo "If a version is specified, then no assets should be specified"
 		usage
 		exit 1
