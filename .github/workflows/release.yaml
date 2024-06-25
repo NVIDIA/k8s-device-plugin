@@ -40,4 +40,4 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./hack/create-release.sh --version ${{ github.ref_name }}
+          ./hack/create-release.sh ${{ github.ref_name }}
