@@ -6,7 +6,7 @@ require (
 	github.com/NVIDIA/go-gpuallocator v0.5.0
 	github.com/NVIDIA/go-nvlib v0.6.0
 	github.com/NVIDIA/go-nvml v0.12.4-0
-	github.com/NVIDIA/nvidia-container-toolkit v1.15.1-0.20240528113255-e4b46a09a77e
+	github.com/NVIDIA/nvidia-container-toolkit v1.16.0-rc.1
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/uuid v1.6.0
 	github.com/mittwald/go-helm-client v0.12.9
@@ -134,7 +134,7 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
-	github.com/xrash/smetrics v0.0.0-20240312152122-5f08fbb34913 // indirect
+	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0 // indirect
 	go.opentelemetry.io/otel v1.24.0 // indirect
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
