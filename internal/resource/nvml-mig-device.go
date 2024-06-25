@@ -135,22 +135,6 @@ func totalMemory(attr map[string]interface{}) (uint64, error) {
 }
 
 func (d nvmlMigDevice) GetPCIClass() (uint32, error) {
-	info, retVal := d.MigDevice.GetPciInfo()
-	if retVal != nvml.SUCCESS {
-		return 0, retVal
-	}
-
-	var bytes []byte
-	for _, char := range info.BusId {
-		if char == 0 {
-			break
-		}
-		bytes = append(bytes, byte(char))
-	}
-	pciID := strings.ToLower(strings.TrimPrefix(string(bytes), "0000"))
-	nvDevice, err := nvpci.New().GetGPUByPciBusID(pciID)
-	if err != nil {
-		return 0, err
-	}
-	return nvDevice.Class, nil
+	// GPU devices that support MIG do not support switching mode between graphics and compute, so they are always in compute mode.
+	return nvpci.PCI3dControllerClass, nil
 }
