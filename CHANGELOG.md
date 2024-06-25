@@ -1,5 +1,11 @@
 ## Changelog
 
+### Version v0.15.1
+- Fix inconsistent usage of `hasConfigMap` helm template. This addresses cases where certain resources (roles and service accounts) would be created even if they were not required.
+- Raise an error in GFD when MPS is used with MIG. This ensures that the behavior across GFD and the Device Plugin is consistent.
+- Remove provenance information from published images.
+- Use half of total memory for size of MPS tmpfs by default.
+
 ### Version v0.15.0
 - Moved `nvidia-device-plugin.yml` static deployment at the root of the repository to `deployments/static/nvidia-device-plugin.yml`.
 - Simplify PCI device clases in NFD worker configuration.

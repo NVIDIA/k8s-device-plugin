@@ -217,3 +217,15 @@ Pod annotations for the plugin and GFD
 {{- end -}}
 {{- toYaml $annotations }}
 {{- end -}}
+
+
+{{/*
+Collection of typed options for the device plugin.
+
+We convert this to JSON so that it can be included and converted to an object using fromJson.
+*/}}
+{{- define "nvidia-device-plugin.options" -}}
+{{- $options := dict "" "" -}}
+{{- $_ := set $options "hasConfigMap" ( eq ( (include "nvidia-device-plugin.hasConfigMap" . ) | trim ) "true" ) -}}
+{{- mustToJson $options -}}
+{{- end -}}
