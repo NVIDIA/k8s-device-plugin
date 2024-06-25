@@ -30,7 +30,7 @@ The device plugin consists in two artifacts:
       ```
     - Create the draft release by running:
       ```bash
-      ./hack/create-release.sh --version {{ .VERSION }}
+      ./hack/create-release.sh {{ .VERSION }}
       ```
 - If the `Publish Helm Chart` GitHub Action fails:
     - Check the logs for the error.
