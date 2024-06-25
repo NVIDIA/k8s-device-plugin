@@ -16,6 +16,14 @@
 
 set -o pipefail
 
+# if arg1 is set, it will be used as the version number
+if [ -z "$1" ]; then
+  VERSION=$(awk -F= '/^VERSION/ { print $2 }' versions.mk | tr -d '[:space:]')
+else
+  VERSION=$1
+fi
+VERSION=${VERSION#v}
+
 # Create temporary directory for GFD Helm chart
 rm -rf deployments/helm/gpu-feature-discovery
 mkdir -p deployments/helm/gpu-feature-discovery
@@ -24,5 +32,5 @@ yq e -i '.devicePlugin.enabled = false | .gfd.enabled = true'  deployments/helm/
 yq e -i '.name = "gpu-feature-discovery" | .description = "A Helm chart for gpu-feature-discovery on Kubernetes"' deployments/helm/gpu-feature-discovery/Chart.yaml
 
 # Create release assets to be uploaded
-helm package deployments/helm/gpu-feature-discovery/
-helm package deployments/helm/nvidia-device-plugin/
+helm package deployments/helm/gpu-feature-discovery/ --version $VERSION --app-version $VERSION
+helm package deployments/helm/nvidia-device-plugin/ --version $VERSION --app-version $VERSION

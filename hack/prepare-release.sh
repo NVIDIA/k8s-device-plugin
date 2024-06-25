@@ -28,7 +28,7 @@ Options:
 
 Example:
 
-  $this v0.15.0
+  $this {{ VERSION }}
 
 EOF
 }
@@ -137,9 +137,39 @@ else
     SED="sed"
 fi
 
+# TODO: We need to ensure that this tooling also works on `release-*` branches.
+if [[ "$FORCE_BRANCH" != "yes" && "$(git rev-parse --abbrev-ref HEAD)" != "main" ]]; then
+    echo "Release scripts should be run on 'main'"
+    exit 1
+fi
+
+git fetch
+git diff --quiet FETCH_HEAD
+if [[ $? -ne 0 ]]; then
+    echo "Local changes detected:"
+    git diff FETCH_HEAD | cat
+    echo "Exiting"
+    exit 1
+fi
+
+# Create a release issue.
+echo "Creating release tracking issue"
+cat RELEASE.md | sed "s/{{ .VERSION }}/$release/g" | \
+    gh issue create -F - \
+        -R NVIDIA/cloud-native-team \
+        --title "Release k8s-device-plugin $release" \
+        --label release
+
+
+echo "Creating a version bump branch: bump-release-${release}"
+git checkout -f -b bump-release-${release}
+
 # Patch versions.mk
 echo Patching versions.mk to refer to $release
 $SED -i "s/^VERSION.*$/VERSION ?= $release/" versions.mk
+
+git add versions.mk
+git commit -s -m "Bump version for $release release"
 
 # Patch deployments/static
 echo Patching deployments to refer to $semver
@@ -154,11 +184,20 @@ echo Patching deployments/helm/Chart.yaml to refer to $semver
 $SED -i "s/^version: .*/version: \"$semver\"/" deployments/helm/nvidia-device-plugin/Chart.yaml
 $SED -i "s/^appVersion: .*/appVersion: \"$semver\"/" deployments/helm/nvidia-device-plugin/Chart.yaml
 
-if [[ $release == *-rc.* ]]; then
-    echo "Skipping README update"
-    exit 0
+
+git add -u deployments
+git commit -s -m "Bump version to $semver in deployments"
+
+if [[ $release != *-rc.* ]]; then
+    # Patch README.md
+    echo Patching README.md to refer to $release
+    $SED -E -i -e "s/([^[:space:]])$previous_version([^[:alnum:]]|$)/\1$release\2/g" README.md
+    $SED -E -i -e "s/$pre_semver/$semver/g" README.md
+
+    git add -u README.md
+    git commit -s -m "Bump version to $release in README"
+else
+    echo "Skipping README update for prerelease version"
 fi
-# Patch README.md
-echo Patching README.md to refer to $release
-$SED -E -i -e "s/([^[:space:]])$previous_version([^[:alnum:]]|$)/\1$release\2/g" README.md
-$SED -E -i -e "s/$pre_semver/$semver/g" README.md
+
+echo "Please validated changes and create a pull request"
