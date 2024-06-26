@@ -1,0 +1,18 @@
+{{- if or (include "nvidia-device-plugin.hasConfigMap" .) ( and .Values.gfd.enabled .Values.nfd.enableNodeFeatureApi ) }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "nvidia-device-plugin.fullname" . }}-role
+  namespace: {{ include "nvidia-device-plugin.namespace" . }}
+  labels:
+    {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  {{- if and .Values.gfd.enabled .Values.nfd.enableNodeFeatureApi }}
+  - apiGroups: ["nfd.k8s-sigs.io"]
+    resources: ["nodefeatures"]
+    verbs: ["get", "list", "watch", "create", "update"]
+  {{- end }}
+{{- end }}
