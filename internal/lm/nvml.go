@@ -22,6 +22,8 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/klog/v2"
+
 	"github.com/NVIDIA/go-nvlib/pkg/nvpci"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
@@ -222,6 +224,7 @@ func getModeForClasses(classes []uint32) string {
 	}
 	for _, class := range classes {
 		if class != classes[0] {
+			klog.Infof("Not all GPU devices belong to the same class %#06x ", classes)
 			return "unknown"
 		}
 	}
