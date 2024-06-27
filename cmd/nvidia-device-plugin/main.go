@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -104,6 +105,12 @@ func main() {
 			Name:    "mofed-enabled",
 			Usage:   "ensure that containers are started with NVIDIA_MOFED=enabled",
 			EnvVars: []string{"MOFED_ENABLED"},
+		},
+		&cli.StringFlag{
+			Name:    "kubelet-socket",
+			Value:   pluginapi.KubeletSocket,
+			Usage:   "specify the socket for communicating with the kubelet; if this is empty, no connection with the kublet is attempted",
+			EnvVars: []string{"KUBELET_SOCKET"},
 		},
 		&cli.StringFlag{
 			Name:        "config-file",
@@ -196,8 +203,10 @@ func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 }
 
 func start(c *cli.Context, flags []cli.Flag) error {
-	klog.Info("Starting FS watcher.")
-	watcher, err := watch.Files(pluginapi.DevicePluginPath)
+	kubeletSocket := c.String("kubelet-socket")
+	kubeletSocketDir := filepath.Dir(kubeletSocket)
+	klog.Infof("Starting FS watcher for %v", kubeletSocketDir)
+	watcher, err := watch.Files(kubeletSocketDir)
 	if err != nil {
 		return fmt.Errorf("failed to create FS watcher for %s: %v", pluginapi.DevicePluginPath, err)
 	}
@@ -242,8 +251,8 @@ restart:
 		// 'pluginapi.KubeletSocket' file. When this occurs, restart this loop,
 		// restarting all of the plugins in the process.
 		case event := <-watcher.Events:
-			if event.Name == pluginapi.KubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
-				klog.Infof("inotify: %s created, restarting.", pluginapi.KubeletSocket)
+			if kubeletSocket != "" && event.Name == kubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
+				klog.Infof("inotify: %s created, restarting.", kubeletSocket)
 				goto restart
 			}
 
@@ -335,7 +344,7 @@ func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, bool, e
 		}
 
 		// Start the gRPC server for plugin p and connect it with the kubelet.
-		if err := p.Start(); err != nil {
+		if err := p.Start(c.String("kubelet-socket")); err != nil {
 			klog.Errorf("Failed to start plugin: %v", err)
 			return plugins, true, nil
 		}
