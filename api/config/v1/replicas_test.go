@@ -18,6 +18,7 @@ package v1
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -461,6 +462,33 @@ func TestUnmarshalReplicatedResources(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Equal(t, tc.output, output)
+		})
+	}
+}
+func TestUnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    ReplicatedDevices
+		wantErr bool
+	}{
+		{"All devices", `"all"`, ReplicatedDevices{All: true}, false},
+		{"Count of devices", `3`, ReplicatedDevices{Count: 3}, false},
+		{"Devices list", `["0:1"]`, ReplicatedDevices{List: []ReplicatedDeviceRef{"0:1"}}, false},
+		{"Invalid datatype", `{"key":"value"}`, ReplicatedDevices{}, true},
+		{"Invalid device count", `0`, ReplicatedDevices{}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got ReplicatedDevices
+			if err := got.UnmarshalJSON([]byte(tt.input)); (err != nil) != tt.wantErr {
+				t.Errorf("UnmarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("UnmarshalJSON() got = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
