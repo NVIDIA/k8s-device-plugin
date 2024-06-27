@@ -22,6 +22,10 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/klog/v2"
+
+	"github.com/NVIDIA/go-nvlib/pkg/nvpci"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 )
@@ -71,12 +75,18 @@ func NewDeviceLabeler(manager resource.Manager, config *spec.Config) (Labeler, e
 		return nil, fmt.Errorf("error creating resource labeler: %v", err)
 	}
 
+	gpuModeLabeler, err := newGPUModeLabeler(devices)
+	if err != nil {
+		return nil, fmt.Errorf("error creating resource labeler: %v", err)
+	}
+
 	l := Merge(
 		machineTypeLabeler,
 		versionLabeler,
 		migCapabilityLabeler,
 		sharingLabeler,
 		resourceLabeler,
+		gpuModeLabeler,
 	)
 
 	return l, nil
@@ -192,4 +202,55 @@ func isMPSCapable(manager resource.Manager) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+// newGPUModeLabeler creates a new labeler that reports the mode of GPUs on the node.
+// GPUs can be in Graphics or Compute mode.
+func newGPUModeLabeler(devices []resource.Device) (Labeler, error) {
+	classes, err := getDeviceClasses(devices)
+	if err != nil {
+		return nil, err
+	}
+	gpuMode := getModeForClasses(classes)
+	labels := Labels{
+		"nvidia.com/gpu.mode": gpuMode,
+	}
+	return labels, nil
+}
+
+func getModeForClasses(classes []uint32) string {
+	if len(classes) == 0 {
+		return "unknown"
+	}
+	for _, class := range classes {
+		if class != classes[0] {
+			klog.Infof("Not all GPU devices belong to the same class %#06x ", classes)
+			return "unknown"
+		}
+	}
+	switch classes[0] {
+	case nvpci.PCIVgaControllerClass:
+		return "graphics"
+	case nvpci.PCI3dControllerClass:
+		return "compute"
+	default:
+		return "unknown"
+	}
+}
+
+func getDeviceClasses(devices []resource.Device) ([]uint32, error) {
+	seenClasses := make(map[uint32]bool)
+	for _, d := range devices {
+		class, err := d.GetPCIClass()
+		if err != nil {
+			return nil, err
+		}
+		seenClasses[class] = true
+	}
+
+	var classes []uint32
+	for class := range seenClasses {
+		classes = append(classes, class)
+	}
+	return classes, nil
 }

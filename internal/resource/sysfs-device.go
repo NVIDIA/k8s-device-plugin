@@ -64,3 +64,7 @@ func (d vfioDevice) IsMigEnabled() (bool, error) {
 func (d vfioDevice) IsMigCapable() (bool, error) {
 	return false, nil
 }
+
+func (d vfioDevice) GetPCIClass() (uint32, error) {
+	return d.nvidiaPCIDevice.Class, nil
+}

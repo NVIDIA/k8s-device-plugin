@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvpci"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 )
 
@@ -85,4 +86,16 @@ func (d nvmlDevice) GetTotalMemoryMB() (uint64, error) {
 		return 0, ret
 	}
 	return info.Total / (1024 * 1024), nil
+}
+
+func (d nvmlDevice) GetPCIClass() (uint32, error) {
+	pciBusID, err := d.GetPCIBusID()
+	if err != nil {
+		return 0, err
+	}
+	nvDevice, err := nvpci.New().GetGPUByPciBusID(pciBusID)
+	if err != nil {
+		return 0, err
+	}
+	return nvDevice.Class, nil
 }

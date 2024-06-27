@@ -32,6 +32,9 @@ var _ Device = &DeviceMock{}
 //			GetNameFunc: func() (string, error) {
 //				panic("mock out the GetName method")
 //			},
+//			GetPCIClassFunc: func() (uint32, error) {
+//				panic("mock out the GetPCIClass method")
+//			},
 //			GetTotalMemoryMBFunc: func() (uint64, error) {
 //				panic("mock out the GetTotalMemoryMB method")
 //			},
@@ -63,6 +66,9 @@ type DeviceMock struct {
 	// GetNameFunc mocks the GetName method.
 	GetNameFunc func() (string, error)
 
+	// GetPCIClassFunc mocks the GetPCIClass method.
+	GetPCIClassFunc func() (uint32, error)
+
 	// GetTotalMemoryMBFunc mocks the GetTotalMemoryMB method.
 	GetTotalMemoryMBFunc func() (uint64, error)
 
@@ -89,6 +95,9 @@ type DeviceMock struct {
 		// GetName holds details about calls to the GetName method.
 		GetName []struct {
 		}
+		// GetPCIClass holds details about calls to the GetPCIClass method.
+		GetPCIClass []struct {
+		}
 		// GetTotalMemoryMB holds details about calls to the GetTotalMemoryMB method.
 		GetTotalMemoryMB []struct {
 		}
@@ -104,6 +113,7 @@ type DeviceMock struct {
 	lockGetDeviceHandleFromMigDeviceHandle sync.RWMutex
 	lockGetMigDevices                      sync.RWMutex
 	lockGetName                            sync.RWMutex
+	lockGetPCIClass                        sync.RWMutex
 	lockGetTotalMemoryMB                   sync.RWMutex
 	lockIsMigCapable                       sync.RWMutex
 	lockIsMigEnabled                       sync.RWMutex
@@ -241,6 +251,33 @@ func (mock *DeviceMock) GetNameCalls() []struct {
 	mock.lockGetName.RLock()
 	calls = mock.calls.GetName
 	mock.lockGetName.RUnlock()
+	return calls
+}
+
+// GetPCIClass calls GetPCIClassFunc.
+func (mock *DeviceMock) GetPCIClass() (uint32, error) {
+	if mock.GetPCIClassFunc == nil {
+		panic("DeviceMock.GetPCIClassFunc: method is nil but Device.GetPCIClass was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockGetPCIClass.Lock()
+	mock.calls.GetPCIClass = append(mock.calls.GetPCIClass, callInfo)
+	mock.lockGetPCIClass.Unlock()
+	return mock.GetPCIClassFunc()
+}
+
+// GetPCIClassCalls gets all the calls that were made to GetPCIClass.
+// Check the length with:
+//
+//	len(mockedDevice.GetPCIClassCalls())
+func (mock *DeviceMock) GetPCIClassCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockGetPCIClass.RLock()
+	calls = mock.calls.GetPCIClass
+	mock.lockGetPCIClass.RUnlock()
 	return calls
 }
 

@@ -39,4 +39,5 @@ type Device interface {
 	GetTotalMemoryMB() (uint64, error)
 	GetDeviceHandleFromMigDeviceHandle() (Device, error)
 	GetCudaComputeCapability() (int, int, error)
+	GetPCIClass() (uint32, error)
 }

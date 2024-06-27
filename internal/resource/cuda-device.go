@@ -96,3 +96,7 @@ func (d *cudaDevice) IsMigCapable() (bool, error) {
 func (d *cudaDevice) IsMigEnabled() (bool, error) {
 	return false, nil
 }
+
+func (d *cudaDevice) GetPCIClass() (uint32, error) {
+	return 0, nil
+}
