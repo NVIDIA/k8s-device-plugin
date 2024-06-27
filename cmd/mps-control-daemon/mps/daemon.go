@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/opencontainers/selinux/go-selinux"
 	"k8s.io/klog/v2"
 
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
@@ -95,6 +96,12 @@ func (d *Daemon) Start() error {
 	pipeDir := d.PipeDir()
 	if err := os.MkdirAll(pipeDir, 0755); err != nil {
 		return fmt.Errorf("error creating directory %v: %w", pipeDir, err)
+	}
+
+	if selinux.EnforceMode() == selinux.Enforcing {
+		if err := selinux.Chcon(pipeDir, "container_file_t", true); err != nil {
+			return fmt.Errorf("error setting SELinux context: %w", err)
+		}
 	}
 
 	logDir := d.LogDir()
