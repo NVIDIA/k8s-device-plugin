@@ -132,6 +132,11 @@ func writeFileAtomically(path string, contents []byte, perm os.FileMode) error {
 		}
 	}()
 
+	err = tmpFile.Chmod(perm)
+	if err != nil {
+		return fmt.Errorf("error setting permissions on '%v': %v", tmpFile.Name(), err)
+	}
+
 	err = os.WriteFile(tmpFile.Name(), contents, perm)
 	if err != nil {
 		return fmt.Errorf("error writing temporary file '%v': %v", tmpFile.Name(), err)
@@ -140,11 +145,6 @@ func writeFileAtomically(path string, contents []byte, perm os.FileMode) error {
 	err = os.Rename(tmpFile.Name(), path)
 	if err != nil {
 		return fmt.Errorf("error moving temporary file to '%v': %v", path, err)
-	}
-
-	err = os.Chmod(path, perm)
-	if err != nil {
-		return fmt.Errorf("error setting permissions on '%v': %v", path, err)
 	}
 
 	return nil
