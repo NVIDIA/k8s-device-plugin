@@ -16,6 +16,7 @@
 package watch
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 
@@ -33,7 +34,7 @@ func Files(files ...string) (*fsnotify.Watcher, error) {
 		err = watcher.Add(f)
 		if err != nil {
 			watcher.Close()
-			return nil, err
+			return nil, fmt.Errorf("failed to add file %v: %w", f, err)
 		}
 	}
 
