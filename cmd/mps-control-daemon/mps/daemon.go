@@ -233,6 +233,10 @@ func (m *Daemon) perDevicePinnedDeviceMemoryLimits() map[string]string {
 	totalMemoryInBytesPerDevice := make(map[string]uint64)
 	replicasPerDevice := make(map[string]uint64)
 	for _, device := range m.Devices() {
+		if isVoltaDevice := (*mpsDevice)(device).isAtLeastVolta(); !isVoltaDevice {
+			klog.Warningf("Device uuid %s is pre-volta arch, canno't set memory limits.", device.ID)
+			continue
+		}
 		index := device.Index
 		totalMemoryInBytesPerDevice[index] = device.TotalMemory
 		replicasPerDevice[index] += 1
