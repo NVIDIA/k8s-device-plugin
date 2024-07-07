@@ -196,4 +196,7 @@ type ChartSpec struct {
 	// KeepHistory indicates whether to retain or purge the release history during uninstall
 	// +optional
 	KeepHistory bool `json:"keepHistory,omitempty"`
+	// Labels specifies a set of labels to be applied to the release
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 }
