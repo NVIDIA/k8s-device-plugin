@@ -243,8 +243,7 @@ func (m *Daemon) perDevicePinnedDeviceMemoryLimits() map[string]string {
 		if totalMemory == 0 {
 			continue
 		}
-		replicas := replicasPerDevice[index]
-		limits[index] = fmt.Sprintf("%vM", totalMemory/replicas/1024/1024)
+		limits[index] = fmt.Sprintf("%vM", totalMemory/1024/1024)
 	}
 	return limits
 }
@@ -253,7 +252,5 @@ func (m *Daemon) activeThreadPercentage() string {
 	if len(m.Devices()) == 0 {
 		return ""
 	}
-	replicasPerDevice := len(m.Devices()) / len(m.Devices().GetUUIDs())
-
-	return fmt.Sprintf("%d", 100/replicasPerDevice)
+	return fmt.Sprintf("%d", 100)
 }
