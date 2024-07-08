@@ -21,10 +21,13 @@ refer to https://docs.nvidia.com/deploy/mps/#performance:
 </ul>
 
 # How did the main branch of nvidia device plugin implemented MPS?
-<div>NVDP devs just set hard limit at control daemon level, by 100/n for both memory and threads, with n is the number of replicas </div>
-<div>I think it will be so inconvenient for us to use MPS</div>
-
+<ul>
+<li>NVDP devs just set hard limit at control daemon level, by 100/n for both memory and threads, with n is the number of replicas </li>
+<li>I think it will be so inconvenient for us to use MPS</li>
+</ul>
 # My solution
-<div>I will remove the hard limit 100/n be set at control daemon level</div>
-<div>Instead, i wll set resource limit for each container will use MPS in Kubernetes  by two environment variable: CUDA_MPS_ACTIVE_THREAD_PERCENTAGE and CUDA_MPS_PINNED_DEVICE_MEM_LIMIT </div>
-<div>By that way, the resource provisioning of MPS in NVDP will be very flexible, because each container will be provided the number of threads and memory as it need, was that so nice? </div>
+<ol>
+<li>I will remove the hard limit 100/n be set at control daemon level</li>
+<li>Instead, i wll set resource limit for each container will use MPS in Kubernetes  by two environment variable: CUDA_MPS_ACTIVE_THREAD_PERCENTAGE and CUDA_MPS_PINNED_DEVICE_MEM_LIMIT </li>
+<li>By that way, the resource provisioning of MPS in NVDP will be very flexible, because each container will be provided the number of threads and memory as it need, was that so nice? </li>
+<ol>
