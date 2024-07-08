@@ -22,6 +22,7 @@ import (
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
+	"k8s.io/klog/v2"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
@@ -164,9 +165,11 @@ func (b *deviceMapBuilder) assertAllMigDevicesAreValid(uniform bool) error {
 		if err != nil {
 			return err
 		}
-		if len(migDevices) == 0 {
-			i := 0
-			return fmt.Errorf("device %v has an invalid MIG configuration", i)
+		if uniform && len(migDevices) == 0 {
+			return fmt.Errorf("device %v has no MIG devices configured", i)
+		}
+		if !uniform && len(migDevices) == 0 {
+			klog.Warningf("device %v has no MIG devices configured", i)
 		}
 		return nil
 	})
