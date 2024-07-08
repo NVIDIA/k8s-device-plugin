@@ -25,6 +25,7 @@ refer to https://docs.nvidia.com/deploy/mps/#performance:
 <li>NVDP devs just set hard limit at control daemon level, by 100/n for both memory and threads, with n is the number of replicas </li>
 <li>I think it will be so inconvenient for us to use MPS</li>
 </ul>
+
 # My solution
 <ol>
 <li>I will remove the hard limit 100/n be set at control daemon level</li>
