@@ -6,7 +6,7 @@ require (
 	github.com/NVIDIA/go-gpuallocator v0.5.0
 	github.com/NVIDIA/go-nvlib v0.6.0
 	github.com/NVIDIA/go-nvml v0.12.4-0
-	github.com/NVIDIA/nvidia-container-toolkit v1.16.0-rc.1
+	github.com/NVIDIA/nvidia-container-toolkit v1.16.0-rc.2
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/uuid v1.6.0
 	github.com/mittwald/go-helm-client v0.12.9
@@ -17,7 +17,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.27.2
-	golang.org/x/mod v0.18.0
+	golang.org/x/mod v0.19.0
 	golang.org/x/net v0.27.0
 	google.golang.org/grpc v1.63.2
 	k8s.io/api v0.30.2
@@ -29,7 +29,7 @@ require (
 	k8s.io/mount-utils v0.30.2
 	sigs.k8s.io/node-feature-discovery v0.15.4
 	sigs.k8s.io/yaml v1.4.0
-	tags.cncf.io/container-device-interface v0.7.2
+	tags.cncf.io/container-device-interface v0.8.0
 )
 
 require (
@@ -169,5 +169,5 @@ require (
 	sigs.k8s.io/kustomize/api v0.16.0 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.16.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
-	tags.cncf.io/container-device-interface/specs-go v0.7.0 // indirect
+	tags.cncf.io/container-device-interface/specs-go v0.8.0 // indirect
 )

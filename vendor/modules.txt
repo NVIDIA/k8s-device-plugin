@@ -43,7 +43,7 @@ github.com/NVIDIA/go-nvlib/pkg/pciids
 ## explicit; go 1.20
 github.com/NVIDIA/go-nvml/pkg/dl
 github.com/NVIDIA/go-nvml/pkg/nvml
-# github.com/NVIDIA/nvidia-container-toolkit v1.16.0-rc.1
+# github.com/NVIDIA/nvidia-container-toolkit v1.16.0-rc.2
 ## explicit; go 1.20
 github.com/NVIDIA/nvidia-container-toolkit/internal/config/image
 github.com/NVIDIA/nvidia-container-toolkit/internal/discover
@@ -59,6 +59,7 @@ github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/root
 github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/symlinks
 github.com/NVIDIA/nvidia-container-toolkit/internal/nvcaps
 github.com/NVIDIA/nvidia-container-toolkit/internal/oci
+github.com/NVIDIA/nvidia-container-toolkit/internal/platform-support/dgpu
 github.com/NVIDIA/nvidia-container-toolkit/internal/platform-support/tegra
 github.com/NVIDIA/nvidia-container-toolkit/internal/platform-support/tegra/csv
 github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi
@@ -551,7 +552,7 @@ golang.org/x/crypto/scrypt
 ## explicit; go 1.20
 golang.org/x/exp/constraints
 golang.org/x/exp/slices
-# golang.org/x/mod v0.18.0
+# golang.org/x/mod v0.19.0
 ## explicit; go 1.18
 golang.org/x/mod/semver
 # golang.org/x/net v0.27.0
@@ -1235,12 +1236,12 @@ sigs.k8s.io/structured-merge-diff/v4/value
 sigs.k8s.io/yaml
 sigs.k8s.io/yaml/goyaml.v2
 sigs.k8s.io/yaml/goyaml.v3
-# tags.cncf.io/container-device-interface v0.7.2
+# tags.cncf.io/container-device-interface v0.8.0
 ## explicit; go 1.20
 tags.cncf.io/container-device-interface/internal/validation
 tags.cncf.io/container-device-interface/internal/validation/k8s
 tags.cncf.io/container-device-interface/pkg/cdi
 tags.cncf.io/container-device-interface/pkg/parser
-# tags.cncf.io/container-device-interface/specs-go v0.7.0
+# tags.cncf.io/container-device-interface/specs-go v0.8.0
 ## explicit; go 1.19
 tags.cncf.io/container-device-interface/specs-go
