@@ -22,7 +22,7 @@ VERSION ?= v0.16.0-rc.1
 # vVERSION represents the version with a guaranteed v-prefix
 vVERSION := v$(VERSION:v%=%)
 
-GOLANG_VERSION ?= 1.22.4
+GOLANG_VERSION := $(shell ./hack/golang-version.sh)
 
 BUILDIMAGE_TAG ?= devel-go$(GOLANG_VERSION)
 BUILDIMAGE ?=  $(DRIVER_NAME):$(BUILDIMAGE_TAG)
