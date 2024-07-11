@@ -29,7 +29,7 @@ require (
 	k8s.io/mount-utils v0.30.2
 	sigs.k8s.io/node-feature-discovery v0.15.4
 	sigs.k8s.io/yaml v1.4.0
-	tags.cncf.io/container-device-interface v0.7.2
+	tags.cncf.io/container-device-interface v0.8.0
 )
 
 require (
@@ -169,5 +169,5 @@ require (
 	sigs.k8s.io/kustomize/api v0.16.0 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.16.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
-	tags.cncf.io/container-device-interface/specs-go v0.7.0 // indirect
+	tags.cncf.io/container-device-interface/specs-go v0.8.0 // indirect
 )
