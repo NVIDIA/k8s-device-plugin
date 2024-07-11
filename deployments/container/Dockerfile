@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ARG GOLANG_VERSION=1.20.5
-FROM nvidia/cuda:12.5.1-base-ubi8 as build
+FROM nvcr.io/nvidia/cuda:12.5.1-base-ubi8 AS build
 
 RUN yum install -y \
     wget make git gcc \
@@ -44,10 +44,21 @@ ARG VERSION="N/A"
 ARG GIT_COMMIT="unknown"
 RUN make PREFIX=/artifacts cmds
 
-FROM nvidia/cuda:12.5.1-base-ubi8
+# We define the following image as a base image and remove unneeded packages.
+FROM nvcr.io/nvidia/cuda:12.5.1-base-ubi8 AS base
 
-# Remove CUDA libs(compat etc) in favor of libs installed by the NVIDIA driver
-RUN dnf remove -y cuda-*
+WORKDIR /cleanup
+
+COPY --from=minimal /tmp/minimal-list.txt minimal-list.txt
+COPY --from=minimal /tmp/minimal-list.versions minimal-list.versions
+COPY deployments/container/cleanup/* .
+
+RUN ./cleanup.sh
+
+WORKDIR /
+
+# We use the base images constructed above
+FROM base
 
 ENV NVIDIA_DISABLE_REQUIRE="true"
 ENV NVIDIA_VISIBLE_DEVICES=all
