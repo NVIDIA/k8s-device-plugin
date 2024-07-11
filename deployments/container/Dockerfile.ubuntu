@@ -73,12 +73,4 @@ COPY --from=build /artifacts/gpu-feature-discovery  /usr/bin/gpu-feature-discove
 COPY --from=build /artifacts/mps-control-daemon     /usr/bin/mps-control-daemon
 COPY --from=build /artifacts/nvidia-device-plugin   /usr/bin/nvidia-device-plugin
 
-# Install / upgrade packages here that are required to resolve CVEs
-ARG CVE_UPDATES
-RUN if [ -n "${CVE_UPDATES}" ]; then \
-        rm -f /etc/apt/sources.list.d/cuda.list && \
-        apt-get update && apt-get upgrade -y ${CVE_UPDATES} && \
-        rm -rf /var/lib/apt/lists/*; \
-    fi
-
 ENTRYPOINT ["nvidia-device-plugin"]

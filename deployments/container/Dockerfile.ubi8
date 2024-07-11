@@ -72,11 +72,4 @@ COPY --from=build /artifacts/gpu-feature-discovery  /usr/bin/gpu-feature-discove
 COPY --from=build /artifacts/mps-control-daemon     /usr/bin/mps-control-daemon
 COPY --from=build /artifacts/nvidia-device-plugin   /usr/bin/nvidia-device-plugin
 
-# Install / upgrade packages here that are required to resolve CVEs
-ARG CVE_UPDATES
-RUN if [ -n "${CVE_UPDATES}" ]; then \
-        yum update -y ${CVE_UPDATES} && \
-        rm -rf /var/cache/yum/*; \
-    fi
-
 ENTRYPOINT ["nvidia-device-plugin"]
