@@ -32,6 +32,10 @@ spec:
           env:
             - name: MIG_STRATEGY
               value: none
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

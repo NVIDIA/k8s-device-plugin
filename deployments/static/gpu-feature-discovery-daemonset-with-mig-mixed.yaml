@@ -32,6 +32,10 @@ spec:
               value: all
             - name: MIG_STRATEGY
               value: mixed
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           securityContext:
             privileged: true
       affinity:
