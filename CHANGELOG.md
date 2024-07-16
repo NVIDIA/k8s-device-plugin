@@ -1,7 +1,14 @@
 ## Changelog
 
-### Version v1.16.0-rc.1
+### v0.16.0
+- Fixed logic of atomic writing of the feature file
+- Replaced `WithDialer` with `WithContextDialer`
+- Fixed SELinux context of MPS pipe directory.
+- Changed behavior for empty MIG devices to issue a warning instead of an error when the mixed strategy is selected
+- Added a a GFD node label for the GPU mode.
+- Update CUDA base image version to 12.5.1
 
+### v0.16.0-rc.1
 - Skip container updates if only CDI is selected
 - Allow cdi hook path to be set
 - Add nvidiaDevRoot config option
