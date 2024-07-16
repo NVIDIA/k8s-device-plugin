@@ -13,7 +13,7 @@
 - Allow cdi hook path to be set
 - Add nvidiaDevRoot config option
 - Detect devRoot for driver installation
-- Set /dev/shm size from /proc/meminfo
+- Changed the automatically created MPS /dev/shm to half of the total memory as obtained from /proc/meminfo
 - Remove redundant version log
 - Remove provenance information from image manifests
 - add ngc image signing job for auto signing
