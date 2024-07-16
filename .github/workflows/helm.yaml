@@ -38,13 +38,10 @@ jobs:
         fetch-depth: 0
 
     - name: Update helm index
-      env:
-        VERSION: ${{ github.event.release.tag_name }}
-        DOWNLOAD_URL: ${{ join(github.event.release.assets.*.browser_download_url, ' ') }}
       run: |
         git config user.name "Github Actions"
         git config user.email "no-reply@github.com"
-        ./hack/update-helm-index.sh --helm-repo-path $HELM_REPO_PATH $DOWNLOAD_URL
+        ./hack/update-helm-index.sh --helm-repo-path $HELM_REPO_PATH --version ${{ github.event.release.tag_name }}
 
     - name: Push updated Helm charts and index to gh-pages branch
       run: |
