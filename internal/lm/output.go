@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -31,6 +30,8 @@ import (
 	"k8s.io/klog/v2"
 	nfdv1alpha1 "sigs.k8s.io/node-feature-discovery/pkg/apis/nfd/v1alpha1"
 	nfdclientset "sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned"
+
+	"github.com/google/renameio"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/flags"
@@ -85,8 +86,8 @@ func (path *toFile) Output(labels Labels) error {
 	if err := output.Output(labels); err != nil {
 		return fmt.Errorf("error writing labels to buffer: %v", err)
 	}
-	err := writeFileAtomically(string(*path), buffer.Bytes(), 0644)
-	if err != nil {
+	// write file atomically
+	if err := renameio.WriteFile(string(*path), buffer.Bytes(), 0644); err != nil {
 		return fmt.Errorf("error atomically writing file '%s': %w", *path, err)
 	}
 	return nil
@@ -99,54 +100,6 @@ func (output *toWriter) Output(labels Labels) error {
 			return err
 		}
 	}
-	return nil
-}
-
-func writeFileAtomically(path string, contents []byte, perm os.FileMode) error {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve absolute path of output file: %v", err)
-	}
-
-	absDir := filepath.Dir(absPath)
-	tmpDir := filepath.Join(absDir, "gfd-tmp")
-
-	err = os.MkdirAll(tmpDir, os.ModePerm)
-	if err != nil && !os.IsExist(err) {
-		return fmt.Errorf("failed to create temporary directory: %v", err)
-	}
-	defer func() {
-		if err != nil {
-			os.RemoveAll(tmpDir)
-		}
-	}()
-
-	tmpFile, err := os.CreateTemp(tmpDir, "gfd-")
-	if err != nil {
-		return fmt.Errorf("fail to create temporary output file: %v", err)
-	}
-	defer func() {
-		if err != nil {
-			tmpFile.Close()
-			os.Remove(tmpFile.Name())
-		}
-	}()
-
-	err = os.WriteFile(tmpFile.Name(), contents, perm)
-	if err != nil {
-		return fmt.Errorf("error writing temporary file '%v': %v", tmpFile.Name(), err)
-	}
-
-	err = os.Rename(tmpFile.Name(), path)
-	if err != nil {
-		return fmt.Errorf("error moving temporary file to '%v': %v", path, err)
-	}
-
-	err = os.Chmod(path, perm)
-	if err != nil {
-		return fmt.Errorf("error setting permissions on '%v': %v", path, err)
-	}
-
 	return nil
 }
 
