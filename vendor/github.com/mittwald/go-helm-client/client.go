@@ -929,6 +929,7 @@ func mergeInstallOptions(chartSpec *ChartSpec, installOptions *action.Install) {
 	installOptions.DryRunOption = chartSpec.DryRunOption
 	installOptions.SubNotes = chartSpec.SubNotes
 	installOptions.WaitForJobs = chartSpec.WaitForJobs
+	installOptions.Labels = chartSpec.Labels
 }
 
 // mergeUpgradeOptions merges values of the provided chart to helm upgrade options used by the client.
@@ -950,6 +951,7 @@ func mergeUpgradeOptions(chartSpec *ChartSpec, upgradeOptions *action.Upgrade) {
 	upgradeOptions.DryRunOption = chartSpec.DryRunOption
 	upgradeOptions.SubNotes = chartSpec.SubNotes
 	upgradeOptions.WaitForJobs = chartSpec.WaitForJobs
+	upgradeOptions.Labels = chartSpec.Labels
 }
 
 // mergeUninstallReleaseOptions merges values of the provided chart to helm uninstall options used by the client.
