@@ -20,7 +20,7 @@ this=`basename $0`
 usage () {
 cat << EOF
 Generate a changelog for the specified tag
-Usage: $this --reference <tag> [--remote <remote_name>]
+Usage: $this --since <tag> [--remote <remote_name>]
 
 Options:
   --since     specify the tag to start the changelog from (default: latest tag)
@@ -70,10 +70,15 @@ if [ -z "$REFERENCE" ]; then
     fi
 fi
 
+SHA=$(git rev-parse ${VERSION})
+if [[ $? -ne 0 ]]; then
+    SHA="HEAD"
+fi
+
 # Print the changelog
 echo "## Changelog"
 echo ""
 echo "### Version $VERSION"
 
 # Iterate over the commit messages and ignore the ones that start with "Merge" or "Bump"
-git log --pretty=format:"%s" $REFERENCE..@ | grep -Ev "(^Merge )|(^Bump)|(no-rel-?note)|(^---)" |  sed 's/^\(.*\)/- \1/g'
+git log --pretty=format:"%s" $REFERENCE..$SHA | grep -Ev "(^Merge )|(^Bump)|(no-rel-?note)|(^---)" |  sed 's/^\(.*\)/- \1/g'
