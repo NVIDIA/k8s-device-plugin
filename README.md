@@ -4,32 +4,45 @@
 
 ## Table of Contents
 
-- [About](#about)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-  * [Preparing your GPU Nodes](#preparing-your-gpu-nodes)
-  * [Enabling GPU Support in Kubernetes](#enabling-gpu-support-in-kubernetes)
-  * [Running GPU Jobs](#running-gpu-jobs)
-- [Configuring the NVIDIA device plugin binary](#configuring-the-nvidia-device-plugin-binary)
-  * [As command line flags or envvars](#as-command-line-flags-or-envvars)
-  * [As a configuration file](#as-a-configuration-file)
-  * [Configuration Option Details](#configuration-option-details)
-  * [Shared Access to GPUs](#shared-access-to-gpus)
-    * [With CUDA Time-Slicing](#with-cuda-time-slicing)
-    * [With CUDA MPS](#with-cuda-mps)
-- [Deployment via `helm`](#deployment-via-helm)
-  * [Configuring the device plugin's `helm` chart](#configuring-the-device-plugins-helm-chart)
-    + [Passing configuration to the plugin via a `ConfigMap`.](#passing-configuration-to-the-plugin-via-a-configmap)
-      - [Single Config File Example](#single-config-file-example)
-      - [Multiple Config File Example](#multiple-config-file-example)
-      - [Updating Per-Node Configuration With a Node Label](#updating-per-node-configuration-with-a-node-label)
-    + [Setting other helm chart values](#setting-other-helm-chart-values)
-    + [Deploying with gpu-feature-discovery for automatic node labels](#deploying-with-gpu-feature-discovery-for-automatic-node-labels)
-    + [Deploying gpu-feature-discovery in standalone mode](#deploying-gpu-feature-discovery-in-standalone-mode)
-  * [Deploying via `helm install` with a direct URL to the `helm` package](#deploying-via-helm-install-with-a-direct-url-to-the-helm-package)
-- [Building and Running Locally](#building-and-running-locally)
-- [Changelog](#changelog)
-- [Issues and Contributing](#issues-and-contributing)
+- [NVIDIA device plugin for Kubernetes](#nvidia-device-plugin-for-kubernetes)
+  - [Table of Contents](#table-of-contents)
+  - [About](#about)
+  - [Prerequisites](#prerequisites)
+  - [Quick Start](#quick-start)
+    - [Preparing your GPU Nodes](#preparing-your-gpu-nodes)
+      - [Example for debian-based systems with `docker` and `containerd`](#example-for-debian-based-systems-with-docker-and-containerd)
+        - [Install the NVIDIA Container Toolkit](#install-the-nvidia-container-toolkit)
+        - [Notes on `CRI-O` configuration](#notes-on-cri-o-configuration)
+    - [Enabling GPU Support in Kubernetes](#enabling-gpu-support-in-kubernetes)
+    - [Running GPU Jobs](#running-gpu-jobs)
+  - [Configuring the NVIDIA device plugin binary](#configuring-the-nvidia-device-plugin-binary)
+    - [As command line flags or envvars](#as-command-line-flags-or-envvars)
+    - [As a configuration file](#as-a-configuration-file)
+    - [Configuration Option Details](#configuration-option-details)
+    - [Shared Access to GPUs](#shared-access-to-gpus)
+      - [With CUDA Time-Slicing](#with-cuda-time-slicing)
+      - [With CUDA MPS](#with-cuda-mps)
+  - [Deployment via `helm`](#deployment-via-helm)
+    - [Configuring the device plugin's `helm` chart](#configuring-the-device-plugins-helm-chart)
+      - [Passing configuration to the plugin via a `ConfigMap`.](#passing-configuration-to-the-plugin-via-a-configmap)
+        - [Single Config File Example](#single-config-file-example)
+        - [Multiple Config File Example](#multiple-config-file-example)
+        - [Updating Per-Node Configuration With a Node Label](#updating-per-node-configuration-with-a-node-label)
+      - [Setting other helm chart values](#setting-other-helm-chart-values)
+      - [Deploying with gpu-feature-discovery for automatic node labels](#deploying-with-gpu-feature-discovery-for-automatic-node-labels)
+      - [Deploying gpu-feature-discovery in standalone mode](#deploying-gpu-feature-discovery-in-standalone-mode)
+    - [Deploying via `helm install` with a direct URL to the `helm` package](#deploying-via-helm-install-with-a-direct-url-to-the-helm-package)
+  - [Building and Running Locally](#building-and-running-locally)
+    - [With Docker](#with-docker)
+      - [Build](#build)
+      - [Run](#run)
+    - [Without Docker](#without-docker)
+      - [Build](#build-1)
+      - [Run](#run-1)
+  - [Changelog](#changelog)
+  - [Issues and Contributing](#issues-and-contributing)
+    - [Versioning](#versioning)
+    - [Upgrading Kubernetes with the Device Plugin](#upgrading-kubernetes-with-the-device-plugin)
 
 ## About
 
@@ -192,7 +205,8 @@ deploying the plugin via `helm`.
 | `--config-file`          | `$CONFIG_FILE`          | `""`            |
 
 ### As a configuration file
-```
+
+```yaml
 version: v1
 flags:
   migStrategy: "none"
@@ -290,7 +304,7 @@ options outside of this section are shared.
   * `cdi-annotations`: CDI annotations are used to select the devices that are to be injected.
   Note that this does not require the NVIDIA Container Runtime, but does required a CDI-enabled container engine.
   * `cdi-cri`: the `CDIDevices` CRI field is used to select the CDI devices that are to be injected.
-  This requries support in Kubernetes to forward these requests in the CRI to a CDI-enabled container engine.
+  This requires support in Kubernetes to forward these requests in the CRI to a CDI-enabled container engine.
 
 **`DEVICE_ID_STRATEGY`**:
   the desired strategy for passing device IDs to the underlying runtime
@@ -340,7 +354,8 @@ workload.
 #### With CUDA Time-Slicing
 
 The extended options for sharing using time-slicing can be seen below:
-```
+
+```yaml
 version: v1
 sharing:
   timeSlicing:
@@ -366,7 +381,8 @@ pod will fail with an `UnexpectedAdmissionError` and need to be manually deleted
 updated, and redeployed.
 
 For example:
-```
+
+```yaml
 version: v1
 sharing:
   timeSlicing:
@@ -390,7 +406,7 @@ Likewise, if the following configuration were applied to a node, then 80
 `nvidia.com/gpu.shared` resources would be advertised to Kubernetes instead of 8
 `nvidia.com/gpu` resources.
 
-```
+```yaml
 version: v1
 sharing:
   timeSlicing:
@@ -466,12 +482,13 @@ nvidia.com/mig-3g.40gb
 nvidia.com/mig-7g.80gb
 ```
 
-### With CUDA MPS
+#### With CUDA MPS
 
 **Note**: Sharing with MPS is currently not supported on devices with MIG enabled.
 
 The extended options for sharing using MPS can be seen below:
-```
+
+```yaml
 version: v1
 sharing:
   mps:
@@ -496,7 +513,8 @@ If `renameByDefault=true`, then each resource will be advertised under the name
 `<resource-name>.shared` instead of simply `<resource-name>`.
 
 For example:
-```
+
+```yaml
 version: v1
 sharing:
   mps:
@@ -520,7 +538,7 @@ Likewise, if the following configuration were applied to a node, then 80
 `nvidia.com/gpu.shared` resources would be advertised to Kubernetes instead of 8
 `nvidia.com/gpu` resources.
 
-```
+```yaml
 version: v1
 sharing:
   mps:
@@ -614,7 +632,8 @@ that have not been customized via a node label (more on this later).
 
 #####  Single Config File Example
 As an example, create a valid config file on your local filesystem, such as the following:
-```
+
+```yaml
 cat << EOF > /tmp/dp-example-config0.yaml
 version: v1
 flags:
@@ -664,7 +683,8 @@ $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
 For multiple config files, the procedure is similar.
 
 Create a second `config` file with the following contents:
-```
+
+```yaml
 cat << EOF > /tmp/dp-example-config1.yaml
 version: v1
 flags:
@@ -747,7 +767,8 @@ direct values to set the configuration options of the plugin without using a
 `ConfigMap`), or used to override these options as desired.
 
 These values are as follows:
-```
+
+```yaml
   migStrategy:
       the desired strategy for exposing MIG devices on GPUs that support it
       [none | single | mixed] (default "none")
@@ -777,9 +798,9 @@ compatibility with the `CPUManager`.
 Besides these custom configuration options for the plugin, other standard helm
 chart values that are commonly overridden are:
 
-```
-  runtimeClassName:
-      the runtimeClassName to use, for use with clusters that have multiple runtimes. (typical value is 'nvidia')
+```yaml
+runtimeClassName:
+  the runtimeClassName to use, for use with clusters that have multiple runtimes. (typical value is 'nvidia')
 ```
 
 Please take a look in the
@@ -820,7 +841,7 @@ set of GPUs available on a node. Under the hood, it leverages Node Feature
 Discovery to perform this labeling.
 
 To enable it, simply set `gfd.enabled=true` during helm install.
-```
+```sh
 helm upgrade -i nvdp nvdp/nvidia-device-plugin \
     --version=0.16.0 \
     --namespace nvidia-device-plugin \
@@ -892,7 +913,7 @@ the `gpu-feature-discovery` component in standalone mode.
 
 The most basic installation command without any options is then:
 
-```
+```sh
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
   --version 0.16.0 \
   --namespace gpu-feature-discovery \
