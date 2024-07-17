@@ -486,6 +486,9 @@ nvidia.com/mig-7g.80gb
 
 **Note**: Sharing with MPS is currently not supported on devices with MIG enabled.
 
+> [!WARNING]
+> As of v0.15.0 of the device plugin, MPS support is considered experimental. Please see the [release notes](https://github.com/NVIDIA/k8s-device-plugin/releases/tag/v0.15.0) for further details.
+
 The extended options for sharing using MPS can be seen below:
 
 ```yaml
