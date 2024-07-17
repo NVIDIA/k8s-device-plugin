@@ -846,7 +846,7 @@ set of GPUs available on a node. Under the hood, it leverages Node Feature
 Discovery to perform this labeling.
 
 To enable it, simply set `gfd.enabled=true` during helm install.
-```sh
+```shell
 helm upgrade -i nvdp nvdp/nvidia-device-plugin \
     --version=0.16.0 \
     --namespace nvidia-device-plugin \
@@ -918,7 +918,7 @@ the `gpu-feature-discovery` component in standalone mode.
 
 The most basic installation command without any options is then:
 
-```sh
+```shell
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
   --version 0.16.0 \
   --namespace gpu-feature-discovery \
