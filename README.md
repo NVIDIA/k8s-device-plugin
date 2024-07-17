@@ -338,7 +338,8 @@ The NVIDIA device plugin allows oversubscription of GPUs through a set of
 extended options in its configuration file. There are two flavors of sharing
 available: Time-Slicing and MPS.
 
-**Note:** The use of time-slicing and MPS are mutually exclusive.
+> [!NOTE]
+> The use of time-slicing and MPS are mutually exclusive.
 
 In the case of time-slicing, CUDA time-slicing is used to allow workloads sharing a GPU to
 interleave with each other. However, nothing special is done to isolate workloads that are
