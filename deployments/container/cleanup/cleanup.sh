@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+rpm -qa | sort -u > package-list.original
+
 echo "install_weak_deps=False" >> /etc/dnf/dnf.conf
 rm -f /etc/dnf/protected.d/*.conf
 
@@ -22,6 +24,14 @@ rm -f /etc/ld.so.conf.d/nvidia.conf
 dnf remove -y \
     cuda* \
     systemd
+
+# Remove the CUDA public key
+for key in $(rpm -qa gpg-pubkey*); do
+    rpm -qi ${key} | grep -o "cudatools <cudatools@nvidia.com>"
+    if [[ $? -eq 0 ]]; then
+        rpm -e ${key}
+    fi
+done
 
 dnf clean all
 rm -rf /var/cache/dnf
@@ -38,12 +48,21 @@ microdnf remove \
     dnf*
 
 microdnf remove \
-    $(rpm -qa | sort | grep -v -f minimal-list.txt -e gpg-pubkey)
+    $(rpm -qa | sort | grep -v -f package-names.minimal -e gpg-pubkey)
 
 microdnf update
 microdnf clean all
+rpm -e microdnf libdnf libpeas
+rm -rf /var/lib/dnf
 
-rpm -e microdnf
-rpm -qa | sort -u > package-list.versions
+rpm -qa | sort -u > package-list.cleaned
+for p in $(rpm -qa | sort -u); do
+    echo "START $p" >> package-list.cleaned.info
+    echo "INFO" >> package-list.cleaned.info
+    rpm -qi $p >> package-list.cleaned.info
+    echo "REQUIRES" >> package-list.cleaned.info
+    rpm -qR $p >> package-list.cleaned.info
+    echo "END $p" >>  package-list.cleaned.info
+done
 
 rm -rf /var/cache/dnf
