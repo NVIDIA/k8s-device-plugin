@@ -689,7 +689,7 @@ For multiple config files, the procedure is similar.
 
 Create a second `config` file with the following contents:
 
-```yaml
+```shell
 cat << EOF > /tmp/dp-example-config1.yaml
 version: v1
 flags:
