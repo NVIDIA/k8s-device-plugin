@@ -1,5 +1,8 @@
 ## Changelog
 
+### v0.16.1
+- Bump nvidia-container-toolkit to v1.16.1 to fix a bug with CDI spec generation for MIG devices
+
 ### v0.16.0
 - Fixed logic of atomic writing of the feature file
 - Replaced `WithDialer` with `WithContextDialer`
