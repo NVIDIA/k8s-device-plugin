@@ -841,7 +841,7 @@ $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
 As of `v0.12.0`, the device plugin's helm chart has integrated support to
 deploy
 [`gpu-feature-discovery`](https://github.com/NVIDIA/gpu-feature-discovery)
-(GFD) as a subchart. One can use GFD to automatically generate labels for the
+(GFD). One can use GFD to automatically generate labels for the
 set of GPUs available on a node. Under the hood, it leverages Node Feature
 Discovery to perform this labeling.
 
