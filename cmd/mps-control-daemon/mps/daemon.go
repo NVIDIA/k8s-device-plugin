@@ -18,13 +18,13 @@ package mps
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 
-	"github.com/opencontainers/selinux/go-selinux"
 	"k8s.io/klog/v2"
 
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
@@ -98,10 +98,8 @@ func (d *Daemon) Start() error {
 		return fmt.Errorf("error creating directory %v: %w", pipeDir, err)
 	}
 
-	if selinux.EnforceMode() == selinux.Enforcing {
-		if err := selinux.Chcon(pipeDir, "container_file_t", true); err != nil {
-			return fmt.Errorf("error setting SELinux context: %w", err)
-		}
+	if err := setSELinuxContext(pipeDir, "container_file_t"); err != nil {
+		return fmt.Errorf("error setting SELinux context: %w", err)
 	}
 
 	logDir := d.LogDir()
@@ -138,6 +136,26 @@ func (d *Daemon) Start() error {
 	klog.InfoS("Starting log tailer", "resource", d.rm.Resource())
 	if err := d.logTailer.Start(); err != nil {
 		klog.ErrorS(err, "Could not start tail command on control.log; ignoring logs")
+	}
+
+	return nil
+}
+
+func setSELinuxContext(path string, context string) error {
+	_, err := os.Stat("/sys/fs/selinux")
+	if err != nil && errors.Is(err, os.ErrNotExist) {
+		klog.InfoS("SELinux disabled, not updating context", "path", path)
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("error checking if SELinux is enabled: %w", err)
+	}
+
+	klog.InfoS("SELinux enabled, setting context", "path", path, "context", context)
+	chconCmd := exec.Command("chcon", "-R", "-t", context, path)
+	output, err := chconCmd.CombinedOutput()
+	if err != nil {
+		klog.Errorf("\n%v", string(output))
+		return err
 	}
 
 	return nil
