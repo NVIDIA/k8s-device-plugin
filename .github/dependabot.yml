@@ -18,13 +18,42 @@ updates:
         exclude-patterns:
         - k8s.io/klog/*
 
+  - package-ecosystem: "gomod"
+    target-branch: main
+    directory: "tests/e2e"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    labels:
+    - dependencies
+    - testing
+    groups:
+      k8sio:
+        patterns:
+        - k8s.io/*
+        exclude-patterns:
+        - k8s.io/klog/*
+
+  - package-ecosystem: "gomod"
+    target-branch: main
+    directory: "deployments/devel"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+
   - package-ecosystem: "docker"
     directory: "/deployments/container"
     schedule:
       interval: "daily"
 
+  - package-ecosystem: "docker"
+    target-branch: main
+    directory: "/deployments/devel"
+    schedule:
+      interval: "daily"
+
   - package-ecosystem: "gomod"
-    target-branch: release-0.15
+    target-branch: release-0.16
     directory: "/"
     schedule:
       interval: "weekly"
@@ -39,8 +68,35 @@ updates:
         exclude-patterns:
         - k8s.io/klog/*
 
+  - package-ecosystem: "gomod"
+    target-branch: release-0.16
+    directory: "tests/e2e"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    labels:
+    - dependencies
+    - maintenance
+    - testing
+    groups:
+      k8sio:
+        patterns:
+        - k8s.io/*
+        exclude-patterns:
+        - k8s.io/klog/*
+
+  - package-ecosystem: "gomod"
+    target-branch: release-0.16
+    directory: "deployments/devel"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    labels:
+    - dependencies
+    - maintenance
+
   - package-ecosystem: "docker"
-    target-branch: release-0.15
+    target-branch: release-0.16
     directory: "/deployments/container"
     schedule:
       interval: "daily"
@@ -48,24 +104,30 @@ updates:
     - dependencies
     - maintenance
 
-  - package-ecosystem: "gomod"
-    target-branch: main
-    directory: "deployments/devel"
-    schedule:
-      interval: "weekly"
-      day: "sunday"
-
-  # A dependabot rule to bump the golang version.
   - package-ecosystem: "docker"
-    target-branch: main
+    target-branch: release-0.16
     directory: "/deployments/devel"
+    schedule:
+      interval: "daily"
+    labels:
+    - dependencies
+    - maintenance
+
+  # Github actions need to be updated on main, release-*, and gh-pages branches.
+  - package-ecosystem: "github-actions"
+    target-branch: main
+    directory: "/"
     schedule:
       interval: "daily"
 
   - package-ecosystem: "github-actions"
+    target-branch: release-0.16
     directory: "/"
     schedule:
       interval: "daily"
+    labels:
+    - dependencies
+    - maintenance
 
   - package-ecosystem: "github-actions"
     target-branch: gh-pages
