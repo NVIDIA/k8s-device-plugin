@@ -35,7 +35,7 @@ jobs:
         run: |
           echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
       - name: Set up Holodeck
-        uses: NVIDIA/holodeck@main
+        uses: NVIDIA/holodeck@v0.2.1
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
