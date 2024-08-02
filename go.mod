@@ -4,13 +4,12 @@ go 1.22.2
 
 require (
 	github.com/NVIDIA/go-gpuallocator v0.5.0
-	github.com/NVIDIA/go-nvlib v0.6.0
+	github.com/NVIDIA/go-nvlib v0.6.1
 	github.com/NVIDIA/go-nvml v0.12.4-0
 	github.com/NVIDIA/nvidia-container-toolkit v1.16.1
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/renameio v1.0.1
 	github.com/google/uuid v1.6.0
-	github.com/opencontainers/selinux v1.11.0
 	github.com/prometheus/procfs v0.15.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0

@@ -2,7 +2,7 @@
 ## explicit; go 1.20
 github.com/NVIDIA/go-gpuallocator/gpuallocator
 github.com/NVIDIA/go-gpuallocator/internal/links
-# github.com/NVIDIA/go-nvlib v0.6.0
+# github.com/NVIDIA/go-nvlib v0.6.1
 ## explicit; go 1.20
 github.com/NVIDIA/go-nvlib/pkg/nvlib/device
 github.com/NVIDIA/go-nvlib/pkg/nvlib/info
@@ -139,10 +139,6 @@ github.com/opencontainers/runtime-spec/specs-go
 github.com/opencontainers/runtime-tools/generate
 github.com/opencontainers/runtime-tools/generate/seccomp
 github.com/opencontainers/runtime-tools/validate/capabilities
-# github.com/opencontainers/selinux v1.11.0
-## explicit; go 1.19
-github.com/opencontainers/selinux/go-selinux
-github.com/opencontainers/selinux/pkg/pwalkdir
 # github.com/pmezard/go-difflib v1.0.0
 ## explicit
 github.com/pmezard/go-difflib/difflib
