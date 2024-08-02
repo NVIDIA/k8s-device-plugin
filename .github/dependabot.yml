@@ -20,6 +20,22 @@ updates:
 
   - package-ecosystem: "gomod"
     target-branch: main
+    directory: "tests/e2e"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    labels:
+    - dependencies
+    - testing
+    groups:
+      k8sio:
+        patterns:
+        - k8s.io/*
+        exclude-patterns:
+        - k8s.io/klog/*
+
+  - package-ecosystem: "gomod"
+    target-branch: main
     directory: "deployments/devel"
     schedule:
       interval: "weekly"
@@ -45,6 +61,23 @@ updates:
     labels:
     - dependencies
     - maintenance
+    groups:
+      k8sio:
+        patterns:
+        - k8s.io/*
+        exclude-patterns:
+        - k8s.io/klog/*
+
+  - package-ecosystem: "gomod"
+    target-branch: release-0.16
+    directory: "tests/e2e"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    labels:
+    - dependencies
+    - maintenance
+    - testing
     groups:
       k8sio:
         patterns:
