@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: End-to-end Tests
+name: [Staging] End-to-end Tests
 
 on:
   workflow_run:
@@ -24,8 +24,8 @@ on:
       - release-*
 
 jobs:
-  e2e-tests:
-    runs-on: ubuntu-latest
+  staging-e2e:
+    runs-on: pdx01-arc-runners
     if: ${{ github.event.workflow_run.conclusion == 'success' }} && ${{ github.event.workflow_run.event == 'push' }}
     steps:
       - uses: actions/checkout@v4
@@ -34,13 +34,13 @@ jobs:
         id: vars
         run: |
           echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
+          echo "HOLODECK_VCENTER_USERNAME=${HOLODECK_VCENTER_USERNAME}" >> $GITHUB_ENV
+          echo "HOLODECK_VCENTER_PASSWORD=${HOLODECK_VCENTER_PASSWORD}" >> $GITHUB_ENV
+          echo "VSPHERE_SSH_KEY=${VSPHERE_SSH_KEY}" >> $GITHUB_ENV
       - name: Set up Holodeck
         uses: NVIDIA/holodeck@v0.2.1
         with:
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_ssh_key: ${{ secrets.AWS_SSH_KEY }}
-          holodeck_config: "tests/e2e/infra/aws.yaml"
+          holodeck_config: "tests/e2e/infra/vsphere.yaml"
       - name: Run e2e tests
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
