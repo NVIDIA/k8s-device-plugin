@@ -31,7 +31,7 @@ e2e-test:
 		echo "[ERR] KUBECONFIG missing, must be defined"; \
 		exit 1; \
 	fi
-	$(GO_CMD) test -v $(CURDIR)/tests/e2e -args \
+	cd $(CURDIR)/tests/e2e && $(GO_CMD) test -v . -args \
 		-kubeconfig=$(KUBECONFIG) \
 		-driver-enabled=$(DRIVER_ENABLED) \
 		-image.repo=$(E2E_IMAGE_REPO) \
