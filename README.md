@@ -352,6 +352,10 @@ In contrast to time-slicing, MPS does space partitioning and allows memory and
 compute resources to be explicitly partitioned and enforces these limits per
 workload.
 
+With either time-slicing or MPS, the same sharing method is applied to all GPUs on
+a node. Sharing cannot be configured on a per-GPU basis but applies uniformly at
+the node level.
+
 #### With CUDA Time-Slicing
 
 The extended options for sharing using time-slicing can be seen below:
