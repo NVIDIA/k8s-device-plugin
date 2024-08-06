@@ -65,6 +65,13 @@ examples: $(EXAMPLE_TARGETS)
 $(EXAMPLE_TARGETS): example-%:
 	go build $(BUILDFLAGS) $(COMMAND_BUILD_OPTIONS) ./examples/$(*)
 
+# We also add top-level targets for testing make targets:
+.PHONY: $(TEST_TARGETS)
+TESTS_FOLDERS := $(patsubst ./tests/%/,%,$(sort $(dir $(wildcard ./tests/*/))))
+TEST_TARGETS := $(patsubst %,test-%,$(TESTS_FOLDERS))
+$(TEST_TARGETS): test-%:
+	make -f tests/$(*)/Makefile test
+
 all: check test build binaries
 check: $(CHECK_TARGETS)
 
