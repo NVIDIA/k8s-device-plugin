@@ -25,8 +25,8 @@ E2E_IMAGE_PULL_POLICY ?= IfNotPresent
 HELM_CHART ?= $(CURDIR)/deployments/helm/nvidia-device-plugin
 LOG_ARTIFACTS ?= $(CURDIR)/e2e_logs
 
-.PHONY: e2e-test
-e2e-test:
+.PHONY: test
+test:
 	@if [ -z ${KUBECONFIG} ]; then \
 		echo "[ERR] KUBECONFIG missing, must be defined"; \
 		exit 1; \
