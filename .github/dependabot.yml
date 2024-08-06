@@ -20,7 +20,7 @@ updates:
 
   - package-ecosystem: "gomod"
     target-branch: main
-    directory: "tests/e2e"
+    directory: "tests"
     schedule:
       interval: "weekly"
       day: "sunday"
@@ -70,7 +70,7 @@ updates:
 
   - package-ecosystem: "gomod"
     target-branch: release-0.16
-    directory: "tests/e2e"
+    directory: "tests"
     schedule:
       interval: "weekly"
       day: "sunday"

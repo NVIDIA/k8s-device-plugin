@@ -1,4 +1,4 @@
-module github.com/NVIDIA/k8s-device-plugin/tests/e2e
+module github.com/NVIDIA/k8s-device-plugin/tests
 
 go 1.22.2
 
