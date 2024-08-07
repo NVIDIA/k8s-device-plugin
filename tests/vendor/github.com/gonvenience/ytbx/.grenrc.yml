@@ -1,0 +1,7 @@
+---
+dataSource: "commits"
+prefix: "ytbx release "
+includeMessages: "commits"
+changelogFilename: "CHANGELOG.md"
+template:
+  commit: "{{url}} {{message}}"

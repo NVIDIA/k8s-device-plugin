@@ -25,13 +25,13 @@ E2E_IMAGE_PULL_POLICY ?= IfNotPresent
 HELM_CHART ?= $(CURDIR)/deployments/helm/nvidia-device-plugin
 LOG_ARTIFACTS ?= $(CURDIR)/e2e_logs
 
-.PHONY: e2e-test
-e2e-test:
+.PHONY: test
+test:
 	@if [ -z ${KUBECONFIG} ]; then \
 		echo "[ERR] KUBECONFIG missing, must be defined"; \
 		exit 1; \
 	fi
-	$(GO_CMD) test -v $(CURDIR)/tests/e2e -args \
+	cd $(CURDIR)/tests/e2e && $(GO_CMD) test -v . -args \
 		-kubeconfig=$(KUBECONFIG) \
 		-driver-enabled=$(DRIVER_ENABLED) \
 		-image.repo=$(E2E_IMAGE_REPO) \

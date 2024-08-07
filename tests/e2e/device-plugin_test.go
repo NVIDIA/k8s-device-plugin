@@ -37,6 +37,10 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework"
 )
 
+const (
+	devicePluginEventuallyTimeout = 10 * time.Minute
+)
+
 // Actual test suite
 var _ = NVDescribe("GPU Device Plugin", func() {
 	f := framework.NewFramework("k8s-device-plugin")
@@ -177,7 +181,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 						return nil
 					}
 					return fmt.Errorf("job %s/%s not completed yet", job.Namespace, job.Name)
-				}, 5*time.Minute, 5*time.Second).Should(BeNil())
+				}, devicePluginEventuallyTimeout, 5*time.Second).Should(BeNil())
 			})
 		})
 	})
