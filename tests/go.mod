@@ -4,7 +4,7 @@ go 1.22.2
 
 require (
 	github.com/gruntwork-io/terratest v0.47.0
-	github.com/mittwald/go-helm-client v0.12.10
+	github.com/mittwald/go-helm-client v0.12.11
 	github.com/onsi/ginkgo/v2 v2.19.1
 	github.com/onsi/gomega v1.34.1
 	github.com/stretchr/testify v1.9.0
