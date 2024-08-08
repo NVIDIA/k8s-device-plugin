@@ -1,0 +1,30 @@
+apiVersion: holodeck.nvidia.com/v1alpha1
+kind: Environment
+metadata:
+  name: holodeck-vsphere-e2e-test
+  description: "end-to-end test infrastructure"
+spec:
+  provider: vsphere
+  auth:
+    keyName: cnt-ci
+    privateKey: /home/nvidia/.ssh/gpu_runner
+  VsphereVirtualMachine:
+    vCenterURL: "pdx01egxvc01.nvidia.com"
+    datacenter: "PDX01"
+    datastore: "PDX01EGX_vSAN_001"
+    cluster: "PDX01EGX001"
+    network: "PDX01EGXDVS001_Internal_307_10.185.111.0_24"
+    vmFolder: "GitHub ARC"
+    resoursePool: "CNT-ARC"
+    templateImage: "GPU_UBUNTU_TEMPLATE"
+  containerRuntime:
+    install: true
+    name: containerd
+  nvidiaContainerToolkit:
+    install: true
+  nvidiaDriver:
+    install: true
+  kubernetes:
+    install: true
+    installer: kubeadm
+    version: v1.28.5
