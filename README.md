@@ -642,7 +642,7 @@ that have not been customized via a node label (more on this later).
 #####  Single Config File Example
 As an example, create a valid config file on your local filesystem, such as the following:
 
-```yaml
+```shell
 cat << EOF > /tmp/dp-example-config0.yaml
 version: v1
 flags:
