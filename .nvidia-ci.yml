@@ -70,11 +70,6 @@ image-ubi8:
     - .image-pull
     - .dist-ubi8
 
-image-ubuntu22.04:
-  extends:
-    - .image-pull
-    - .dist-ubuntu22.04
-
 # We skip the integration tests for the internal CI:
 .integration:
   stage: test
@@ -118,11 +113,6 @@ image-ubuntu22.04:
 
 # Define the external release targets
 # Release to NGC
-release:ngc-ubuntu22.04:
-  extends:
-    - .release:ngc
-    - .dist-ubuntu22.04
-
 release:ngc-ubi8:
   extends:
     - .release:ngc
@@ -170,16 +160,9 @@ sign:ngc-short-tag:
   extends:
     - .sign:ngc
   needs:
-    - release:ngc-ubuntu22.04
+    - release:ngc-ubi8
   variables:
     IMAGE_TAG: "${CI_COMMIT_TAG}"
-
-sign:ngc-ubuntu22.04:
-  extends:
-    - .dist-ubuntu22.04
-    - .sign:ngc
-  needs:
-    - release:ngc-ubuntu22.04
 
 sign:ngc-ubi8:
   extends:
