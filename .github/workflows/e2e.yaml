@@ -40,7 +40,7 @@ jobs:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_ssh_key: ${{ secrets.AWS_SSH_KEY }}
-          holodeck_config: "tests/e2e/holodeck.yaml"
+          holodeck_config: "tests/e2e/infra/aws.yaml"
       - name: Run e2e tests
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
@@ -48,7 +48,7 @@ jobs:
           E2E_IMAGE_TAG: ${COMMIT_SHORT_SHA}-ubuntu22.04
           LOG_ARTIFACTS: ${{ github.workspace }}/e2e_logs
         run: |
-          make -f tests/e2e/Makefile e2e-test
+          make test-e2e
       - name: Archive test logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4

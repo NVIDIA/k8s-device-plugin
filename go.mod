@@ -13,16 +13,16 @@ require (
 	github.com/prometheus/procfs v0.15.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
-	github.com/urfave/cli/v2 v2.27.2
-	golang.org/x/mod v0.19.0
+	github.com/urfave/cli/v2 v2.27.3
+	golang.org/x/mod v0.20.0
 	golang.org/x/net v0.27.0
 	google.golang.org/grpc v1.63.2
-	k8s.io/api v0.30.2
-	k8s.io/apimachinery v0.30.2
-	k8s.io/client-go v0.30.2
+	k8s.io/api v0.30.3
+	k8s.io/apimachinery v0.30.3
+	k8s.io/client-go v0.30.3
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/kubelet v0.30.2
-	k8s.io/mount-utils v0.30.2
+	k8s.io/kubelet v0.30.3
+	k8s.io/mount-utils v0.30.3
 	sigs.k8s.io/node-feature-discovery v0.15.4
 	sigs.k8s.io/yaml v1.4.0
 	tags.cncf.io/container-device-interface v0.8.0

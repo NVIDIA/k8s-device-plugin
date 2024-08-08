@@ -12,37 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Run this workflow on new tags
-name: Publish Helm Chart
+name: Helm
 
 on:
-  release:
+  pull_request:
     types:
-      - published
+      - opened
+      - synchronize
+    branches:
+      - main
+      - release-*
+  push:
+    branches:
+      - main
+      - release-*
 
 jobs:
-  update-helm-charts:
-    name: Update gh-pages branch helm charts and index
+  test:
+    name: Test
     runs-on: ubuntu-latest
-    env:
-      HELM_REPO_PATH: releases/helm-${{ github.event.release.tag_name }}/
     steps:
-    - name: Install Helm
-      uses: azure/setup-helm@v4.2.0
-      with:
-        version: 3.14.4
-
-    - name: Check out repo
+    - name: Checkout code
       uses: actions/checkout@v4
+    - name: Get Golang version
+      id: vars
+      run: |
+        GOLANG_VERSION=$(./hack/golang-version.sh)
+        echo "GOLANG_VERSION=${GOLANG_VERSION##GOLANG_VERSION ?= }" >> $GITHUB_ENV
+    - name: Install Go
+      uses: actions/setup-go@v5
       with:
-        fetch-depth: 0
-
-    - name: Update helm index
-      run: |
-        git config user.name "Github Actions"
-        git config user.email "no-reply@github.com"
-        ./hack/update-helm-index.sh --helm-repo-path $HELM_REPO_PATH --version ${{ github.event.release.tag_name }}
-
-    - name: Push updated Helm charts and index to gh-pages branch
-      run: |
-        git -C $HELM_REPO_PATH push https://${GITHUB_ACTOR}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} gh-pages
+        go-version: ${{ env.GOLANG_VERSION }}
+    - run: make test-helm

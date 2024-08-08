@@ -1,0 +1,58 @@
+# Copyright 2024 NVIDIA CORPORATION
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Staging E2E Tests
+
+on:
+  workflow_run:
+    workflows: [Image]
+    types:
+      - completed
+    branches:
+      - main
+      - release-*
+
+jobs:
+  staging-e2e:
+    runs-on: pdx01-arc-runners
+    if: ${{ github.event.workflow_run.conclusion == 'success' }} && ${{ github.event.workflow_run.event == 'push' }}
+    steps:
+      - uses: actions/checkout@v4
+        name: Check out code
+      - name: Calculate build vars
+        id: vars
+        run: |
+          echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
+          echo "HOLODECK_VCENTER_USERNAME=${HOLODECK_VCENTER_USERNAME}" >> $GITHUB_ENV
+          echo "HOLODECK_VCENTER_PASSWORD=${HOLODECK_VCENTER_PASSWORD}" >> $GITHUB_ENV
+          echo "VSPHERE_SSH_KEY=${VSPHERE_SSH_KEY}" >> $GITHUB_ENV
+      - name: Set up Holodeck
+        uses: NVIDIA/holodeck@v0.2.1
+        with:
+          holodeck_config: "tests/e2e/infra/vsphere.yaml"
+      - name: Run e2e tests
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+          E2E_IMAGE_REPO: ghcr.io/nvidia/k8s-device-plugin
+          E2E_IMAGE_TAG: ${COMMIT_SHORT_SHA}-ubuntu22.04
+          LOG_ARTIFACTS: ${{ github.workspace }}/e2e_logs
+        run: |
+          make test-e2e
+      - name: Archive test logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-logs
+          path: ./e2e_logs/
+          retention-days: 15
