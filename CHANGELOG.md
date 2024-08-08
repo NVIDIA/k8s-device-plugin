@@ -1,5 +1,10 @@
 ## Changelog
 
+### v0.16.2
+- Add CAP_SYS_ADMIN if volume-mounts list strategy is included (fixes #856)
+- Remove unneeded DEVICE_PLUGIN_MODE envvar
+- Fix applying SELinux label for MPS
+
 ### v0.16.1
 - Bump nvidia-container-toolkit to v1.16.1 to fix a bug with CDI spec generation for MIG devices
 
