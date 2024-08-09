@@ -41,6 +41,10 @@ jobs:
         uses: NVIDIA/holodeck@v0.2.2
         with:
           holodeck_config: "tests/e2e/infra/vsphere.yaml"
+      - name: Intall dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make
       - name: Run e2e tests
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
