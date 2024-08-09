@@ -33,6 +33,7 @@ import (
 
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mount"
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mps"
+	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/wait"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
 	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
@@ -60,6 +61,7 @@ func main() {
 	}
 	c.Commands = []*cli.Command{
 		mount.NewCommand(),
+		wait.NewCommand(),
 	}
 
 	config.flags = []cli.Flag{
@@ -113,6 +115,10 @@ func start(c *cli.Context, cfg *Config) error {
 	var restartTimeout <-chan time.Time
 	var daemons []*mps.Daemon
 restart:
+	readyFile := mps.ReadyFile{}
+	if err := readyFile.Remove(); err != nil {
+		klog.Warningf("Failed to remove .ready file: %v", err)
+	}
 	// If we are restarting, stop daemons from previous run.
 	if started {
 		err := stopDaemons(daemons...)
@@ -214,19 +220,17 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 			return mpsDaemons, true, nil
 		}
 	}
-	readyFile, err := os.Create("/mps/.ready")
-	if err != nil {
-		return mpsDaemons, true, fmt.Errorf("failed to create .ready file")
+
+	// Create the MPS ready file.
+	readyFile := mps.ReadyFile{}
+	if err := readyFile.Save(config); err != nil {
+		return mpsDaemons, false, fmt.Errorf("failed to create .ready file: %w", err)
 	}
-	defer readyFile.Close()
 
 	return mpsDaemons, false, nil
 }
 
 func stopDaemons(mpsDaemons ...*mps.Daemon) error {
-	if err := os.Remove("/mps/.ready"); err != nil {
-		klog.Warningf("Failed to remove .ready file: %v", err)
-	}
 	klog.Info("Stopping MPS daemons.")
 	var errs error
 	for _, p := range mpsDaemons {
