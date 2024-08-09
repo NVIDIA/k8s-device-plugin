@@ -91,6 +91,12 @@ spec:
             mountPath: /available-configs
           - name: config
             mountPath: /config
+        {{- with .Values.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        securityContext:
+          {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
       {{- end }}
       containers:
       {{- if $options.hasConfigMap }}
@@ -127,8 +133,12 @@ spec:
             mountPath: /available-configs
           - name: config
             mountPath: /config
+        {{- with .Values.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         securityContext:
-          {{- include "gpu-feature-discovery.securityContext" . | nindent 10 }}
+          {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
       {{- end }}
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -176,7 +186,10 @@ spec:
             value: {{ .Values.deviceDiscoveryStrategy }}
         {{- end }}
         securityContext:
-          {{- include "gpu-feature-discovery.securityContext" . | nindent 10 }}
+          {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
+          capabilities:
+            add:
+              - SYS_ADMIN
         volumeMounts:
           - name: output-dir
             mountPath: "/etc/kubernetes/node-feature-discovery/features.d"

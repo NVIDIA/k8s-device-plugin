@@ -101,6 +101,9 @@ runtimeClassName: null
 
 devicePlugin:
   enabled: true
+  
+devicePluginMps:
+  enabled: true
 
 gfd:
   enabled: false

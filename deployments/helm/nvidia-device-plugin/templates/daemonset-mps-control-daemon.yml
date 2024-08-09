@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-{{- if .Values.devicePlugin.enabled }}
+{{- if .Values.devicePluginMps.enabled }}
 ---
 {{- $options := (include "nvidia-device-plugin.options" . | fromJson) }}
 {{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}
@@ -97,11 +97,17 @@ spec:
           value: ""
         - name: PROCESS_TO_SIGNAL
           value: ""
+        securityContext:
+          {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
         volumeMounts:
           - name: available-configs
             mountPath: /available-configs
           - name: config
             mountPath: /config
+        {{- with .Values.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
       {{- end }}
       containers:
       {{- if $options.hasConfigMap }}
@@ -134,11 +140,17 @@ spec:
             value: "1"
           - name: PROCESS_TO_SIGNAL
             value: "/usr/bin/mps-control-daemon"
+          securityContext:
+            {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
           volumeMounts:
             - name: available-configs
               mountPath: /available-configs
             - name: config
               mountPath: /config
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 10 }}
+          {{- end }}
       {{- end }}
         - image: {{ include "nvidia-device-plugin.fullimage" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
