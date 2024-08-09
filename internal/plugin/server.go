@@ -55,6 +55,7 @@ type NvidiaDevicePlugin struct {
 	deviceListEnvvar     string
 	deviceListStrategies spec.DeviceListStrategies
 	socket               string
+	kubeletSocket        string
 
 	cdiHandler          cdi.Interface
 	cdiEnabled          bool
@@ -69,7 +70,7 @@ type NvidiaDevicePlugin struct {
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, cdiHandler cdi.Interface) (*NvidiaDevicePlugin, error) {
+func NewNvidiaDevicePlugin(config *spec.Config, kubeletSocket string, resourceManager rm.ResourceManager, cdiHandler cdi.Interface) (*NvidiaDevicePlugin, error) {
 	_, name := resourceManager.Resource().Split()
 
 	deviceListStrategies, _ := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
@@ -102,6 +103,7 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 		mpsDaemon:   mpsDaemon,
 		mpsHostRoot: mpsHostRoot,
 
+		kubeletSocket: kubeletSocket,
 		// These will be reinitialized every
 		// time the plugin server is restarted.
 		server: nil,
@@ -245,7 +247,12 @@ func (plugin *NvidiaDevicePlugin) Serve() error {
 
 // Register registers the device plugin for the given resourceName with Kubelet.
 func (plugin *NvidiaDevicePlugin) Register() error {
-	conn, err := plugin.dial(pluginapi.KubeletSocket, 5*time.Second)
+	if plugin.kubeletSocket == "" {
+		klog.Info("Skipping registration with Kubelet")
+		return nil
+	}
+
+	conn, err := plugin.dial(plugin.kubeletSocket, 5*time.Second)
 	if err != nil {
 		return err
 	}

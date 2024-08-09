@@ -68,3 +68,9 @@ func WithConfig(config *spec.Config) Option {
 		m.config = config
 	}
 }
+
+func WithKubeletSocket(kubeletSocket string) Option {
+	return func(m *manager) {
+		m.kubeletSocket = kubeletSocket
+	}
+}
