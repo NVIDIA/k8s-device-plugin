@@ -34,6 +34,8 @@ jobs:
         id: vars
         run: |
           echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
+          GOLANG_VERSION=$(./hack/golang-version.sh)
+          echo "GOLANG_VERSION=${GOLANG_VERSION##GOLANG_VERSION := }" >> $GITHUB_ENV
           echo "HOLODECK_VCENTER_USERNAME=${HOLODECK_VCENTER_USERNAME}" >> $GITHUB_ENV
           echo "HOLODECK_VCENTER_PASSWORD=${HOLODECK_VCENTER_PASSWORD}" >> $GITHUB_ENV
           cat /home/runner/.ssh/vsphere-key > ${GITHUB_WORKSPACE}/holodeck_ssh_key
@@ -45,6 +47,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y make
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
       - name: Run e2e tests
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
