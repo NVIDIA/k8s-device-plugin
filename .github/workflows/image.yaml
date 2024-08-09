@@ -31,9 +31,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        dist: [ubuntu22.04, ubi8]
     steps:
       - uses: actions/checkout@v4
         name: Check out code
@@ -72,4 +69,4 @@ jobs:
           VERSION: ${COMMIT_SHORT_SHA}
         run: |
           echo "${VERSION}"
-          make -f deployments/container/Makefile build-${{ matrix.dist }}
+          make -f deployments/container/Makefile build
