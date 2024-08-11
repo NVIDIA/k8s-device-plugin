@@ -176,6 +176,9 @@ type ChartSpec struct {
 	// ReuseValues indicates whether to reuse the values.yaml file during installation.
 	// +optional
 	ReuseValues bool `json:"reuseValues,omitempty"`
+	// ResetThenReuseValues will reset the values to the chart's built-ins then merge with user's last supplied values.
+	// +optional
+	ResetThenReuseValues bool
 	// Recreate indicates whether to recreate the release if it already exists.
 	// +optional
 	Recreate bool `json:"recreate,omitempty"`
