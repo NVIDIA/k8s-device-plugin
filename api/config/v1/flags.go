@@ -105,6 +105,7 @@ func (f *deviceListStrategyFlag) UnmarshalJSON(b []byte) error {
 type GFDCommandLineFlags struct {
 	Oneshot         *bool     `json:"oneshot"         yaml:"oneshot"`
 	NoTimestamp     *bool     `json:"noTimestamp"     yaml:"noTimestamp"`
+	NoCleanupOnExit *bool     `json:"noCleanupOnExit" yaml:"noCleanupOnExit"`
 	SleepInterval   *Duration `json:"sleepInterval"   yaml:"sleepInterval"`
 	OutputFile      *string   `json:"outputFile"      yaml:"outputFile"`
 	MachineTypeFile *string   `json:"machineTypeFile" yaml:"machineTypeFile"`
@@ -168,6 +169,8 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.GFD.NoTimestamp, c, n)
 			case "machine-type-file":
 				updateFromCLIFlag(&f.GFD.MachineTypeFile, c, n)
+			case "no-cleanup-on-exit":
+				updateFromCLIFlag(&f.GFD.NoCleanupOnExit, c, n)
 			}
 		}
 	}
