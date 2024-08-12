@@ -73,10 +73,6 @@ trigger-pipeline:
   variables:
     DIST: "ubi8"
 
-.dist-ubuntu22.04:
-  variables:
-    DIST: "ubuntu22.04"
-
 # Define the platform targets
 .platform-amd64:
   variables:
@@ -123,23 +119,6 @@ trigger-pipeline:
     - .scan-base
 
 # Define the scan targets
-scan-ubuntu22.04-amd64:
-  extends:
-    - .scan
-    - .dist-ubuntu22.04
-    - .platform-amd64
-  needs:
-    - image-ubuntu22.04
-
-scan-ubuntu22.04-arm64:
-  extends:
-    - .scan
-    - .dist-ubuntu22.04
-    - .platform-arm64
-  needs:
-    - image-ubuntu22.04
-    - scan-ubuntu22.04-amd64
-
 scan-ubi8-amd64:
   extends:
     - .scan
@@ -230,10 +209,3 @@ release:staging-ubi8:
     - .dist-ubi8
   needs:
     - image-ubi8
-
-release:staging-ubuntu22.04:
-  extends:
-    - .release:staging
-    - .dist-ubuntu22.04
-  needs:
-    - image-ubuntu22.04
