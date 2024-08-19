@@ -72,3 +72,17 @@ jobs:
           name: e2e-test-logs
           path: ./e2e_logs/
           retention-days: 15
+
+      - name: Send Slack alert notification
+        id: slack
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@v1.26.0
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SUMMARY_URL: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack-message: |
+            :red_target: On repository ${{ github.repository }} the Workflow *${{ github.workflow }}* has failed.
+  
+            Details: ${{ env.SUMMARY_URL }}

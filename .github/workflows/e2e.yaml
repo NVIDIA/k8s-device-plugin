@@ -28,12 +28,14 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }} && ${{ github.event.workflow_run.event == 'push' }}
     steps:
-      - uses: actions/checkout@v4
-        name: Check out code
+      - name: Check out code
+        uses: actions/checkout@v4
+
       - name: Calculate build vars
         id: vars
         run: |
           echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
+
       - name: Set up Holodeck
         uses: NVIDIA/holodeck@v0.2.3
         with:
@@ -41,6 +43,7 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_ssh_key: ${{ secrets.AWS_SSH_KEY }}
           holodeck_config: "tests/e2e/infra/aws.yaml"
+
       - name: Run e2e tests
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
@@ -49,6 +52,7 @@ jobs:
           LOG_ARTIFACTS: ${{ github.workspace }}/e2e_logs
         run: |
           make test-e2e
+
       - name: Archive test logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
@@ -56,3 +60,17 @@ jobs:
           name: e2e-test-logs
           path: ./e2e_logs/
           retention-days: 15
+
+      - name: Send Slack alert notification
+        id: slack
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@v1.26.0
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SUMMARY_URL: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack-message: |
+            :red_target: On repository ${{ github.repository }} the Workflow *${{ github.workflow }}* has failed.
+
+            Details: ${{ env.SUMMARY_URL }}
