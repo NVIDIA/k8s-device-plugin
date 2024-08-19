@@ -40,7 +40,7 @@ jobs:
           echo "HOLODECK_VCENTER_PASSWORD=${HOLODECK_VCENTER_PASSWORD}" >> $GITHUB_ENV
           cat /home/runner/.ssh/vsphere-key > ${GITHUB_WORKSPACE}/holodeck_ssh_key
       - name: Set up Holodeck
-        uses: NVIDIA/holodeck@v0.2.2
+        uses: NVIDIA/holodeck@v0.2.3
         with:
           holodeck_config: "tests/e2e/infra/vsphere.yaml"
       - name: Intall dependencies
