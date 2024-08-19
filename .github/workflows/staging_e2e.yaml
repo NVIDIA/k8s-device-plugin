@@ -28,14 +28,16 @@ jobs:
     runs-on: pdx01-arc-runners
     if: ${{ github.event.workflow_run.conclusion == 'success' }} && ${{ github.event.workflow_run.event == 'push' }}
     steps:
-      - uses: actions/checkout@v4
-        name: Check out code
+      - name: Check out code
+        uses: actions/checkout@v4
+
       - name: Calculate build vars
         id: vars
         run: |
           echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
           GOLANG_VERSION=$(./hack/golang-version.sh)
           echo "GOLANG_VERSION=${GOLANG_VERSION##GOLANG_VERSION := }" >> $GITHUB_ENV
+
       - name: Set up Holodeck
         uses: NVIDIA/holodeck@v0.2.3
         with:
@@ -43,14 +45,17 @@ jobs:
           vsphere_password: ${{ secrets.VSPHERE_PASSWORD }}
           vsphere_ssh_key: ${{ secrets.VSPHERE_SSH_KEY }}
           holodeck_config: "tests/e2e/infra/vsphere.yaml"
+
       - name: Intall dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y make
+
       - name: Install Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GOLANG_VERSION }}
+
       - name: Run e2e tests
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
@@ -59,6 +64,7 @@ jobs:
           LOG_ARTIFACTS: ${{ github.workspace }}/e2e_logs
         run: |
           make test-e2e
+
       - name: Archive test logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
