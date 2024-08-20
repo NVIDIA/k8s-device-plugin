@@ -92,12 +92,9 @@ When running `kubernetes` with `CRI-O`, add the config file to set the
 `crun` config file at `/etc/crio/crio.conf.d/10-crun.conf`:
 ```
 [crio]
-
   [crio.runtime]
     default_runtime = "nvidia"
-
     [crio.runtime.runtimes]
-
       [crio.runtime.runtimes.nvidia]
         runtime_path = "/usr/bin/nvidia-container-runtime"
         runtime_type = "oci"
@@ -169,7 +166,6 @@ Done
 
 > **WARNING:** *if you don't request GPUs when using the device plugin with NVIDIA images all
 > the GPUs on the machine will be exposed inside your container.*
-
 ## Configuring the NVIDIA device plugin binary
 
 The NVIDIA device plugin has a number of options that can be configured for it.
