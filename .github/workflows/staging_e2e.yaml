@@ -36,12 +36,12 @@ jobs:
           echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
           GOLANG_VERSION=$(./hack/golang-version.sh)
           echo "GOLANG_VERSION=${GOLANG_VERSION##GOLANG_VERSION := }" >> $GITHUB_ENV
-          echo "HOLODECK_VCENTER_USERNAME=${HOLODECK_VCENTER_USERNAME}" >> $GITHUB_ENV
-          echo "HOLODECK_VCENTER_PASSWORD=${HOLODECK_VCENTER_PASSWORD}" >> $GITHUB_ENV
-          cat /home/runner/.ssh/vsphere-key > ${GITHUB_WORKSPACE}/holodeck_ssh_key
       - name: Set up Holodeck
-        uses: NVIDIA/holodeck@v0.2.2
+        uses: NVIDIA/holodeck@v0.2.3
         with:
+          vsphere_username: ${{ secrets.VSPHERE_USERNAME }}
+          vsphere_password: ${{ secrets.VSPHERE_PASSWORD }}
+          vsphere_ssh_key: ${{ secrets.VSPHERE_SSH_KEY }}
           holodeck_config: "tests/e2e/infra/vsphere.yaml"
       - name: Intall dependencies
         run: |
