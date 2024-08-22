@@ -15,6 +15,9 @@
 GO_CMD ?= go
 GO_FMT ?= gofmt
 
+# The default go tests timeout is 10 minutes which is too for this case.
+GO_TEST_TIMEOUT ?= 30m
+
 include $(CURDIR)/versions.mk
 
 DRIVER_ENABLED ?= true
@@ -31,7 +34,7 @@ test:
 		echo "[ERR] KUBECONFIG missing, must be defined"; \
 		exit 1; \
 	fi
-	cd $(CURDIR)/tests/e2e && $(GO_CMD) test -v . -args \
+	cd $(CURDIR)/tests/e2e && $(GO_CMD) test -timeout $(GO_TEST_TIMEOUT) -v . -args \
 		-kubeconfig=$(KUBECONFIG) \
 		-driver-enabled=$(DRIVER_ENABLED) \
 		-image.repo=$(E2E_IMAGE_REPO) \
