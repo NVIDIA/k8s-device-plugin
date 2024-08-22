@@ -122,11 +122,11 @@ func (d *PCIDevice) GetVendorSpecificCapability() ([]byte, error) {
 	}
 
 	var visited [256]byte
-	pos := int(GetByte(d.Config, PciCapabilityList))
+	pos := GetByte(d.Config, PciCapabilityList)
 	for pos != 0 {
-		id := int(GetByte(d.Config, pos+PciCapabilityListID))
-		next := int(GetByte(d.Config, pos+PciCapabilityListNext))
-		length := int(GetByte(d.Config, pos+PciCapabilityLength))
+		id := GetByte(d.Config, pos+PciCapabilityListID)
+		next := GetByte(d.Config, pos+PciCapabilityListNext)
+		length := GetByte(d.Config, pos+PciCapabilityLength)
 
 		if visited[pos] != 0 {
 			// chain looped
@@ -149,7 +149,7 @@ func (d *PCIDevice) GetVendorSpecificCapability() ([]byte, error) {
 }
 
 // GetByte returns a single byte of data at specified position
-func GetByte(buffer []byte, pos int) uint8 {
+func GetByte(buffer []byte, pos uint8) uint8 {
 	return buffer[pos]
 }
 

@@ -88,8 +88,8 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 	}()
 
 	parentToDeviceMap := make(map[string]*Device)
-	deviceIDToGiMap := make(map[string]int)
-	deviceIDToCiMap := make(map[string]int)
+	deviceIDToGiMap := make(map[string]uint32)
+	deviceIDToCiMap := make(map[string]uint32)
 
 	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
 	for _, d := range devices {
@@ -112,7 +112,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 
 		supportedEvents, ret := gpu.GetSupportedEventTypes()
 		if ret != nvml.SUCCESS {
-			klog.Infof("Unable to determine the supported events for %v: %v; marking it as unhealthy", d.ID, ret)
+			klog.Infof("unable to determine the supported events for %v: %v; marking it as unhealthy", d.ID, ret)
 			unhealthy <- d
 			continue
 		}
@@ -176,7 +176,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		if d.IsMigDevice() && e.GpuInstanceId != 0xFFFFFFFF && e.ComputeInstanceId != 0xFFFFFFFF {
 			gi := deviceIDToGiMap[d.ID]
 			ci := deviceIDToCiMap[d.ID]
-			if !(uint32(gi) == e.GpuInstanceId && uint32(ci) == e.ComputeInstanceId) {
+			if !(gi == e.GpuInstanceId && ci == e.ComputeInstanceId) {
 				continue
 			}
 			klog.Infof("Event for mig device %v (gi=%v, ci=%v)", d.ID, gi, ci)
@@ -215,7 +215,7 @@ func getAdditionalXids(input string) []uint64 {
 // getDevicePlacement returns the placement of the specified device.
 // For a MIG device the placement is defined by the 3-tuple <parent UUID, GI, CI>
 // For a full device the returned 3-tuple is the device's uuid and 0xFFFFFFFF for the other two elements.
-func (r *nvmlResourceManager) getDevicePlacement(d *Device) (string, int, int, error) {
+func (r *nvmlResourceManager) getDevicePlacement(d *Device) (string, uint32, uint32, error) {
 	if !d.IsMigDevice() {
 		return d.GetUUID(), 0xFFFFFFFF, 0xFFFFFFFF, nil
 	}
@@ -223,7 +223,7 @@ func (r *nvmlResourceManager) getDevicePlacement(d *Device) (string, int, int, e
 }
 
 // getMigDeviceParts returns the parent GI and CI ids of the MIG device.
-func (r *nvmlResourceManager) getMigDeviceParts(d *Device) (string, int, int, error) {
+func (r *nvmlResourceManager) getMigDeviceParts(d *Device) (string, uint32, uint32, error) {
 	if !d.IsMigDevice() {
 		return "", 0, 0, fmt.Errorf("cannot get GI and CI of full device")
 	}
@@ -250,32 +250,42 @@ func (r *nvmlResourceManager) getMigDeviceParts(d *Device) (string, int, int, er
 		if ret != nvml.SUCCESS {
 			return "", 0, 0, fmt.Errorf("failed to get Compute Instance ID: %v", ret)
 		}
-		return parentUUID, gi, ci, nil
+		//nolint:gosec  // We know that the values returned from Get*InstanceId are within the valid uint32 range.
+		return parentUUID, uint32(gi), uint32(ci), nil
 	}
 	return parseMigDeviceUUID(uuid)
 }
 
 // parseMigDeviceUUID splits the MIG device UUID into the parent device UUID and ci and gi
-func parseMigDeviceUUID(mig string) (string, int, int, error) {
+func parseMigDeviceUUID(mig string) (string, uint32, uint32, error) {
 	tokens := strings.SplitN(mig, "-", 2)
 	if len(tokens) != 2 || tokens[0] != "MIG" {
-		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+		return "", 0, 0, fmt.Errorf("unable to parse UUID as MIG device")
 	}
 
 	tokens = strings.SplitN(tokens[1], "/", 3)
 	if len(tokens) != 3 || !strings.HasPrefix(tokens[0], "GPU-") {
-		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+		return "", 0, 0, fmt.Errorf("unable to parse UUID as MIG device")
 	}
 
-	gi, err := strconv.Atoi(tokens[1])
+	gi, err := toUint32(tokens[1])
 	if err != nil {
-		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+		return "", 0, 0, fmt.Errorf("unable to parse UUID as MIG device")
 	}
 
-	ci, err := strconv.Atoi(tokens[2])
+	ci, err := toUint32(tokens[2])
 	if err != nil {
-		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+		return "", 0, 0, fmt.Errorf("unable to parse UUID as MIG device")
 	}
 
 	return tokens[0], gi, ci, nil
+}
+
+func toUint32(s string) (uint32, error) {
+	u, err := strconv.ParseUint(s, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	//nolint:gosec  // Since we parse s with a 32-bit size this will not overflow.
+	return uint32(u), nil
 }

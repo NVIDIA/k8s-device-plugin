@@ -40,7 +40,7 @@ type Info struct {
 
 const (
 	// VGPUCapabilityRecordStart indicates offset of beginning vGPU capability record
-	VGPUCapabilityRecordStart = 5
+	VGPUCapabilityRecordStart uint8 = 5
 	// HostDriverVersionLength indicates max length of driver version
 	HostDriverVersionLength = 10
 	// HostDriverBranchLength indicates max length of driver branch
@@ -116,14 +116,14 @@ func (d *Device) GetInfo() (*Info, error) {
 	foundDriverVersionRecord := false
 	pos := VGPUCapabilityRecordStart
 	record := GetByte(d.vGPUCapability, VGPUCapabilityRecordStart)
-	for record != 0 && pos < len(d.vGPUCapability) {
+	for record != 0 && int(pos) < len(d.vGPUCapability) {
 		// find next record
 		recordLength := GetByte(d.vGPUCapability, pos+1)
-		pos += int(recordLength)
+		pos += recordLength
 		record = GetByte(d.vGPUCapability, pos)
 	}
 
-	if record == 0 && pos+2+HostDriverVersionLength+HostDriverBranchLength <= len(d.vGPUCapability) {
+	if record == 0 && int(pos+2+HostDriverVersionLength+HostDriverBranchLength) <= len(d.vGPUCapability) {
 		foundDriverVersionRecord = true
 		// found vGPU host driver version record type
 		// initialized at record data byte, i.e pos + 1(record id byte) + 1(record lengh byte)

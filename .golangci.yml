@@ -22,6 +22,9 @@ linters-settings:
     local-prefixes: github.com/NVIDIA/k8s-device-plugin
 
 issues:
+  exclude:
+  # A conversion of a uint8 to an int cannot overflow.
+  - "G115: integer overflow conversion uint8 -> int"
   exclude-rules:
   # We use math/rand instead of crypto/rand for unique names in e2e tests.
   - path: tests/e2e/
