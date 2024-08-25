@@ -587,6 +587,8 @@ along with their use. See the related table [here](/docs/gpu-feature-discovery/R
 | nvidia.com/mig.capable            | Boolean    | If a device is currently in MIG mode.                                                                                                                                                  | false          |
 | nvidia.com/mps.capable            | Boolean    | If a device is currently in MPS mode.                                                                                                                                                  | false          |
 | nvidia.com/vgpu.present           | Boolean    | If vGPU is in use.                                                                                                                                                                     | false          |
+| nvidia.com/vgpu.host-driver-version | String   | Version of the vGPU host driver in use on the underlying hypervisor.                                                                                                                   | 10.11.12       |
+| nvidia.com/vgpu.host-driver-branch | String    | Branch of the vGPU host driver in use on the underlying hypervisor.                                                                                                                    | main           |
 
 ## Deployment via `helm`
 
