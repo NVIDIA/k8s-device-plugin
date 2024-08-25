@@ -51,7 +51,7 @@ The NVIDIA device plugin for Kubernetes is a Daemonset that allows you to automa
 - Run GPU enabled containers in your Kubernetes cluster.
 
 This repository contains NVIDIA's official implementation of the [Kubernetes device plugin](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/).
-As of v0.16.1 this repository also holds the implementation for GPU Feature Discovery labels,
+As of v0.15.0 this repository also holds the implementation for GPU Feature Discovery labels,
 for further information on GPU Feature Discovery see [here](docs/gpu-feature-discovery/README.md).
 
 Please note that:
