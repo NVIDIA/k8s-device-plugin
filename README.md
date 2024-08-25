@@ -98,6 +98,7 @@ If the `nvidia` runtime should be set as the default runtime (required for `dock
 must also be included in the commands above. If this is not done, a RuntimeClass needs to be defined.
 
 ##### Notes on `CRI-O` configuration
+
 When running `kubernetes` with `CRI-O`, add the config file to set the
 `nvidia-container-runtime` as the default low-level OCI runtime under
 `/etc/crio/crio.conf.d/99-nvidia.conf`. This will take priority over the default
@@ -224,6 +225,7 @@ All options inside the `plugin` section are specific to the plugin. All
 options outside of this section are shared.
 
 ### Configuration Option Details
+
 **`MIG_STRATEGY`**:
   the desired strategy for exposing MIG devices on GPUs that support it
 
@@ -638,7 +640,7 @@ if desired. Both methods are discussed in more detail below.
 The full set of values that can be set are found here:
 [here](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.16.1/deployments/helm/nvidia-device-plugin/values.yaml).
 
-#### Passing configuration to the plugin via a `ConfigMap`.
+#### Passing configuration to the plugin via a `ConfigMap`
 
 In general, we provide a mechanism to pass _multiple_ configuration files to
 to the plugin's `helm` chart, with the ability to choose which configuration
@@ -656,7 +658,8 @@ In both cases, the value `config.default` can be set to point to one of the
 named configs in the `ConfigMap` and provide a default configuration for nodes
 that have not been customized via a node label (more on this later).
 
-#####  Single Config File Example
+##### Single Config File Example
+
 As an example, create a valid config file on your local filesystem, such as the following:
 
 ```shell
@@ -704,7 +707,7 @@ $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
     --set config.name=nvidia-plugin-configs
 ```
 
-#####  Multiple Config File Example
+##### Multiple Config File Example
 
 For multiple config files, the procedure is similar.
 
@@ -988,6 +991,7 @@ easily be modified to work with any available tag or branch.
 ### With Docker
 
 #### Build
+
 Option 1, pull the prebuilt image from [Docker Hub](https://hub.docker.com/r/nvidia/k8s-device-plugin):
 ```shell
 $ docker pull nvcr.io/nvidia/k8s-device-plugin:v0.16.1
@@ -1012,6 +1016,7 @@ $ docker build \
 ```
 
 #### Run
+
 Without compatibility for the `CPUManager` static policy:
 ```shell
 $ docker run \
@@ -1036,11 +1041,13 @@ $ docker run \
 ### Without Docker
 
 #### Build
+
 ```shell
 $ C_INCLUDE_PATH=/usr/local/cuda/include LIBRARY_PATH=/usr/local/cuda/lib64 go build
 ```
 
 #### Run
+
 Without compatibility for the `CPUManager` static policy:
 ```shell
 $ ./k8s-device-plugin
@@ -1056,6 +1063,7 @@ $ ./k8s-device-plugin --pass-device-specs
 See the [changelog](CHANGELOG.md)
 
 ## Issues and Contributing
+
 [Checkout the Contributing document!](CONTRIBUTING.md)
 
 * You can report a bug by [filing a new issue](https://github.com/NVIDIA/k8s-device-plugin/issues/new)
