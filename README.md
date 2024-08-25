@@ -107,7 +107,7 @@ When running `kubernetes` with `CRI-O`, add the config file to set the
 `/etc/crio/crio.conf.d/99-nvidia.conf`. This will take priority over the default
 `crun` config file at `/etc/crio/crio.conf.d/10-crun.conf`:
 
-```
+```toml
 [crio]
 
   [crio.runtime]
@@ -129,14 +129,14 @@ sudo nvidia-ctk runtime configure --runtime=crio --set-as-default --config=/etc/
 `CRI-O` uses `crun` as default low-level OCI runtime so `crun` needs to be added
 to the runtimes of the `nvidia-container-runtime` in the config file at `/etc/nvidia-container-runtime/config.toml`:
 
-```
+```toml
 [nvidia-container-runtime]
 runtimes = ["crun", "docker-runc", "runc"]
 ```
 
 And then restart `CRI-O`:
 
-```
+```shell
 sudo systemctl restart crio
 ```
 
