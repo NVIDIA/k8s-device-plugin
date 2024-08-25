@@ -30,6 +30,7 @@
     - [Deploying with gpu-feature-discovery for automatic node labels](#deploying-with-gpu-feature-discovery-for-automatic-node-labels)
     - [Deploying gpu-feature-discovery in standalone mode](#deploying-gpu-feature-discovery-in-standalone-mode)
   - [Deploying via `helm install` with a direct URL to the `helm` package](#deploying-via-helm-install-with-a-direct-url-to-the-helm-package)
+- [Catalog of Labels](#catalog-of-labels)
 - [Building and Running Locally](#building-and-running-locally)
   - [With Docker](#with-docker)
     - [Build](#build)
@@ -570,6 +571,20 @@ total memory and compute resources of the GPU.
 **Note**: As of now, the only supported resource available for MPS are `nvidia.com/gpu`
 resources and only with full GPUs.
 
+## Catalog of Labels
+
+The NVIDIA device plugin reads and writes a number of different labels which it uses as either
+configuration elements or informational elements. The below table documents and describes each
+along with their use. See the related table [here](/docs/gpu-feature-discovery/README.md#generated-labels) for GFD labels.
+
+| Label Name                        | Value Type | Meaning                                                                                                                                                                                | Example        |
+| ----------------------------------| ---------- |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| -------------- |
+| nvidia.com/device-plugin.config   | String     | The name of the configuration to apply to the node.                                                                                                                                    | my-mps-config  |
+| nvidia.com/gpu.sharing-strategy   | String     | The sharing strategy in use. Will be set to `none` by default.                                                                                                                         | time-slicing   |
+| nvidia.com/mig.capable            | Boolean    | If a device is currently in MIG mode.                                                                                                                                                  | false          |
+| nvidia.com/mps.capable            | Boolean    | If a device is currently in MPS mode.                                                                                                                                                  | false          |
+| nvidia.com/vgpu.present           | Boolean    | If vGPU is in use.                                                                                                                                                                     | false          |
+
 ## Deployment via `helm`
 
 The preferred method to deploy the device plugin is as a daemonset using `helm`.
@@ -881,7 +896,7 @@ That is, the `SHARED` annotation ensures that a `nodeSelector` can be used to
 attract pods to nodes that have shared GPUs on them.
 
 Since having `renameByDefault=true` already encodes the fact that the resource is
-shared on the resource name , there is no need to annotate the product
+shared on the resource name, there is no need to annotate the product
 name with `SHARED`. Users can already find the shared resources they need by
 simply requesting it in their pod spec.
 
