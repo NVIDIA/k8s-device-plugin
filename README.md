@@ -107,7 +107,7 @@ When running `kubernetes` with `CRI-O`, add the config file to set the
 `/etc/crio/crio.conf.d/99-nvidia.conf`. This will take priority over the default
 `crun` config file at `/etc/crio/crio.conf.d/10-crun.conf`:
 
-```conf
+```
 [crio]
 
   [crio.runtime]
