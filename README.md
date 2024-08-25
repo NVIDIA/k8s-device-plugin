@@ -577,10 +577,13 @@ The NVIDIA device plugin reads and writes a number of different labels which it 
 configuration elements or informational elements. The below table documents and describes each
 along with their use. See the related table [here](/docs/gpu-feature-discovery/README.md#generated-labels) for GFD labels.
 
+> [!NOTE]
+> Label values in Kubernetes are always of type string. The table's value type describes the type within string formatting.
+
 | Label Name                        | Value Type | Meaning                                                                                                                                                                                | Example        |
 | ----------------------------------| ---------- |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| -------------- |
-| nvidia.com/device-plugin.config   | String     | The name of the configuration to apply to the node.                                                                                                                                    | my-mps-config  |
-| nvidia.com/gpu.sharing-strategy   | String     | The sharing strategy in use. Will be set to `none` by default.                                                                                                                         | time-slicing   |
+| nvidia.com/device-plugin.config   | String     | The name of the configuration to apply to the node. Not automatically written by the device plugin; must be manually assigned by the user with the specified config. See [here](#updating-per-node-configuration-with-a-node-label) for details. | my-mps-config  |
+| nvidia.com/gpu.sharing-strategy   | String     | The sharing strategy in use. Will be set to `none` if not sharing a GPU. Additional values are `mps` and `time-slicing`.                                                               | time-slicing   |
 | nvidia.com/mig.capable            | Boolean    | If a device is currently in MIG mode.                                                                                                                                                  | false          |
 | nvidia.com/mps.capable            | Boolean    | If a device is currently in MPS mode.                                                                                                                                                  | false          |
 | nvidia.com/vgpu.present           | Boolean    | If vGPU is in use.                                                                                                                                                                     | false          |
@@ -877,8 +880,8 @@ your cluster and do not wish for it to be pulled in by this installation, you
 can disable it with `nfd.enabled=false`.
 
 In addition to the standard node labels applied by GFD, the following label
-will also be included when deploying the plugin with the time-slicing extensions
-described [above](#shared-access-to-gpus-with-cuda-time-slicing).
+will also be included when deploying the plugin with the time-slicing or MPS extensions
+described [above](#shared-access-to-gpus).
 
 ```
 nvidia.com/<resource-name>.replicas = <num-replicas>
