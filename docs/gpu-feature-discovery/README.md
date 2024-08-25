@@ -41,7 +41,7 @@ to ease the transition.
 The list of prerequisites for running the NVIDIA GPU Feature Discovery is
 described below:
 * nvidia-docker version > 2.0 (see how to [install](https://github.com/NVIDIA/nvidia-docker)
-and it's [prerequisites](https://github.com/nvidia/nvidia-docker/wiki/Installation-\(version-2.0\)#prerequisites))
+and its [prerequisites](https://github.com/nvidia/nvidia-docker/wiki/Installation-\(version-2.0\)#prerequisites))
 * docker configured with nvidia as the [default runtime](https://github.com/NVIDIA/nvidia-docker/wiki/Advanced-topics#default-runtime).
 * Kubernetes version >= 1.10
 * NVIDIA device plugin for Kubernetes (see how to [setup](https://github.com/NVIDIA/k8s-device-plugin))
@@ -115,14 +115,14 @@ $ kubectl apply -f gpu-feature-discovery-job.yaml
 ```
 
 **Note:** This method should only be used for testing and not deployed in a
-productions setting.
+production setting.
 
 ### Verifying Everything Works
 
 With both NFD and GFD deployed and running, you should now be able to see GPU
 related labels appearing on any nodes that have GPUs installed on them.
 
-```
+```shell
 $ kubectl get nodes -o yaml
 apiVersion: v1
 items:
@@ -147,13 +147,13 @@ items:
       nvidia.com/gpu.product: A100-SXM4-40GB
       ...
 ...
-
 ```
 
 ## The GFD Command line interface
 
 Available options:
-```
+
+```shell
 gpu-feature-discovery:
 Usage:
   gpu-feature-discovery [--fail-on-init-error=<bool>] [--mig-strategy=<strategy>] [--oneshot | --sleep-interval=<seconds>] [--no-timestamp] [--output-file=<file> | -o <file>]
@@ -173,7 +173,6 @@ Options:
 
 Arguments:
   <strategy>: none | single | mixed
-
 ```
 
 You can also use environment variables:
@@ -291,7 +290,7 @@ the `gpu-feature-discovery` component in standalone mode.
 
 The most basic installation command without any options is then:
 
-```
+```shell
 $ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
   --version 0.15.0 \
   --namespace gpu-feature-discovery \
@@ -340,7 +339,7 @@ Download the source code:
 git clone https://github.com/NVIDIA/k8s-device-plugin
 ```
 
-Get dependies:
+Get dependencies:
 
 ```shell
 make vendor
@@ -348,11 +347,12 @@ make vendor
 
 Build it:
 
-```
+```shell
 make build
 ```
 
 Run it:
-```
+
+```shell
 ./gpu-feature-discovery --output=$(pwd)/gfd
 ```
