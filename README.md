@@ -160,7 +160,7 @@ With the daemonset deployed, NVIDIA GPUs can now be requested by a container
 using the `nvidia.com/gpu` resource type:
 
 ```yaml
-$ cat <<EOF | kubectl apply -f -
+cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: Pod
 metadata:
