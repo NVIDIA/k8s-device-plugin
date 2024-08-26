@@ -237,7 +237,7 @@ is partitioned into 7 equal sized MIG devices (56 total).
 | nvidia.com/mig.strategy             | String     | MIG strategy in use                      | single                    |
 | nvidia.com/gpu.product (overridden) | String     | Model of the GPU (with MIG info added)   | A100-SXM4-40GB-MIG-1g.5gb |
 | nvidia.com/gpu.count   (overridden) | Integer    | Number of MIG devices                    | 56                        |
-| nvidia.com/gpu.memory  (overridden) | Integer    | Memory of each MIG device in Mb          | 5120                      |
+| nvidia.com/gpu.memory  (overridden) | Integer    | Memory of each MIG device in megabytes (MB) | 5120                      |
 | nvidia.com/gpu.multiprocessors      | Integer    | Number of Multiprocessors for MIG device | 14                        |
 | nvidia.com/gpu.slices.gi            | Integer    | Number of GPU Instance slices            | 1                         |
 | nvidia.com/gpu.slices.ci            | Integer    | Number of Compute Instance slices        | 1                         |
@@ -261,7 +261,7 @@ e.g.  MIG_TYPE=mig-3g.20gb
 | ------------------------------------ | ---------- | ---------------------------------------- | -------------- |
 | nvidia.com/mig.strategy              | String     | MIG strategy in use                      | mixed          |
 | nvidia.com/MIG\_TYPE.count           | Integer    | Number of MIG devices of this type       | 2              |
-| nvidia.com/MIG\_TYPE.memory          | Integer    | Memory of MIG device type in Mb          | 10240          |
+| nvidia.com/MIG\_TYPE.memory          | Integer    | Memory of MIG device type in megabytes (MB) | 10240          |
 | nvidia.com/MIG\_TYPE.multiprocessors | Integer    | Number of Multiprocessors for MIG device | 14             |
 | nvidia.com/MIG\_TYPE.slices.ci       | Integer    | Number of GPU Instance slices            | 1              |
 | nvidia.com/MIG\_TYPE.slices.gi       | Integer    | Number of Compute Instance slices        | 1              |
@@ -279,8 +279,7 @@ Instructions for installing `helm` can be found
 
 As of `v0.15.0`, the device plugin's helm chart has integrated support to deploy GFD.
 
-When GFD is deployed standalone, begin by setting up the
-plugin's `helm` repository and updating it at follows:
+To deploy GFD standalone, begin by setting up the plugin's `helm` repository and updating it as follows:
 
 ```shell
 helm repo add nvdp https://nvidia.github.io/k8s-device-plugin
@@ -296,8 +295,7 @@ NAME                     	  CHART VERSION  APP VERSION	DESCRIPTION
 nvdp/nvidia-device-plugin	  0.16.2	 0.16.2		A Helm chart for ...
 ```
 
-Once this repo is updated, you can begin installing packages from it to deploy
-the `gpu-feature-discovery` component in standalone mode.
+Once this repo is updated, you can begin installing packages from it to deploy GFD in standalone mode.
 
 The most basic installation command without any options is then:
 
@@ -310,7 +308,7 @@ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
 ```
 
 Disabling auto-deployment of NFD and running with a MIG strategy of 'mixed' in
-the default namespace.
+the default namespace:
 
 ```shell
 helm upgrade -i nvdp nvdp/nvidia-device-plugin \
@@ -327,10 +325,10 @@ version (e.g. `<version>-rc.1`). Full releases will be listed without this.
 
 ### Deploying via `helm install` with a direct URL to the `helm` package
 
-If you prefer not to install from the `nvidia-device-plugin` `helm` repo, you can
-run `helm install` directly against the tarball of the plugin's `helm` package.
+If you prefer not to install from the `nvidia-device-plugin` helm repo, you can
+run `helm install` directly against the tarball of the plugin's helm package.
 The example below installs the same chart as the method above, except that
-it uses a direct URL to the `helm` chart instead of via the `helm` repo.
+it uses a direct URL to the helm chart instead of via the helm repo.
 
 Using the default values for the flags:
 
