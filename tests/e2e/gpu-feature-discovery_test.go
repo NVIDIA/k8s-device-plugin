@@ -67,7 +67,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 		"nodes",
 		"namespaces",
 		"deployments",
-		"demonsets",
+		"daemonsets",
 		"nodeFeature",
 	}
 
