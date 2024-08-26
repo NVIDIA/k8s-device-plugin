@@ -26,8 +26,7 @@
 
 NVIDIA GPU Feature Discovery for Kubernetes is a software component that allows
 you to automatically generate labels for the set of GPUs available on a node.
-It leverages the [Node Feature
-Discovery](https://github.com/kubernetes-sigs/node-feature-discovery)
+It leverages the [Node Feature Discovery](https://github.com/kubernetes-sigs/node-feature-discovery)
 to perform this labeling.
 
 ## Beta Version
@@ -40,14 +39,15 @@ to ease the transition.
 
 The list of prerequisites for running the NVIDIA GPU Feature Discovery is
 described below:
-* nvidia-docker version > 2.0 (see how to [install](https://github.com/NVIDIA/nvidia-docker)
+
+- nvidia-docker version > 2.0 (see how to [install](https://github.com/NVIDIA/nvidia-docker)
 and its [prerequisites](https://github.com/nvidia/nvidia-docker/wiki/Installation-\(version-2.0\)#prerequisites))
-* docker configured with nvidia as the [default runtime](https://github.com/NVIDIA/nvidia-docker/wiki/Advanced-topics#default-runtime).
-* Kubernetes version >= 1.10
-* NVIDIA device plugin for Kubernetes (see how to [setup](https://github.com/NVIDIA/k8s-device-plugin))
-* NFD deployed on each node you want to label with the local source configured
-  * When deploying GPU feature discovery with helm (as described below) we provide a way to automatically deploy NFD for you
-  * To deploy NFD yourself, please see https://github.com/kubernetes-sigs/node-feature-discovery
+- docker configured with nvidia as the [default runtime](https://github.com/NVIDIA/nvidia-docker/wiki/Advanced-topics#default-runtime).
+- Kubernetes version >= 1.10
+- NVIDIA device plugin for Kubernetes (see how to [setup](https://github.com/NVIDIA/k8s-device-plugin))
+- NFD deployed on each node you want to label with the local source configured
+  - When deploying GPU feature discovery with helm (as described below) we provide a way to automatically deploy NFD for you
+  - To deploy NFD yourself, please see https://github.com/kubernetes-sigs/node-feature-discovery
 
 ## Quick Start
 
@@ -62,7 +62,7 @@ is running on every node you want to label. NVIDIA GPU Feature Discovery use
 the `local` source so be sure to mount volumes. See
 https://github.com/kubernetes-sigs/node-feature-discovery for more details.
 
-You also need to configure the `Node Feature Discovery` to only expose vendor
+You also need to configure the Node Feature Discovery to only expose vendor
 IDs in the PCI source. To do so, please refer to the Node Feature Discovery
 documentation.
 
@@ -70,7 +70,7 @@ The following command will deploy NFD with the minimum required set of
 parameters to run `gpu-feature-discovery`.
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.15.0/deployments/static/nfd.yaml
+kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.16.2/deployments/static/nfd.yaml
 ```
 
 **Note:** This is a simple static daemonset meant to demonstrate the basic
@@ -94,7 +94,7 @@ or as a Job.
 #### Daemonset
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.15.0/deployments/static/gpu-feature-discovery-daemonset.yaml
+kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.16.2/deployments/static/gpu-feature-discovery-daemonset.yaml
 ```
 
 **Note:** This is a simple static daemonset meant to demonstrate the basic
@@ -108,10 +108,10 @@ You must change the `NODE_NAME` value in the template to match the name of the
 node you want to label:
 
 ```shell
-$ export NODE_NAME=<your-node-name>
-$ curl https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.15.0/deployments/static/gpu-feature-discovery-job.yaml.template \
+export NODE_NAME=<your-node-name>
+curl https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.16.2/deployments/static/gpu-feature-discovery-job.yaml.template \
     | sed "s/NODE_NAME/${NODE_NAME}/" > gpu-feature-discovery-job.yaml
-$ kubectl apply -f gpu-feature-discovery-job.yaml
+kubectl apply -f gpu-feature-discovery-job.yaml
 ```
 
 **Note:** This method should only be used for testing and not deployed in a
@@ -251,6 +251,7 @@ is partitioned into 7 equal sized MIG devices (56 total).
 
 With this strategy, a separate set of labels for each MIG device type is
 generated. The name of each MIG device type is defines as follows:
+
 ```
 MIG_TYPE=mig-<slice_count>g.<memory_size>.gb
 e.g.  MIG_TYPE=mig-3g.20gb
@@ -272,28 +273,27 @@ e.g.  MIG_TYPE=mig-3g.20gb
 
 ## Deployment via `helm`
 
-The preferred method to deploy `gpu-feature-discovery` is as a daemonset using `helm`.
+The preferred method to deploy GFD is as a daemonset using `helm`.
 Instructions for installing `helm` can be found
 [here](https://helm.sh/docs/intro/install/).
 
-As of `v0.15.0`, the device plugin's helm chart has integrated support to deploy
-[`gpu-feature-discovery`](https://gitlab.com/nvidia/kubernetes/gpu-feature-discovery/-/tree/main)
+As of `v0.15.0`, the device plugin's helm chart has integrated support to deploy GFD.
 
-When gpu-feature-discovery in deploying standalone, begin by setting up the
+When GFD is deployed standalone, begin by setting up the
 plugin's `helm` repository and updating it at follows:
 
 ```shell
-$ helm repo add nvdp https://nvidia.github.io/k8s-device-plugin
-$ helm repo update
+helm repo add nvdp https://nvidia.github.io/k8s-device-plugin
+helm repo update
 ```
 
-Then verify that the latest release (`v0.15.0`) of the plugin is available
-(Note that this includes the GFD chart):
+Then verify that the latest release of the plugin is available
+(Note that this includes GFD ):
 
 ```shell
 $ helm search repo nvdp --devel
 NAME                     	  CHART VERSION  APP VERSION	DESCRIPTION
-nvdp/nvidia-device-plugin	  0.15.0	 0.15.0		A Helm chart for ...
+nvdp/nvidia-device-plugin	  0.16.2	 0.16.2		A Helm chart for ...
 ```
 
 Once this repo is updated, you can begin installing packages from it to deploy
@@ -302,8 +302,8 @@ the `gpu-feature-discovery` component in standalone mode.
 The most basic installation command without any options is then:
 
 ```shell
-$ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-  --version 0.15.0 \
+helm upgrade -i nvdp nvdp/nvidia-device-plugin \
+  --version 0.16.2 \
   --namespace gpu-feature-discovery \
   --create-namespace \
   --set devicePlugin.enabled=false
@@ -313,12 +313,12 @@ Disabling auto-deployment of NFD and running with a MIG strategy of 'mixed' in
 the default namespace.
 
 ```shell
-$ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
-    --version=0.15.0 \
-    --set allowDefaultNamespace=true \
-    --set nfd.enabled=false \
-    --set migStrategy=mixed \
-    --set devicePlugin.enabled=false
+helm upgrade -i nvdp nvdp/nvidia-device-plugin \
+  --version=0.16.2 \
+  --set allowDefaultNamespace=true \
+  --set nfd.enabled=false \
+  --set migStrategy=mixed \
+  --set devicePlugin.enabled=false
 ```
 
 **Note:** You only need the to pass the `--devel` flag to `helm search repo`
@@ -335,11 +335,11 @@ it uses a direct URL to the `helm` chart instead of via the `helm` repo.
 Using the default values for the flags:
 
 ```shell
-$ helm upgrade -i nvdp \
-    --namespace gpu-feature-discovery \
-    --set devicePlugin.enabled=false \
-    --create-namespace \
-    https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.15.0.tgz
+helm upgrade -i nvdp \
+  --namespace gpu-feature-discovery \
+  --set devicePlugin.enabled=false \
+  --create-namespace \
+  https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.16.2.tgz
 ```
 
 ## Building and running locally on your native machine

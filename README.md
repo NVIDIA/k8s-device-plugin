@@ -948,8 +948,8 @@ nvidia.com/gpu.product = A100-SXM4-40GB-MIG-1g.5gb-SHARED
 
 #### Deploying gpu-feature-discovery in standalone mode
 
-As of v0.16.2, the device plugin's helm chart has integrated support to deploy
-[`gpu-feature-discovery`](https://gitlab.com/nvidia/kubernetes/gpu-feature-discovery/-/tree/main)
+As of v0.15.0, the device plugin's helm chart has integrated support to deploy
+[`gpu-feature-discovery`](/docs/gpu-feature-discovery/README.md#overview)
 
 When gpu-feature-discovery in deploying standalone, begin by setting up the
 plugin's `helm` repository and updating it at follows:
