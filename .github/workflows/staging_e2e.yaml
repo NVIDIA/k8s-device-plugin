@@ -60,7 +60,7 @@ jobs:
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
           E2E_IMAGE_REPO: ghcr.io/nvidia/k8s-device-plugin
-          E2E_IMAGE_TAG: ${COMMIT_SHORT_SHA}-ubuntu22.04
+          E2E_IMAGE_TAG: ${COMMIT_SHORT_SHA}-ubi8
           LOG_ARTIFACTS: ${{ github.workspace }}/e2e_logs
         run: |
           make test-e2e
@@ -84,5 +84,5 @@ jobs:
           channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
           slack-message: |
             :red_target: On repository ${{ github.repository }} the Workflow *${{ github.workflow }}* has failed.
-  
+
             Details: ${{ env.SUMMARY_URL }}
