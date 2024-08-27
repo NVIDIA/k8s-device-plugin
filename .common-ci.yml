@@ -69,9 +69,9 @@ trigger-pipeline:
     - when: always
 
 # The .dist- dummy steps set the DIST variable for the targeted distribution.
-.dist-ubi8:
+.dist-ubi9:
   variables:
-    DIST: "ubi8"
+    DIST: "ubi9"
 
 # Define the platform targets
 .platform-amd64:
@@ -119,22 +119,22 @@ trigger-pipeline:
     - .scan-base
 
 # Define the scan targets
-scan-ubi8-amd64:
+scan-ubi9-amd64:
   extends:
     - .scan
-    - .dist-ubi8
+    - .dist-ubi9
     - .platform-amd64
   needs:
-    - image-ubi8
+    - image-ubi9
 
-scan-ubi8-arm64:
+scan-ubi9-arm64:
   extends:
     - .scan
-    - .dist-ubi8
+    - .dist-ubi9
     - .platform-arm64
   needs:
-    - image-ubi8
-    - scan-ubi8-amd64
+    - image-ubi9
+    - scan-ubi9-amd64
 
 # Download the regctl binary for use in the release steps
 .regctl-setup:
@@ -203,9 +203,9 @@ scan-ubi8-arm64:
       variables:
         OUT_IMAGE_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
 
-release:staging-ubi8:
+release:staging-ubi9:
   extends:
     - .release:staging
-    - .dist-ubi8
+    - .dist-ubi9
   needs:
-    - image-ubi8
+    - image-ubi9
