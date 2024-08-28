@@ -8,9 +8,8 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
-
-	"golang.org/x/exp/slices"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
@@ -943,6 +942,7 @@ func mergeUpgradeOptions(chartSpec *ChartSpec, upgradeOptions *action.Upgrade) {
 	upgradeOptions.Force = chartSpec.Force
 	upgradeOptions.ResetValues = chartSpec.ResetValues
 	upgradeOptions.ReuseValues = chartSpec.ReuseValues
+	upgradeOptions.ResetThenReuseValues = chartSpec.ResetThenReuseValues
 	upgradeOptions.Recreate = chartSpec.Recreate
 	upgradeOptions.MaxHistory = chartSpec.MaxHistory
 	upgradeOptions.Atomic = chartSpec.Atomic
