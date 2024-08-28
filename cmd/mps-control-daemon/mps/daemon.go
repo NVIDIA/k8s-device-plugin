@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/opencontainers/selinux/go-selinux"
 	"k8s.io/klog/v2"
 
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
@@ -37,6 +38,8 @@ const (
 
 	computeModeExclusiveProcess = computeMode("EXCLUSIVE_PROCESS")
 	computeModeDefault          = computeMode("DEFAULT")
+
+	unprivilegedContainerSELinuxLabel = "system_u:object_r:container_file_t:s0"
 )
 
 // Daemon represents an MPS daemon.
@@ -98,7 +101,7 @@ func (d *Daemon) Start() error {
 		return fmt.Errorf("error creating directory %v: %w", pipeDir, err)
 	}
 
-	if err := setSELinuxContext(pipeDir, "container_file_t"); err != nil {
+	if err := setSELinuxContext(pipeDir, unprivilegedContainerSELinuxLabel); err != nil {
 		return fmt.Errorf("error setting SELinux context: %w", err)
 	}
 
@@ -151,14 +154,7 @@ func setSELinuxContext(path string, context string) error {
 	}
 
 	klog.InfoS("SELinux enabled, setting context", "path", path, "context", context)
-	chconCmd := exec.Command("chcon", "-R", "-t", context, path)
-	output, err := chconCmd.CombinedOutput()
-	if err != nil {
-		klog.Errorf("\n%v", string(output))
-		return err
-	}
-
-	return nil
+	return selinux.Chcon(path, context, true)
 }
 
 // Stop ensures that the MPS daemon is quit.

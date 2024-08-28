@@ -38,7 +38,8 @@ var GPUJob = &batchv1.Job{
 				Containers: []v1.Container{
 					{
 						Name:  "cuda-container",
-						Image: "nvcr.io/nvidia/k8s/cuda-sample:vectoradd-cuda10.2",
+						Image: "nvcr.io/nvidia/k8s/cuda-sample:nbody-cuda11.7.1-ubuntu18.04",
+						Args:  []string{"--benchmark", "--numbodies=10000"},
 						Resources: v1.ResourceRequirements{
 							Limits: v1.ResourceList{
 								"nvidia.com/gpu": resource.MustParse("1"),
