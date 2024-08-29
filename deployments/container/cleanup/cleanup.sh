@@ -35,21 +35,21 @@ for key in $(rpm -qa gpg-pubkey*); do
     fi
 done
 
-dnf clean all
+dnf clean -y all
 rm -rf /var/cache/dnf
 
 dnf install -y microdnf
 
-microdnf remove $(rpm -q --whatrequires dnf)
+microdnf remove -y $(rpm -q --whatrequires dnf)
 rpm -e dnf
 
-microdnf remove \
+microdnf remove -y \
     $(rpm -q --whatrequires /usr/libexec/platform-python) \
     $(rpm -q --whatrequires 'python(abi)') \
     python* \
     dnf*
 
-microdnf remove \
+microdnf remove -y \
     $(rpm -qa | sort | grep -v -f package-names.minimal -e gpg-pubkey)
 
 # We don't want to add third-party content to the base image and only remove packages.

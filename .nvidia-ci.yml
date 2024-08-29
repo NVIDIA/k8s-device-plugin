@@ -65,10 +65,10 @@ variables:
     - regctl registry login "${OUT_REGISTRY}" -u "${OUT_REGISTRY_USER}" -p "${OUT_REGISTRY_TOKEN}"
     - make -f deployments/container/Makefile IMAGE=${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION}-${DIST} OUT_IMAGE=${OUT_IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}-${DIST} push-${DIST}
 
-image-ubi8:
+image-ubi9:
   extends:
     - .image-pull
-    - .dist-ubi8
+    - .dist-ubi9
 
 # We skip the integration tests for the internal CI:
 .integration:
@@ -113,10 +113,10 @@ image-ubi8:
 
 # Define the external release targets
 # Release to NGC
-release:ngc-ubi8:
+release:ngc-ubi9:
   extends:
     - .release:ngc
-    - .dist-ubi8
+    - .dist-ubi9
 
 # Define the external image signing steps for NGC
 # Download the ngc cli binary for use in the sign steps
@@ -160,13 +160,13 @@ sign:ngc-short-tag:
   extends:
     - .sign:ngc
   needs:
-    - release:ngc-ubi8
+    - release:ngc-ubi9
   variables:
     IMAGE_TAG: "${CI_COMMIT_TAG}"
 
-sign:ngc-ubi8:
+sign:ngc-ubi9:
   extends:
-    - .dist-ubi8
+    - .dist-ubi9
     - .sign:ngc
   needs:
-    - release:ngc-ubi8
+    - release:ngc-ubi9
