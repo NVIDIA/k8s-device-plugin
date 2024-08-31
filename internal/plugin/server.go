@@ -168,7 +168,16 @@ func (plugin *NvidiaDevicePlugin) waitForMPSDaemon() error {
 	if plugin.config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
 		return nil
 	}
-	// TODO: Check the .ready file here.
+
+	readyFile := mps.ReadyFile{}
+	matches, err := readyFile.Matches(plugin.config)
+	if err != nil {
+		return fmt.Errorf("failed to load .ready config: %w", err)
+	}
+	if !matches {
+		klog.InfoS("mismatched sharing configs", "config", plugin.config)
+		return fmt.Errorf("mismatched sharing config; assuming MPS is not ready")
+	}
 	// TODO: Have some retry strategy here.
 	if err := plugin.mpsDaemon.AssertHealthy(); err != nil {
 		return fmt.Errorf("error checking MPS daemon health: %w", err)

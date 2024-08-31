@@ -30,6 +30,7 @@ import (
 
 type Manager interface {
 	Daemons() ([]*Daemon, error)
+	AssertReady() error
 }
 
 type manager struct {
@@ -105,7 +106,25 @@ func (m *manager) Daemons() ([]*Daemon, error) {
 	return daemons, nil
 }
 
+func (m *manager) AssertReady() error {
+	readyFile := ReadyFile{}
+
+	matched, err := readyFile.Matches(m.config)
+	if err != nil {
+		return fmt.Errorf("failed to load .ready config: %w", err)
+	}
+	if !matched {
+		return fmt.Errorf("mismatched sharing config; assuming MPS is not ready")
+	}
+	return nil
+}
+
 // Daemons always returns an empty slice for a nullManager.
 func (m *nullManager) Daemons() ([]*Daemon, error) {
 	return nil, nil
+}
+
+// AssertReady always returns nil for a nullManager.
+func (m *nullManager) AssertReady() error {
+	return nil
 }
