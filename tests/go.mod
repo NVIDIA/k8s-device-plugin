@@ -3,7 +3,7 @@ module github.com/NVIDIA/k8s-device-plugin/tests
 go 1.22.2
 
 require (
-	github.com/gruntwork-io/terratest v0.47.0
+	github.com/gruntwork-io/terratest v0.47.1
 	github.com/mittwald/go-helm-client v0.12.10
 	github.com/onsi/ginkgo/v2 v2.20.1
 	github.com/onsi/gomega v1.34.1

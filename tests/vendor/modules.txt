@@ -89,6 +89,7 @@ github.com/aws/aws-sdk-go/service/iam
 github.com/aws/aws-sdk-go/service/kms
 github.com/aws/aws-sdk-go/service/lambda
 github.com/aws/aws-sdk-go/service/rds
+github.com/aws/aws-sdk-go/service/route53
 github.com/aws/aws-sdk-go/service/s3
 github.com/aws/aws-sdk-go/service/s3/s3iface
 github.com/aws/aws-sdk-go/service/s3/s3manager
@@ -325,7 +326,7 @@ github.com/gregjones/httpcache
 ## explicit; go 1.13
 github.com/gruntwork-io/go-commons/collections
 github.com/gruntwork-io/go-commons/errors
-# github.com/gruntwork-io/terratest v0.47.0
+# github.com/gruntwork-io/terratest v0.47.1
 ## explicit; go 1.21
 github.com/gruntwork-io/terratest/modules/aws
 github.com/gruntwork-io/terratest/modules/collections
