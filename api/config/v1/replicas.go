@@ -299,9 +299,9 @@ func (s *ReplicatedDevices) UnmarshalJSON(b []byte) error {
 		result := make([]ReplicatedDeviceRef, len(slice))
 		for i, s := range slice {
 			// Match a uint as a GPU index and convert it to a string
-			var index uint
+			var index uint64
 			if err = json.Unmarshal(s, &index); err == nil {
-				result[i] = ReplicatedDeviceRef(strconv.Itoa(int(index)))
+				result[i] = ReplicatedDeviceRef(strconv.FormatUint(index, 10))
 				continue
 			}
 			// Match strings as valid entries if they are GPU indices, MIG indices, or UUIDs
