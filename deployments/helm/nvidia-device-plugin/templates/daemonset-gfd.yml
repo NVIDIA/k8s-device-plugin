@@ -182,6 +182,8 @@ spec:
             mountPath: "/etc/kubernetes/node-feature-discovery/features.d"
           - name: host-sys
             mountPath: "/sys"
+          - name: nvidia-imex-dir
+            mountPath: "/etc/nvidia-imex"
         {{- if $options.hasConfigMap }}
           - name: available-configs
             mountPath: /available-configs
@@ -199,6 +201,10 @@ spec:
         - name: host-sys
           hostPath:
             path: "/sys"
+        - name: nvidia-imex-dir
+          type: DirectoryOrCreate
+          hostPath:
+            path: {{ clean ( join "/" ( list "/" .Values.nvidiaDriverRoot "/etc/nvidia-imex" ) ) | quote }}
       {{- if $options.hasConfigMap }}
         - name: available-configs
           configMap:

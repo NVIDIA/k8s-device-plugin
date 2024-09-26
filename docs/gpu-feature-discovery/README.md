@@ -210,6 +210,8 @@ their meaning:
 | nvidia.com/gpu.memory          | Integer    | Memory of the GPU in Mb                                                                                                                                                                | 2048           |
 | nvidia.com/gpu.product         | String     | Model of the GPU                                                                                                                                                                       | GeForce-GT-710 |
 | nvidia.com/gpu.mode            | String     | Display or Compute Mode of the GPU. Details of the GPU modes can be found [here](https://docs.nvidia.com/grid/13.0/grid-gpumodeswitch-user-guide/index.html#compute-and-graphics-mode) | compute        |
+| nvidia.com/gpu.clique          | String     | GPUFabric ClusterUUID + CliqueID                                                                                                                               | 7b968a6d-c8aa-45e1-9e07-e1e51be99c31.1 |
+| nvidia.com/gpu.imex-domain     | String     | IMEX domain Ip list(Hashed) + CliqueID                                                                                                                         | 79b326e7-d566-3483-c2a3-9b38fa5cb1c8.1 |
 
 Depending on the MIG strategy used, the following set of labels may also be
 available (or override the default values for some of the labels listed above):

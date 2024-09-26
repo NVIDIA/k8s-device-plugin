@@ -68,3 +68,10 @@ func (d vfioDevice) IsMigCapable() (bool, error) {
 func (d vfioDevice) GetPCIClass() (uint32, error) {
 	return d.nvidiaPCIDevice.Class, nil
 }
+
+func (d vfioDevice) IsFabricAttached() (bool, error) {
+	return false, nil
+}
+func (d vfioDevice) GetFabricIDs() (string, string, error) {
+	return "", "", fmt.Errorf("GetFabricIDs is not supported for vfio devices")
+}

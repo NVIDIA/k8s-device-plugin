@@ -108,6 +108,10 @@ type GFDCommandLineFlags struct {
 	SleepInterval   *Duration `json:"sleepInterval"   yaml:"sleepInterval"`
 	OutputFile      *string   `json:"outputFile"      yaml:"outputFile"`
 	MachineTypeFile *string   `json:"machineTypeFile" yaml:"machineTypeFile"`
+	// ImexNodesConfigFile is the path to a file containing the IP addresses of nodes
+	// that are part of the IMEX domain.
+	// Note that this is the absolute path to the file in the device plugin container.
+	ImexNodesConfigFile *string `json:"imexNodesConfigFile" yaml:"imexNodesConfigFile"`
 }
 
 // UpdateFromCLIFlags updates Flags from settings in the cli Flags if they are set.
@@ -162,6 +166,8 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.GFD.Oneshot, c, n)
 			case "output-file":
 				updateFromCLIFlag(&f.GFD.OutputFile, c, n)
+			case "imex-nodes-config-file":
+				updateFromCLIFlag(&f.GFD.ImexNodesConfigFile, c, n)
 			case "sleep-interval":
 				updateFromCLIFlag(&f.GFD.SleepInterval, c, n)
 			case "no-timestamp":
