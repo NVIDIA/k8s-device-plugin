@@ -156,3 +156,4 @@ cdi:
   # nvidiaHookPath specifies the path to the nvidia-cdi-hook or nvidia-ctk executables on the host.
   # This is required to ensure that the generated CDI specification refers to the correct CDI hooks.
   nvidiaHookPath: null
+  annotationPrefix: null

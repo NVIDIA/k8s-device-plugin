@@ -169,6 +169,10 @@ spec:
           - name: NVIDIA_CDI_HOOK_PATH
             value: {{ .Values.cdi.nvidiaHookPath }}
         {{- end }}
+        {{- if typeIs "string" .Values.cdi.annotationPrefix }}
+          - name: CDI_ANNOTATION_PREFIX
+            value: {{ .Values.cdi.annotationPrefix | quote }}
+        {{- end }}
         {{- if typeIs "bool" .Values.gdsEnabled }}
           - name: GDS_ENABLED
             value: {{ .Values.gdsEnabled | quote }}
