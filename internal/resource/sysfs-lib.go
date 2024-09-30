@@ -64,9 +64,8 @@ func (l *vfioLib) GetDevices() ([]Device, error) {
 }
 
 // GetCudaDriverVersion is not supported
-func (l *vfioLib) GetCudaDriverVersion() (*uint, *uint, error) {
-	unknown := uint(0)
-	return &unknown, &unknown, nil
+func (l *vfioLib) GetCudaDriverVersion() (int, int, error) {
+	return 0, 0, nil
 }
 
 // GetDriverVersion is not supported
