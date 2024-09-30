@@ -36,15 +36,15 @@ func NewNVMLManager(nvmllib nvml.Interface, devicelib device.Interface) Manager 
 }
 
 // GetCudaDriverVersion : Return the cuda v using NVML
-func (l nvmlLib) GetCudaDriverVersion() (*uint, *uint, error) {
+func (l nvmlLib) GetCudaDriverVersion() (int, int, error) {
 	v, ret := l.Interface.SystemGetCudaDriverVersion()
 	if ret != nvml.SUCCESS {
-		return nil, nil, ret
+		return 0, 0, ret
 	}
-	major := uint(v / 1000)
-	minor := uint(v % 1000 / 10)
+	major := v / 1000
+	minor := v % 1000 / 10
 
-	return &major, &minor, nil
+	return major, minor, nil
 }
 
 // GetDevices returns the NVML devices for the manager

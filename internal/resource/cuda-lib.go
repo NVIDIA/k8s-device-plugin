@@ -51,16 +51,16 @@ func (l *cudaLib) GetDevices() ([]Device, error) {
 }
 
 // GetCudaDriverVersion returns the CUDA driver version
-func (l *cudaLib) GetCudaDriverVersion() (*uint, *uint, error) {
+func (l *cudaLib) GetCudaDriverVersion() (int, int, error) {
 	version, r := cuda.DriverGetVersion()
 	if r != cuda.SUCCESS {
-		return nil, nil, fmt.Errorf("failed to get driver version: %v", r)
+		return 0, 0, fmt.Errorf("failed to get driver version: %v", r)
 	}
 
-	major := uint(version) / 1000
-	minor := uint(version) % 100 / 10
+	major := version / 1000
+	minor := version % 100 / 10
 
-	return &major, &minor, nil
+	return major, minor, nil
 }
 
 // GetDriverVersion returns the driver version.

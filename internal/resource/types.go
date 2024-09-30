@@ -18,13 +18,13 @@ package resource
 
 // Manager defines an interface for managing devices
 //
-//go:generate moq -out manager_mock.go . Manager
+//go:generate moq -rm -out manager_mock.go . Manager
 type Manager interface {
 	Init() error
 	Shutdown() error
 	GetDevices() ([]Device, error)
 	GetDriverVersion() (string, error)
-	GetCudaDriverVersion() (*uint, *uint, error)
+	GetCudaDriverVersion() (int, int, error)
 }
 
 // Device defines an interface for a device with which labels are associated
