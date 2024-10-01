@@ -74,6 +74,12 @@ func main() {
 			Usage:   "Do not add the timestamp to the labels",
 			EnvVars: []string{"GFD_NO_TIMESTAMP"},
 		},
+		&cli.BoolFlag{
+			Name:    "no-cleanup-on-exit",
+			Value:   false,
+			Usage:   "Do not remove the generated label file",
+			EnvVars: []string{"GFD_NO_CLEANUP_ON_EXIT"},
+		},
 		&cli.DurationFlag{
 			Name:    "sleep-interval",
 			Value:   60 * time.Second,
@@ -229,6 +235,9 @@ type gfd struct {
 
 func (d *gfd) run(sigs chan os.Signal) (bool, error) {
 	defer func() {
+		if d.config.Flags.GFD.NoCleanupOnExit != nil && *d.config.Flags.GFD.NoCleanupOnExit {
+			return
+		}
 		if d.config.Flags.UseNodeFeatureAPI != nil && *d.config.Flags.UseNodeFeatureAPI {
 			return
 		}
