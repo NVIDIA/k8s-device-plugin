@@ -123,10 +123,8 @@ func NewManagerMockWithDevices(devices ...resource.Device) *ManagerMock {
 		GetDevicesFunc: func() ([]resource.Device, error) {
 			return devices, nil
 		},
-		GetCudaDriverVersionFunc: func() (*uint, *uint, error) {
-			var major uint = 8
-			var minor uint = 0
-			return &major, &minor, nil
+		GetCudaDriverVersionFunc: func() (int, int, error) {
+			return 8, 0, nil
 		},
 	}}
 	return &manager

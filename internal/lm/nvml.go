@@ -121,17 +121,17 @@ func newVersionLabeler(manager resource.Manager) (Labeler, error) {
 		"nvidia.com/cuda.driver.major":  driverMajor,
 		"nvidia.com/cuda.driver.minor":  driverMinor,
 		"nvidia.com/cuda.driver.rev":    driverRev,
-		"nvidia.com/cuda.runtime.major": fmt.Sprintf("%d", *cudaMajor),
-		"nvidia.com/cuda.runtime.minor": fmt.Sprintf("%d", *cudaMinor),
+		"nvidia.com/cuda.runtime.major": fmt.Sprintf("%d", cudaMajor),
+		"nvidia.com/cuda.runtime.minor": fmt.Sprintf("%d", cudaMinor),
 
 		// New labels
 		"nvidia.com/cuda.driver-version.major":    driverMajor,
 		"nvidia.com/cuda.driver-version.minor":    driverMinor,
 		"nvidia.com/cuda.driver-version.revision": driverRev,
 		"nvidia.com/cuda.driver-version.full":     driverVersion,
-		"nvidia.com/cuda.runtime-version.major":   fmt.Sprintf("%d", *cudaMajor),
-		"nvidia.com/cuda.runtime-version.minor":   fmt.Sprintf("%d", *cudaMinor),
-		"nvidia.com/cuda.runtime-version.full":    fmt.Sprintf("%d.%d", *cudaMajor, *cudaMinor),
+		"nvidia.com/cuda.runtime-version.major":   fmt.Sprintf("%d", cudaMajor),
+		"nvidia.com/cuda.runtime-version.minor":   fmt.Sprintf("%d", cudaMinor),
+		"nvidia.com/cuda.runtime-version.full":    fmt.Sprintf("%d.%d", cudaMajor, cudaMinor),
 	}
 	return labels, nil
 }
