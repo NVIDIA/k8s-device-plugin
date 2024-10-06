@@ -14,10 +14,13 @@ import (
 
 // Vpc is an Amazon Virtual Private Cloud.
 type Vpc struct {
-	Id      string            // The ID of the VPC
-	Name    string            // The name of the VPC
-	Subnets []Subnet          // A list of subnets in the VPC
-	Tags    map[string]string // The tags associated with the VPC
+	Id                   string            // The ID of the VPC
+	Name                 string            // The name of the VPC
+	Subnets              []Subnet          // A list of subnets in the VPC
+	Tags                 map[string]string // The tags associated with the VPC
+	CidrBlock            *string           // The primary IPv4 CIDR block for the VPC.
+	CidrAssociations     []*string         // Information about the IPv4 CIDR blocks associated with the VPC.
+	Ipv6CidrAssociations []*string         // Information about the IPv6 CIDR blocks associated with the VPC.
 }
 
 // Subnet is a subnet in an availability zone.
@@ -105,7 +108,31 @@ func GetVpcsE(t testing.TestingT, filters []*ec2.Filter, region string) ([]*Vpc,
 			return nil, err
 		}
 
-		retVal[i] = &Vpc{Id: aws.StringValue(vpc.VpcId), Name: FindVpcName(vpc), Subnets: subnets, Tags: tags}
+		// cidr block associations
+		var cidrBlockAssociations = func() (list []*string) {
+			for _, cidr := range vpc.CidrBlockAssociationSet {
+				list = append(list, cidr.CidrBlock)
+			}
+			return
+		}()
+
+		// ipv6 cidr block associations
+		var Ipv6CidrAssociations = func() (list []*string) {
+			for _, cidr := range vpc.Ipv6CidrBlockAssociationSet {
+				list = append(list, cidr.Ipv6CidrBlock)
+			}
+			return
+		}()
+
+		retVal[i] = &Vpc{
+			Id:                   aws.StringValue(vpc.VpcId),
+			Name:                 FindVpcName(vpc),
+			Subnets:              subnets,
+			Tags:                 tags,
+			CidrBlock:            vpc.CidrBlock,
+			CidrAssociations:     cidrBlockAssociations,
+			Ipv6CidrAssociations: Ipv6CidrAssociations,
+		}
 	}
 
 	return retVal, nil
