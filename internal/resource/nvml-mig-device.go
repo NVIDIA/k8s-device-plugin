@@ -124,13 +124,17 @@ func totalMemory(attr map[string]interface{}) (uint64, error) {
 		return 0, fmt.Errorf("no 'memory' attribute available")
 	}
 
-	switch t := totalMemory.(type) {
+	switch totalMemory := totalMemory.(type) {
 	case uint64:
-		return totalMemory.(uint64), nil
+		return totalMemory, nil
 	case int:
-		return uint64(totalMemory.(int)), nil
+		if totalMemory < 0 {
+			return 0, fmt.Errorf("unexpected memory value %v", totalMemory)
+		}
+		//nolint:gosec  // Here we are sure that the value will fit in memory and be positive.
+		return uint64(totalMemory), nil
 	default:
-		return 0, fmt.Errorf("unsupported attribute type %v", t)
+		return 0, fmt.Errorf("unsupported attribute type %v", totalMemory)
 	}
 }
 

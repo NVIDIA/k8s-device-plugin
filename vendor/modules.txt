@@ -14,7 +14,7 @@ github.com/NVIDIA/go-nvlib/pkg/pciids
 ## explicit; go 1.20
 github.com/NVIDIA/go-nvml/pkg/dl
 github.com/NVIDIA/go-nvml/pkg/nvml
-# github.com/NVIDIA/nvidia-container-toolkit v1.16.1
+# github.com/NVIDIA/nvidia-container-toolkit v1.16.2
 ## explicit; go 1.20
 github.com/NVIDIA/nvidia-container-toolkit/internal/config/image
 github.com/NVIDIA/nvidia-container-toolkit/internal/discover
@@ -176,7 +176,7 @@ github.com/xrash/smetrics
 # golang.org/x/mod v0.20.0
 ## explicit; go 1.18
 golang.org/x/mod/semver
-# golang.org/x/net v0.27.0
+# golang.org/x/net v0.29.0
 ## explicit; go 1.18
 golang.org/x/net/context
 golang.org/x/net/http/httpguts
@@ -189,15 +189,15 @@ golang.org/x/net/trace
 ## explicit; go 1.18
 golang.org/x/oauth2
 golang.org/x/oauth2/internal
-# golang.org/x/sys v0.22.0
+# golang.org/x/sys v0.25.0
 ## explicit; go 1.18
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/term v0.22.0
+# golang.org/x/term v0.24.0
 ## explicit; go 1.18
 golang.org/x/term
-# golang.org/x/text v0.16.0
+# golang.org/x/text v0.18.0
 ## explicit; go 1.18
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform

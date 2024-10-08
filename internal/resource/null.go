@@ -47,8 +47,8 @@ func (l *null) GetDevices() ([]Device, error) {
 }
 
 // GetCudaDriverVersion is not supported
-func (l *null) GetCudaDriverVersion() (*uint, *uint, error) {
-	return nil, nil, fmt.Errorf("GetCudaDriverVersion is unsupported")
+func (l *null) GetCudaDriverVersion() (int, int, error) {
+	return 0, 0, fmt.Errorf("GetCudaDriverVersion is unsupported")
 }
 
 // GetDriverVersion is not supported
