@@ -441,7 +441,6 @@ func listFileInRemoteDir(t testing.TestingT, sshSession *SshSession, options Scp
 
 // Added based on code: https://github.com/bramvdbogaerde/go-scp/pull/6/files
 func copyFileFromRemote(t testing.TestingT, sshSession *SshSession, file *os.File, remotePath string, useSudo bool) error {
-	logger.Logf(t, "Running command %s on %s@%s", sshSession.Options.Command, sshSession.Options.Username, sshSession.Options.Address)
 	if err := setUpSSHClient(sshSession); err != nil {
 		return err
 	}
@@ -454,6 +453,8 @@ func copyFileFromRemote(t testing.TestingT, sshSession *SshSession, file *os.Fil
 	if useSudo {
 		command = fmt.Sprintf("sudo %s", command)
 	}
+
+	logger.Logf(t, "Running command %s on %s@%s", command, sshSession.Options.Username, sshSession.Options.Address)
 
 	r, err := sshSession.Session.Output(command)
 	if err != nil {
