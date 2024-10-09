@@ -34,7 +34,7 @@ func (m *tegramanager) GetPlugins() ([]plugin.Interface, error) {
 
 	var plugins []plugin.Interface
 	for _, r := range rms {
-		plugin, err := plugin.NewNvidiaDevicePlugin(m.config, r, m.cdiHandler)
+		plugin, err := plugin.NewNvidiaDevicePlugin(m.config, m.kubeletSocket, r, m.cdiHandler)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create plugin: %w", err)
 		}

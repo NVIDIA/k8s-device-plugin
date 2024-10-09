@@ -38,6 +38,8 @@ type manager struct {
 
 	cdiHandler cdi.Interface
 	config     *spec.Config
+
+	kubeletSocket string
 }
 
 // New creates a new plugin manager with the supplied options.
