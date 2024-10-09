@@ -31,6 +31,7 @@ import (
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mps"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
+	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 
 	"github.com/google/uuid"
@@ -67,10 +68,12 @@ type NvidiaDevicePlugin struct {
 
 	mpsDaemon   *mps.Daemon
 	mpsHostRoot mps.Root
+
+	imexChannels imex.Channels
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(config *spec.Config, kubeletSocket string, resourceManager rm.ResourceManager, cdiHandler cdi.Interface) (*NvidiaDevicePlugin, error) {
+func NewNvidiaDevicePlugin(config *spec.Config, kubeletSocket string, resourceManager rm.ResourceManager, cdiHandler cdi.Interface, imexChannels imex.Channels) (*NvidiaDevicePlugin, error) {
 	_, name := resourceManager.Resource().Split()
 
 	deviceListStrategies, _ := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
@@ -99,6 +102,8 @@ func NewNvidiaDevicePlugin(config *spec.Config, kubeletSocket string, resourceMa
 		socket:               pluginPath + ".sock",
 		cdiHandler:           cdiHandler,
 		cdiAnnotationPrefix:  *config.Flags.Plugin.CDIAnnotationPrefix,
+
+		imexChannels: imexChannels,
 
 		mpsDaemon:   mpsDaemon,
 		mpsHostRoot: mpsHostRoot,
@@ -364,6 +369,7 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyEnvVar) {
 		plugin.updateResponseForDeviceListEnvVar(response, deviceIDs...)
+		plugin.updateResponseForImexChannelsEnvVar(response)
 	}
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyVolumeMounts) {
 		plugin.updateResponseForDeviceMounts(response, deviceIDs...)
@@ -406,6 +412,9 @@ func (plugin *NvidiaDevicePlugin) updateResponseForCDI(response *pluginapi.Conta
 	var devices []string
 	for _, id := range deviceIDs {
 		devices = append(devices, plugin.cdiHandler.QualifiedName("gpu", id))
+	}
+	for _, channel := range plugin.imexChannels {
+		devices = append(devices, plugin.cdiHandler.QualifiedName("imex-channel", channel.ID))
 	}
 	if *plugin.config.Flags.GDSEnabled {
 		devices = append(devices, plugin.cdiHandler.QualifiedName("gds", "all"))
@@ -502,13 +511,32 @@ func (plugin *NvidiaDevicePlugin) updateResponseForDeviceListEnvVar(response *pl
 	response.Envs[plugin.deviceListEnvVar] = strings.Join(deviceIDs, ",")
 }
 
+// updateResponseForImexChannelsEnvVar sets the environment variable for the requested IMEX channels.
+func (plugin *NvidiaDevicePlugin) updateResponseForImexChannelsEnvVar(response *pluginapi.ContainerAllocateResponse) {
+	var channelIDs []string
+	for _, channel := range plugin.imexChannels {
+		channelIDs = append(channelIDs, channel.ID)
+	}
+	if len(channelIDs) > 0 {
+		response.Envs[spec.ImexChannelEnvVar] = strings.Join(channelIDs, ",")
+	}
+}
+
 // updateResponseForDeviceMounts sets the mounts required to request devices if volume mounts are used.
 func (plugin *NvidiaDevicePlugin) updateResponseForDeviceMounts(response *pluginapi.ContainerAllocateResponse, deviceIDs ...string) {
 	plugin.updateResponseForDeviceListEnvVar(response, deviceListAsVolumeMountsContainerPathRoot)
+
 	for _, id := range deviceIDs {
 		mount := &pluginapi.Mount{
 			HostPath:      deviceListAsVolumeMountsHostPath,
 			ContainerPath: filepath.Join(deviceListAsVolumeMountsContainerPathRoot, id),
+		}
+		response.Mounts = append(response.Mounts, mount)
+	}
+	for _, channel := range plugin.imexChannels {
+		mount := &pluginapi.Mount{
+			HostPath:      deviceListAsVolumeMountsHostPath,
+			ContainerPath: filepath.Join(deviceListAsVolumeMountsContainerPathRoot, "imex", channel.ID),
 		}
 		response.Mounts = append(response.Mounts, mount)
 	}
@@ -534,6 +562,15 @@ func (plugin *NvidiaDevicePlugin) apiDeviceSpecs(devRoot string, ids []string) [
 		spec := &pluginapi.DeviceSpec{
 			ContainerPath: p,
 			HostPath:      filepath.Join(devRoot, p),
+			Permissions:   "rw",
+		}
+		specs = append(specs, spec)
+	}
+
+	for _, channel := range plugin.imexChannels {
+		spec := &pluginapi.DeviceSpec{
+			ContainerPath: channel.Path,
+			HostPath:      channel.HostPath,
 			Permissions:   "rw",
 		}
 		specs = append(specs, spec)

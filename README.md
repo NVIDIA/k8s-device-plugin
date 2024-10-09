@@ -20,6 +20,7 @@
   - [Shared Access to GPUs](#shared-access-to-gpus)
     - [With CUDA Time-Slicing](#with-cuda-time-slicing)
     - [With CUDA MPS](#with-cuda-mps)
+  - [IMEX Support](#imex-support)
 - [Deployment via `helm`](#deployment-via-helm)
   - [Configuring the device plugin's `helm` chart](#configuring-the-device-plugins-helm-chart)
     - [Passing configuration to the plugin via a `ConfigMap`.](#passing-configuration-to-the-plugin-via-a-configmap)
@@ -569,6 +570,26 @@ total memory and compute resources of the GPU.
 
 **Note**: As of now, the only supported resource available for MPS are `nvidia.com/gpu`
 resources and only with full GPUs.
+
+### IMEX Support
+
+The NVIDIA GPU Device Plugin can be configured to inject IMEX channels into
+workloads.
+
+This opt-in behavior is global and affects all workloads and is controlled by
+the `imex.channelIDs` and `imex.required` configuration options.
+
+| `imex.channelIDs` | `imex.required` | Effect |
+|---|---|---|
+| `[]` | * | (default) No IMEX channels are added to workload requests. Note that the `imex.required` field has no effect in this case |
+| `[0]` | `false` | If the requested IMEX channel (`0`) is discoverable by the NVIDIA GPU Device Plugin, the channel will be added to each workload request. If the channel cannot be discovered no channels are added to workload requests. |
+| `[0]` | `true` | If the requested IMEX channel (`0`) is discoverable by the NVIDIA GPU Device Plugin, the channel will be added to each workload request. If the channel cannot be discovered an error will be raised since the channel was marked as `required`. |
+
+**Note**: At present the only valid `imex.channelIDs` configurations are `[]` and `[0]`.
+
+For the containerized NVIDIA GPU Device Plugin running to be able to successfully
+discover available IMEX channels, the corresponding device nodes must be available
+to the container.
 
 ## Deployment via `helm`
 
