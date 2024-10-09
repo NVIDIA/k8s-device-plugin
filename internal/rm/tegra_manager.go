@@ -70,6 +70,11 @@ func (r *tegraResourceManager) GetDevicePaths(ids []string) []string {
 	return nil
 }
 
+// GetImexChannelIDs returns an empty slice for the tegraResourceManager.
+func (r *tegraResourceManager) GetImexChannelIDs() []string {
+	return nil
+}
+
 // CheckHealth is disabled for the tegraResourceManager
 func (r *tegraResourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
 	return nil

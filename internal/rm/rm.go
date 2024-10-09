@@ -37,6 +37,8 @@ type resourceManager struct {
 }
 
 // ResourceManager provides an interface for listing a set of Devices and checking health on them
+//
+//go:generate moq -rm -stub -out rm_mock.go . ResourceManager
 type ResourceManager interface {
 	Resource() spec.ResourceName
 	Devices() Devices
@@ -44,6 +46,9 @@ type ResourceManager interface {
 	GetPreferredAllocation(available, required []string, size int) ([]string, error)
 	CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error
 	ValidateRequest(AnnotatedIDs) error
+	// GetImexChannelIDs returns the list of IMEX channel IDs associated with the resource manager.
+	// If no IMEX channels are required an empty list should be returned.
+	GetImexChannelIDs() []string
 }
 
 // Resource gets the resource name associated with the ResourceManager

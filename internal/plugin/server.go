@@ -407,6 +407,9 @@ func (plugin *NvidiaDevicePlugin) updateResponseForCDI(response *pluginapi.Conta
 	for _, id := range deviceIDs {
 		devices = append(devices, plugin.cdiHandler.QualifiedName("gpu", id))
 	}
+	for _, id := range plugin.rm.GetImexChannelIDs() {
+		devices = append(devices, plugin.cdiHandler.QualifiedName("imex-channel", id))
+	}
 	if *plugin.config.Flags.GDSEnabled {
 		devices = append(devices, plugin.cdiHandler.QualifiedName("gds", "all"))
 	}
@@ -500,6 +503,10 @@ func (plugin *NvidiaDevicePlugin) apiDevices() []*pluginapi.Device {
 // updateResponseForDeviceListEnvVar sets the environment variable for the requested devices.
 func (plugin *NvidiaDevicePlugin) updateResponseForDeviceListEnvVar(response *pluginapi.ContainerAllocateResponse, deviceIDs ...string) {
 	response.Envs[plugin.deviceListEnvVar] = strings.Join(deviceIDs, ",")
+
+	if ids := plugin.rm.GetImexChannelIDs(); len(ids) > 0 {
+		response.Envs[spec.ImexChannelEnvVar] = strings.Join(ids, ",")
+	}
 }
 
 // updateResponseForDeviceMounts sets the mounts required to request devices if volume mounts are used.

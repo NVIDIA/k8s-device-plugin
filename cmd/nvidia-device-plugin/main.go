@@ -149,6 +149,12 @@ func main() {
 			Usage:   "the strategy to use to discover devices: 'auto', 'nvml', or 'tegra'",
 			EnvVars: []string{"DEVICE_DISCOVERY_STRATEGY"},
 		},
+		&cli.StringFlag{
+			Name:    "imex-default-channel-strategy",
+			Value:   string(spec.DefaultChannelStrategyDisabled),
+			Usage:   "the strategy to use for the default IMEX channel: `['disabled' (default) | 'enabled' | 'auto' ]",
+			EnvVars: []string{"IMEX_DEFAULT_CHANNEL_STRATEGY"},
+		},
 	}
 
 	err := c.Run(os.Args)

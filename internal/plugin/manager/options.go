@@ -22,6 +22,7 @@ import (
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
+	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 )
 
 // Option is a function that configures a manager
@@ -72,5 +73,12 @@ func WithConfig(config *spec.Config) Option {
 func WithKubeletSocket(kubeletSocket string) Option {
 	return func(m *manager) {
 		m.kubeletSocket = kubeletSocket
+	}
+}
+
+// WithImexChannels sets the imex channels for the manager.
+func WithImexChannels(imexChannels imex.Channels) Option {
+	return func(m *manager) {
+		m.imexChannels = imexChannels
 	}
 }

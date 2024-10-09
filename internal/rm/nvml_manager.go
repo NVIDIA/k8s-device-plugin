@@ -26,17 +26,19 @@ import (
 	"k8s.io/klog/v2"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 )
 
 type nvmlResourceManager struct {
 	resourceManager
-	nvml nvml.Interface
+	nvml         nvml.Interface
+	imexChannels imex.Channels
 }
 
 var _ ResourceManager = (*nvmlResourceManager)(nil)
 
 // NewNVMLResourceManagers returns a set of ResourceManagers, one for each NVML resource in 'config'.
-func NewNVMLResourceManagers(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) ([]ResourceManager, error) {
+func NewNVMLResourceManagers(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config, imexChannels imex.Channels) ([]ResourceManager, error) {
 	ret := nvmllib.Init()
 	if ret != nvml.SUCCESS {
 		return nil, fmt.Errorf("failed to initialize NVML: %v", ret)
@@ -64,7 +66,8 @@ func NewNVMLResourceManagers(infolib info.Interface, nvmllib nvml.Interface, dev
 				resource: resourceName,
 				devices:  devices,
 			},
-			nvml: nvmllib,
+			nvml:         nvmllib,
+			imexChannels: imexChannels,
 		}
 		rms = append(rms, r)
 	}
@@ -87,7 +90,19 @@ func (r *nvmlResourceManager) GetDevicePaths(ids []string) []string {
 		"/dev/nvidia-modeset",
 	}
 
-	return append(paths, r.Devices().Subset(ids).GetPaths()...)
+	paths = append(paths, r.Devices().Subset(ids).GetPaths()...)
+	paths = append(paths, r.imexChannels.GetPaths()...)
+
+	return paths
+}
+
+// GetImexChannelIDs returns the IMEX channels managed by the resource manager.
+func (r *nvmlResourceManager) GetImexChannelIDs() []string {
+	var ids []string
+	for _, channel := range r.imexChannels {
+		ids = append(ids, channel.ID())
+	}
+	return ids
 }
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices

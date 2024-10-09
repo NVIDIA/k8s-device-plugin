@@ -33,6 +33,7 @@ import (
 	cdiparser "tags.cncf.io/container-device-interface/pkg/parser"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 )
 
 const (
@@ -59,7 +60,9 @@ type cdiHandler struct {
 	gdsEnabled   bool
 	mofedEnabled bool
 
-	cdilibs map[string]nvcdi.Interface
+	imexChannels imex.Channels
+
+	cdilibs map[string]cdiSpecGenerator
 }
 
 var _ Interface = &cdiHandler{}
@@ -108,7 +111,7 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 		return nil, err
 	}
 
-	c.cdilibs = make(map[string]nvcdi.Interface)
+	c.cdilibs = make(map[string]cdiSpecGenerator)
 
 	c.cdilibs["gpu"], err = nvcdi.New(
 		nvcdi.WithInfoLib(c.infolib),
@@ -124,6 +127,10 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create nvcdi library: %v", err)
+	}
+
+	if len(c.imexChannels) > 0 {
+		c.cdilibs["imex-channel"] = c.newImexChannelSpecGenerator()
 	}
 
 	var additionalModes []string

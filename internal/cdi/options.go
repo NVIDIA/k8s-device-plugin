@@ -18,6 +18,7 @@ package cdi
 
 import (
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 )
 
 // Option defines a function for passing options to the New() call
@@ -90,5 +91,12 @@ func WithGdsEnabled(enabled bool) Option {
 func WithMofedEnabled(enabled bool) Option {
 	return func(c *cdiHandler) {
 		c.mofedEnabled = enabled
+	}
+}
+
+// WithImexChannels sets the IMEX channels for which CDI specs should be generated.
+func WithImexChannels(imexChannels imex.Channels) Option {
+	return func(c *cdiHandler) {
+		c.imexChannels = imexChannels
 	}
 }
