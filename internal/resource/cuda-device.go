@@ -100,3 +100,11 @@ func (d *cudaDevice) IsMigEnabled() (bool, error) {
 func (d *cudaDevice) GetPCIClass() (uint32, error) {
 	return 0, nil
 }
+
+func (d *cudaDevice) IsFabricAttached() (bool, error) {
+	return false, nil
+}
+
+func (d *cudaDevice) GetFabricIDs() (string, string, error) {
+	return "", "", fmt.Errorf("GetFabricIDs is not supported for CUDA devices")
+}

@@ -22,6 +22,8 @@ import (
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvlib/pkg/nvpci"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
+
+	"github.com/google/uuid"
 )
 
 type nvmlDevice struct {
@@ -98,4 +100,20 @@ func (d nvmlDevice) GetPCIClass() (uint32, error) {
 		return 0, err
 	}
 	return nvDevice.Class, nil
+}
+
+func (d nvmlDevice) GetFabricIDs() (string, string, error) {
+	info, ret := d.GetGpuFabricInfo()
+	if ret != nvml.SUCCESS {
+		return "", "", fmt.Errorf("failed to get GPU fabric info: %w", ret)
+	}
+
+	clusterUUID, err := uuid.FromBytes(info.ClusterUuid[:])
+	if err != nil {
+		return "", "", fmt.Errorf("invalid cluster UUID: %w", err)
+	}
+
+	cliqueId := fmt.Sprintf("%d", info.CliqueId)
+
+	return clusterUUID.String(), cliqueId, nil
 }

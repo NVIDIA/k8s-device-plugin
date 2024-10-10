@@ -80,6 +80,11 @@ func NewDeviceLabeler(manager resource.Manager, config *spec.Config) (Labeler, e
 		return nil, fmt.Errorf("error creating resource labeler: %v", err)
 	}
 
+	imexLabeler, err := newImexLabeler(config, devices)
+	if err != nil {
+		return nil, fmt.Errorf("error creating IMEX labeler: %v", err)
+	}
+
 	l := Merge(
 		machineTypeLabeler,
 		versionLabeler,
@@ -87,6 +92,7 @@ func NewDeviceLabeler(manager resource.Manager, config *spec.Config) (Labeler, e
 		sharingLabeler,
 		resourceLabeler,
 		gpuModeLabeler,
+		imexLabeler,
 	)
 
 	return l, nil
