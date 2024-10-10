@@ -28,7 +28,7 @@ type DeviceListStrategies map[string]bool
 // NewDeviceListStrategies constructs a new DeviceListStrategy
 func NewDeviceListStrategies(strategies []string) (DeviceListStrategies, error) {
 	ret := map[string]bool{
-		DeviceListStrategyEnvvar:         false,
+		DeviceListStrategyEnvVar:         false,
 		DeviceListStrategyVolumeMounts:   false,
 		DeviceListStrategyCDIAnnotations: false,
 		DeviceListStrategyCDICRI:         false,
