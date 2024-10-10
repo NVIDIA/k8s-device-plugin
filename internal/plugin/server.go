@@ -52,7 +52,7 @@ const (
 type NvidiaDevicePlugin struct {
 	rm                   rm.ResourceManager
 	config               *spec.Config
-	deviceListEnvvar     string
+	deviceListEnvVar     string
 	deviceListStrategies spec.DeviceListStrategies
 	socket               string
 	kubeletSocket        string
@@ -94,7 +94,7 @@ func NewNvidiaDevicePlugin(config *spec.Config, kubeletSocket string, resourceMa
 	plugin := NvidiaDevicePlugin{
 		rm:                   resourceManager,
 		config:               config,
-		deviceListEnvvar:     "NVIDIA_VISIBLE_DEVICES",
+		deviceListEnvVar:     "NVIDIA_VISIBLE_DEVICES",
 		deviceListStrategies: deviceListStrategies,
 		socket:               pluginPath + ".sock",
 		cdiHandler:           cdiHandler,
@@ -362,8 +362,8 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 		return response, nil
 	}
 
-	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyEnvvar) {
-		plugin.updateResponseForDeviceListEnvvar(response, deviceIDs...)
+	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyEnvVar) {
+		plugin.updateResponseForDeviceListEnvVar(response, deviceIDs...)
 	}
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyVolumeMounts) {
 		plugin.updateResponseForDeviceMounts(response, deviceIDs...)
@@ -497,14 +497,14 @@ func (plugin *NvidiaDevicePlugin) apiDevices() []*pluginapi.Device {
 	return plugin.rm.Devices().GetPluginDevices()
 }
 
-// updateResponseForDeviceListEnvvar sets the environment variable for the requested devices.
-func (plugin *NvidiaDevicePlugin) updateResponseForDeviceListEnvvar(response *pluginapi.ContainerAllocateResponse, deviceIDs ...string) {
-	response.Envs[plugin.deviceListEnvvar] = strings.Join(deviceIDs, ",")
+// updateResponseForDeviceListEnvVar sets the environment variable for the requested devices.
+func (plugin *NvidiaDevicePlugin) updateResponseForDeviceListEnvVar(response *pluginapi.ContainerAllocateResponse, deviceIDs ...string) {
+	response.Envs[plugin.deviceListEnvVar] = strings.Join(deviceIDs, ",")
 }
 
 // updateResponseForDeviceMounts sets the mounts required to request devices if volume mounts are used.
 func (plugin *NvidiaDevicePlugin) updateResponseForDeviceMounts(response *pluginapi.ContainerAllocateResponse, deviceIDs ...string) {
-	plugin.updateResponseForDeviceListEnvvar(response, deviceListAsVolumeMountsContainerPathRoot)
+	plugin.updateResponseForDeviceListEnvVar(response, deviceListAsVolumeMountsContainerPathRoot)
 	for _, id := range deviceIDs {
 		mount := &pluginapi.Mount{
 			HostPath:      deviceListAsVolumeMountsHostPath,

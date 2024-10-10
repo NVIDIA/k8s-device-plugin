@@ -192,7 +192,7 @@ deploying the plugin via `helm`.
 
 ### As command line flags or envvars
 
-| Flag                     | Envvar                  | Default Value   |
+| Flag                     | Environment Variable    | Default Value   |
 |--------------------------|-------------------------|-----------------|
 | `--mig-strategy`         | `$MIG_STRATEGY`         | `"none"`        |
 | `--fail-on-init-error`   | `$FAIL_ON_INIT_ERROR`   | `true`          |

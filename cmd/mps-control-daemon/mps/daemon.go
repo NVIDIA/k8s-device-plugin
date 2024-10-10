@@ -78,10 +78,10 @@ func (e envvars) toSlice() []string {
 	return envs
 }
 
-// Envvars returns the environment variables required for the daemon.
+// EnvVars returns the environment variables required for the daemon.
 // These should be passed to clients consuming the device shared using MPS.
 // TODO: Set CUDA_VISIBLE_DEVICES to include only the devices for this resource type.
-func (d *Daemon) Envvars() envvars {
+func (d *Daemon) EnvVars() envvars {
 	return map[string]string{
 		"CUDA_MPS_PIPE_DIRECTORY": d.PipeDir(),
 		"CUDA_MPS_LOG_DIRECTORY":  d.LogDir(),
@@ -111,7 +111,7 @@ func (d *Daemon) Start() error {
 	}
 
 	mpsDaemon := exec.Command(mpsControlBin, "-d")
-	mpsDaemon.Env = append(mpsDaemon.Env, d.Envvars().toSlice()...)
+	mpsDaemon.Env = append(mpsDaemon.Env, d.EnvVars().toSlice()...)
 	if err := mpsDaemon.Run(); err != nil {
 		return err
 	}
@@ -214,7 +214,7 @@ func (d *Daemon) EchoPipeToControl(command string) (string, error) {
 	defer reader.Close()
 
 	mpsDaemon := exec.Command(mpsControlBin)
-	mpsDaemon.Env = append(mpsDaemon.Env, d.Envvars().toSlice()...)
+	mpsDaemon.Env = append(mpsDaemon.Env, d.EnvVars().toSlice()...)
 
 	mpsDaemon.Stdin = reader
 	mpsDaemon.Stdout = &out
