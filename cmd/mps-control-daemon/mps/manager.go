@@ -71,7 +71,7 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 }
 
 func (m *manager) Daemons() ([]*Daemon, error) {
-	resourceManagers, err := rm.NewNVMLResourceManagers(m.infolib, m.nvmllib, m.devicelib, m.config)
+	resourceManagers, err := rm.NewNVMLResourceManagers(m.infolib, m.nvmllib, m.devicelib, m.config, nil)
 	if err != nil {
 		return nil, err
 	}
