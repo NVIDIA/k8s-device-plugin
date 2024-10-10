@@ -51,14 +51,14 @@ func (r *resourceManager) Resource() spec.ResourceName {
 	return r.resource
 }
 
-// Resource gets the devices managed by the ResourceManager
+// Devices gets the devices managed by the ResourceManager
 func (r *resourceManager) Devices() Devices {
 	return r.devices
 }
 
 var errInvalidRequest = errors.New("invalid request")
 
-// ValidateRequests checks the requested IDs against the resource manager configuration.
+// ValidateRequest checks the requested IDs against the resource manager configuration.
 // It asserts that all requested IDs are known to the resource manager and that the request is
 // valid for a specified sharing configuration.
 func (r *resourceManager) ValidateRequest(ids AnnotatedIDs) error {
