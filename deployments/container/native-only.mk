@@ -13,7 +13,8 @@
 # limitations under the License.
 
 PUSH_ON_BUILD ?= false
-DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
+ARCH ?= $(shell uname -m)
+DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/$(ARCH)
 
 ifeq ($(PUSH_ON_BUILD),true)
 $(BUILD_TARGETS): build-%: image-%
