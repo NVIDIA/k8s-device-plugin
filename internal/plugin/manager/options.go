@@ -35,6 +35,13 @@ func WithCDIHandler(handler cdi.Interface) Option {
 	}
 }
 
+// WithDeviceListStrategies provides an Option to set the enabled flag used by the 'cdi' interface
+func WithDeviceListStrategies(deviceListStrategies spec.DeviceListStrategies) Option {
+	return func(m *manager) {
+		m.deviceListStrategies = deviceListStrategies
+	}
+}
+
 // WithNVML sets the NVML handler for the manager
 func WithNVML(nvmllib nvml.Interface) Option {
 	return func(m *manager) {

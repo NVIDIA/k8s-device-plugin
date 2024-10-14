@@ -26,11 +26,12 @@ import (
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
+	"github.com/NVIDIA/k8s-device-plugin/internal/plugin"
 	"github.com/NVIDIA/k8s-device-plugin/internal/plugin/manager"
 )
 
-// NewPluginManager creates an NVML-based plugin manager
-func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) (manager.Interface, error) {
+// GetPlugins returns a set of plugins for the specified configuration.
+func GetPlugins(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) ([]plugin.Interface, error) {
 	// TODO: We could consider passing this as an argument since it should already be used to construct nvmllib.
 	driverRoot := root(*config.Flags.Plugin.ContainerDriverRoot)
 
@@ -64,6 +65,7 @@ func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib 
 	m, err := manager.New(infolib, nvmllib, devicelib,
 		manager.WithCDIHandler(cdiHandler),
 		manager.WithConfig(config),
+		manager.WithDeviceListStrategies(deviceListStrategies),
 		manager.WithFailOnInitError(*config.Flags.FailOnInitError),
 		manager.WithImexChannels(imexChannels),
 	)
@@ -71,9 +73,9 @@ func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib 
 		return nil, fmt.Errorf("unable to create plugin manager: %v", err)
 	}
 
-	if err := m.CreateCDISpecFile(); err != nil {
+	if err := cdiHandler.CreateSpecFile(); err != nil {
 		return nil, fmt.Errorf("unable to create cdi spec file: %v", err)
 	}
 
-	return m, nil
+	return m.GetPlugins()
 }

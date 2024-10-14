@@ -39,6 +39,8 @@ type manager struct {
 	cdiHandler cdi.Interface
 	config     *spec.Config
 
+	deviceListStrategies spec.DeviceListStrategies
+
 	imexChannels imex.Channels
 }
 
