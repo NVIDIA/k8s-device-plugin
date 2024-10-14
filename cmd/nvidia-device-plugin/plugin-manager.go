@@ -27,7 +27,6 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 	"github.com/NVIDIA/k8s-device-plugin/internal/plugin"
-	"github.com/NVIDIA/k8s-device-plugin/internal/plugin/manager"
 )
 
 // GetPlugins returns a set of plugins for the specified configuration.
@@ -62,20 +61,20 @@ func GetPlugins(infolib info.Interface, nvmllib nvml.Interface, devicelib device
 		return nil, fmt.Errorf("unable to create cdi handler: %v", err)
 	}
 
-	m, err := manager.New(infolib, nvmllib, devicelib,
-		manager.WithCDIHandler(cdiHandler),
-		manager.WithConfig(config),
-		manager.WithDeviceListStrategies(deviceListStrategies),
-		manager.WithFailOnInitError(*config.Flags.FailOnInitError),
-		manager.WithImexChannels(imexChannels),
+	plugins, err := plugin.New(infolib, nvmllib, devicelib,
+		plugin.WithCDIHandler(cdiHandler),
+		plugin.WithConfig(config),
+		plugin.WithDeviceListStrategies(deviceListStrategies),
+		plugin.WithFailOnInitError(*config.Flags.FailOnInitError),
+		plugin.WithImexChannels(imexChannels),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create plugin manager: %v", err)
+		return nil, fmt.Errorf("unable to create plugins: %w", err)
 	}
 
 	if err := cdiHandler.CreateSpecFile(); err != nil {
 		return nil, fmt.Errorf("unable to create cdi spec file: %v", err)
 	}
 
-	return m.GetPlugins()
+	return plugins, nil
 }

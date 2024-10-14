@@ -54,11 +54,11 @@ type NvidiaDevicePlugin struct {
 	rm                   rm.ResourceManager
 	config               *spec.Config
 	deviceListStrategies spec.DeviceListStrategies
-	socket               string
 
 	cdiHandler          cdi.Interface
 	cdiAnnotationPrefix string
 
+	socket string
 	server *grpc.Server
 	health chan *rm.Device
 	stop   chan interface{}
@@ -69,41 +69,27 @@ type NvidiaDevicePlugin struct {
 	imexChannels imex.Channels
 }
 
-// NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, cdiHandler cdi.Interface, imexChannels imex.Channels) (*NvidiaDevicePlugin, error) {
-	_, name := resourceManager.Resource().Split()
-
-	deviceListStrategies, _ := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
-
-	pluginName := "nvidia-" + name
-	pluginPath := filepath.Join(pluginapi.DevicePluginPath, pluginName)
-
-	var mpsDaemon *mps.Daemon
-	var mpsHostRoot mps.Root
-	if config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
-		// TODO: It might make sense to pull this logic into a resource manager.
-		for _, device := range resourceManager.Devices() {
-			if device.IsMigDevice() {
-				return nil, errors.New("sharing using MPS is not supported for MIG devices")
-			}
-		}
-		mpsDaemon = mps.NewDaemon(resourceManager, mps.ContainerRoot)
-		mpsHostRoot = mps.Root(*config.Flags.CommandLineFlags.MpsRoot)
+// devicePluginForResource creates a device plugin for the specified resource.
+func (o *options) devicePluginForResource(resourceManager rm.ResourceManager) (Interface, error) {
+	mpsDaemon, mpsHostRoot, err := o.getMPSDaemon(resourceManager)
+	if err != nil {
+		return nil, err
 	}
 
 	plugin := NvidiaDevicePlugin{
 		rm:                   resourceManager,
-		config:               config,
-		deviceListStrategies: deviceListStrategies,
-		socket:               pluginPath + ".sock",
-		cdiHandler:           cdiHandler,
-		cdiAnnotationPrefix:  *config.Flags.Plugin.CDIAnnotationPrefix,
+		config:               o.config,
+		deviceListStrategies: o.deviceListStrategies,
 
-		imexChannels: imexChannels,
+		cdiHandler:          o.cdiHandler,
+		cdiAnnotationPrefix: *o.config.Flags.Plugin.CDIAnnotationPrefix,
+
+		imexChannels: o.imexChannels,
 
 		mpsDaemon:   mpsDaemon,
 		mpsHostRoot: mpsHostRoot,
 
+		socket: getPluginSocketPath(resourceManager.Resource()),
 		// These will be reinitialized every
 		// time the plugin server is restarted.
 		server: nil,
@@ -111,6 +97,32 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 		stop:   nil,
 	}
 	return &plugin, nil
+}
+
+// getMPSDaemonAndRoot returns the MPS daemon and root for the specified resource manager.
+// TODO: We should return a type here to manage MPS specifics.
+func (o *options) getMPSDaemon(resourceManager rm.ResourceManager) (*mps.Daemon, mps.Root, error) {
+	if o.config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
+		return nil, "", nil
+	}
+
+	// TODO: It might make sense to pull this logic into a resource manager.
+	for _, device := range resourceManager.Devices() {
+		if device.IsMigDevice() {
+			return nil, "", errors.New("sharing using MPS is not supported for MIG devices")
+		}
+	}
+	mpsDaemon := mps.NewDaemon(resourceManager, mps.ContainerRoot)
+	mpsHostRoot := mps.Root(*o.config.Flags.CommandLineFlags.MpsRoot)
+
+	return mpsDaemon, mpsHostRoot, nil
+}
+
+// getPluginSocketPath returns the socket to use for the specified resource.
+func getPluginSocketPath(resource spec.ResourceName) string {
+	_, name := resource.Split()
+	pluginName := "nvidia-" + name
+	return filepath.Join(pluginapi.DevicePluginPath, pluginName) + ".sock"
 }
 
 func (plugin *NvidiaDevicePlugin) initialize() {
