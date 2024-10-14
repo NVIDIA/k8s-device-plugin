@@ -30,7 +30,7 @@ import (
 )
 
 // NewPluginManager creates an NVML-based plugin manager
-func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, kubeletSocket string, config *spec.Config) (manager.Interface, error) {
+func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) (manager.Interface, error) {
 	// TODO: We could consider passing this as an argument since it should already be used to construct nvmllib.
 	driverRoot := root(*config.Flags.Plugin.ContainerDriverRoot)
 
@@ -66,7 +66,6 @@ func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib 
 		manager.WithConfig(config),
 		manager.WithFailOnInitError(*config.Flags.FailOnInitError),
 		manager.WithImexChannels(imexChannels),
-		manager.WithKubeletSocket(kubeletSocket),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create plugin manager: %v", err)

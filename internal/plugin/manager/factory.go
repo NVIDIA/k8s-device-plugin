@@ -40,8 +40,6 @@ type manager struct {
 	config     *spec.Config
 
 	imexChannels imex.Channels
-
-	kubeletSocket string
 }
 
 // New creates a new plugin manager with the supplied options.

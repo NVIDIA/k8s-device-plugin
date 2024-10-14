@@ -63,12 +63,6 @@ func WithConfig(config *spec.Config) Option {
 	}
 }
 
-func WithKubeletSocket(kubeletSocket string) Option {
-	return func(m *manager) {
-		m.kubeletSocket = kubeletSocket
-	}
-}
-
 // WithImexChannels sets the imex channels for the manager.
 func WithImexChannels(imexChannels imex.Channels) Option {
 	return func(m *manager) {

@@ -56,7 +56,6 @@ type NvidiaDevicePlugin struct {
 	deviceListEnvVar     string
 	deviceListStrategies spec.DeviceListStrategies
 	socket               string
-	kubeletSocket        string
 
 	cdiHandler          cdi.Interface
 	cdiEnabled          bool
@@ -73,7 +72,7 @@ type NvidiaDevicePlugin struct {
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(config *spec.Config, kubeletSocket string, resourceManager rm.ResourceManager, cdiHandler cdi.Interface, imexChannels imex.Channels) (*NvidiaDevicePlugin, error) {
+func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, cdiHandler cdi.Interface, imexChannels imex.Channels) (*NvidiaDevicePlugin, error) {
 	_, name := resourceManager.Resource().Split()
 
 	deviceListStrategies, _ := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
@@ -108,7 +107,6 @@ func NewNvidiaDevicePlugin(config *spec.Config, kubeletSocket string, resourceMa
 		mpsDaemon:   mpsDaemon,
 		mpsHostRoot: mpsHostRoot,
 
-		kubeletSocket: kubeletSocket,
 		// These will be reinitialized every
 		// time the plugin server is restarted.
 		server: nil,
@@ -138,7 +136,7 @@ func (plugin *NvidiaDevicePlugin) Devices() rm.Devices {
 
 // Start starts the gRPC server, registers the device plugin with the Kubelet,
 // and starts the device healthchecks.
-func (plugin *NvidiaDevicePlugin) Start() error {
+func (plugin *NvidiaDevicePlugin) Start(kubeletSocket string) error {
 	plugin.initialize()
 
 	if err := plugin.waitForMPSDaemon(); err != nil {
@@ -153,7 +151,7 @@ func (plugin *NvidiaDevicePlugin) Start() error {
 	}
 	klog.Infof("Starting to serve '%s' on %s", plugin.rm.Resource(), plugin.socket)
 
-	err = plugin.Register()
+	err = plugin.Register(kubeletSocket)
 	if err != nil {
 		klog.Infof("Could not register device plugin: %s", err)
 		return errors.Join(err, plugin.Stop())
@@ -251,13 +249,13 @@ func (plugin *NvidiaDevicePlugin) Serve() error {
 }
 
 // Register registers the device plugin for the given resourceName with Kubelet.
-func (plugin *NvidiaDevicePlugin) Register() error {
-	if plugin.kubeletSocket == "" {
+func (plugin *NvidiaDevicePlugin) Register(kubeletSocket string) error {
+	if kubeletSocket == "" {
 		klog.Info("Skipping registration with Kubelet")
 		return nil
 	}
 
-	conn, err := plugin.dial(plugin.kubeletSocket, 5*time.Second)
+	conn, err := plugin.dial(kubeletSocket, 5*time.Second)
 	if err != nil {
 		return err
 	}
