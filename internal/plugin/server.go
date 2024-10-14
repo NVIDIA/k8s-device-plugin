@@ -43,8 +43,8 @@ import (
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
-// Constants for use by the 'volume-mounts' device list strategy
 const (
+	deviceListEnvVar                          = "NVIDIA_VISIBLE_DEVICES"
 	deviceListAsVolumeMountsHostPath          = "/dev/null"
 	deviceListAsVolumeMountsContainerPathRoot = "/var/run/nvidia-container-devices"
 )
@@ -53,7 +53,6 @@ const (
 type NvidiaDevicePlugin struct {
 	rm                   rm.ResourceManager
 	config               *spec.Config
-	deviceListEnvVar     string
 	deviceListStrategies spec.DeviceListStrategies
 	socket               string
 
@@ -96,7 +95,6 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 	plugin := NvidiaDevicePlugin{
 		rm:                   resourceManager,
 		config:               config,
-		deviceListEnvVar:     "NVIDIA_VISIBLE_DEVICES",
 		deviceListStrategies: deviceListStrategies,
 		socket:               pluginPath + ".sock",
 		cdiHandler:           cdiHandler,
@@ -506,7 +504,7 @@ func (plugin *NvidiaDevicePlugin) apiDevices() []*pluginapi.Device {
 
 // updateResponseForDeviceListEnvVar sets the environment variable for the requested devices.
 func (plugin *NvidiaDevicePlugin) updateResponseForDeviceListEnvVar(response *pluginapi.ContainerAllocateResponse, deviceIDs ...string) {
-	response.Envs[plugin.deviceListEnvVar] = strings.Join(deviceIDs, ",")
+	response.Envs[deviceListEnvVar] = strings.Join(deviceIDs, ",")
 }
 
 // updateResponseForImexChannelsEnvVar sets the environment variable for the requested IMEX channels.
