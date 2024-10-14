@@ -56,13 +56,6 @@ func WithFailOnInitError(failOnInitError bool) Option {
 	}
 }
 
-// WithMigStrategy sets the MIG strategy for the manager
-func WithMigStrategy(migStrategy string) Option {
-	return func(m *manager) {
-		m.migStrategy = migStrategy
-	}
-}
-
 // WithConfig sets the config reference for the manager
 func WithConfig(config *spec.Config) Option {
 	return func(m *manager) {

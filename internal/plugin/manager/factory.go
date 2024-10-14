@@ -34,7 +34,6 @@ type manager struct {
 	nvmllib   nvml.Interface
 	devicelib device.Interface
 
-	migStrategy     string
 	failOnInitError bool
 
 	cdiHandler cdi.Interface

@@ -200,6 +200,14 @@ func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 		return fmt.Errorf("invalid --device-discovery-strategy option %v", *config.Flags.DeviceDiscoveryStrategy)
 	}
 
+	switch *config.Flags.MigStrategy {
+	case spec.MigStrategyNone:
+	case spec.MigStrategySingle:
+	case spec.MigStrategyMixed:
+	default:
+		return fmt.Errorf("unknown MIG strategy: %v", *config.Flags.MigStrategy)
+	}
+
 	if err := spec.AssertChannelIDsValid(config.Imex.ChannelIDs); err != nil {
 		return fmt.Errorf("invalid IMEX channel IDs: %w", err)
 	}
