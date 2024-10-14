@@ -139,7 +139,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 		tc := testCases[i]
 		t.Run(tc.description, func(t *testing.T) {
 			deviceListStrategies, _ := v1.NewDeviceListStrategies(tc.deviceListStrategies)
-			plugin := NvidiaDevicePlugin{
+			plugin := nvidiaDevicePlugin{
 				config: &v1.Config{
 					Flags: v1.Flags{
 						CommandLineFlags: v1.CommandLineFlags{
