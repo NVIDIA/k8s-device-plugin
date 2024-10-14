@@ -57,7 +57,6 @@ type NvidiaDevicePlugin struct {
 	socket               string
 
 	cdiHandler          cdi.Interface
-	cdiEnabled          bool
 	cdiAnnotationPrefix string
 
 	server *grpc.Server
