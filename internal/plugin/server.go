@@ -29,7 +29,6 @@ import (
 	cdiapi "tags.cncf.io/container-device-interface/pkg/cdi"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
-	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mps"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
@@ -63,15 +62,14 @@ type nvidiaDevicePlugin struct {
 	health chan *rm.Device
 	stop   chan interface{}
 
-	mpsDaemon   *mps.Daemon
-	mpsHostRoot mps.Root
-
 	imexChannels imex.Channels
+
+	mps mpsOptions
 }
 
 // devicePluginForResource creates a device plugin for the specified resource.
 func (o *options) devicePluginForResource(resourceManager rm.ResourceManager) (Interface, error) {
-	mpsDaemon, mpsHostRoot, err := o.getMPSDaemon(resourceManager)
+	mpsOptions, err := o.getMPSOptions(resourceManager)
 	if err != nil {
 		return nil, err
 	}
@@ -86,8 +84,7 @@ func (o *options) devicePluginForResource(resourceManager rm.ResourceManager) (I
 
 		imexChannels: o.imexChannels,
 
-		mpsDaemon:   mpsDaemon,
-		mpsHostRoot: mpsHostRoot,
+		mps: mpsOptions,
 
 		socket: getPluginSocketPath(resourceManager.Resource()),
 		// These will be reinitialized every
@@ -97,25 +94,6 @@ func (o *options) devicePluginForResource(resourceManager rm.ResourceManager) (I
 		stop:   nil,
 	}
 	return &plugin, nil
-}
-
-// getMPSDaemonAndRoot returns the MPS daemon and root for the specified resource manager.
-// TODO: We should return a type here to manage MPS specifics.
-func (o *options) getMPSDaemon(resourceManager rm.ResourceManager) (*mps.Daemon, mps.Root, error) {
-	if o.config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
-		return nil, "", nil
-	}
-
-	// TODO: It might make sense to pull this logic into a resource manager.
-	for _, device := range resourceManager.Devices() {
-		if device.IsMigDevice() {
-			return nil, "", errors.New("sharing using MPS is not supported for MIG devices")
-		}
-	}
-	mpsDaemon := mps.NewDaemon(resourceManager, mps.ContainerRoot)
-	mpsHostRoot := mps.Root(*o.config.Flags.CommandLineFlags.MpsRoot)
-
-	return mpsDaemon, mpsHostRoot, nil
 }
 
 // getPluginSocketPath returns the socket to use for the specified resource.
@@ -148,7 +126,7 @@ func (plugin *nvidiaDevicePlugin) Devices() rm.Devices {
 func (plugin *nvidiaDevicePlugin) Start(kubeletSocket string) error {
 	plugin.initialize()
 
-	if err := plugin.waitForMPSDaemon(); err != nil {
+	if err := plugin.mps.waitForDaemon(); err != nil {
 		return fmt.Errorf("error waiting for MPS daemon: %w", err)
 	}
 
@@ -175,19 +153,6 @@ func (plugin *nvidiaDevicePlugin) Start(kubeletSocket string) error {
 		}
 	}()
 
-	return nil
-}
-
-func (plugin *nvidiaDevicePlugin) waitForMPSDaemon() error {
-	if plugin.config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
-		return nil
-	}
-	// TODO: Check the .ready file here.
-	// TODO: Have some retry strategy here.
-	if err := plugin.mpsDaemon.AssertHealthy(); err != nil {
-		return fmt.Errorf("error checking MPS daemon health: %w", err)
-	}
-	klog.InfoS("MPS daemon is healthy", "resource", plugin.rm.Resource())
 	return nil
 }
 
@@ -364,7 +329,7 @@ func (plugin *nvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 			return nil, fmt.Errorf("failed to get allocate response for CDI: %v", err)
 		}
 	}
-	if plugin.config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
+	if plugin.mps.enabled {
 		plugin.updateResponseForMPS(response)
 	}
 
@@ -397,20 +362,7 @@ func (plugin *nvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 // This includes per-resource pipe and log directories as well as a global daemon-specific shm
 // and assumes that an MPS control daemon has already been started.
 func (plugin nvidiaDevicePlugin) updateResponseForMPS(response *pluginapi.ContainerAllocateResponse) {
-	// TODO: We should check that the deviceIDs are shared using MPS.
-	response.Envs["CUDA_MPS_PIPE_DIRECTORY"] = plugin.mpsDaemon.PipeDir()
-
-	resourceName := plugin.rm.Resource()
-	response.Mounts = append(response.Mounts,
-		&pluginapi.Mount{
-			ContainerPath: plugin.mpsDaemon.PipeDir(),
-			HostPath:      plugin.mpsHostRoot.PipeDir(resourceName),
-		},
-		&pluginapi.Mount{
-			ContainerPath: plugin.mpsDaemon.ShmDir(),
-			HostPath:      plugin.mpsHostRoot.ShmDir(resourceName),
-		},
-	)
+	plugin.mps.updateReponse(response)
 }
 
 // updateResponseForCDI updates the specified response for the given device IDs.
