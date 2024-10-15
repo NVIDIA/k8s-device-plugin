@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -85,7 +86,7 @@ func main() {
 		},
 		&cli.StringSliceFlag{
 			Name:    "device-list-strategy",
-			Value:   cli.NewStringSlice(string(spec.DeviceListStrategyEnvvar)),
+			Value:   cli.NewStringSlice(string(spec.DeviceListStrategyEnvVar)),
 			Usage:   "the desired strategy for passing the device list to the underlying runtime:\n\t\t[envvar | volume-mounts | cdi-annotations]",
 			EnvVars: []string{"DEVICE_LIST_STRATEGY"},
 		},
@@ -104,6 +105,12 @@ func main() {
 			Name:    "mofed-enabled",
 			Usage:   "ensure that containers are started with NVIDIA_MOFED=enabled",
 			EnvVars: []string{"MOFED_ENABLED"},
+		},
+		&cli.StringFlag{
+			Name:    "kubelet-socket",
+			Value:   pluginapi.KubeletSocket,
+			Usage:   "specify the socket for communicating with the kubelet; if this is empty, no connection with the kubelet is attempted",
+			EnvVars: []string{"KUBELET_SOCKET"},
 		},
 		&cli.StringFlag{
 			Name:        "config-file",
@@ -141,6 +148,16 @@ func main() {
 			Value:   "auto",
 			Usage:   "the strategy to use to discover devices: 'auto', 'nvml', or 'tegra'",
 			EnvVars: []string{"DEVICE_DISCOVERY_STRATEGY"},
+		},
+		&cli.IntSliceFlag{
+			Name:    "imex-channel-ids",
+			Usage:   "A list of IMEX channels to inject.",
+			EnvVars: []string{"IMEX_CHANNEL_IDS"},
+		},
+		&cli.BoolFlag{
+			Name:    "imex-required",
+			Usage:   "The specified IMEX channels are required",
+			EnvVars: []string{"IMEX_REQUIRED"},
 		},
 	}
 
@@ -183,6 +200,10 @@ func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 		return fmt.Errorf("invalid --device-discovery-strategy option %v", *config.Flags.DeviceDiscoveryStrategy)
 	}
 
+	if err := spec.AssertChannelIDsValid(config.Imex.ChannelIDs); err != nil {
+		return fmt.Errorf("invalid IMEX channel IDs: %w", err)
+	}
+
 	return nil
 }
 
@@ -196,8 +217,10 @@ func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 }
 
 func start(c *cli.Context, flags []cli.Flag) error {
-	klog.Info("Starting FS watcher.")
-	watcher, err := watch.Files(pluginapi.DevicePluginPath)
+	kubeletSocket := c.String("kubelet-socket")
+	kubeletSocketDir := filepath.Dir(kubeletSocket)
+	klog.Infof("Starting FS watcher for %v", kubeletSocketDir)
+	watcher, err := watch.Files(kubeletSocketDir)
 	if err != nil {
 		return fmt.Errorf("failed to create FS watcher for %s: %v", pluginapi.DevicePluginPath, err)
 	}
@@ -242,8 +265,8 @@ restart:
 		// 'pluginapi.KubeletSocket' file. When this occurs, restart this loop,
 		// restarting all of the plugins in the process.
 		case event := <-watcher.Events:
-			if event.Name == pluginapi.KubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
-				klog.Infof("inotify: %s created, restarting.", pluginapi.KubeletSocket)
+			if kubeletSocket != "" && event.Name == kubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
+				klog.Infof("inotify: %s created, restarting.", kubeletSocket)
 				goto restart
 			}
 
@@ -315,7 +338,8 @@ func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, bool, e
 
 	// Get the set of plugins.
 	klog.Info("Retrieving plugins.")
-	pluginManager, err := NewPluginManager(infolib, nvmllib, devicelib, config)
+	kubeletSocket := c.String("kubelet-socket")
+	pluginManager, err := NewPluginManager(infolib, nvmllib, devicelib, kubeletSocket, config)
 	if err != nil {
 		return nil, false, fmt.Errorf("error creating plugin manager: %v", err)
 	}

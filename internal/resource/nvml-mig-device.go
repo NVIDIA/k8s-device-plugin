@@ -142,3 +142,11 @@ func (d nvmlMigDevice) GetPCIClass() (uint32, error) {
 	// GPU devices that support MIG do not support switching mode between graphics and compute, so they are always in compute mode.
 	return nvpci.PCI3dControllerClass, nil
 }
+
+func (d nvmlMigDevice) IsFabricAttached() (bool, error) {
+	return false, fmt.Errorf("IsFabricAttached is not supported for MIG devices")
+}
+
+func (d nvmlMigDevice) GetFabricIDs() (string, string, error) {
+	return "", "", fmt.Errorf("GetFabricIDs is not supported for MIG devices")
+}

@@ -25,11 +25,12 @@ import (
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
+	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 	"github.com/NVIDIA/k8s-device-plugin/internal/plugin/manager"
 )
 
 // NewPluginManager creates an NVML-based plugin manager
-func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) (manager.Interface, error) {
+func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, kubeletSocket string, config *spec.Config) (manager.Interface, error) {
 	var err error
 	switch *config.Flags.MigStrategy {
 	case spec.MigStrategyNone:
@@ -47,6 +48,11 @@ func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib 
 		return nil, fmt.Errorf("invalid device list strategy: %v", err)
 	}
 
+	imexChannels, err := imex.GetChannels(config, driverRoot.getDevRoot())
+	if err != nil {
+		return nil, fmt.Errorf("error querying IMEX channels: %w", err)
+	}
+
 	cdiHandler, err := cdi.New(infolib, nvmllib, devicelib,
 		cdi.WithDeviceListStrategies(deviceListStrategies),
 		cdi.WithDriverRoot(string(driverRoot)),
@@ -58,6 +64,7 @@ func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib 
 		cdi.WithVendor("k8s.device-plugin.nvidia.com"),
 		cdi.WithGdsEnabled(*config.Flags.GDSEnabled),
 		cdi.WithMofedEnabled(*config.Flags.MOFEDEnabled),
+		cdi.WithImexChannels(imexChannels),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create cdi handler: %v", err)
@@ -67,7 +74,9 @@ func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib 
 		manager.WithCDIHandler(cdiHandler),
 		manager.WithConfig(config),
 		manager.WithFailOnInitError(*config.Flags.FailOnInitError),
+		manager.WithKubeletSocket(kubeletSocket),
 		manager.WithMigStrategy(*config.Flags.MigStrategy),
+		manager.WithImexChannels(imexChannels),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create plugin manager: %v", err)

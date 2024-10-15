@@ -31,6 +31,7 @@ type Manager interface {
 //
 //go:generate moq -out device_mock.go . Device
 type Device interface {
+	IsFabricAttached() (bool, error)
 	IsMigEnabled() (bool, error)
 	IsMigCapable() (bool, error)
 	GetMigDevices() ([]Device, error)
@@ -40,4 +41,5 @@ type Device interface {
 	GetDeviceHandleFromMigDeviceHandle() (Device, error)
 	GetCudaComputeCapability() (int, int, error)
 	GetPCIClass() (uint32, error)
+	GetFabricIDs() (string, string, error)
 }

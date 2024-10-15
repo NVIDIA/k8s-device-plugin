@@ -26,6 +26,7 @@ import (
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
+	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 )
 
 type manager struct {
@@ -38,6 +39,10 @@ type manager struct {
 
 	cdiHandler cdi.Interface
 	config     *spec.Config
+
+	imexChannels imex.Channels
+
+	kubeletSocket string
 }
 
 // New creates a new plugin manager with the supplied options.

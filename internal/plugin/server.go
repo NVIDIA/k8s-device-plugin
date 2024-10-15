@@ -31,6 +31,7 @@ import (
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mps"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
+	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 
 	"github.com/google/uuid"
@@ -52,9 +53,10 @@ const (
 type NvidiaDevicePlugin struct {
 	rm                   rm.ResourceManager
 	config               *spec.Config
-	deviceListEnvvar     string
+	deviceListEnvVar     string
 	deviceListStrategies spec.DeviceListStrategies
 	socket               string
+	kubeletSocket        string
 
 	cdiHandler          cdi.Interface
 	cdiEnabled          bool
@@ -66,10 +68,12 @@ type NvidiaDevicePlugin struct {
 
 	mpsDaemon   *mps.Daemon
 	mpsHostRoot mps.Root
+
+	imexChannels imex.Channels
 }
 
 // NewNvidiaDevicePlugin returns an initialized NvidiaDevicePlugin
-func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManager, cdiHandler cdi.Interface) (*NvidiaDevicePlugin, error) {
+func NewNvidiaDevicePlugin(config *spec.Config, kubeletSocket string, resourceManager rm.ResourceManager, cdiHandler cdi.Interface, imexChannels imex.Channels) (*NvidiaDevicePlugin, error) {
 	_, name := resourceManager.Resource().Split()
 
 	deviceListStrategies, _ := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
@@ -93,15 +97,18 @@ func NewNvidiaDevicePlugin(config *spec.Config, resourceManager rm.ResourceManag
 	plugin := NvidiaDevicePlugin{
 		rm:                   resourceManager,
 		config:               config,
-		deviceListEnvvar:     "NVIDIA_VISIBLE_DEVICES",
+		deviceListEnvVar:     "NVIDIA_VISIBLE_DEVICES",
 		deviceListStrategies: deviceListStrategies,
 		socket:               pluginPath + ".sock",
 		cdiHandler:           cdiHandler,
 		cdiAnnotationPrefix:  *config.Flags.Plugin.CDIAnnotationPrefix,
 
+		imexChannels: imexChannels,
+
 		mpsDaemon:   mpsDaemon,
 		mpsHostRoot: mpsHostRoot,
 
+		kubeletSocket: kubeletSocket,
 		// These will be reinitialized every
 		// time the plugin server is restarted.
 		server: nil,
@@ -245,7 +252,12 @@ func (plugin *NvidiaDevicePlugin) Serve() error {
 
 // Register registers the device plugin for the given resourceName with Kubelet.
 func (plugin *NvidiaDevicePlugin) Register() error {
-	conn, err := plugin.dial(pluginapi.KubeletSocket, 5*time.Second)
+	if plugin.kubeletSocket == "" {
+		klog.Info("Skipping registration with Kubelet")
+		return nil
+	}
+
+	conn, err := plugin.dial(plugin.kubeletSocket, 5*time.Second)
 	if err != nil {
 		return err
 	}
@@ -355,8 +367,9 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 		return response, nil
 	}
 
-	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyEnvvar) {
-		plugin.updateResponseForDeviceListEnvvar(response, deviceIDs...)
+	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyEnvVar) {
+		plugin.updateResponseForDeviceListEnvVar(response, deviceIDs...)
+		plugin.updateResponseForImexChannelsEnvVar(response)
 	}
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyVolumeMounts) {
 		plugin.updateResponseForDeviceMounts(response, deviceIDs...)
@@ -399,6 +412,9 @@ func (plugin *NvidiaDevicePlugin) updateResponseForCDI(response *pluginapi.Conta
 	var devices []string
 	for _, id := range deviceIDs {
 		devices = append(devices, plugin.cdiHandler.QualifiedName("gpu", id))
+	}
+	for _, channel := range plugin.imexChannels {
+		devices = append(devices, plugin.cdiHandler.QualifiedName("imex-channel", channel.ID))
 	}
 	if *plugin.config.Flags.GDSEnabled {
 		devices = append(devices, plugin.cdiHandler.QualifiedName("gds", "all"))
@@ -459,8 +475,10 @@ func (plugin *NvidiaDevicePlugin) PreStartContainer(context.Context, *pluginapi.
 func (plugin *NvidiaDevicePlugin) dial(unixSocketPath string, timeout time.Duration) (*grpc.ClientConn, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+	//nolint:staticcheck  // TODO: Switch to grpc.NewClient
 	c, err := grpc.DialContext(ctx, unixSocketPath,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		//nolint:staticcheck  // TODO: WithBlock is deprecated.
 		grpc.WithBlock(),
 		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, "unix", addr)
@@ -488,18 +506,37 @@ func (plugin *NvidiaDevicePlugin) apiDevices() []*pluginapi.Device {
 	return plugin.rm.Devices().GetPluginDevices()
 }
 
-// updateResponseForDeviceListEnvvar sets the environment variable for the requested devices.
-func (plugin *NvidiaDevicePlugin) updateResponseForDeviceListEnvvar(response *pluginapi.ContainerAllocateResponse, deviceIDs ...string) {
-	response.Envs[plugin.deviceListEnvvar] = strings.Join(deviceIDs, ",")
+// updateResponseForDeviceListEnvVar sets the environment variable for the requested devices.
+func (plugin *NvidiaDevicePlugin) updateResponseForDeviceListEnvVar(response *pluginapi.ContainerAllocateResponse, deviceIDs ...string) {
+	response.Envs[plugin.deviceListEnvVar] = strings.Join(deviceIDs, ",")
+}
+
+// updateResponseForImexChannelsEnvVar sets the environment variable for the requested IMEX channels.
+func (plugin *NvidiaDevicePlugin) updateResponseForImexChannelsEnvVar(response *pluginapi.ContainerAllocateResponse) {
+	var channelIDs []string
+	for _, channel := range plugin.imexChannels {
+		channelIDs = append(channelIDs, channel.ID)
+	}
+	if len(channelIDs) > 0 {
+		response.Envs[spec.ImexChannelEnvVar] = strings.Join(channelIDs, ",")
+	}
 }
 
 // updateResponseForDeviceMounts sets the mounts required to request devices if volume mounts are used.
 func (plugin *NvidiaDevicePlugin) updateResponseForDeviceMounts(response *pluginapi.ContainerAllocateResponse, deviceIDs ...string) {
-	plugin.updateResponseForDeviceListEnvvar(response, deviceListAsVolumeMountsContainerPathRoot)
+	plugin.updateResponseForDeviceListEnvVar(response, deviceListAsVolumeMountsContainerPathRoot)
+
 	for _, id := range deviceIDs {
 		mount := &pluginapi.Mount{
 			HostPath:      deviceListAsVolumeMountsHostPath,
 			ContainerPath: filepath.Join(deviceListAsVolumeMountsContainerPathRoot, id),
+		}
+		response.Mounts = append(response.Mounts, mount)
+	}
+	for _, channel := range plugin.imexChannels {
+		mount := &pluginapi.Mount{
+			HostPath:      deviceListAsVolumeMountsHostPath,
+			ContainerPath: filepath.Join(deviceListAsVolumeMountsContainerPathRoot, "imex", channel.ID),
 		}
 		response.Mounts = append(response.Mounts, mount)
 	}
@@ -525,6 +562,15 @@ func (plugin *NvidiaDevicePlugin) apiDeviceSpecs(devRoot string, ids []string) [
 		spec := &pluginapi.DeviceSpec{
 			ContainerPath: p,
 			HostPath:      filepath.Join(devRoot, p),
+			Permissions:   "rw",
+		}
+		specs = append(specs, spec)
+	}
+
+	for _, channel := range plugin.imexChannels {
+		spec := &pluginapi.DeviceSpec{
+			ContainerPath: channel.Path,
+			HostPath:      channel.HostPath,
 			Permissions:   "rw",
 		}
 		specs = append(specs, spec)
