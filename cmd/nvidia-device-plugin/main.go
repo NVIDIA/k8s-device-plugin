@@ -231,6 +231,8 @@ func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 }
 
 func start(c *cli.Context, o *options) error {
+	klog.InfoS(fmt.Sprintf("Starting %s", c.App.Name), "version", c.App.Version)
+
 	kubeletSocketDir := filepath.Dir(o.kubeletSocket)
 	klog.Infof("Starting FS watcher for %v", kubeletSocketDir)
 	watcher, err := watch.Files(kubeletSocketDir)
