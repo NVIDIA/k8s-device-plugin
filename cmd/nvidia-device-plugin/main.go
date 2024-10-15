@@ -149,6 +149,16 @@ func main() {
 			Usage:   "the strategy to use to discover devices: 'auto', 'nvml', or 'tegra'",
 			EnvVars: []string{"DEVICE_DISCOVERY_STRATEGY"},
 		},
+		&cli.IntSliceFlag{
+			Name:    "imex-channel-ids",
+			Usage:   "A list of IMEX channels to inject.",
+			EnvVars: []string{"IMEX_CHANNEL_IDS"},
+		},
+		&cli.BoolFlag{
+			Name:    "imex-required",
+			Usage:   "The specified IMEX channels are required",
+			EnvVars: []string{"IMEX_REQUIRED"},
+		},
 	}
 
 	err := c.Run(os.Args)
@@ -188,6 +198,10 @@ func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 	case "tegra":
 	default:
 		return fmt.Errorf("invalid --device-discovery-strategy option %v", *config.Flags.DeviceDiscoveryStrategy)
+	}
+
+	if err := spec.AssertChannelIDsValid(config.Imex.ChannelIDs); err != nil {
+		return fmt.Errorf("invalid IMEX channel IDs: %w", err)
 	}
 
 	return nil

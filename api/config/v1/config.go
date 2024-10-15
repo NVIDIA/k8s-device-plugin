@@ -35,6 +35,7 @@ type Config struct {
 	Flags     Flags     `json:"flags,omitempty"     yaml:"flags,omitempty"`
 	Resources Resources `json:"resources,omitempty" yaml:"resources,omitempty"`
 	Sharing   Sharing   `json:"sharing,omitempty"   yaml:"sharing,omitempty"`
+	Imex      Imex      `json:"imex,omitempty"      yaml:"imex,omitempty"`
 }
 
 // NewConfig builds out a Config struct from a config file (or command line flags).
@@ -52,6 +53,14 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 	}
 
 	config.Flags.UpdateFromCLIFlags(c, flags)
+	// TODO: This is currently not at the flags level?
+	// Does this mean that we should move UpdateFromCLIFlags to function off Config?
+	if c.IsSet("imex-channel-ids") {
+		config.Imex.ChannelIDs = c.IntSlice("imex-channel-ids")
+	}
+	if c.IsSet("imex-required") {
+		config.Imex.Required = c.Bool("imex-required")
+	}
 
 	// If nvidiaDevRoot (the path to the device nodes on the host) is not set,
 	// we default to using the driver root on the host.

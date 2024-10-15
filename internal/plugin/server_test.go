@@ -24,6 +24,7 @@ import (
 
 	v1 "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
+	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 )
 
 func TestCDIAllocateResponse(t *testing.T) {
@@ -35,6 +36,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 		CDIEnabled           bool
 		GDSEnabled           bool
 		MOFEDEnabled         bool
+		imexChannels         []*imex.Channel
 		expectedResponse     pluginapi.ContainerAllocateResponse
 	}{
 		{
@@ -129,6 +131,18 @@ func TestCDIAllocateResponse(t *testing.T) {
 				},
 			},
 		},
+		{
+			description:          "imex channel is included with devices",
+			deviceListStrategies: []string{"cdi-annotations"},
+			CDIPrefix:            "cdi.k8s.io/",
+			CDIEnabled:           true,
+			imexChannels:         []*imex.Channel{{ID: "0"}},
+			expectedResponse: pluginapi.ContainerAllocateResponse{
+				Annotations: map[string]string{
+					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/imex-channel=0",
+				},
+			},
+		},
 	}
 
 	for i := range testCases {
@@ -152,6 +166,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 				cdiEnabled:           tc.CDIEnabled,
 				deviceListStrategies: deviceListStrategies,
 				cdiAnnotationPrefix:  tc.CDIPrefix,
+				imexChannels:         tc.imexChannels,
 			}
 
 			response := pluginapi.ContainerAllocateResponse{}
