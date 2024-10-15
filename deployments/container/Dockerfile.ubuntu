@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ARG GOLANG_VERSION=1.20.5
-FROM nvidia/cuda:12.6.0-base-ubuntu22.04 as build
+FROM nvidia/cuda:12.6.2-base-ubuntu22.04 as build
 
 RUN apt-get update && \
     apt-get install -y wget make git gcc \
@@ -44,7 +44,7 @@ ARG VERSION="N/A"
 ARG GIT_COMMIT="unknown"
 RUN make PREFIX=/artifacts cmds
 
-FROM nvidia/cuda:12.6.0-base-ubuntu22.04
+FROM nvidia/cuda:12.6.2-base-ubuntu22.04
 
 # Remove CUDA libs(compat etc) in favor of libs installed by the NVIDIA driver
 RUN rm -f cuda-*.deb
