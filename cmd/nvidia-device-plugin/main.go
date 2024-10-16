@@ -41,15 +41,20 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
 )
 
-func main() {
-	var configFile string
+type options struct {
+	flags         []cli.Flag
+	configFile    string
+	kubeletSocket string
+}
 
+func main() {
 	c := cli.NewApp()
+	o := &options{}
 	c.Name = "NVIDIA Device Plugin"
 	c.Usage = "NVIDIA device plugin for Kubernetes"
 	c.Version = info.GetVersionString()
 	c.Action = func(ctx *cli.Context) error {
-		return start(ctx, c.Flags)
+		return start(ctx, o)
 	}
 
 	c.Flags = []cli.Flag{
@@ -115,7 +120,7 @@ func main() {
 		&cli.StringFlag{
 			Name:        "config-file",
 			Usage:       "the path to a config file as an alternative to command line options or environment variables",
-			Destination: &configFile,
+			Destination: &o.configFile,
 			EnvVars:     []string{"CONFIG_FILE"},
 		},
 		&cli.StringFlag{
@@ -160,6 +165,7 @@ func main() {
 			EnvVars: []string{"IMEX_REQUIRED"},
 		},
 	}
+	o.flags = c.Flags
 
 	err := c.Run(os.Args)
 	if err != nil {
@@ -200,6 +206,14 @@ func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 		return fmt.Errorf("invalid --device-discovery-strategy option %v", *config.Flags.DeviceDiscoveryStrategy)
 	}
 
+	switch *config.Flags.MigStrategy {
+	case spec.MigStrategyNone:
+	case spec.MigStrategySingle:
+	case spec.MigStrategyMixed:
+	default:
+		return fmt.Errorf("unknown MIG strategy: %v", *config.Flags.MigStrategy)
+	}
+
 	if err := spec.AssertChannelIDsValid(config.Imex.ChannelIDs); err != nil {
 		return fmt.Errorf("invalid IMEX channel IDs: %w", err)
 	}
@@ -216,9 +230,10 @@ func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 	return config, nil
 }
 
-func start(c *cli.Context, flags []cli.Flag) error {
-	kubeletSocket := c.String("kubelet-socket")
-	kubeletSocketDir := filepath.Dir(kubeletSocket)
+func start(c *cli.Context, o *options) error {
+	klog.InfoS(fmt.Sprintf("Starting %s", c.App.Name), "version", c.App.Version)
+
+	kubeletSocketDir := filepath.Dir(o.kubeletSocket)
 	klog.Infof("Starting FS watcher for %v", kubeletSocketDir)
 	watcher, err := watch.Files(kubeletSocketDir)
 	if err != nil {
@@ -242,7 +257,7 @@ restart:
 	}
 
 	klog.Info("Starting Plugins.")
-	plugins, restartPlugins, err := startPlugins(c, flags)
+	plugins, restartPlugins, err := startPlugins(c, o)
 	if err != nil {
 		return fmt.Errorf("error starting plugins: %v", err)
 	}
@@ -265,8 +280,8 @@ restart:
 		// 'pluginapi.KubeletSocket' file. When this occurs, restart this loop,
 		// restarting all of the plugins in the process.
 		case event := <-watcher.Events:
-			if kubeletSocket != "" && event.Name == kubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
-				klog.Infof("inotify: %s created, restarting.", kubeletSocket)
+			if o.kubeletSocket != "" && event.Name == o.kubeletSocket && event.Op&fsnotify.Create == fsnotify.Create {
+				klog.Infof("inotify: %s created, restarting.", o.kubeletSocket)
 				goto restart
 			}
 
@@ -296,10 +311,10 @@ exit:
 	return nil
 }
 
-func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, bool, error) {
+func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) {
 	// Load the configuration file
 	klog.Info("Loading configuration.")
-	config, err := loadConfig(c, flags)
+	config, err := loadConfig(c, o.flags)
 	if err != nil {
 		return nil, false, fmt.Errorf("unable to load config: %v", err)
 	}
@@ -338,12 +353,7 @@ func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, bool, e
 
 	// Get the set of plugins.
 	klog.Info("Retrieving plugins.")
-	kubeletSocket := c.String("kubelet-socket")
-	pluginManager, err := NewPluginManager(infolib, nvmllib, devicelib, kubeletSocket, config)
-	if err != nil {
-		return nil, false, fmt.Errorf("error creating plugin manager: %v", err)
-	}
-	plugins, err := pluginManager.GetPlugins()
+	plugins, err := GetPlugins(infolib, nvmllib, devicelib, config)
 	if err != nil {
 		return nil, false, fmt.Errorf("error getting plugins: %v", err)
 	}
@@ -359,7 +369,7 @@ func startPlugins(c *cli.Context, flags []cli.Flag) ([]plugin.Interface, bool, e
 		}
 
 		// Start the gRPC server for plugin p and connect it with the kubelet.
-		if err := p.Start(); err != nil {
+		if err := p.Start(o.kubeletSocket); err != nil {
 			klog.Errorf("Failed to start plugin: %v", err)
 			return plugins, true, nil
 		}

@@ -14,7 +14,7 @@
 # limitations under the License.
 **/
 
-package manager
+package plugin
 
 import (
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
@@ -25,60 +25,54 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 )
 
-// Option is a function that configures a manager
-type Option func(*manager)
+// Option is a function that configures a options
+type Option func(*options)
 
-// WithCDIHandler sets the CDI handler for the manager
+// WithCDIHandler sets the CDI handler for the options
 func WithCDIHandler(handler cdi.Interface) Option {
-	return func(m *manager) {
+	return func(m *options) {
 		m.cdiHandler = handler
 	}
 }
 
-// WithNVML sets the NVML handler for the manager
+// WithDeviceListStrategies sets the device list strategies.
+func WithDeviceListStrategies(deviceListStrategies spec.DeviceListStrategies) Option {
+	return func(m *options) {
+		m.deviceListStrategies = deviceListStrategies
+	}
+}
+
+// WithNVML sets the NVML handler for the options
 func WithNVML(nvmllib nvml.Interface) Option {
-	return func(m *manager) {
+	return func(m *options) {
 		m.nvmllib = nvmllib
 	}
 }
 
-// WithInfoLib sets the info lib for the manager.
+// WithInfoLib sets the info lib for the options.
 func WithInfoLib(infolib info.Interface) Option {
-	return func(m *manager) {
+	return func(m *options) {
 		m.infolib = infolib
 	}
 }
 
-// WithFailOnInitError sets whether the manager should fail on initialization errors
+// WithFailOnInitError sets whether the options should fail on initialization errors
 func WithFailOnInitError(failOnInitError bool) Option {
-	return func(m *manager) {
+	return func(m *options) {
 		m.failOnInitError = failOnInitError
 	}
 }
 
-// WithMigStrategy sets the MIG strategy for the manager
-func WithMigStrategy(migStrategy string) Option {
-	return func(m *manager) {
-		m.migStrategy = migStrategy
-	}
-}
-
-// WithConfig sets the config reference for the manager
+// WithConfig sets the config reference for the options
 func WithConfig(config *spec.Config) Option {
-	return func(m *manager) {
+	return func(m *options) {
 		m.config = config
-	}
-}
-
-func WithKubeletSocket(kubeletSocket string) Option {
-	return func(m *manager) {
-		m.kubeletSocket = kubeletSocket
 	}
 }
 
 // WithImexChannels sets the imex channels for the manager.
 func WithImexChannels(imexChannels imex.Channels) Option {
-	return func(m *manager) {
+	return func(m *options) {
 		m.imexChannels = imexChannels
 	}
 }

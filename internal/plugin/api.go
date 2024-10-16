@@ -21,6 +21,6 @@ import "github.com/NVIDIA/k8s-device-plugin/internal/rm"
 // Interface defines the API for the plugin package
 type Interface interface {
 	Devices() rm.Devices
-	Start() error
+	Start(string) error
 	Stop() error
 }

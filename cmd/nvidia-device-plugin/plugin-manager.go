@@ -26,20 +26,11 @@ import (
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
-	"github.com/NVIDIA/k8s-device-plugin/internal/plugin/manager"
+	"github.com/NVIDIA/k8s-device-plugin/internal/plugin"
 )
 
-// NewPluginManager creates an NVML-based plugin manager
-func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, kubeletSocket string, config *spec.Config) (manager.Interface, error) {
-	var err error
-	switch *config.Flags.MigStrategy {
-	case spec.MigStrategyNone:
-	case spec.MigStrategySingle:
-	case spec.MigStrategyMixed:
-	default:
-		return nil, fmt.Errorf("unknown strategy: %v", *config.Flags.MigStrategy)
-	}
-
+// GetPlugins returns a set of plugins for the specified configuration.
+func GetPlugins(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) ([]plugin.Interface, error) {
 	// TODO: We could consider passing this as an argument since it should already be used to construct nvmllib.
 	driverRoot := root(*config.Flags.Plugin.ContainerDriverRoot)
 
@@ -70,21 +61,20 @@ func NewPluginManager(infolib info.Interface, nvmllib nvml.Interface, devicelib 
 		return nil, fmt.Errorf("unable to create cdi handler: %v", err)
 	}
 
-	m, err := manager.New(infolib, nvmllib, devicelib,
-		manager.WithCDIHandler(cdiHandler),
-		manager.WithConfig(config),
-		manager.WithFailOnInitError(*config.Flags.FailOnInitError),
-		manager.WithKubeletSocket(kubeletSocket),
-		manager.WithMigStrategy(*config.Flags.MigStrategy),
-		manager.WithImexChannels(imexChannels),
+	plugins, err := plugin.New(infolib, nvmllib, devicelib,
+		plugin.WithCDIHandler(cdiHandler),
+		plugin.WithConfig(config),
+		plugin.WithDeviceListStrategies(deviceListStrategies),
+		plugin.WithFailOnInitError(*config.Flags.FailOnInitError),
+		plugin.WithImexChannels(imexChannels),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create plugin manager: %v", err)
+		return nil, fmt.Errorf("unable to create plugins: %w", err)
 	}
 
-	if err := m.CreateCDISpecFile(); err != nil {
+	if err := cdiHandler.CreateSpecFile(); err != nil {
 		return nil, fmt.Errorf("unable to create cdi spec file: %v", err)
 	}
 
-	return m, nil
+	return plugins, nil
 }

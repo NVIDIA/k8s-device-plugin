@@ -33,7 +33,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 		deviceIds            []string
 		deviceListStrategies []string
 		CDIPrefix            string
-		CDIEnabled           bool
 		GDSEnabled           bool
 		MOFEDEnabled         bool
 		imexChannels         []*imex.Channel
@@ -43,14 +42,12 @@ func TestCDIAllocateResponse(t *testing.T) {
 			description:          "empty device list has empty response",
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			CDIEnabled:           true,
 		},
 		{
 			description:          "single device is added to annotations",
 			deviceIds:            []string{"gpu0"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			CDIEnabled:           true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gpu=gpu0",
@@ -62,7 +59,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 			deviceIds:            []string{"gpu0"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "custom.cdi.k8s.io/",
-			CDIEnabled:           true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"custom.cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gpu=gpu0",
@@ -74,7 +70,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 			deviceIds:            []string{"gpu0", "gpu1"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			CDIEnabled:           true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gpu=gpu0,nvidia.com/gpu=gpu1",
@@ -86,7 +81,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 			deviceIds:            []string{"gpu0", "gpu1"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "custom.cdi.k8s.io/",
-			CDIEnabled:           true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"custom.cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gpu=gpu0,nvidia.com/gpu=gpu1",
@@ -97,7 +91,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 			description:          "mofed devices are selected if configured",
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			CDIEnabled:           true,
 			MOFEDEnabled:         true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
@@ -109,7 +102,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 			description:          "gds devices are selected if configured",
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			CDIEnabled:           true,
 			GDSEnabled:           true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
@@ -122,7 +114,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 			deviceIds:            []string{"gpu0"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			CDIEnabled:           true,
 			GDSEnabled:           true,
 			MOFEDEnabled:         true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
@@ -135,7 +126,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 			description:          "imex channel is included with devices",
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			CDIEnabled:           true,
 			imexChannels:         []*imex.Channel{{ID: "0"}},
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
@@ -149,7 +139,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 		tc := testCases[i]
 		t.Run(tc.description, func(t *testing.T) {
 			deviceListStrategies, _ := v1.NewDeviceListStrategies(tc.deviceListStrategies)
-			plugin := NvidiaDevicePlugin{
+			plugin := nvidiaDevicePlugin{
 				config: &v1.Config{
 					Flags: v1.Flags{
 						CommandLineFlags: v1.CommandLineFlags{
@@ -163,7 +153,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 						return "nvidia.com/" + c + "=" + s
 					},
 				},
-				cdiEnabled:           tc.CDIEnabled,
 				deviceListStrategies: deviceListStrategies,
 				cdiAnnotationPrefix:  tc.CDIPrefix,
 				imexChannels:         tc.imexChannels,
