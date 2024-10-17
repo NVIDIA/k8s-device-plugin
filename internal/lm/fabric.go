@@ -20,17 +20,16 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"math/rand" // nolint:gosec
 	"net"
 	"os"
 	"sort"
 	"strings"
 
-	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
-	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
-
 	"github.com/google/uuid"
 	"k8s.io/klog/v2"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 )
 
 func newImexLabeler(config *spec.Config, devices []resource.Device) (Labeler, error) {
@@ -142,18 +141,5 @@ func getImexDomainID(r io.Reader) (string, error) {
 }
 
 func generateContentUUID(seed string) string {
-	// nolint:gosec
-	rand := rand.New(rand.NewSource(hash(seed)))
-	charset := make([]byte, 16)
-	rand.Read(charset)
-	uuid, _ := uuid.FromBytes(charset)
-	return uuid.String()
-}
-
-func hash(s string) int64 {
-	h := int64(0)
-	for _, c := range s {
-		h = 31*h + int64(c)
-	}
-	return h
+	return uuid.NewSHA1(uuid.Nil, []byte(seed)).String()
 }
