@@ -184,6 +184,7 @@ func TestMarshalFlags(t *testing.T) {
 				"gfd": {
 					"oneshot": null,
 					"noTimestamp": null,
+					"noCleanupOnExit": null,
 					"outputFile": null,
 					"sleepInterval": "0s",
 					"machineTypeFile": null,
@@ -209,6 +210,7 @@ func TestMarshalFlags(t *testing.T) {
 				"gfd": {
 					"oneshot": null,
 					"noTimestamp": null,
+					"noCleanupOnExit": null,
 					"outputFile": null,
 					"sleepInterval": "5ns",
 					"machineTypeFile": null,
