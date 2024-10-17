@@ -26,6 +26,9 @@ var _ Device = &DeviceMock{}
 //			GetDeviceHandleFromMigDeviceHandleFunc: func() (Device, error) {
 //				panic("mock out the GetDeviceHandleFromMigDeviceHandle method")
 //			},
+//			GetFabricIDsFunc: func() (string, string, error) {
+//				panic("mock out the GetFabricIDs method")
+//			},
 //			GetMigDevicesFunc: func() ([]Device, error) {
 //				panic("mock out the GetMigDevices method")
 //			},
@@ -37,6 +40,9 @@ var _ Device = &DeviceMock{}
 //			},
 //			GetTotalMemoryMBFunc: func() (uint64, error) {
 //				panic("mock out the GetTotalMemoryMB method")
+//			},
+//			IsFabricAttachedFunc: func() (bool, error) {
+//				panic("mock out the IsFabricAttached method")
 //			},
 //			IsMigCapableFunc: func() (bool, error) {
 //				panic("mock out the IsMigCapable method")
@@ -60,6 +66,9 @@ type DeviceMock struct {
 	// GetDeviceHandleFromMigDeviceHandleFunc mocks the GetDeviceHandleFromMigDeviceHandle method.
 	GetDeviceHandleFromMigDeviceHandleFunc func() (Device, error)
 
+	// GetFabricIDsFunc mocks the GetFabricIDs method.
+	GetFabricIDsFunc func() (string, string, error)
+
 	// GetMigDevicesFunc mocks the GetMigDevices method.
 	GetMigDevicesFunc func() ([]Device, error)
 
@@ -71,6 +80,9 @@ type DeviceMock struct {
 
 	// GetTotalMemoryMBFunc mocks the GetTotalMemoryMB method.
 	GetTotalMemoryMBFunc func() (uint64, error)
+
+	// IsFabricAttachedFunc mocks the IsFabricAttached method.
+	IsFabricAttachedFunc func() (bool, error)
 
 	// IsMigCapableFunc mocks the IsMigCapable method.
 	IsMigCapableFunc func() (bool, error)
@@ -89,6 +101,9 @@ type DeviceMock struct {
 		// GetDeviceHandleFromMigDeviceHandle holds details about calls to the GetDeviceHandleFromMigDeviceHandle method.
 		GetDeviceHandleFromMigDeviceHandle []struct {
 		}
+		// GetFabricIDs holds details about calls to the GetFabricIDs method.
+		GetFabricIDs []struct {
+		}
 		// GetMigDevices holds details about calls to the GetMigDevices method.
 		GetMigDevices []struct {
 		}
@@ -101,6 +116,9 @@ type DeviceMock struct {
 		// GetTotalMemoryMB holds details about calls to the GetTotalMemoryMB method.
 		GetTotalMemoryMB []struct {
 		}
+		// IsFabricAttached holds details about calls to the IsFabricAttached method.
+		IsFabricAttached []struct {
+		}
 		// IsMigCapable holds details about calls to the IsMigCapable method.
 		IsMigCapable []struct {
 		}
@@ -111,10 +129,12 @@ type DeviceMock struct {
 	lockGetAttributes                      sync.RWMutex
 	lockGetCudaComputeCapability           sync.RWMutex
 	lockGetDeviceHandleFromMigDeviceHandle sync.RWMutex
+	lockGetFabricIDs                       sync.RWMutex
 	lockGetMigDevices                      sync.RWMutex
 	lockGetName                            sync.RWMutex
 	lockGetPCIClass                        sync.RWMutex
 	lockGetTotalMemoryMB                   sync.RWMutex
+	lockIsFabricAttached                   sync.RWMutex
 	lockIsMigCapable                       sync.RWMutex
 	lockIsMigEnabled                       sync.RWMutex
 }
@@ -197,6 +217,33 @@ func (mock *DeviceMock) GetDeviceHandleFromMigDeviceHandleCalls() []struct {
 	mock.lockGetDeviceHandleFromMigDeviceHandle.RLock()
 	calls = mock.calls.GetDeviceHandleFromMigDeviceHandle
 	mock.lockGetDeviceHandleFromMigDeviceHandle.RUnlock()
+	return calls
+}
+
+// GetFabricIDs calls GetFabricIDsFunc.
+func (mock *DeviceMock) GetFabricIDs() (string, string, error) {
+	if mock.GetFabricIDsFunc == nil {
+		panic("DeviceMock.GetFabricIDsFunc: method is nil but Device.GetFabricIDs was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockGetFabricIDs.Lock()
+	mock.calls.GetFabricIDs = append(mock.calls.GetFabricIDs, callInfo)
+	mock.lockGetFabricIDs.Unlock()
+	return mock.GetFabricIDsFunc()
+}
+
+// GetFabricIDsCalls gets all the calls that were made to GetFabricIDs.
+// Check the length with:
+//
+//	len(mockedDevice.GetFabricIDsCalls())
+func (mock *DeviceMock) GetFabricIDsCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockGetFabricIDs.RLock()
+	calls = mock.calls.GetFabricIDs
+	mock.lockGetFabricIDs.RUnlock()
 	return calls
 }
 
@@ -305,6 +352,33 @@ func (mock *DeviceMock) GetTotalMemoryMBCalls() []struct {
 	mock.lockGetTotalMemoryMB.RLock()
 	calls = mock.calls.GetTotalMemoryMB
 	mock.lockGetTotalMemoryMB.RUnlock()
+	return calls
+}
+
+// IsFabricAttached calls IsFabricAttachedFunc.
+func (mock *DeviceMock) IsFabricAttached() (bool, error) {
+	if mock.IsFabricAttachedFunc == nil {
+		panic("DeviceMock.IsFabricAttachedFunc: method is nil but Device.IsFabricAttached was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockIsFabricAttached.Lock()
+	mock.calls.IsFabricAttached = append(mock.calls.IsFabricAttached, callInfo)
+	mock.lockIsFabricAttached.Unlock()
+	return mock.IsFabricAttachedFunc()
+}
+
+// IsFabricAttachedCalls gets all the calls that were made to IsFabricAttached.
+// Check the length with:
+//
+//	len(mockedDevice.IsFabricAttachedCalls())
+func (mock *DeviceMock) IsFabricAttachedCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockIsFabricAttached.RLock()
+	calls = mock.calls.IsFabricAttached
+	mock.lockIsFabricAttached.RUnlock()
 	return calls
 }
 
