@@ -18,9 +18,10 @@ package lm
 
 import (
 	"bufio"
+	"crypto/sha256"
 	"fmt"
 	"io"
-	"math/rand" // nolint:gosec
+	"math/rand/v2"
 	"net"
 	"os"
 	"sort"
@@ -142,18 +143,16 @@ func getImexDomainID(r io.Reader) (string, error) {
 }
 
 func generateContentUUID(seed string) string {
-	// nolint:gosec
-	rand := rand.New(rand.NewSource(hash(seed)))
+	r := rand.NewChaCha8(hash(seed))
 	charset := make([]byte, 16)
-	rand.Read(charset)
-	uuid, _ := uuid.FromBytes(charset)
-	return uuid.String()
+	_, err := r.Read(charset)
+	if err != nil {
+		return ""
+	}
+	u, _ := uuid.FromBytes(charset)
+	return u.String()
 }
 
-func hash(s string) int64 {
-	h := int64(0)
-	for _, c := range s {
-		h = 31*h + int64(c)
-	}
-	return h
+func hash(s string) [32]byte {
+	return sha256.Sum256([]byte(s))
 }
