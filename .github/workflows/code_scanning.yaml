@@ -38,6 +38,15 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+    - name: Get Golang version
+      id: vars
+      run: |
+        GOLANG_VERSION=$(./hack/golang-version.sh)
+        echo "GOLANG_VERSION=${GOLANG_VERSION##GOLANG_VERSION := }" >> $GITHUB_ENV
+    - name: Install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GOLANG_VERSION }}
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
