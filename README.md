@@ -160,7 +160,7 @@ production setting.
 With the daemonset deployed, NVIDIA GPUs can now be requested by a container
 using the `nvidia.com/gpu` resource type:
 
-```yaml
+```shell
 cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: Pod
@@ -609,22 +609,22 @@ to the container.
 
 ## Catalog of Labels
 
-The NVIDIA device plugin reads and writes a number of different labels which it uses as either
-configuration elements or informational elements. The below table documents and describes each
-along with their use. See the related table [here](/docs/gpu-feature-discovery/README.md#generated-labels) for GFD labels.
+The NVIDIA device plugin reads and writes a number of different labels that it uses as either
+configuration elements or informational elements. The following table documents and describes each label
+along with their use. See the related table [here](/docs/gpu-feature-discovery/README.md#generated-labels) for the labels GFD adds.
 
-> [!NOTE]
-> Label values in Kubernetes are always of type string. The table's value type describes the type within string formatting.
-
-| Label Name                        | Value Type | Meaning                                                                                                                                                                                | Example        |
-| ----------------------------------| ---------- |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| -------------- |
-| nvidia.com/device-plugin.config   | String     | The name of the configuration to apply to the node. Not automatically written by the device plugin; must be manually assigned by the user with the specified config. See [here](#updating-per-node-configuration-with-a-node-label) for details. | my-mps-config  |
-| nvidia.com/gpu.sharing-strategy   | String     | The sharing strategy in use. Will be set to `none` if not sharing a GPU. Additional values are `mps` and `time-slicing`.                                                               | time-slicing   |
-| nvidia.com/mig.capable            | Boolean    | If a device is currently in MIG mode.                                                                                                                                                  | false          |
-| nvidia.com/mps.capable            | Boolean    | If a device is currently in MPS mode.                                                                                                                                                  | false          |
-| nvidia.com/vgpu.present           | Boolean    | If vGPU is in use.                                                                                                                                                                     | false          |
-| nvidia.com/vgpu.host-driver-version | String   | Version of the vGPU host driver in use on the underlying hypervisor.                                                                                                                   | 10.11.12       |
-| nvidia.com/vgpu.host-driver-branch | String    | Branch of the vGPU host driver in use on the underlying hypervisor.                                                                                                                    | main           |
+| Label Name                          | Description                                                                                                                                                                                                                                  | Example        |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| nvidia.com/device-plugin.config     | Specifies the configuration to apply to the node. You apply this this label to perform per-node configuration. Refer to [Updating Per-Node Configuration With a Node Label](#updating-per-node-configuration-with-a-node-label) for details. | my-mps-config  |
+| nvidia.com/gpu.sharing-strategy     | Specifies the sharing strategy. The default value, `none`, indicates no sharing.  Other values are `mps` and `time-slicing`.                                                                                                                 | time-slicing   |
+| nvidia.com/mig.capable              | Specifies if any device on the node supports MIG.                                                                                                                                                                                            | false          |
+| nvidia.com/mps.capable              | Specifies if devices on the node are configured for MPS.                                                                                                                                                                                     | false          |
+| nvidia.com/gpu.sharing-strategy     | Specifies the sharing strategy. The default value, `none`, indicates no sharing.  Other values are `mps` and `time-slicing`.                                                                                                                 | time-slicing   |
+| nvidia.com/mig.capable              | Specifies if any device on the node supports MIG.                                                                                                                                                                                            | false          |
+| nvidia.com/mps.capable              | Specifies if devices on the node are configured for MPS.                                                                                                                                                                                     | false          |
+| nvidia.com/vgpu.present             | Specifies if devices on the node use vGPU.                                                                                                                                                                                                   | false          |
+| nvidia.com/vgpu.host-driver-branch  | Specifies the vGPU host driver branch on the underlying hypervisor.                                                                                                                                                                          | r550_40        |
+| nvidia.com/vgpu.host-driver-version | Specifies the vGPU host driver version on the underlying hypervisor.                                                                                                                                                                         | 550.54.16      |
 
 ## Deployment via `helm`
 
