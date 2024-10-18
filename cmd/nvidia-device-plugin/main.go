@@ -112,10 +112,11 @@ func main() {
 			EnvVars: []string{"MOFED_ENABLED"},
 		},
 		&cli.StringFlag{
-			Name:    "kubelet-socket",
-			Value:   pluginapi.KubeletSocket,
-			Usage:   "specify the socket for communicating with the kubelet; if this is empty, no connection with the kubelet is attempted",
-			EnvVars: []string{"KUBELET_SOCKET"},
+			Name:        "kubelet-socket",
+			Value:       pluginapi.KubeletSocket,
+			Usage:       "specify the socket for communicating with the kubelet; if this is empty, no connection with the kubelet is attempted",
+			Destination: &o.kubeletSocket,
+			EnvVars:     []string{"KUBELET_SOCKET"},
 		},
 		&cli.StringFlag{
 			Name:        "config-file",
