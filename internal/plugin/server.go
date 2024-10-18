@@ -132,7 +132,7 @@ func (plugin *nvidiaDevicePlugin) Start(kubeletSocket string) error {
 
 	err := plugin.Serve()
 	if err != nil {
-		klog.Infof("Could not start device plugin for '%s': %s", plugin.rm.Resource(), err)
+		klog.Errorf("Could not start device plugin for '%s': %s", plugin.rm.Resource(), err)
 		plugin.cleanup()
 		return err
 	}
@@ -140,7 +140,7 @@ func (plugin *nvidiaDevicePlugin) Start(kubeletSocket string) error {
 
 	err = plugin.Register(kubeletSocket)
 	if err != nil {
-		klog.Infof("Could not register device plugin: %s", err)
+		klog.Errorf("Could not register device plugin: %s", err)
 		return errors.Join(err, plugin.Stop())
 	}
 	klog.Infof("Registered device plugin for '%s' with Kubelet", plugin.rm.Resource())
@@ -149,7 +149,7 @@ func (plugin *nvidiaDevicePlugin) Start(kubeletSocket string) error {
 		// TODO: add MPS health check
 		err := plugin.rm.CheckHealth(plugin.stop, plugin.health)
 		if err != nil {
-			klog.Infof("Failed to start health check: %v; continuing with health checks disabled", err)
+			klog.Errorf("Failed to start health check: %v; continuing with health checks disabled", err)
 		}
 	}()
 
@@ -529,8 +529,14 @@ func (plugin *nvidiaDevicePlugin) apiDeviceSpecs(devRoot string, ids []string) [
 	for _, channel := range plugin.imexChannels {
 		spec := &pluginapi.DeviceSpec{
 			ContainerPath: channel.Path,
-			HostPath:      channel.HostPath,
-			Permissions:   "rw",
+			// TODO: The HostPath property for a channel is not the correct value to use here.
+			// The `devRoot` there represents the devRoot in the current container when discovering devices
+			// and is set to "{{ .*config.Flags.Plugin.ContainerDriverRoot }}/dev".
+			// The devRoot in this context is the {{ .config.Flags.NvidiaDevRoot }} and defines the
+			// root for device nodes on the host. This is usually / or /run/nvidia/driver when the
+			// driver container is used.
+			HostPath:    filepath.Join(devRoot, channel.Path),
+			Permissions: "rw",
 		}
 		specs = append(specs, spec)
 	}
