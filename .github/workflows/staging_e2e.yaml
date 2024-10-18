@@ -39,7 +39,7 @@ jobs:
           echo "GOLANG_VERSION=${GOLANG_VERSION##GOLANG_VERSION := }" >> $GITHUB_ENV
 
       - name: Set up Holodeck
-        uses: NVIDIA/holodeck@v0.2.3
+        uses: NVIDIA/holodeck@v0.2.4
         with:
           vsphere_username: ${{ secrets.VSPHERE_USERNAME }}
           vsphere_password: ${{ secrets.VSPHERE_PASSWORD }}
