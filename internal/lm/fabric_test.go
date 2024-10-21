@@ -32,7 +32,7 @@ func TestGerenerateDomainUUID(t *testing.T) {
 		{
 			description: "single IP",
 			ips:         []string{"10.130.3.24"},
-			expected:    "4dbd3d31-fbb3-8a40-33bb-bcc0dd7b68b8",
+			expected:    "60ad7226-0130-54d0-b762-2a5385a3a26f",
 		},
 		{
 			description: "multiple IPs",
@@ -44,7 +44,7 @@ func TestGerenerateDomainUUID(t *testing.T) {
 				"10.130.3.27",
 				"10.130.3.25",
 			},
-			expected: "42401dd1-8a08-1889-4341-8429de2b6f42",
+			expected: "8a7363e9-1003-5814-9354-175fdff19204",
 		},
 	}
 
