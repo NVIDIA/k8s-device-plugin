@@ -61,6 +61,7 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 	if c.IsSet("imex-required") {
 		config.Imex.Required = c.Bool("imex-required")
 	}
+	updateFromCLIFlag(&config.Imex.NodesConfigFile, c, "imex-nodes-config-file")
 
 	// If nvidiaDevRoot (the path to the device nodes on the host) is not set,
 	// we default to using the driver root on the host.
