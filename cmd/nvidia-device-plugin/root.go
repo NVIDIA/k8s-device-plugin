@@ -59,6 +59,7 @@ func (r root) tryResolveLibrary(libraryName string) string {
 		"/lib64",
 		"/lib/x86_64-linux-gnu",
 		"/lib/aarch64-linux-gnu",
+		"/glibc/lib",
 	}
 
 	for _, d := range librarySearchPaths {
