@@ -186,8 +186,7 @@ func TestMarshalFlags(t *testing.T) {
 					"noTimestamp": null,
 					"outputFile": null,
 					"sleepInterval": "0s",
-					"machineTypeFile": null,
-					"imexNodesConfigFile": null
+					"machineTypeFile": null
 				}
 			}`,
 		},
@@ -211,8 +210,7 @@ func TestMarshalFlags(t *testing.T) {
 					"noTimestamp": null,
 					"outputFile": null,
 					"sleepInterval": "5ns",
-					"machineTypeFile": null,
-					"imexNodesConfigFile": null
+					"machineTypeFile": null
 				}
 			}`,
 		},

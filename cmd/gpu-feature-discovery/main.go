@@ -115,6 +115,13 @@ func main() {
 			Usage:   "the strategy to use to discover devices: 'auto', 'nvml', 'tegra' or 'vfio'",
 			EnvVars: []string{"DEVICE_DISCOVERY_STRATEGY"},
 		},
+		&cli.StringFlag{
+			Name:    "driver-root-ctr-path",
+			Aliases: []string{"container-driver-root"},
+			Value:   spec.DefaultContainerDriverRoot,
+			Usage:   "the path where the NVIDIA driver root is mounted in the container",
+			EnvVars: []string{"DRIVER_ROOT_CTR_PATH", "CONTAINER_DRIVER_ROOT"},
+		},
 	}
 
 	config.flags = append(config.flags, config.kubeClientConfig.Flags()...)
@@ -150,7 +157,6 @@ func (cfg *Config) loadConfig(c *cli.Context) (*spec.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to validate flags: %v", err)
 	}
-	config.Flags.Plugin = nil
 
 	return config, nil
 }
