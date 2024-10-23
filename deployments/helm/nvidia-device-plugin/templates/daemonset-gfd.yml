@@ -57,7 +57,31 @@ spec:
       {{- end }}
       {{- if $options.hasConfigMap }}
       shareProcessNamespace: true
+      {{- end }}
       initContainers:
+      - image: {{ include "nvidia-device-plugin.fullimage" . }}
+        name: gpu-feature-discovery-imex-init
+        command:
+        - "/bin/bash"
+        - "-c"
+        - |
+          if [[ ! -d /driver-root/etc/nvidia-imex ]]; then
+            echo "No IMEX Nodes config path detected; Skipping"
+            exit 0
+          fi
+
+          mkdir -p /config/etc/nvidia-imex
+          mount --bind /driver-root/etc/nvidia-imex /config/etc/nvidia-imex
+        volumeMounts:
+          - name: config
+            mountPath: /config
+            mountPropagation: Bidirectional
+          - name: driver-root
+            mountPath: /driver-root
+            readOnly: true
+        securityContext:
+          privileged: true
+      {{- if $options.hasConfigMap }}
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         name: gpu-feature-discovery-init
         command: ["config-manager"]
@@ -143,6 +167,8 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+          - name: GFD_IMEX_NODES_CONFIG_FILE
+            value: "/config/etc/nvidia-imex/nodes_config.cfg"
         {{- if typeIs "string" .Values.migStrategy }}
           - name: MIG_STRATEGY
             value: {{ .Values.migStrategy }}
@@ -182,14 +208,12 @@ spec:
             mountPath: "/etc/kubernetes/node-feature-discovery/features.d"
           - name: host-sys
             mountPath: "/sys"
-          - name: nvidia-imex-dir
-            mountPath: "/etc/nvidia-imex"
         {{- if $options.hasConfigMap }}
           - name: available-configs
             mountPath: /available-configs
+        {{- end }}
           - name: config
             mountPath: /config
-        {{- end }}
         {{- with .Values.resources }}
         resources:
           {{- toYaml . | nindent 10 }}
@@ -201,17 +225,16 @@ spec:
         - name: host-sys
           hostPath:
             path: "/sys"
-        - name: nvidia-imex-dir
-          type: DirectoryOrCreate
+        - name: driver-root
           hostPath:
-            path: {{ clean ( join "/" ( list "/" .Values.nvidiaDriverRoot "/etc/nvidia-imex" ) ) | quote }}
+            path: {{ clean ( join "/" ( list "/" .Values.nvidiaDriverRoot ) ) | quote }}
       {{- if $options.hasConfigMap }}
         - name: available-configs
           configMap:
             name: {{ $configMapName }}
+      {{- end }}
         - name: config
           emptyDir: {}
-      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
