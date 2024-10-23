@@ -18,10 +18,12 @@ package lm
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -33,15 +35,40 @@ import (
 )
 
 func newImexLabeler(config *spec.Config, devices []resource.Device) (Labeler, error) {
-	if config.Flags.GFD.ImexNodesConfigFile == nil || *config.Flags.GFD.ImexNodesConfigFile == "" {
+	if config.Imex.NodesConfigFile == nil || *config.Imex.NodesConfigFile == "" {
 		// No imex config file, return empty labels
 		return empty{}, nil
 	}
 
-	imexConfigFile, err := os.Open(*config.Flags.GFD.ImexNodesConfigFile)
+	nodesConfigFiles := []string{*config.Imex.NodesConfigFile}
+	if root := config.Flags.Plugin.ContainerDriverRoot; root != nil && *root != "" {
+		nodesConfigFiles = append(nodesConfigFiles, filepath.Join(*root, *config.Imex.NodesConfigFile))
+	}
+
+	var errs error
+	for _, configFilePath := range nodesConfigFiles {
+		imexLabeler, err := imexLabelerForConfigFile(configFilePath, devices)
+		if err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
+		if imexLabeler != nil {
+			klog.Infof("Using labeler for IMEX config %v", configFilePath)
+			return imexLabeler, nil
+		}
+	}
+	if errs != nil {
+		return nil, errs
+	}
+
+	return empty{}, nil
+}
+
+func imexLabelerForConfigFile(configFilePath string, devices []resource.Device) (Labeler, error) {
+	imexConfigFile, err := os.Open(configFilePath)
 	if os.IsNotExist(err) {
 		// No imex config file, return empty labels
-		return empty{}, nil
+		return nil, nil
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to open imex config file: %v", err)
 	}
@@ -52,7 +79,7 @@ func newImexLabeler(config *spec.Config, devices []resource.Device) (Labeler, er
 		return nil, err
 	}
 	if clusterUUID == "" || cliqueID == "" {
-		return empty{}, nil
+		return nil, nil
 	}
 
 	imexDomainID, err := getImexDomainID(imexConfigFile)
@@ -60,7 +87,7 @@ func newImexLabeler(config *spec.Config, devices []resource.Device) (Labeler, er
 		return nil, err
 	}
 	if imexDomainID == "" {
-		return empty{}, nil
+		return nil, nil
 	}
 
 	labels := Labels{
