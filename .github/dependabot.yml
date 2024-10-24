@@ -6,6 +6,9 @@ updates:
   - package-ecosystem: "gomod"
     target-branch: main
     directory: "/"
+    ignore:
+    - dependency-name: "sigs.k8s.io/node-feature-discovery"
+      versions: ["0.16.x"]
     schedule:
       interval: "weekly"
       day: "sunday"
@@ -55,6 +58,9 @@ updates:
   - package-ecosystem: "gomod"
     target-branch: release-0.16
     directory: "/"
+    ignore:
+    - dependency-name: "sigs.k8s.io/node-feature-discovery"
+      versions: ["0.16.x"]
     schedule:
       interval: "weekly"
       day: "sunday"
