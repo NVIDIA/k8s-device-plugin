@@ -36,6 +36,13 @@ jobs:
         id: vars
         run: |
           echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
+          GOLANG_VERSION=$(./hack/golang-version.sh)
+          echo "GOLANG_VERSION=${GOLANG_VERSION##GOLANG_VERSION := }" >> $GITHUB_ENV
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
 
       - name: Set up Holodeck
         uses: NVIDIA/holodeck@v0.2.3
