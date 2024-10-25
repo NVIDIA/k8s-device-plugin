@@ -87,12 +87,6 @@ func main() {
 			EnvVars: []string{"GFD_OUTPUT_FILE"},
 		},
 		&cli.StringFlag{
-			Name:    "imex-nodes-config-file",
-			Usage:   "Path to the IMEX nodes config file. This file contains a list of IP addresses of the nodes in the IMEX domain.",
-			Value:   "/etc/nvidia-imex/nodes_config.cfg",
-			EnvVars: []string{"GFD_IMEX_NODES_CONFIG_FILE"},
-		},
-		&cli.StringFlag{
 			Name:    "machine-type-file",
 			Value:   "/sys/class/dmi/id/product_name",
 			Usage:   "a path to a file that contains the DMI (SMBIOS) information for the node",
