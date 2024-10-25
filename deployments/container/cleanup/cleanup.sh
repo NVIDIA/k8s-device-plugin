@@ -52,6 +52,10 @@ microdnf remove -y \
 microdnf remove -y \
     $(rpm -qa | sort | grep -v -f package-names.minimal -e gpg-pubkey)
 
+# We need mount for our init container and install it here.
+# TODO: We need to provide a better way to install this / skip the cleanup of this package.
+microdnf install -y util-linux-core
+
 # We don't want to add third-party content to the base image and only remove packages.
 # We therefore skip running microdnf update here
 # microdnf update
