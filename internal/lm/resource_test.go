@@ -55,7 +55,7 @@ func TestGPUResourceLabeler(t *testing.T) {
 			description: "time-slicing ignores non-matching resource",
 			count:       1,
 			sharing: spec.Sharing{
-				TimeSlicing: spec.ReplicatedResources{
+				TimeSlicing: &spec.ReplicatedResources{
 					Resources: []spec.ReplicatedResource{
 						{
 							Name:     "nvidia.com/not-gpu",
@@ -79,7 +79,7 @@ func TestGPUResourceLabeler(t *testing.T) {
 			description: "time-slicing appends suffix and doubles count",
 			count:       1,
 			sharing: spec.Sharing{
-				TimeSlicing: spec.ReplicatedResources{
+				TimeSlicing: &spec.ReplicatedResources{
 					Resources: []spec.ReplicatedResource{
 						{
 							Name:     "nvidia.com/gpu",
@@ -103,7 +103,7 @@ func TestGPUResourceLabeler(t *testing.T) {
 			description: "time-slicing renamed does not append suffix and doubles count",
 			count:       1,
 			sharing: spec.Sharing{
-				TimeSlicing: spec.ReplicatedResources{
+				TimeSlicing: &spec.ReplicatedResources{
 					Resources: []spec.ReplicatedResource{
 						{
 							Name:     "nvidia.com/gpu",
@@ -422,7 +422,7 @@ func TestMigResourceLabeler(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			config := &spec.Config{
 				Sharing: spec.Sharing{
-					TimeSlicing: tc.timeSlicing,
+					TimeSlicing: &tc.timeSlicing,
 				},
 			}
 			l, err := NewMIGResourceLabeler(tc.resourceName, config, device, tc.count)

@@ -96,9 +96,13 @@ func DisableResourceNamingInConfig(logger logger, config *Config) {
 	config.Resources.MIGs = nil
 
 	// Disable renaming / device selection in Sharing.TimeSlicing.Resources
-	config.Sharing.TimeSlicing.disableResoureRenaming(logger, "timeSlicing")
+	if (config.sharing.TimeSlicing != nil) {
+		config.Sharing.TimeSlicing.disableResoureRenaming(logger, "timeSlicing")
+	}
 	// Disable renaming / device selection in Sharing.MPS.Resources
-	config.Sharing.MPS.disableResoureRenaming(logger, "mps")
+	if (config.Sharing.MPS != nil) {
+		config.Sharing.MPS.disableResoureRenaming(logger, "mps")
+	}
 }
 
 // parseConfig parses a config file as either YAML of JSON and unmarshals it into a Config struct.

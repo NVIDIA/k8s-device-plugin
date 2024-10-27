@@ -19,7 +19,7 @@ package v1
 // Sharing encapsulates the set of sharing strategies that are supported.
 type Sharing struct {
 	// TimeSlicing defines the set of replicas to be made for timeSlicing available resources.
-	TimeSlicing ReplicatedResources `json:"timeSlicing,omitempty" yaml:"timeSlicing,omitempty"`
+	TimeSlicing *ReplicatedResources `json:"timeSlicing,omitempty" yaml:"timeSlicing,omitempty"`
 	// MPS defines the set of replicas to be shared using MPS
 	MPS *ReplicatedResources `json:"mps,omitempty"         yaml:"mps,omitempty"`
 }
@@ -38,7 +38,7 @@ func (s *Sharing) SharingStrategy() SharingStrategy {
 		return SharingStrategyMPS
 	}
 
-	if s.TimeSlicing.isReplicated() {
+	if s.TimeSlicing != nil && s.TimeSlicing.isReplicated() {
 		return SharingStrategyTimeSlicing
 	}
 	return SharingStrategyNone
@@ -49,5 +49,5 @@ func (s *Sharing) ReplicatedResources() *ReplicatedResources {
 	if s.MPS != nil {
 		return s.MPS
 	}
-	return &s.TimeSlicing
+	return s.TimeSlicing
 }
