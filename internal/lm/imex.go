@@ -34,19 +34,16 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 )
 
+const (
+	// ImexNodesConfigFilePath is the path to the IMEX nodes config file.
+	// This file contains a list of IP addresses of the nodes in the IMEX domain.
+	ImexNodesConfigFilePath = "/etc/nvidia-imex/nodes_config.cfg"
+)
+
 func newImexLabeler(config *spec.Config, devices []resource.Device) (Labeler, error) {
-	if config.Imex.NodesConfigFile == nil || *config.Imex.NodesConfigFile == "" {
-		// No imex config file, return empty labels
-		return empty{}, nil
-	}
-
-	nodesConfigFiles := []string{*config.Imex.NodesConfigFile}
-	if root := config.Flags.Plugin.ContainerDriverRoot; root != nil && *root != "" {
-		nodesConfigFiles = append(nodesConfigFiles, filepath.Join(*root, *config.Imex.NodesConfigFile))
-	}
-
 	var errs error
-	for _, configFilePath := range nodesConfigFiles {
+	for _, root := range imexNodesConfigFilePathSearchRoots(config) {
+		configFilePath := filepath.Join(root, ImexNodesConfigFilePath)
 		imexLabeler, err := imexLabelerForConfigFile(configFilePath, devices)
 		if err != nil {
 			errs = errors.Join(errs, err)
@@ -62,6 +59,19 @@ func newImexLabeler(config *spec.Config, devices []resource.Device) (Labeler, er
 	}
 
 	return empty{}, nil
+}
+
+// imexNodesConfigFilePathSearchRoots returns a list of roots to search for the IMEX nodes config file.
+func imexNodesConfigFilePathSearchRoots(config *spec.Config) []string {
+	// By default, search / and /config for config files.
+	roots := []string{"/", "/config"}
+
+	if config == nil || config.Flags.Plugin == nil || config.Flags.Plugin.ContainerDriverRoot == nil {
+		return roots
+	}
+
+	// If a driver root is specified, it is also searched.
+	return append(roots, *config.Flags.Plugin.ContainerDriverRoot)
 }
 
 func imexLabelerForConfigFile(configFilePath string, devices []resource.Device) (Labeler, error) {

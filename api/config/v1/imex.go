@@ -39,10 +39,6 @@ type Imex struct {
 	// If it is not required its injection is skipped if the device nodes do not exist or if its
 	// existence cannot be queried.
 	Required bool `json:"required,omitempty" yaml:"required,omitempty"`
-	// NodesConfigFile defines the location to the IMEX nodes config file.
-	// Such a nodes config file contains the IP addresses of nodes that are part of the IMEX domain.
-	// Note that this is the absolute path to the file in the device plugin container.
-	NodesConfigFile *string `json:"nodesConfigFile,omitempty" yaml:"nodesConfigFile,omitempty"`
 }
 
 // AssertChannelIDsIsValid checks whether the specified list of channel IDs is valid.
