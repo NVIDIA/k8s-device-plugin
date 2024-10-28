@@ -1,5 +1,16 @@
 ## Changelog
 
+### v0.17.0-rc.1
+- Add CAP_SYS_ADMIN if volume-mounts list strategy is included
+- Remove unneeded DEVICE_PLUGIN_MODE envvar
+- Fix applying SELinux label for MPS
+- Use a base image that aligns with the ubi-minimal base image
+- Switch to a ubi9-based base image
+- Remove namespace field from cluster-scoped resources
+- Generate labels for IMEX cligue and domain
+- Add optional injection of the default IMEX channel
+- Allow kubelet-socket to be specified as command line argument
+
 ### v0.16.2
 - Add CAP_SYS_ADMIN if volume-mounts list strategy is included (fixes #856)
 - Remove unneeded DEVICE_PLUGIN_MODE envvar
