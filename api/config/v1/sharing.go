@@ -38,7 +38,7 @@ func (s *Sharing) SharingStrategy() SharingStrategy {
 		return SharingStrategyMPS
 	}
 
-	if s.TimeSlicing != nil && s.TimeSlicing.isReplicated() {
+	if s.TimeSlicing.isReplicated() {
 		return SharingStrategyTimeSlicing
 	}
 	return SharingStrategyNone
