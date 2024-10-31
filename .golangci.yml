@@ -22,6 +22,9 @@ linters-settings:
     local-prefixes: github.com/NVIDIA/k8s-device-plugin
 
 issues:
+  exclude:
+  # Exclude all integer overflow errors on this branch.
+  - "G115: integer overflow conversion"
   exclude-rules:
   # We use math/rand instead of crypto/rand for unique names in e2e tests.
   - path: tests/e2e/
