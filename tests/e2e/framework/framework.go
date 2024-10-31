@@ -190,7 +190,7 @@ func (f *Framework) AfterEach(ctx context.Context) {
 			for namespaceKey, namespaceErr := range nsDeletionErrors {
 				messages = append(messages, fmt.Sprintf("Couldn't delete ns: %q: %s (%#v)", namespaceKey, namespaceErr, namespaceErr))
 			}
-			e2elog.Failf(strings.Join(messages, ","))
+			e2elog.Fail(strings.Join(messages, ","))
 		}
 	}()
 
