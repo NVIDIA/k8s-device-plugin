@@ -17,6 +17,8 @@
 package resource
 
 import (
+	"fmt"
+
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
@@ -26,9 +28,16 @@ import (
 )
 
 // NewManager is a factory method that creates a resource Manager based on the specified config.
-func NewManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) Manager {
-	manager := getManager(infolib, nvmllib, devicelib, *config.Flags.DeviceDiscoveryStrategy)
-	return WithConfig(manager, config)
+func NewManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) (Manager, error) {
+	manager, err := getManager(infolib, nvmllib, devicelib, *config.Flags.DeviceDiscoveryStrategy)
+	if err != nil {
+		if *config.Flags.FailOnInitError {
+			return nil, err
+		}
+		klog.ErrorS(err, "using empty manager")
+		return NewNullManager(), nil
+	}
+	return WithConfig(manager, config), nil
 }
 
 // WithConfig modifies a manager depending on the specified config.
@@ -42,21 +51,20 @@ func WithConfig(manager Manager, config *spec.Config) Manager {
 }
 
 // getManager returns the resource manager depending on the system configuration.
-func getManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, strategy string) Manager {
+func getManager(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, strategy string) (Manager, error) {
 	resolved := resolveMode(infolib, strategy)
 	switch resolved {
 	case "nvml":
 		klog.Info("Using NVML manager")
-		return NewNVMLManager(nvmllib, devicelib)
+		return NewNVMLManager(nvmllib, devicelib), nil
 	case "tegra":
 		klog.Info("Using CUDA manager")
-		return NewCudaManager()
+		return NewCudaManager(), nil
 	case "vfio":
 		klog.Info("Using Vfio manager")
-		return NewVfioManager()
+		return NewVfioManager(), nil
 	default:
-		klog.Warningf("Unsupported strategy detected: %v using empty manager.", resolved)
-		return NewNullManager()
+		return nil, fmt.Errorf("unsupported strategy %v", resolved)
 	}
 }
 
