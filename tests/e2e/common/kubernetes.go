@@ -29,8 +29,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	nfdv1alpha1 "sigs.k8s.io/node-feature-discovery/pkg/apis/nfd/v1alpha1"
-	nfdclient "sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned"
+	nfdclient "sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned"
+	nfdv1alpha1 "sigs.k8s.io/node-feature-discovery/api/nfd/v1alpha1"
 )
 
 // GetNonControlPlaneNodes gets the nodes that are not tainted for exclusive control-plane usage
