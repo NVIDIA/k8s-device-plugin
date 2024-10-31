@@ -137,8 +137,6 @@ github.com/modern-go/reflect2
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
-# github.com/onsi/gomega v1.33.1
-## explicit; go 1.20
 # github.com/opencontainers/runc v1.1.14
 ## explicit; go 1.18
 github.com/opencontainers/runc/libcontainer/configs
@@ -614,12 +612,14 @@ k8s.io/utils/trace
 ## explicit; go 1.18
 sigs.k8s.io/json
 sigs.k8s.io/json/internal/golang/encoding/json
-# sigs.k8s.io/node-feature-discovery v0.15.4
-## explicit; go 1.21
-sigs.k8s.io/node-feature-discovery/pkg/apis/nfd/v1alpha1
-sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned
-sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned/scheme
-sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned/typed/nfd/v1alpha1
+# sigs.k8s.io/node-feature-discovery v0.16.6
+## explicit; go 1.22.2
+sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned
+sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned/scheme
+sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned/typed/nfd/v1alpha1
+# sigs.k8s.io/node-feature-discovery/api/nfd v0.16.6
+## explicit; go 1.22.2
+sigs.k8s.io/node-feature-discovery/api/nfd/v1alpha1
 # sigs.k8s.io/structured-merge-diff/v4 v4.4.1
 ## explicit; go 1.13
 sigs.k8s.io/structured-merge-diff/v4/fieldpath

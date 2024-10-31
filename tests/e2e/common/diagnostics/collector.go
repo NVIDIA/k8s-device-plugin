@@ -25,7 +25,7 @@ import (
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
-	nfdclient "sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned"
+	nfdclient "sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned"
 	"sigs.k8s.io/yaml"
 )
 
