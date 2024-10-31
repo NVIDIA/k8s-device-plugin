@@ -155,7 +155,10 @@ func start(c *cli.Context, cfg *Config) error {
 		}
 		klog.Infof("\nRunning with config:\n%v", string(configJSON))
 
-		manager := resource.NewManager(config)
+		manager, err := resource.NewManager(config)
+		if err != nil {
+			return err
+		}
 		vgpul := vgpu.NewVGPULib(vgpu.NewNvidiaPCILib())
 
 		var clientSets flags.ClientSets

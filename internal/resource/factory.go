@@ -17,6 +17,8 @@
 package resource
 
 import (
+	"fmt"
+
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"k8s.io/klog/v2"
 
@@ -24,8 +26,17 @@ import (
 )
 
 // NewManager is a factory method that creates a resource Manager based on the specified config.
-func NewManager(config *spec.Config) Manager {
-	return WithConfig(getManager(), config)
+func NewManager(config *spec.Config) (Manager, error) {
+	manager, err := getManager()
+	if err != nil {
+		if *config.Flags.FailOnInitError {
+			return nil, err
+		}
+		klog.ErrorS(err, "using empty manager")
+		return NewNullManager(), nil
+	}
+
+	return WithConfig(manager, config), nil
 }
 
 // WithConfig modifies a manager depending on the specified config.
@@ -39,7 +50,7 @@ func WithConfig(manager Manager, config *spec.Config) Manager {
 }
 
 // getManager returns the resource manager depending on the system configuration.
-func getManager() Manager {
+func getManager() (Manager, error) {
 	// logWithReason logs the output of the has* / is* checks from the info.Interface
 	logWithReason := func(f func() (bool, string), tag string) bool {
 		is, reason := f()
@@ -63,12 +74,11 @@ func getManager() Manager {
 
 	if hasNVML {
 		klog.Info("Using NVML manager")
-		return NewNVMLManager()
+		return NewNVMLManager(), nil
 	} else if isTegra {
 		klog.Info("Using CUDA manager")
-		return NewCudaManager()
+		return NewCudaManager(), nil
 	}
 
-	klog.Warning("No valid resources detected; using empty manager.")
-	return NewNullManager()
+	return nil, fmt.Errorf("no valid resource detected")
 }
