@@ -36,3 +36,8 @@ issues:
     linters:
     - gosec
     text: "G306: Expect WriteFile permissions to be 0600 or less"
+  # Ignored integer overflow in resource pacakge
+  - path: internal/resource/
+    linters:
+    - gosec
+    text: "G115: integer overflow conversion int -> uint"
