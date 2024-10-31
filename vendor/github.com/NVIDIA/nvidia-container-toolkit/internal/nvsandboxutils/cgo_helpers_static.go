@@ -1,5 +1,5 @@
 /**
-# Copyright (c) NVIDIA CORPORATION.  All rights reserved.
+# Copyright 2024 NVIDIA CORPORATION
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,22 +14,25 @@
 # limitations under the License.
 **/
 
-package symlinks
+package nvsandboxutils
 
-import (
-	"fmt"
-	"os"
-)
+var cgoAllocsUnknown = new(struct{})
 
-// Resolve returns the link target of the specified filename or the filename if it is not a link.
-func Resolve(filename string) (string, error) {
-	info, err := os.Lstat(filename)
-	if err != nil {
-		return filename, fmt.Errorf("failed to get file info: %w", err)
+func clen(n []byte) int {
+	for i := 0; i < len(n); i++ {
+		if n[i] == 0 {
+			return i
+		}
 	}
-	if info.Mode()&os.ModeSymlink == 0 {
-		return filename, nil
-	}
+	return len(n)
+}
 
-	return os.Readlink(filename)
+// Creates an int8 array of fixed input length to store the Go string.
+// TODO: Add error check if input string has a length greater than INPUT_LENGTH
+func convertStringToFixedArray(str string) [INPUT_LENGTH]int8 {
+	var output [INPUT_LENGTH]int8
+	for i, s := range str {
+		output[i] = int8(s)
+	}
+	return output
 }
