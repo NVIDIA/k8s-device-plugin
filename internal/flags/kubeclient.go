@@ -25,7 +25,7 @@ import (
 	coreclientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	nfdclientset "sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned"
+	nfdclientset "sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned"
 )
 
 type KubeClientConfig struct {
