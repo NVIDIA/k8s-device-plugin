@@ -144,6 +144,10 @@ if [[ -z ${VERSION} ]]; then
 	VERSION="v$VERSION"
 fi
 
+# We need to ensure that the user the folder is correct:
+git -C ${HELM_REPO_PATH} config user.email "$(git config --get user.email)"
+git -C ${HELM_REPO_PATH} config user.name "$(git config --get user.name)"
+
 # Create a new commit
 echo "Committing changes: \n${changes}"
 git -C $HELM_REPO_PATH add index.yaml stable
