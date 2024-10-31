@@ -1,5 +1,5 @@
 /**
-# Copyright (c) NVIDIA CORPORATION.  All rights reserved.
+# Copyright 2024 NVIDIA CORPORATION
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,22 +14,18 @@
 # limitations under the License.
 **/
 
-package symlinks
+package nvsandboxutils
 
-import (
-	"fmt"
-	"os"
-)
+type refcount int
 
-// Resolve returns the link target of the specified filename or the filename if it is not a link.
-func Resolve(filename string) (string, error) {
-	info, err := os.Lstat(filename)
-	if err != nil {
-		return filename, fmt.Errorf("failed to get file info: %w", err)
+func (r *refcount) IncOnNoError(err error) {
+	if err == nil {
+		(*r)++
 	}
-	if info.Mode()&os.ModeSymlink == 0 {
-		return filename, nil
-	}
+}
 
-	return os.Readlink(filename)
+func (r *refcount) DecOnNoError(err error) {
+	if err == nil && (*r) > 0 {
+		(*r)--
+	}
 }
