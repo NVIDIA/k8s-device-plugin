@@ -1,5 +1,8 @@
 ## Changelog
 
+### v0.17.0
+- Promote v0.17.0-rc.1 to GA
+
 ### v0.17.0-rc.1
 - Add CAP_SYS_ADMIN if volume-mounts list strategy is included
 - Remove unneeded DEVICE_PLUGIN_MODE envvar

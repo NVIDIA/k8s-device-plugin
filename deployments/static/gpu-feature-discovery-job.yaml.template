@@ -4,19 +4,19 @@ metadata:
   name: gpu-feature-discovery
   labels:
     app.kubernetes.io/name: gpu-feature-discovery
-    app.kubernetes.io/version: 0.17.0-rc.1
+    app.kubernetes.io/version: 0.17.0
     app.kubernetes.io/part-of: nvidia-gpu
 spec:
   template:
     metadata:
       labels:
         app.kubernetes.io/name: gpu-feature-discovery
-        app.kubernetes.io/version: 0.17.0-rc.1
+        app.kubernetes.io/version: 0.17.0
         app.kubernetes.io/part-of: nvidia-gpu
     spec:
       nodeName: NODE_NAME
       containers:
-        - image: nvcr.io/nvidia/k8s-device-plugin:v0.17.0-rc.1
+        - image: nvcr.io/nvidia/k8s-device-plugin:v0.17.0
           name: gpu-feature-discovery
           command: ["/usr/bin/gpu-feature-discovery"]
           args:
