@@ -28,18 +28,20 @@ type NodeFeatureList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
+	// List of NodeFeatures.
 	Items []NodeFeature `json:"items"`
 }
 
 // NodeFeature resource holds the features discovered for one node in the
 // cluster.
 // +kubebuilder:object:root=true
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type NodeFeature struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+	// Specification of the NodeFeature, containing features discovered for a node.
 	Spec NodeFeatureSpec `json:"spec"`
 }
 
@@ -72,6 +74,7 @@ type Features struct {
 //
 // +protobuf=true
 type FlagFeatureSet struct {
+	// Individual features of the feature set.
 	Elements map[string]Nil `json:"elements" protobuf:"bytes,1,rep,name=elements"`
 }
 
@@ -79,6 +82,7 @@ type FlagFeatureSet struct {
 //
 // +protobuf=true
 type AttributeFeatureSet struct {
+	// Individual features of the feature set.
 	Elements map[string]string `json:"elements" protobuf:"bytes,1,rep,name=elements"`
 }
 
@@ -86,6 +90,7 @@ type AttributeFeatureSet struct {
 //
 // +protobuf=true
 type InstanceFeatureSet struct {
+	// Individual features of the feature set.
 	Elements []InstanceFeature `json:"elements" protobuf:"bytes,1,rep,name=elements"`
 }
 
@@ -93,6 +98,7 @@ type InstanceFeatureSet struct {
 //
 // +protobuf=true
 type InstanceFeature struct {
+	// Attributes of the instance feature.
 	Attributes map[string]string `json:"attributes" protobuf:"bytes,1,rep,name=attributes"`
 }
 
@@ -108,6 +114,7 @@ type NodeFeatureRuleList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
+	// List of NodeFeatureRules.
 	Items []NodeFeatureRule `json:"items"`
 }
 
@@ -122,6 +129,7 @@ type NodeFeatureRule struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+	// Spec defines the rules to be evaluated.
 	Spec NodeFeatureRuleSpec `json:"spec"`
 }
 
@@ -129,6 +137,70 @@ type NodeFeatureRule struct {
 type NodeFeatureRuleSpec struct {
 	// Rules is a list of node customization rules.
 	Rules []Rule `json:"rules"`
+}
+
+// NodeFeatureGroup resource holds Node pools by featureGroup
+// +kubebuilder:object:root=true
+// +kubebuilder:resource:scope=Namespaced,shortName=nfg
+// +kubebuilder:subresource:status
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +genclient
+type NodeFeatureGroup struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// Spec defines the rules to be evaluated.
+	Spec NodeFeatureGroupSpec `json:"spec"`
+
+	// Status of the NodeFeatureGroup after the most recent evaluation of the
+	// specification.
+	Status NodeFeatureGroupStatus `json:"status,omitempty"`
+}
+
+// NodeFeatureGroupSpec describes a NodeFeatureGroup object.
+type NodeFeatureGroupSpec struct {
+	// List of rules to evaluate to determine nodes that belong in this group.
+	Rules []GroupRule `json:"featureGroupRules"`
+}
+
+type NodeFeatureGroupStatus struct {
+	// Nodes is a list of FeatureGroupNode in the cluster that match the featureGroupRules
+	// +optional
+	// +patchMergeKey=name
+	// +patchStrategy=merge
+	// +listType=map
+	// +listMapKey=name
+	Nodes []FeatureGroupNode `json:"nodes"`
+}
+
+type FeatureGroupNode struct {
+	// Name of the node.
+	Name string `json:"name"`
+}
+
+// NodeFeatureGroupList contains a list of NodeFeatureGroup objects.
+// +kubebuilder:object:root=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type NodeFeatureGroupList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	// List of NodeFeatureGroups.
+	Items []NodeFeatureGroup `json:"items"`
+}
+
+// GroupRule defines a rule for nodegroup filtering.
+type GroupRule struct {
+	// Name of the rule.
+	Name string `json:"name"`
+
+	// MatchFeatures specifies a set of matcher terms all of which must match.
+	// +optional
+	MatchFeatures FeatureMatcher `json:"matchFeatures"`
+
+	// MatchAny specifies a list of matchers one of which must match.
+	// +optional
+	MatchAny []MatchAnyElem `json:"matchAny"`
 }
 
 // Rule defines a rule for node customization such as labeling.

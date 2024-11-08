@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Kubernetes Authors.
+Copyright 2024 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import (
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
-	nfdv1alpha1 "sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned/typed/nfd/v1alpha1"
+	nfdv1alpha1 "sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned/typed/nfd/v1alpha1"
 )
 
 type Interface interface {

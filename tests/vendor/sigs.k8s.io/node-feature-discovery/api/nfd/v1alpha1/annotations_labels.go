@@ -74,4 +74,7 @@ const (
 
 	// FeatureAnnotationSubNsSuffix is the suffix for allowed feature annotation sub-namespaces.
 	FeatureAnnotationSubNsSuffix = "." + FeatureAnnotationNs
+
+	// FeatureAnnotationValueSizeLimit is the maximum allowed length for the value of a feature annotation.
+	FeatureAnnotationValueSizeLimit = 1 << 10
 )
