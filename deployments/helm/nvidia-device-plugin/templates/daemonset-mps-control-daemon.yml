@@ -52,7 +52,12 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- if $options.hasConfigMap }}
       serviceAccountName: {{ include "nvidia-device-plugin.fullname" . }}-service-account
+      {{- if not .Values.mps.enableHostPID }}
       shareProcessNamespace: true
+      {{- end }}
+      {{- end }}
+      {{- if .Values.mps.enableHostPID }}
+      hostPID: true
       {{- end }}
       initContainers:
       - image: {{ include "nvidia-device-plugin.fullimage" . }}

@@ -150,6 +150,12 @@ mps:
   # directories.
   # Pipe directories will be created at {{ mps.root }}/{{ .ResourceName }}
   root: "/run/nvidia/mps"
+  # enableHostPID when set to true provides the pod access to the host's PID namespace.
+  # hostPID is needed for the MPS server to find its own PID via /proc/self
+  # If the gpu driver is running in the host PID namespace, it is highly
+  # recommended that you enable this option.
+  # NOTE: HostPID and ShareProcessNamespace cannot both be set to true
+  enableHostPID: true
 
 
 cdi:
