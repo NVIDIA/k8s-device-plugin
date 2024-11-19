@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Kubernetes Authors.
+Copyright 2024 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,13 +22,14 @@ import (
 	"net/http"
 
 	rest "k8s.io/client-go/rest"
-	v1alpha1 "sigs.k8s.io/node-feature-discovery/pkg/apis/nfd/v1alpha1"
-	"sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned/scheme"
+	"sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned/scheme"
+	v1alpha1 "sigs.k8s.io/node-feature-discovery/api/nfd/v1alpha1"
 )
 
 type NfdV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	NodeFeaturesGetter
+	NodeFeatureGroupsGetter
 	NodeFeatureRulesGetter
 }
 
@@ -39,6 +40,10 @@ type NfdV1alpha1Client struct {
 
 func (c *NfdV1alpha1Client) NodeFeatures(namespace string) NodeFeatureInterface {
 	return newNodeFeatures(c, namespace)
+}
+
+func (c *NfdV1alpha1Client) NodeFeatureGroups(namespace string) NodeFeatureGroupInterface {
+	return newNodeFeatureGroups(c, namespace)
 }
 
 func (c *NfdV1alpha1Client) NodeFeatureRules() NodeFeatureRuleInterface {

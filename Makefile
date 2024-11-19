@@ -87,13 +87,32 @@ goimports:
 lint:
 	golangci-lint run ./...
 
-vendor:
-	go mod tidy
-	go mod vendor
-	go mod verify
+
+mod-tidy:
+	@for mod in $$(find . -name go.mod); do \
+	    echo "Tidying $$mod..."; ( \
+	        cd $$(dirname $$mod) && go mod tidy \
+            ) || exit 1; \
+	done
+
+mod-verify:
+	@for mod in $$(find . -name go.mod); do \
+	    echo "Verifying $$mod..."; ( \
+	        cd $$(dirname $$mod) && go mod verify | sed 's/^/  /g' \
+	    ) || exit 1; \
+	done
+
+mod-vendor: mod-tidy
+	@for mod in $$(find . -name go.mod); do \
+	    echo "Verifying $$mod..."; ( \
+	        cd $$(dirname $$mod) && go mod vendor \
+	    ) || exit 1; \
+	done
+
+vendor: mod-vendor
 
 check-modules: vendor
-	git diff --quiet HEAD -- go.mod go.sum vendor
+	git diff --quiet HEAD -- $$(find . -name go.mod -o -name go.sum -o -name vendor)
 
 COVERAGE_FILE := coverage.out
 test: build cmds
