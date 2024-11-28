@@ -298,7 +298,10 @@ func getArchFamily(computeMajor, computeMinor int) string {
 		}
 		return "turing"
 	case 8:
-		return "ampere"
+		if computeMinor < 9 {
+			return "ampere"
+		}
+		return "ada-lovelace"
 	case 9:
 		return "hopper"
 	}
