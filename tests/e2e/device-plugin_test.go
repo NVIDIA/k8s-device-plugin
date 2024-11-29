@@ -94,10 +94,7 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 			// Create clients for apiextensions and our CRD api
 			extClient = extclient.NewForConfigOrDie(f.ClientConfig())
 			helmReleaseName = "nvdp-e2e-test" + rand.String(5)
-		})
 
-		JustBeforeEach(func(ctx context.Context) {
-			// reset Helm Client
 			chartSpec = helm.ChartSpec{
 				ReleaseName:   helmReleaseName,
 				ChartName:     *HelmChart,
@@ -111,6 +108,9 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 			By("Installing k8s-device-plugin Helm chart")
 			_, err := f.HelmClient.InstallChart(ctx, &chartSpec, nil)
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		JustBeforeEach(func(ctx context.Context) {
 		})
 
 		AfterEach(func(ctx context.Context) {
@@ -128,17 +128,19 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 				err = diagnosticsCollector.Collect(ctx)
 				Expect(err).NotTo(HaveOccurred())
 			}
-			// Cleanup before next test run
-			// Delete Helm release
-			err := f.HelmClient.UninstallReleaseByName(helmReleaseName)
-			Expect(err).NotTo(HaveOccurred())
 		})
 
 		AfterAll(func(ctx context.Context) {
+			// Delete Helm release
+			err := f.HelmClient.UninstallReleaseByName(helmReleaseName)
+			Expect(err).NotTo(HaveOccurred())
+
 			for _, crd := range crds {
 				err := extClient.ApiextensionsV1().CustomResourceDefinitions().Delete(ctx, crd.Name, metav1.DeleteOptions{})
 				Expect(err).NotTo(HaveOccurred())
 			}
+
+			// TODO: Add a check for a zero node capacity.
 		})
 
 		Context("and NV Driver is installed", func() {
