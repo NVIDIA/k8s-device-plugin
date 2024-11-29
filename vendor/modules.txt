@@ -614,7 +614,7 @@ k8s.io/utils/trace
 ## explicit; go 1.18
 sigs.k8s.io/json
 sigs.k8s.io/json/internal/golang/encoding/json
-# sigs.k8s.io/node-feature-discovery v0.15.4
+# sigs.k8s.io/node-feature-discovery v0.15.7
 ## explicit; go 1.21
 sigs.k8s.io/node-feature-discovery/pkg/apis/nfd/v1alpha1
 sigs.k8s.io/node-feature-discovery/pkg/generated/clientset/versioned
