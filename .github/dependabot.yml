@@ -3,12 +3,15 @@
 
 version: 2
 updates:
+# main branch
   - package-ecosystem: "gomod"
     target-branch: main
-    directory: "/"
+    directories:
+    - "/"
+    - "deployments/devel"
+    - "tests"
     schedule:
-      interval: "weekly"
-      day: "sunday"
+      interval: "daily"
     labels:
     - dependencies
     groups:
@@ -18,120 +21,88 @@ updates:
         exclude-patterns:
         - k8s.io/klog/*
 
-  - package-ecosystem: "gomod"
-    target-branch: main
-    directory: "tests"
-    schedule:
-      interval: "weekly"
-      day: "sunday"
-    labels:
-    - dependencies
-    - testing
-    groups:
-      k8sio:
-        patterns:
-        - k8s.io/*
-        exclude-patterns:
-        - k8s.io/klog/*
-
-  - package-ecosystem: "gomod"
-    target-branch: main
-    directory: "deployments/devel"
-    schedule:
-      interval: "weekly"
-      day: "sunday"
-
-  - package-ecosystem: "docker"
-    directory: "/deployments/container"
-    schedule:
-      interval: "daily"
-
   - package-ecosystem: "docker"
     target-branch: main
-    directory: "/deployments/devel"
-    schedule:
-      interval: "daily"
-
-  - package-ecosystem: "gomod"
-    target-branch: release-0.16
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "sunday"
-    labels:
-    - dependencies
-    - maintenance
-    groups:
-      k8sio:
-        patterns:
-        - k8s.io/*
-        exclude-patterns:
-        - k8s.io/klog/*
-
-  - package-ecosystem: "gomod"
-    target-branch: release-0.16
-    directory: "tests"
-    schedule:
-      interval: "weekly"
-      day: "sunday"
-    labels:
-    - dependencies
-    - maintenance
-    - testing
-    groups:
-      k8sio:
-        patterns:
-        - k8s.io/*
-        exclude-patterns:
-        - k8s.io/klog/*
-
-  - package-ecosystem: "gomod"
-    target-branch: release-0.16
-    directory: "deployments/devel"
-    schedule:
-      interval: "weekly"
-      day: "sunday"
-    labels:
-    - dependencies
-    - maintenance
-
-  - package-ecosystem: "docker"
-    target-branch: release-0.16
-    directory: "/deployments/container"
+    directories:
+    # CUDA image
+    - "/deployments/container"
+    # Golang version
+    - "/deployments/devel"
     schedule:
       interval: "daily"
     labels:
     - dependencies
-    - maintenance
 
-  - package-ecosystem: "docker"
-    target-branch: release-0.16
-    directory: "/deployments/devel"
-    schedule:
-      interval: "daily"
-    labels:
-    - dependencies
-    - maintenance
-
-  # Github actions need to be updated on main, release-*, and gh-pages branches.
   - package-ecosystem: "github-actions"
     target-branch: main
     directory: "/"
     schedule:
       interval: "daily"
+    labels:
+    - dependencies
 
-  - package-ecosystem: "github-actions"
-    target-branch: release-0.16
-    directory: "/"
+# The release branch(es):
+  - package-ecosystem: "gomod"
+    target-branch: release-0.17
+    directories:
+    - "/"
+    # We don't update development or test dependencies on release branches
+    # - "deployments/devel"
+    # - "tests"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "sunday"
+    labels:
+    - dependencies
+    - maintenance
+    ignore:
+    # For release branches we only consider patch updates.
+    - dependency-name: "*"
+      update-types:
+      - version-update:semver-major
+      - version-update:semver-minor
+    groups:
+      k8sio:
+        patterns:
+        - k8s.io/*
+        exclude-patterns:
+        - k8s.io/klog/*
+
+  - package-ecosystem: "docker"
+    target-branch: release-0.17
+    directories:
+    # CUDA image
+    - "/deployments/container"
+    # Golang version
+    - "/deployments/devel"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    ignore:
+    # For release branches we only apply patch updates to the golang version.
+    - dependency-name: "*golang*"
+      update-types:
+      - version-update:semver-major
+      - version-update:semver-minor
     labels:
     - dependencies
     - maintenance
 
+  - package-ecosystem: "github-actions"
+    target-branch: release-0.17
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    labels:
+    - dependencies
+    - maintenance
+
+  # Github actions need to be gh-pages branches.
   - package-ecosystem: "github-actions"
     target-branch: gh-pages
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "daily"
+    labels:
+    - dependencies
