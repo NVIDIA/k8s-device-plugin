@@ -25,7 +25,7 @@ require (
 	k8s.io/kubelet v0.31.3
 	k8s.io/mount-utils v0.31.3
 	sigs.k8s.io/node-feature-discovery v0.16.6
-	sigs.k8s.io/node-feature-discovery/api/nfd v0.16.6
+	sigs.k8s.io/node-feature-discovery/api/nfd v0.17.0
 	sigs.k8s.io/yaml v1.4.0
 	tags.cncf.io/container-device-interface v0.8.0
 	tags.cncf.io/container-device-interface/specs-go v0.8.0
