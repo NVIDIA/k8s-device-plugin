@@ -194,7 +194,6 @@ github.com/xrash/smetrics
 golang.org/x/mod/semver
 # golang.org/x/net v0.34.0
 ## explicit; go 1.18
-golang.org/x/net/context
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2
 golang.org/x/net/http2/hpack
