@@ -17,6 +17,7 @@
 package plugin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -34,7 +35,6 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 
 	"github.com/google/uuid"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
