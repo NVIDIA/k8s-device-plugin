@@ -51,6 +51,11 @@ func (d vfioDevice) GetName() (string, error) {
 	return d.nvidiaPCIDevice.DeviceName, nil
 }
 
+// GetUUID is unsupported for vfio devices
+func (d vfioDevice) GetUUID() (string, error) {
+	return "", fmt.Errorf("GetUUID is not supported for vfio devices")
+}
+
 // GetTotalMemoryMB returns the total memory on a device in MB
 func (d vfioDevice) GetTotalMemoryMB() (uint64, error) {
 	_, val := d.nvidiaPCIDevice.Resources.GetTotalAddressableMemory(true)
@@ -72,6 +77,7 @@ func (d vfioDevice) GetPCIClass() (uint32, error) {
 func (d vfioDevice) IsFabricAttached() (bool, error) {
 	return false, nil
 }
+
 func (d vfioDevice) GetFabricIDs() (string, string, error) {
 	return "", "", fmt.Errorf("GetFabricIDs is not supported for vfio devices")
 }
