@@ -215,7 +215,8 @@ func isMPSCapable(manager resource.Manager) (bool, error) {
 func newGPUModeLabeler(devices []resource.Device) (Labeler, error) {
 	classes, err := getDeviceClasses(devices)
 	if err != nil {
-		return nil, err
+		klog.Warningf("Failed to create GPU mode labeler: failed to get device classes: %v", err)
+		return Labels{"nvidia.com/gpu.mode": "unknown"}, nil
 	}
 	gpuMode := getModeForClasses(classes)
 	labels := Labels{
