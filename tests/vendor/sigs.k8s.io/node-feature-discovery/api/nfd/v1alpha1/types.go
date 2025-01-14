@@ -56,55 +56,44 @@ type NodeFeatureSpec struct {
 }
 
 // Features is the collection of all discovered features.
-//
-// +protobuf=true
 type Features struct {
 	// Flags contains all the flag-type features of the node.
 	// +optional
-	Flags map[string]FlagFeatureSet `json:"flags" protobuf:"bytes,1,rep,name=flags"`
+	Flags map[string]FlagFeatureSet `json:"flags"`
 	// Attributes contains all the attribute-type features of the node.
 	// +optional
-	Attributes map[string]AttributeFeatureSet `json:"attributes" protobuf:"bytes,2,rep,name=vattributes"`
+	Attributes map[string]AttributeFeatureSet `json:"attributes"`
 	// Instances contains all the instance-type features of the node.
 	// +optional
-	Instances map[string]InstanceFeatureSet `json:"instances" protobuf:"bytes,3,rep,name=instances"`
+	Instances map[string]InstanceFeatureSet `json:"instances"`
 }
 
 // FlagFeatureSet is a set of simple features only containing names without values.
-//
-// +protobuf=true
 type FlagFeatureSet struct {
 	// Individual features of the feature set.
-	Elements map[string]Nil `json:"elements" protobuf:"bytes,1,rep,name=elements"`
+	Elements map[string]Nil `json:"elements"`
 }
 
 // AttributeFeatureSet is a set of features having string value.
-//
-// +protobuf=true
 type AttributeFeatureSet struct {
 	// Individual features of the feature set.
-	Elements map[string]string `json:"elements" protobuf:"bytes,1,rep,name=elements"`
+	Elements map[string]string `json:"elements"`
 }
 
 // InstanceFeatureSet is a set of features each of which is an instance having multiple attributes.
-//
-// +protobuf=true
 type InstanceFeatureSet struct {
 	// Individual features of the feature set.
-	Elements []InstanceFeature `json:"elements" protobuf:"bytes,1,rep,name=elements"`
+	Elements []InstanceFeature `json:"elements"`
 }
 
 // InstanceFeature represents one instance of a complex features, e.g. a device.
-//
-// +protobuf=true
 type InstanceFeature struct {
 	// Attributes of the instance feature.
-	Attributes map[string]string `json:"attributes" protobuf:"bytes,1,rep,name=attributes"`
+	Attributes map[string]string `json:"attributes"`
 }
 
-// Nil is a dummy empty struct for protobuf compatibility
-//
-// +protobuf=true
+// Nil is a dummy empty struct for protobuf compatibility.
+// NOTE: protobuf definitions have been removed but this is kept for API compatibility.
 type Nil struct{}
 
 // NodeFeatureRuleList contains a list of NodeFeatureRule objects.
