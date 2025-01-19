@@ -45,7 +45,7 @@ jobs:
           go-version: ${{ env.GOLANG_VERSION }}
 
       - name: Set up Holodeck
-        uses: NVIDIA/holodeck@v0.2.4
+        uses: NVIDIA/holodeck@v0.2.5
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
