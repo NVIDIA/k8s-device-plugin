@@ -13,6 +13,7 @@ jobs:
   build-and-push-image:
     name: Build & Push Image
     runs-on: cw
+    container: ghcr.io/coreweave/github-actions-images/github-base-runner:github-base-runner-v1
     permissions:
       packages: write
       contents: read
