@@ -34,12 +34,12 @@ jobs:
           echo "Image will be published with tag ${TAG}"
           echo "image-tag=${TAG}" >> "$GITHUB_OUTPUT"
 
-      - name: GHCR Login
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
+      - name: Initialize Registry Credentials File
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_PASS: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          jq -n '.auths."ghcr.io" = { username: env.GHCR_USER, password: env.GHCR_PASS }' | install -m400 /dev/stdin ~/.docker/config.json
 
       - name: Fetch Remote BuildKit Client Certs
         uses: dopplerhq/secrets-fetch-action@v1.2.0
