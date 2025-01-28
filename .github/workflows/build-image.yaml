@@ -1,6 +1,6 @@
 ---
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
-name: "Build Image"
+name: "Build & Push Image"
 run-name: Build Image - ${{ github.ref_name }}
 
 on: push
@@ -11,21 +11,16 @@ concurrency:
 
 jobs:
   build-and-push-image:
-    name: Build & Publish GHA Runner Image
-    runs-on: cw-dind-medium
+    name: Build & Push Image
+    runs-on: cw
     permissions:
       packages: write
       contents: read
     steps:
-      - name: Checkout repo
+      - name: Checkout Repo
         uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      - name: Set build vars
+      - name: Set Build Vars
         id: metadata
         run: |
           SHORT_SHA=$(git rev-parse --short ${{ github.sha }})
@@ -36,25 +31,42 @@ jobs:
             TAG="${TAG_PREFIX}/coreweave:${SHORT_SHA}"
           fi
           echo "Image will be published with tag ${TAG}"
-          echo "IMAGE_TAG=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "image-tag=${TAG}" >> "$GITHUB_OUTPUT"
 
-      - name: Docker Login
+      - name: GHCR Login
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
 
-      - name: Set up Docker Buildx
+      - name: Fetch Remote BuildKit Client Certs
+        uses: dopplerhq/secrets-fetch-action@v1.2.0
+        id: client-certs
+        with:
+          doppler-token: ${{ secrets.ORG_BUILDKIT_CLIENT_TOKEN }}
+          doppler-project: ${{ secrets.BUILDKIT_CONSUMER_DOPPLER_PROJECT }}
+          doppler-config: ${{ secrets.BUILDKIT_CONSUMER_DOPPLER_CONFIG }}
+          inject-env-vars: false
+
+      - name: Setup Remote BuildKit Builder
         uses: docker/setup-buildx-action@v3
         with:
-          platforms: linux/amd64, linux/arm64
+          driver: remote
+          endpoint: ${{ secrets.BUILDKIT_AMD64_ENDPOINT }}
+          append: ${{ secrets.BUILDKIT_ARM64_ENDPOINT }}
+        env:
+          BUILDER_NODE_0_AUTH_TLS_CACERT: ${{ steps.client-certs.outputs.TLS_CACERT }}
+          BUILDER_NODE_0_AUTH_TLS_CERT: ${{ steps.client-certs.outputs.TLS_CERT }}
+          BUILDER_NODE_0_AUTH_TLS_KEY: ${{ steps.client-certs.outputs.TLS_KEY }}
+          BUILDER_NODE_1_AUTH_TLS_CACERT: ${{ steps.client-certs.outputs.TLS_CACERT }}
+          BUILDER_NODE_1_AUTH_TLS_CERT: ${{ steps.client-certs.outputs.TLS_CERT }}
+          BUILDER_NODE_1_AUTH_TLS_KEY: ${{ steps.client-certs.outputs.TLS_KEY }}
 
-      - name: Build and push
+      - name: Build & Push
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: ${{ steps.metadata.outputs.IMAGE_TAG }}
+          tags: ${{ steps.metadata.outputs.image-tag }}
           platforms: linux/amd64, linux/arm64
-          file: ${{ github.workspace }}/deployments/container/Dockerfile.ubuntu
-
+          file: deployments/container/Dockerfile.ubuntu
