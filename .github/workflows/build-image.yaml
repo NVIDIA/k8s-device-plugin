@@ -37,7 +37,7 @@ jobs:
       - name: Initialize Registry Credentials File
         env:
           GHCR_USER: ${{ github.actor }}
-          GHCR_PASS: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_PASS: ${{ github.token }}
         run: |
           mkdir -p ~/.docker
           jq -n '.auths."ghcr.io" = { username: env.GHCR_USER, password: env.GHCR_PASS }' | install -m400 /dev/stdin ~/.docker/config.json
@@ -56,7 +56,8 @@ jobs:
         with:
           driver: remote
           endpoint: ${{ secrets.BUILDKIT_AMD64_ENDPOINT }}
-          append: ${{ secrets.BUILDKIT_ARM64_ENDPOINT }}
+          append: |
+            - endpoint: ${{ secrets.BUILDKIT_ARM64_ENDPOINT }}
         env:
           BUILDER_NODE_0_AUTH_TLS_CACERT: ${{ steps.client-certs.outputs.TLS_CACERT }}
           BUILDER_NODE_0_AUTH_TLS_CERT: ${{ steps.client-certs.outputs.TLS_CERT }}
