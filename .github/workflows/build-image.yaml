@@ -39,6 +39,7 @@ jobs:
           GHCR_USER: ${{ github.actor }}
           GHCR_PASS: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          mkdir -p ~/.docker
           jq -n '.auths."ghcr.io" = { username: env.GHCR_USER, password: env.GHCR_PASS }' | install -m400 /dev/stdin ~/.docker/config.json
 
       - name: Fetch Remote BuildKit Client Certs
