@@ -15,17 +15,11 @@
 name: Helm
 
 on:
-  pull_request:
-    types:
-      - opened
-      - synchronize
-    branches:
-      - main
-      - release-*
-  push:
-    branches:
-      - main
-      - release-*
+  workflow_call:
+    inputs:
+      golang_version:
+        required: true
+        type: string
 
 jobs:
   test:
@@ -34,13 +28,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Get Golang version
-      id: vars
-      run: |
-        GOLANG_VERSION=$(./hack/golang-version.sh)
-        echo "GOLANG_VERSION=${GOLANG_VERSION##GOLANG_VERSION ?= }" >> $GITHUB_ENV
     - name: Install Go
       uses: actions/setup-go@v5
       with:
-        go-version: ${{ env.GOLANG_VERSION }}
+        go-version: ${{ inputs.golang_version }}
     - run: make test-helm

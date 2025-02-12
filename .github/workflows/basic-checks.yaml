@@ -1,0 +1,43 @@
+name: "basic checks"
+
+on:
+  workflow_call:
+    outputs:
+      version:
+        description: "The short SHA to use as a version string"
+        value: ${{ jobs.variables.outputs.version }}
+      golang_version:
+        description: "The golang version for this project"
+        value: ${{ jobs.variables.outputs.golang_version }}
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    branches:
+      - main
+      - release-*
+
+jobs:
+  variables:
+    uses: ./.github/workflows/variables.yaml
+
+  golang:
+    needs:
+    - variables
+    uses: ./.github/workflows/golang.yaml
+    with:
+      golang_version: ${{ needs.variables.outputs.golang_version }}
+
+  helm:
+    needs:
+    - variables
+    uses: ./.github/workflows/helm.yaml
+    with:
+      golang_version: ${{ needs.variables.outputs.golang_version }}
+
+  code-scanning:
+    needs:
+    - variables
+    uses: ./.github/workflows/code_scanning.yaml
+    with:
+      golang_version: ${{ needs.variables.outputs.golang_version }}
