@@ -103,7 +103,7 @@ mod-verify:
 	done
 
 mod-vendor: mod-tidy
-	@for mod in $$(find . -name go.mod); do \
+	@for mod in $$(find . -name go.mod -not -path "./deployments/*"); do \
 	    echo "Verifying $$mod..."; ( \
 	        cd $$(dirname $$mod) && go mod vendor \
 	    ) || exit 1; \
