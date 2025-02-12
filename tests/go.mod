@@ -1,7 +1,6 @@
 module github.com/NVIDIA/k8s-device-plugin/tests
 
-go 1.22.2
-toolchain go1.23.6
+go 1.23.0
 
 require (
 	github.com/gruntwork-io/terratest v0.47.2
