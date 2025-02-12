@@ -103,15 +103,15 @@ mod-verify:
 	done
 
 mod-vendor: mod-tidy
-	@for mod in $$(find . -name go.mod); do \
-	    echo "Verifying $$mod..."; ( \
+	@for mod in $$(find . -name go.mod -not -path "./deployments/*"); do \
+	    echo "Vendoring $$mod..."; ( \
 	        cd $$(dirname $$mod) && go mod vendor \
 	    ) || exit 1; \
 	done
 
 vendor: mod-vendor
 
-check-modules: vendor
+check-modules: | mod-tidy mod-verify mod-vendor
 	git diff --quiet HEAD -- $$(find . -name go.mod -o -name go.sum -o -name vendor)
 
 COVERAGE_FILE := coverage.out
