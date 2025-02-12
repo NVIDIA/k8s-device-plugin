@@ -4,7 +4,7 @@ go 1.23
 
 toolchain go1.23.2
 
-require github.com/matryer/moq v0.5.0
+require github.com/matryer/moq v0.5.1
 
 require (
 	golang.org/x/mod v0.20.0 // indirect
