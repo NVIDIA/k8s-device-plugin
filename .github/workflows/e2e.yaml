@@ -1,4 +1,4 @@
-# Copyright 2024 NVIDIA CORPORATION
+# Copyright 2025 NVIDIA CORPORATION
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,69 +15,73 @@
 name: End-to-end Tests
 
 on:
-  workflow_run:
-    workflows: [Image]
-    types:
-      - completed
-    branches:
-      - "pull-request/[0-9]+"
-      - main
-      - release-*
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      golang_version:
+        required: true
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      AWS_SSH_KEY:
+        required: true
+      SLACK_BOT_TOKEN:
+        required: true
+      SLACK_CHANNEL_ID:
+        required: true
 
 jobs:
   e2e-tests:
     runs-on: linux-amd64-cpu4
-    if: ${{ github.event.workflow_run.conclusion == 'success' }} && ${{ github.event.workflow_run.event == 'push' }}
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
+    - name: Check out code
+      uses: actions/checkout@v4
 
-      - name: Calculate build vars
-        id: vars
-        run: |
-          echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
-          GOLANG_VERSION=$(./hack/golang-version.sh)
-          echo "GOLANG_VERSION=${GOLANG_VERSION##GOLANG_VERSION := }" >> $GITHUB_ENV
+    - name: Install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.golang_version }}
 
-      - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GOLANG_VERSION }}
+    - name: Set up Holodeck
+      uses: NVIDIA/holodeck@v0.2.5
+      with:
+        aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws_ssh_key: ${{ secrets.AWS_SSH_KEY }}
+        holodeck_config: "tests/e2e/infra/aws.yaml"
 
-      - name: Set up Holodeck
-        uses: NVIDIA/holodeck@v0.2.5
-        with:
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_ssh_key: ${{ secrets.AWS_SSH_KEY }}
-          holodeck_config: "tests/e2e/infra/aws.yaml"
+    - name: Run e2e tests
+      env:
+        KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        E2E_IMAGE_REPO: ghcr.io/nvidia/k8s-device-plugin
+        E2E_IMAGE_TAG: ${{ inputs.version }}-ubi9
+        LOG_ARTIFACTS: ${{ github.workspace }}/e2e_logs
+      run: |
+        make test-e2e
 
-      - name: Run e2e tests
-        env:
-          KUBECONFIG: ${{ github.workspace }}/kubeconfig
-          E2E_IMAGE_REPO: ghcr.io/nvidia/k8s-device-plugin
-          E2E_IMAGE_TAG: ${COMMIT_SHORT_SHA}-ubi9
-          LOG_ARTIFACTS: ${{ github.workspace }}/e2e_logs
-        run: |
-          make test-e2e
+    - name: Archive test logs
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-test-logs
+        path: ./e2e_logs/
+        retention-days: 15
 
-      - name: Archive test logs
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-test-logs
-          path: ./e2e_logs/
-          retention-days: 15
+    - name: Send Slack alert notification
+      id: slack
+      if: false
+      uses: slackapi/slack-github-action@v2.0.0
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        SUMMARY_URL: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+      with:
+        channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+        slack-message: |
+          :x: On repository ${{ github.repository }} the Workflow *${{ github.workflow }}* has failed.
 
-      - name: Send Slack alert notification
-        if: ${{ failure() }}
-        uses: slackapi/slack-github-action@v2.0.0
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload: |
-            channel: ${{ secrets.SLACK_CHANNEL_ID }}
-            text: |
-              :x: On repository ${{ github.repository }}, the Workflow *${{ github.workflow }}* has failed.
-      
-              Details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          Details: ${{ env.SUMMARY_URL }}
