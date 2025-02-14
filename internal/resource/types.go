@@ -37,6 +37,7 @@ type Device interface {
 	GetMigDevices() ([]Device, error)
 	GetAttributes() (map[string]interface{}, error)
 	GetName() (string, error)
+	GetUUID() (string, error)
 	GetTotalMemoryMB() (uint64, error)
 	GetDeviceHandleFromMigDeviceHandle() (Device, error)
 	GetCudaComputeCapability() (int, int, error)
