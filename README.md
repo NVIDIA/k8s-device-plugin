@@ -98,7 +98,7 @@ Also note the configuration instructions for:
 
 Remembering to restart each runtime after applying the configuration changes.
 
-If the `nvidia` runtime should be set as the default runtime (required for `docker`), the `--set-as-default` argument
+If the `nvidia` runtime should be set as the default runtime (with non-cri docker versions, for example), the `--set-as-default` argument
 must also be included in the commands above. If this is not done, a RuntimeClass needs to be defined.
 
 ##### Notes on `CRI-O` configuration
