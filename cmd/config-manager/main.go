@@ -397,9 +397,9 @@ func updateSymlink(config string, f *Flags) (bool, error) {
 		src = filepath.Join(f.ConfigFileSrcdir, config)
 	}
 
-	exists, err := fileExists(f.ConfigFileDst)
+	exists, err := symlinkExists(f.ConfigFileDst)
 	if err != nil {
-		return false, fmt.Errorf("error checking if file '%s' exists: %v", f.ConfigFileDst, err)
+		return false, fmt.Errorf("error checking if symlink '%s' exists: %v", f.ConfigFileDst, err)
 	}
 	if exists {
 		srcRealpath, err := filepath.EvalSymlinks(src)
@@ -459,8 +459,8 @@ func findPidToSignal(f *Flags) (int, error) {
 	return -1, fmt.Errorf("no process found")
 }
 
-func fileExists(filename string) (bool, error) {
-	info, err := os.Stat(filename)
+func symlinkExists(filename string) (bool, error) {
+	info, err := os.Lstat(filename)
 	if os.IsNotExist(err) {
 		return false, nil
 	}
