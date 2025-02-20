@@ -104,6 +104,15 @@ func (d nvmlMigDevice) GetName() (string, error) {
 	return resourceName, nil
 }
 
+// GetUUID returns the UUID of the nvmlMigDevice.
+func (d nvmlMigDevice) GetUUID() (string, error) {
+	uuid, ret := d.MigDevice.GetUUID()
+	if ret != nvml.SUCCESS {
+		return "", ret
+	}
+	return uuid, nil
+}
+
 // GetTotalMemoryMB returns the total memory on a device in MB
 func (d nvmlMigDevice) GetTotalMemoryMB() (uint64, error) {
 	attr, err := d.GetAttributes()
