@@ -7,7 +7,7 @@ require (
 	github.com/NVIDIA/go-nvlib v0.7.1
 	github.com/NVIDIA/go-nvml v0.12.4-1
 	github.com/NVIDIA/nvidia-container-toolkit v1.17.4
-	github.com/fsnotify/fsnotify v1.7.0
+	github.com/fsnotify/fsnotify v1.8.0
 	github.com/google/renameio v1.0.1
 	github.com/google/uuid v1.6.0
 	github.com/opencontainers/selinux v1.11.1
@@ -16,14 +16,14 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli/v2 v2.27.5
 	golang.org/x/mod v0.23.0
-	google.golang.org/grpc v1.65.0
-	k8s.io/api v0.32.1
-	k8s.io/apimachinery v0.32.1
-	k8s.io/client-go v0.32.1
+	google.golang.org/grpc v1.69.0
+	k8s.io/api v0.32.2
+	k8s.io/apimachinery v0.32.2
+	k8s.io/client-go v0.32.2
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/kubelet v0.32.1
-	k8s.io/mount-utils v0.32.1
-	sigs.k8s.io/node-feature-discovery v0.16.6
+	k8s.io/kubelet v0.32.2
+	k8s.io/mount-utils v0.32.2
+	sigs.k8s.io/node-feature-discovery v0.17.2
 	sigs.k8s.io/node-feature-discovery/api/nfd v0.17.1
 	sigs.k8s.io/yaml v1.4.0
 	tags.cncf.io/container-device-interface v0.8.0
@@ -66,8 +66,8 @@ require (
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/term v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
-	golang.org/x/time v0.7.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240826202546-f6391c0de4c7 // indirect
+	golang.org/x/time v0.8.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
