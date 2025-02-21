@@ -52,8 +52,12 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if $useServiceAccount }}
+      {{- if or .Values.serviceAccount.create $useServiceAccount }}
+      {{- if .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- else }}
       serviceAccountName: {{ include "nvidia-device-plugin.fullname" . }}-service-account
+      {{- end }}
       {{- end }}
       {{- if $options.hasConfigMap }}
       shareProcessNamespace: true
