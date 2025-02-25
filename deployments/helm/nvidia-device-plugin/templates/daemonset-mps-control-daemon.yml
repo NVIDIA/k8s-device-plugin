@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-{{- if .Values.devicePlugin.enabled }}
+{{- if and .Values.devicePlugin.enabled .Values.mps.enabled }}
 ---
 {{- $options := (include "nvidia-device-plugin.options" . | fromJson) }}
 {{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}

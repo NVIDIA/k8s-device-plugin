@@ -145,6 +145,7 @@ nfd:
           - vendor
 
 mps:
+  enabled: true
   # root specifies the location where files and folders for managing MPS will
   # be created. This includes a daemon-specific /dev/shm and pipe and log
   # directories.
