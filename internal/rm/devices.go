@@ -127,6 +127,15 @@ func (ds Devices) GetByIndex(index string) *Device {
 	return nil
 }
 
+// GetByIDOrIndex returns a reference to the device matching the either specified ID or Index (nil otherwise).
+func (ds Devices) GetByIDOrIndex(in string) *Device {
+	d := ds.GetByID(in)
+	if d != nil {
+		return d
+	}
+	return ds.GetByIndex(in)
+}
+
 // Subset returns the subset of devices in Devices matching the provided ids.
 // If any id in ids is not in Devices, then the subset that did match will be returned.
 func (ds Devices) Subset(ids []string) Devices {
@@ -146,6 +155,33 @@ func (ds Devices) Difference(ods Devices) Devices {
 		if !ods.Contains(id) {
 			res[id] = ds[id]
 		}
+	}
+	return res
+}
+
+// FilterByIDOrIndex returns the subset of devices matching the selected devices but not in excluded devices.
+// Basically, this is the combination of the above Subset and Difference methods.
+// It accepts inputs with the device format as ID(s) and Index(es).
+func (ds Devices) FilterByIDOrIndex(selected []string, excluded []string) Devices {
+	filterFunc := func(ds Devices, filter []string) Devices {
+		res := make(Devices)
+		for _, item := range filter {
+			if d := ds.GetByIDOrIndex(item); d != nil {
+				res[d.ID] = d
+			}
+		}
+		return res
+	}
+
+	res := ds
+	// Skip on the edge cases when seleted/excluded is an empty slice ([]string{""})
+	if !(len(selected) == 1 && selected[0] == "") {
+		f := filterFunc(ds, selected)
+		res = res.Subset(f.GetIDs())
+	}
+	if !(len(excluded) == 1 && excluded[0] == "") {
+		f := filterFunc(ds, excluded)
+		res = res.Difference(f)
 	}
 	return res
 }
