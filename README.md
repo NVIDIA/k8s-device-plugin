@@ -28,6 +28,7 @@
       - [Single Config File Example](#single-config-file-example)
       - [Multiple Config File Example](#multiple-config-file-example)
       - [Updating Per-Node Configuration With a Node Label](#updating-per-node-configuration-with-a-node-label)
+      - [Filtering Devices on specific nodes with Per-Node Configuration](#filtering-devices-on-specific-nodes-with-per-node-configuration)
     - [Setting other helm chart values](#setting-other-helm-chart-values)
     - [Deploying with gpu-feature-discovery for automatic node labels](#deploying-with-gpu-feature-discovery-for-automatic-node-labels)
     - [Deploying gpu-feature-discovery in standalone mode](#deploying-gpu-feature-discovery-in-standalone-mode)
@@ -205,15 +206,18 @@ deploying the plugin via `helm`.
 
 ### As command line flags or envvars
 
-| Flag                     | Environment Variable    | Default Value   |
-|--------------------------|-------------------------|-----------------|
-| `--mig-strategy`         | `$MIG_STRATEGY`         | `"none"`        |
-| `--fail-on-init-error`   | `$FAIL_ON_INIT_ERROR`   | `true`          |
-| `--nvidia-driver-root`   | `$NVIDIA_DRIVER_ROOT`   | `"/"`           |
-| `--pass-device-specs`    | `$PASS_DEVICE_SPECS`    | `false`         |
-| `--device-list-strategy` | `$DEVICE_LIST_STRATEGY` | `"envvar"`      |
-| `--device-id-strategy`   | `$DEVICE_ID_STRATEGY`   | `"uuid"`        |
-| `--config-file`          | `$CONFIG_FILE`          | `""`            |
+| Flag                              | Environment Variable             | Default Value   |
+|-----------------------------------|----------------------------------|-----------------|
+| `--mig-strategy`                  | `$MIG_STRATEGY`                  | `"none"`        |
+| `--fail-on-init-error`            | `$FAIL_ON_INIT_ERROR`            | `true`          |
+| `--nvidia-driver-root`            | `$NVIDIA_DRIVER_ROOT`            | `"/"`           |
+| `--pass-device-specs`             | `$PASS_DEVICE_SPECS`             | `false`         |
+| `--device-list-strategy`          | `$DEVICE_LIST_STRATEGY`          | `"envvar"`      |
+| `--device-id-strategy`            | `$DEVICE_ID_STRATEGY`            | `"uuid"`        |
+| `--config-file`                   | `$CONFIG_FILE`                   | `""`            |
+| `--device-filter-enabled`         | `$DEVICE_FILTER_ENABLED`         | `false`         |
+| `--device-filter-select-devices`  | `$DEVICE_FILTER_SELECT_DEVICES`  | `""`            |
+| `--device-filter-exclude-devices` | `$DEVICE_FILTER_EXCLUDE_DEVICES` | `""`            |
 
 ### As a configuration file
 
@@ -227,6 +231,10 @@ flags:
     passDeviceSpecs: false
     deviceListStrategy: "envvar"
     deviceIDStrategy: "uuid"
+  deviceFilter:
+    enabled: false
+    selectDevices: ""
+    excludeDevices: ""
 ```
 
 **Note:** The configuration file has an explicit `plugin` section because it
@@ -343,6 +351,42 @@ options outside of this section are shared.
   pre-defined configuration file, but then override the values set in it at
   launch time. As described below, a `ConfigMap` can be used to point the
   plugin at a desired configuration file when deploying via `helm`.
+
+**`DEVICE_FILTER_ENABLED`**:
+  enable device filter (select/exclude) from node's discovered devices
+
+  `[true | false] (default 'false')`
+
+  This flag allows enable device filter feature. When set to `false`, it does
+  nothing even if the belows flags `DEVICE_FILTER_SELECT_DEVICES`
+  and `DEVICE_FILTER_SELECT_DEVICES` are set.
+
+**`DEVICE_FILTER_SELECT_DEVICES`**:
+  the desired subset of devices will be selected from node's devices
+
+  `(default '')`
+
+  The `DEVICE_FILTER_SELECT_DEVICES` flag allows one to **select** a subset of devices
+  which are discovered from the Device Plugin or MPS Control Daemon. It accepts
+  input format as a comma-separated string contains device's Index ("0,1,2,3"),
+  ID ("GPU-XXX,GPU-YYY"), or even mixed of both ("0,GPU-XXX,1,3,GPU-YYY") - but
+  the last one is not recommended. If not set, it will use the default value
+  (`''`, an empty string), which means **all** devices are selected.
+
+**`DEVICE_FILTER_EXCLUDE_DEVICES`**:
+  the desired subset of devices will be excluded from node's devices
+
+  `(default '')`
+
+  The `DEVICE_FILTER_EXCLUDE_DEVICES` flags allows one to **exclude** a subset of devices
+  which are discovered from the Device Plugin or MPS Control Daemon. The format is
+  similar to the above `DEVICE_FILTER_SELECT_DEVICES` flag. If not set, it will use
+  the default value (`''`, an empty string), which means **no** devices is excluded.
+
+  **Note:** If a device appears in both `DEVICE_FILTER_EXCLUDE_DEVICES`
+  and `DEVICE_FILTER_SELECT_DEVICES` then it will be excluded in the final selected
+  devices result. For example: if `DEVICE_FILTER_SELECT_DEVICES="1,2,3,4"`
+  and `DEVICE_FILTER_EXCLUDE_DEVICES="1,4,6"`, then the final result is `3,4`.
 
 ### Shared Access to GPUs
 
@@ -834,6 +878,97 @@ started to get the desired configuration applied on the node. Anytime it
 changes value, the plugin will immediately be updated to start serving the
 desired configuration. If it is set to an unknown value, it will skip
 reconfiguration. If it is ever unset, it will fallback to the default.
+
+#### Filtering Devices on specific nodes with Per-Node Configuration
+
+In most cases, the device filter feature is used to filter on some specific
+nodes instead of the whole cluster. By creating different configurations and
+using the above Node Label to apply which configuration for each node, it can solve
+the case when a node needs to select or exclude some devices.
+
+For example, node A needs to select only GPUs `2,3,5,6`; node B needs to exclude GPUs `1,7`:
+
+Create custom configs:
+
+The `default` config for all nodes:
+
+```shell
+cat << EOF > /tmp/dp-example-default.yaml
+version: v1
+EOF
+```
+
+**Note:** This `default` config is mandatory because all remaining nodes (except node A and B)
+are needed to provide a "default" config (althogh it can be empty as above example or with
+other configs if desired).
+
+The `device-filter-node-a` config for node A:
+
+```shell
+cat << EOF > /tmp/dp-example-df-node-a.yaml
+version: v1
+flags:
+  deviceFilter:
+    enabled: true
+    selectDevices: "2,3,5,6"
+EOF
+```
+
+The `device-filter-node-b` config for node B:
+```shell
+cat << EOF > /tmp/dp-example-df-node-b.yaml
+version: v1
+flags:
+  deviceFilter:
+    enabled: true
+    excludeDevices: "1,7"
+EOF
+```
+
+And redeploy the device plugin via helm (pointing it at all configs with a specified default):
+
+```shell
+helm upgrade -i nvdp nvdp/nvidia-device-plugin \
+  --version=0.17.0 \
+  --namespace nvidia-device-plugin \
+  --create-namespace \
+  --set config.default=default \
+  --set-file config.map.default=/tmp/dp-example-default.yaml \
+  --set-file config.map.device-filter-node-a=/tmp/dp-example-df-node-a.yaml \
+  --set-file config.map.device-filter-node-b=/tmp/dp-example-df-node-b.yaml
+```
+
+or with pre-created `ConfigMap`s if desired:
+
+```shell
+kubectl create cm -n nvidia-device-plugin nvidia-plugin-configs \
+  --from-file=default=/tmp/dp-example-default.yaml \
+  --from-file=device-filter-node-a=/tmp/dp-example-df-node-a.yaml \
+  --from-file=device-filter-node-b=/tmp/dp-example-df-node-b.yaml
+```
+
+```shell
+helm upgrade -i nvdp nvdp/nvidia-device-plugin \
+  --version=0.17.0 \
+  --namespace nvidia-device-plugin \
+  --create-namespace \
+  --set config.default=default \
+  --set config.name=nvidia-plugin-configs
+```
+
+After the above setup, plugins on all nodes will have `default` configured for them
+by default. However, the following label need be set to change which configuration
+is applied for each node:
+
+```shell
+kubectl label nodes node-A –-overwrite \
+  nvidia.com/device-plugin.config=device-filter-node-a
+```
+
+```shell
+kubectl label nodes node-B –-overwrite \
+  nvidia.com/device-plugin.config=device-filter-node-b
+```
 
 #### Setting other helm chart values
 
