@@ -124,6 +124,8 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 		nvcdi.WithDeviceNamers(deviceNamer),
 		nvcdi.WithVendor(c.vendor),
 		nvcdi.WithClass("gpu"),
+		// TODO: This should be removed once the use of a NVIDIA Container Toolkit >= v1.17.5 is commonplace.
+		nvcdi.WithDisabledHook(nvcdi.HookEnableCudaCompat),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create nvcdi library: %v", err)
@@ -150,6 +152,8 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 			nvcdi.WithDevRoot(c.devRoot),
 			nvcdi.WithVendor(c.vendor),
 			nvcdi.WithMode(mode),
+			// TODO: This should be removed once the use of a NVIDIA Container Toolkit >= v1.17.5 is commonplace.
+			nvcdi.WithDisabledHook(nvcdi.HookEnableCudaCompat),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create nvcdi library: %v", err)
