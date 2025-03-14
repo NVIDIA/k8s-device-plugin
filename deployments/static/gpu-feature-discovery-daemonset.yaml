@@ -58,6 +58,8 @@ spec:
         - name: output-dir
           hostPath:
             path: "/etc/kubernetes/node-feature-discovery/features.d"
+            type: DirectoryOrCreate
         - name: host-sys
           hostPath:
             path: "/sys"
+            type: Directory
