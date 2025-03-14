@@ -48,9 +48,10 @@ spec:
           capabilities:
             drop: ["ALL"]
         volumeMounts:
-        - name: device-plugin
+        - name: kubelet-device-plugins-dir
           mountPath: /var/lib/kubelet/device-plugins
       volumes:
-      - name: device-plugin
+      - name: kubelet-device-plugins-dir
         hostPath:
           path: /var/lib/kubelet/device-plugins
+          type: Directory
