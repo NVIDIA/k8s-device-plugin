@@ -59,32 +59,6 @@ spec:
       shareProcessNamespace: true
       {{- end }}
       initContainers:
-      - image: {{ include "nvidia-device-plugin.fullimage" . }}
-        name: gpu-feature-discovery-imex-init
-        command: ["/bin/bash", "-c"]
-        args:
-        - |
-          IMEX_NODES_CONFIG_FILE=/etc/nvidia-imex/nodes_config.cfg
-          if [[ -f /config/${IMEX_NODES_CONFIG_FILE} ]]; then
-            echo "Removing cached IMEX nodes config"
-            rm -f /config/${IMEX_NODES_CONFIG_FILE}
-          fi
-
-          if [[ ! -f /driver-root/${IMEX_NODES_CONFIG_FILE} ]]; then
-            echo "No IMEX nodes config path detected; Skipping"
-            exit 0
-          fi
-
-          echo "Copying IMEX nodes config"
-          mkdir -p $(dirname /config/${IMEX_NODES_CONFIG_FILE})
-          cp /driver-root/${IMEX_NODES_CONFIG_FILE} /config/${IMEX_NODES_CONFIG_FILE}
-        volumeMounts:
-        - name: config
-          mountPath: /config
-        - name: driver-root
-          mountPath: /driver-root/etc
-          subPath: etc
-          readOnly: true
       {{- if $options.hasConfigMap }}
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         name: gpu-feature-discovery-init

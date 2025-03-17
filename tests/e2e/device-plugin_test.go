@@ -162,12 +162,16 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 						"nvidia.com/gpu": "^[1-9]$",
 					}}
 				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchCapacity(capacityChecker, nodes), "Node capacity does not match")
-			})
-			It("it should run GPU jobs", func(ctx context.Context) {
-				By("Creating a GPU job")
+
+				// TODO: As a workaround to installing and reinstalling client causing
+				// the required resources to not be available, we merge the two tests.
+				// })
+				// It("it should run GPU jobs", func(ctx context.Context) {
+				// 	By("Creating a GPU job")
 				job := common.GPUJob.DeepCopy()
 				job.Namespace = f.Namespace.Name
-				_, err := f.ClientSet.BatchV1().Jobs(f.Namespace.Name).Create(ctx, job, metav1.CreateOptions{})
+
+				_, err = f.ClientSet.BatchV1().Jobs(f.Namespace.Name).Create(ctx, job, metav1.CreateOptions{})
 				Expect(err).NotTo(HaveOccurred())
 
 				By("Waiting for job to complete")
