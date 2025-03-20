@@ -41,6 +41,7 @@ func NewMigEnabledDevice(migs ...*resource.DeviceMock) resource.Device {
 func NewDeviceMock(migEnabled bool) *DeviceMock {
 	d := DeviceMock{resource.DeviceMock{
 		GetNameFunc: func() (string, error) { return "MOCKMODEL", nil },
+		GetUUIDFunc: func() (string, error) { return "MOCKUUID", nil },
 		GetCudaComputeCapabilityFunc: func() (int, int, error) {
 			if migEnabled {
 				return 0, 0, nil

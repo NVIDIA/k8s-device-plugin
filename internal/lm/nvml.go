@@ -85,6 +85,11 @@ func NewDeviceLabeler(manager resource.Manager, config *spec.Config) (Labeler, e
 		return nil, fmt.Errorf("error creating IMEX labeler: %v", err)
 	}
 
+	uuidLabler, err := newGPUUUIDLabeler(devices)
+	if err != nil {
+		return nil, fmt.Errorf("error creating UUID labeler: %v", err)
+	}
+
 	l := Merge(
 		machineTypeLabeler,
 		versionLabeler,
@@ -93,6 +98,7 @@ func NewDeviceLabeler(manager resource.Manager, config *spec.Config) (Labeler, e
 		resourceLabeler,
 		gpuModeLabeler,
 		imexLabeler,
+		uuidLabler,
 	)
 
 	return l, nil
@@ -260,4 +266,17 @@ func getDeviceClasses(devices []resource.Device) ([]uint32, error) {
 		classes = append(classes, class)
 	}
 	return classes, nil
+}
+
+// newGPUUUIDLabeler creates a new labeler that reports the UUIDs of GPUs on the node.
+func newGPUUUIDLabeler(devices []resource.Device) (Labeler, error) {
+	labels := make(Labels, len(devices))
+	for idx, d := range devices {
+		uuid, err := d.GetUUID()
+		if err != nil {
+			return nil, err
+		}
+		labels[fmt.Sprintf("nvidia.com/gpu-%d.uuid", idx)] = uuid
+	}
+	return labels, nil
 }

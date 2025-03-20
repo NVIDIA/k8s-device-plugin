@@ -32,3 +32,4 @@ nvidia\.com\/gpu\.slices\.gi=[0-9]+
 nvidia\.com\/gpu\.slices\.ci=[0-9]+
 nvidia\.com\/gpu\.mode=[compute]
 nvidia\.com\/mps\.capable=[true|false]
+nvidia\.com\/gpu-[0-9]+\.uuid=[0-9a-zA-Z-]+

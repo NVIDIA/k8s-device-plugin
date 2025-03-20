@@ -41,6 +41,9 @@ var _ Device = &DeviceMock{}
 //			GetTotalMemoryMBFunc: func() (uint64, error) {
 //				panic("mock out the GetTotalMemoryMB method")
 //			},
+//			GetUUIDFunc: func() (string, error) {
+//				panic("mock out the GetUUID method")
+//			},
 //			IsFabricAttachedFunc: func() (bool, error) {
 //				panic("mock out the IsFabricAttached method")
 //			},
@@ -81,6 +84,9 @@ type DeviceMock struct {
 	// GetTotalMemoryMBFunc mocks the GetTotalMemoryMB method.
 	GetTotalMemoryMBFunc func() (uint64, error)
 
+	// GetUUIDFunc mocks the GetUUID method.
+	GetUUIDFunc func() (string, error)
+
 	// IsFabricAttachedFunc mocks the IsFabricAttached method.
 	IsFabricAttachedFunc func() (bool, error)
 
@@ -116,6 +122,9 @@ type DeviceMock struct {
 		// GetTotalMemoryMB holds details about calls to the GetTotalMemoryMB method.
 		GetTotalMemoryMB []struct {
 		}
+		// GetUUID holds details about calls to the GetUUID method.
+		GetUUID []struct {
+		}
 		// IsFabricAttached holds details about calls to the IsFabricAttached method.
 		IsFabricAttached []struct {
 		}
@@ -134,6 +143,7 @@ type DeviceMock struct {
 	lockGetName                            sync.RWMutex
 	lockGetPCIClass                        sync.RWMutex
 	lockGetTotalMemoryMB                   sync.RWMutex
+	lockGetUUID                            sync.RWMutex
 	lockIsFabricAttached                   sync.RWMutex
 	lockIsMigCapable                       sync.RWMutex
 	lockIsMigEnabled                       sync.RWMutex
@@ -352,6 +362,33 @@ func (mock *DeviceMock) GetTotalMemoryMBCalls() []struct {
 	mock.lockGetTotalMemoryMB.RLock()
 	calls = mock.calls.GetTotalMemoryMB
 	mock.lockGetTotalMemoryMB.RUnlock()
+	return calls
+}
+
+// GetUUID calls GetUUIDFunc.
+func (mock *DeviceMock) GetUUID() (string, error) {
+	if mock.GetUUIDFunc == nil {
+		panic("DeviceMock.GetUUIDFunc: method is nil but Device.GetUUID was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockGetUUID.Lock()
+	mock.calls.GetUUID = append(mock.calls.GetUUID, callInfo)
+	mock.lockGetUUID.Unlock()
+	return mock.GetUUIDFunc()
+}
+
+// GetUUIDCalls gets all the calls that were made to GetUUID.
+// Check the length with:
+//
+//	len(mockedDevice.GetUUIDCalls())
+func (mock *DeviceMock) GetUUIDCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockGetUUID.RLock()
+	calls = mock.calls.GetUUID
+	mock.lockGetUUID.RUnlock()
 	return calls
 }
 

@@ -23,3 +23,4 @@ nvidia\.com\/mig\.capable=[true|false]
 nvidia\.com\/gpu\.compute\.major=[0-9]+
 nvidia\.com\/gpu\.compute\.minor=[0-9]+
 nvidia\.com\/mps\.capable=[true|false]
+nvidia\.com\/gpu-[0-9]+\.uuid=[0-9a-zA-Z-]+
