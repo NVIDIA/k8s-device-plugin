@@ -171,6 +171,14 @@ spec:
             value: all
           - name: NVIDIA_DRIVER_CAPABILITIES
             value: compute,utility
+        {{- if and (typeIs "bool" .Values.deviceFilter.enabled) (eq .Values.deviceFilter.enabled true) }}
+          - name: DEVICE_FILTER_ENABLED
+            value: {{ .Values.deviceFilter.enabled | quote }}
+          - name: DEVICE_FILTER_SELECT_DEVICES
+            value: {{ .Values.deviceFilter.selectDevices | quote }}
+          - name: DEVICE_FILTER_EXCLUDE_DEVICES
+            value: {{ .Values.deviceFilter.excludeDevices | quote }}
+        {{- end }}
           securityContext:
             privileged: true
           volumeMounts:
