@@ -41,8 +41,6 @@ spec:
       - image: nvcr.io/nvidia/k8s-device-plugin:v0.17.1
         name: nvidia-device-plugin-ctr
         env:
-          - name: FAIL_ON_INIT_ERROR
-            value: "false"
           - name: PASS_DEVICE_SPECS
             value: "true"
         securityContext:
