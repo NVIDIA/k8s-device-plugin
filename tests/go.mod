@@ -8,10 +8,10 @@ require (
 	github.com/onsi/ginkgo/v2 v2.22.1
 	github.com/onsi/gomega v1.36.2
 	github.com/stretchr/testify v1.10.0
-	k8s.io/api v0.32.2
-	k8s.io/apiextensions-apiserver v0.32.2
-	k8s.io/apimachinery v0.32.2
-	k8s.io/client-go v0.32.2
+	k8s.io/api v0.32.3
+	k8s.io/apiextensions-apiserver v0.32.3
+	k8s.io/apimachinery v0.32.3
+	k8s.io/client-go v0.32.3
 	k8s.io/klog/v2 v2.130.1
 	sigs.k8s.io/node-feature-discovery v0.17.2
 	sigs.k8s.io/node-feature-discovery/api/nfd v0.17.1
@@ -170,9 +170,9 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	helm.sh/helm/v3 v3.15.2 // indirect
-	k8s.io/apiserver v0.32.2 // indirect
+	k8s.io/apiserver v0.32.3 // indirect
 	k8s.io/cli-runtime v0.32.2 // indirect
-	k8s.io/component-base v0.32.2 // indirect
+	k8s.io/component-base v0.32.3 // indirect
 	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f // indirect
 	k8s.io/kubectl v0.32.2 // indirect
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
