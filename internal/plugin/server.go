@@ -57,10 +57,11 @@ type nvidiaDevicePlugin struct {
 	cdiHandler          cdi.Interface
 	cdiAnnotationPrefix string
 
-	socket string
-	server *grpc.Server
-	health chan *rm.Device
-	stop   chan interface{}
+	socket    string
+	server    *grpc.Server
+	healthy   chan *rm.Device
+	unHealthy chan *rm.Device
+	stop      chan interface{}
 
 	imexChannels imex.Channels
 
@@ -89,9 +90,10 @@ func (o *options) devicePluginForResource(resourceManager rm.ResourceManager) (I
 		socket: getPluginSocketPath(resourceManager.Resource()),
 		// These will be reinitialized every
 		// time the plugin server is restarted.
-		server: nil,
-		health: nil,
-		stop:   nil,
+		server:    nil,
+		healthy:   nil,
+		unHealthy: nil,
+		stop:      nil,
 	}
 	return &plugin, nil
 }
@@ -105,14 +107,16 @@ func getPluginSocketPath(resource spec.ResourceName) string {
 
 func (plugin *nvidiaDevicePlugin) initialize() {
 	plugin.server = grpc.NewServer([]grpc.ServerOption{}...)
-	plugin.health = make(chan *rm.Device)
+	plugin.healthy = make(chan *rm.Device)
+	plugin.unHealthy = make(chan *rm.Device)
 	plugin.stop = make(chan interface{})
 }
 
 func (plugin *nvidiaDevicePlugin) cleanup() {
 	close(plugin.stop)
 	plugin.server = nil
-	plugin.health = nil
+	plugin.healthy = nil
+	plugin.unHealthy = nil
 	plugin.stop = nil
 }
 
@@ -147,7 +151,7 @@ func (plugin *nvidiaDevicePlugin) Start(kubeletSocket string) error {
 
 	go func() {
 		// TODO: add MPS health check
-		err := plugin.rm.CheckHealth(plugin.stop, plugin.health)
+		err := plugin.rm.CheckHealth(plugin.stop, plugin.healthy, plugin.unHealthy)
 		if err != nil {
 			klog.Errorf("Failed to start health check: %v; continuing with health checks disabled", err)
 		}
@@ -270,10 +274,15 @@ func (plugin *nvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.D
 		select {
 		case <-plugin.stop:
 			return nil
-		case d := <-plugin.health:
-			// FIXME: there is no way to recover from the Unhealthy state.
+		case d := <-plugin.unHealthy:
 			d.Health = pluginapi.Unhealthy
 			klog.Infof("'%s' device marked unhealthy: %s", plugin.rm.Resource(), d.ID)
+			if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
+				return nil
+			}
+		case d := <-plugin.healthy:
+			d.Health = pluginapi.Healthy
+			klog.Infof("'%s' device marked healthy: %s", plugin.rm.Resource(), d.ID)
 			if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
 				return nil
 			}
