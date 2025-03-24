@@ -36,7 +36,7 @@ const (
 )
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
-func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
+func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devices, healthy chan<- *Device, unhealthy chan<- *Device) error {
 	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
 	if disableHealthChecks == "all" {
 		disableHealthChecks = allHealthChecks
@@ -147,16 +147,6 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 			continue
 		}
 
-		if e.EventType != nvml.EventTypeXidCriticalError {
-			klog.Infof("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
-			continue
-		}
-
-		if skippedXids[e.EventData] {
-			klog.Infof("Skipping event %+v", e)
-			continue
-		}
-
 		klog.Infof("Processing event %+v", e)
 		eventUUID, ret := e.Device.GetUUID()
 		if ret != nvml.SUCCESS {
@@ -171,6 +161,18 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		d, exists := parentToDeviceMap[eventUUID]
 		if !exists {
 			klog.Infof("Ignoring event for unexpected device: %v", eventUUID)
+			continue
+		}
+
+		if e.EventType != nvml.EventTypeXidCriticalError {
+			klog.Infof("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
+			healthy <- d
+			continue
+		}
+
+		if skippedXids[e.EventData] {
+			klog.Infof("Skipping event %+v", e)
+			healthy <- d
 			continue
 		}
 
