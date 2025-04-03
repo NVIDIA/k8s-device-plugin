@@ -51,8 +51,8 @@ func (d vfioDevice) GetName() (string, error) {
 	return d.nvidiaPCIDevice.DeviceName, nil
 }
 
-// GetTotalMemoryMB returns the total memory on a device in MB
-func (d vfioDevice) GetTotalMemoryMB() (uint64, error) {
+// GetTotalMemoryMiB returns the total memory on a device in MB
+func (d vfioDevice) GetTotalMemoryMiB() (uint64, error) {
 	_, val := d.nvidiaPCIDevice.Resources.GetTotalAddressableMemory(true)
 	return val, nil
 }

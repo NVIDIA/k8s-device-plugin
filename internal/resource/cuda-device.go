@@ -58,8 +58,8 @@ func (d *cudaDevice) GetDeviceHandleFromMigDeviceHandle() (Device, error) {
 	return nil, fmt.Errorf("GetDeviceHandleFromMigDeviceHandle is unsupported for CUDA devices")
 }
 
-// GetTotalMemoryMB returns the total memory for a device
-func (d *cudaDevice) GetTotalMemoryMB() (uint64, error) {
+// GetTotalMemoryMiB returns the total memory for a device
+func (d *cudaDevice) GetTotalMemoryMiB() (uint64, error) {
 	total, r := cuda.Device(*d).TotalMem()
 	if r != cuda.SUCCESS {
 		return 0, fmt.Errorf("failed to get memory info for device: %v", r)
