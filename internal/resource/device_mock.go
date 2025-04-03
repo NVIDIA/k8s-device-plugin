@@ -38,8 +38,8 @@ var _ Device = &DeviceMock{}
 //			GetPCIClassFunc: func() (uint32, error) {
 //				panic("mock out the GetPCIClass method")
 //			},
-//			GetTotalMemoryMBFunc: func() (uint64, error) {
-//				panic("mock out the GetTotalMemoryMB method")
+//			GetTotalMemoryMiBFunc: func() (uint64, error) {
+//				panic("mock out the GetTotalMemoryMiB method")
 //			},
 //			IsFabricAttachedFunc: func() (bool, error) {
 //				panic("mock out the IsFabricAttached method")
@@ -78,8 +78,8 @@ type DeviceMock struct {
 	// GetPCIClassFunc mocks the GetPCIClass method.
 	GetPCIClassFunc func() (uint32, error)
 
-	// GetTotalMemoryMBFunc mocks the GetTotalMemoryMB method.
-	GetTotalMemoryMBFunc func() (uint64, error)
+	// GetTotalMemoryMiBFunc mocks the GetTotalMemoryMiB method.
+	GetTotalMemoryMiBFunc func() (uint64, error)
 
 	// IsFabricAttachedFunc mocks the IsFabricAttached method.
 	IsFabricAttachedFunc func() (bool, error)
@@ -113,8 +113,8 @@ type DeviceMock struct {
 		// GetPCIClass holds details about calls to the GetPCIClass method.
 		GetPCIClass []struct {
 		}
-		// GetTotalMemoryMB holds details about calls to the GetTotalMemoryMB method.
-		GetTotalMemoryMB []struct {
+		// GetTotalMemoryMiB holds details about calls to the GetTotalMemoryMiB method.
+		GetTotalMemoryMiB []struct {
 		}
 		// IsFabricAttached holds details about calls to the IsFabricAttached method.
 		IsFabricAttached []struct {
@@ -133,7 +133,7 @@ type DeviceMock struct {
 	lockGetMigDevices                      sync.RWMutex
 	lockGetName                            sync.RWMutex
 	lockGetPCIClass                        sync.RWMutex
-	lockGetTotalMemoryMB                   sync.RWMutex
+	lockGetTotalMemoryMiB                  sync.RWMutex
 	lockIsFabricAttached                   sync.RWMutex
 	lockIsMigCapable                       sync.RWMutex
 	lockIsMigEnabled                       sync.RWMutex
@@ -328,30 +328,30 @@ func (mock *DeviceMock) GetPCIClassCalls() []struct {
 	return calls
 }
 
-// GetTotalMemoryMB calls GetTotalMemoryMBFunc.
-func (mock *DeviceMock) GetTotalMemoryMB() (uint64, error) {
-	if mock.GetTotalMemoryMBFunc == nil {
-		panic("DeviceMock.GetTotalMemoryMBFunc: method is nil but Device.GetTotalMemoryMB was just called")
+// GetTotalMemoryMiB calls GetTotalMemoryMiBFunc.
+func (mock *DeviceMock) GetTotalMemoryMiB() (uint64, error) {
+	if mock.GetTotalMemoryMiBFunc == nil {
+		panic("DeviceMock.GetTotalMemoryMiBFunc: method is nil but Device.GetTotalMemoryMiB was just called")
 	}
 	callInfo := struct {
 	}{}
-	mock.lockGetTotalMemoryMB.Lock()
-	mock.calls.GetTotalMemoryMB = append(mock.calls.GetTotalMemoryMB, callInfo)
-	mock.lockGetTotalMemoryMB.Unlock()
-	return mock.GetTotalMemoryMBFunc()
+	mock.lockGetTotalMemoryMiB.Lock()
+	mock.calls.GetTotalMemoryMiB = append(mock.calls.GetTotalMemoryMiB, callInfo)
+	mock.lockGetTotalMemoryMiB.Unlock()
+	return mock.GetTotalMemoryMiBFunc()
 }
 
-// GetTotalMemoryMBCalls gets all the calls that were made to GetTotalMemoryMB.
+// GetTotalMemoryMiBCalls gets all the calls that were made to GetTotalMemoryMiB.
 // Check the length with:
 //
-//	len(mockedDevice.GetTotalMemoryMBCalls())
-func (mock *DeviceMock) GetTotalMemoryMBCalls() []struct {
+//	len(mockedDevice.GetTotalMemoryMiBCalls())
+func (mock *DeviceMock) GetTotalMemoryMiBCalls() []struct {
 } {
 	var calls []struct {
 	}
-	mock.lockGetTotalMemoryMB.RLock()
-	calls = mock.calls.GetTotalMemoryMB
-	mock.lockGetTotalMemoryMB.RUnlock()
+	mock.lockGetTotalMemoryMiB.RLock()
+	calls = mock.calls.GetTotalMemoryMiB
+	mock.lockGetTotalMemoryMiB.RUnlock()
 	return calls
 }
 
