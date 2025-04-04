@@ -145,6 +145,8 @@ nfd:
           - vendor
 
 mps:
+  # Enable MPS DaemonSet (user still needs to activate MPS configuration by labeling a node)
+  enabled: true
   # root specifies the location where files and folders for managing MPS will
   # be created. This includes a daemon-specific /dev/shm and pipe and log
   # directories.
