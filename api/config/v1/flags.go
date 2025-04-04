@@ -112,6 +112,15 @@ type GFDCommandLineFlags struct {
 
 // UpdateFromCLIFlags updates Flags from settings in the cli Flags if they are set.
 func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
+	// Plugin specific flags
+	if f.Plugin == nil {
+		f.Plugin = &PluginCommandLineFlags{}
+	}
+	// GFD specific flags
+	if f.GFD == nil {
+		f.GFD = &GFDCommandLineFlags{}
+	}
+
 	for _, flag := range flags {
 		for _, n := range flag.Names() {
 			// Common flags
@@ -134,12 +143,6 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.UseNodeFeatureAPI, c, n)
 			case "device-discovery-strategy":
 				updateFromCLIFlag(&f.DeviceDiscoveryStrategy, c, n)
-			}
-			// Plugin specific flags
-			if f.Plugin == nil {
-				f.Plugin = &PluginCommandLineFlags{}
-			}
-			switch n {
 			case "pass-device-specs":
 				updateFromCLIFlag(&f.Plugin.PassDeviceSpecs, c, n)
 			case "device-list-strategy":
@@ -152,12 +155,6 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.Plugin.NvidiaCTKPath, c, n)
 			case "container-driver-root":
 				updateFromCLIFlag(&f.Plugin.ContainerDriverRoot, c, n)
-			}
-			// GFD specific flags
-			if f.GFD == nil {
-				f.GFD = &GFDCommandLineFlags{}
-			}
-			switch n {
 			case "oneshot":
 				updateFromCLIFlag(&f.GFD.Oneshot, c, n)
 			case "output-file":
