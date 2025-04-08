@@ -83,7 +83,7 @@ func (d nvmlDevice) GetName() (string, error) {
 
 // GetTotalMemoryMiB returns the total memory on a device in mebibytes (2^20 bytes)
 func (d nvmlDevice) GetTotalMemoryMiB() (uint64, error) {
-	info, ret := d.Device.GetMemoryInfo()
+	info, ret := d.GetMemoryInfo()
 	if ret != nvml.SUCCESS {
 		return 0, ret
 	}

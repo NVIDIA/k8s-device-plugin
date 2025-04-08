@@ -53,7 +53,7 @@ func (o *options) getMPSOptions(resourceManager rm.ResourceManager) (mpsOptions,
 		enabled:      true,
 		resourceName: resourceManager.Resource(),
 		daemon:       mps.NewDaemon(resourceManager, mps.ContainerRoot),
-		hostRoot:     mps.Root(*o.config.Flags.CommandLineFlags.MpsRoot),
+		hostRoot:     mps.Root(*o.config.Flags.MpsRoot),
 	}
 	return m, nil
 }

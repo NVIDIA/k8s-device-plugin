@@ -85,7 +85,7 @@ func (d nvmlDevice) GetPaths() ([]string, error) {
 
 // GetComputeCapability returns the CUDA Compute Capability for the device.
 func (d nvmlDevice) GetComputeCapability() (string, error) {
-	major, minor, ret := d.Device.GetCudaComputeCapability()
+	major, minor, ret := d.GetCudaComputeCapability()
 	if ret != nvml.SUCCESS {
 		return "", ret
 	}
@@ -94,7 +94,7 @@ func (d nvmlDevice) GetComputeCapability() (string, error) {
 
 // GetComputeCapability returns the CUDA Compute Capability for the device.
 func (d nvmlMigDevice) GetComputeCapability() (string, error) {
-	parent, ret := d.Device.GetDeviceHandleFromMigDeviceHandle()
+	parent, ret := d.GetDeviceHandleFromMigDeviceHandle()
 	if ret != nvml.SUCCESS {
 		return "", fmt.Errorf("failed to get parent device: %w", ret)
 	}
@@ -186,7 +186,7 @@ func (d nvmlMigDevice) GetNumaNode() (bool, int, error) {
 
 // GetTotalMemory returns the total memory available on the device.
 func (d nvmlDevice) GetTotalMemory() (uint64, error) {
-	info, ret := d.Device.GetMemoryInfo()
+	info, ret := d.GetMemoryInfo()
 	if ret != nvml.SUCCESS {
 		return 0, ret
 	}
@@ -195,7 +195,7 @@ func (d nvmlDevice) GetTotalMemory() (uint64, error) {
 
 // GetTotalMemory returns the total memory available on the device.
 func (d nvmlMigDevice) GetTotalMemory() (uint64, error) {
-	info, ret := d.Device.GetMemoryInfo()
+	info, ret := d.GetMemoryInfo()
 	if ret != nvml.SUCCESS {
 		return 0, ret
 	}
