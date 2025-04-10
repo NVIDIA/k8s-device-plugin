@@ -160,8 +160,9 @@ scan-ubi9-arm64:
   before_script:
     - !reference [.regctl-setup, before_script]
 
-    # We ensure that the OUT_IMAGE_VERSION is set
+    # We ensure that the OUT_IMAGE_VERSION and OUT_IMAGE_NAME are set
     - 'echo Version: ${OUT_IMAGE_VERSION} ; [[ -n "${OUT_IMAGE_VERSION}" ]] || exit 1'
+    - 'echo Version: ${OUT_IMAGE_NAME} ; [[ -n "${OUT_IMAGE_NAME}" ]] || exit 1'
 
     # In the case where we are deploying a different version to the CI_COMMIT_SHA, we
     # need to tag the image.
@@ -185,10 +186,10 @@ scan-ubi9-arm64:
   extends:
     - .release
   variables:
-    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
-    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
-    OUT_REGISTRY: "${CI_REGISTRY}"
-    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/k8s-device-plugin"
+    OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
+    OUT_REGISTRY: "${NGC_REGISTRY}"
+    OUT_IMAGE_NAME: "${NGC_REGISTRY_STAGING_IMAGE_NAME}"
 
 # Define an external release step that pushes an image to an external repository.
 # This includes a devlopment image off main.
