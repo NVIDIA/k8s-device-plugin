@@ -1,5 +1,13 @@
 ## Changelog
 
+### Version v0.17.1
+- Ensure that generated CDI specs do not contain `enable-cuda-compat` hooks
+- Remove nvidia.com/gpu.imex-domain label
+- Ignore XID error 109
+- Add `ada-lovelace` architecture label for compute capability 8.9
+- Ensure FAIL_ON_INIT_ERROR boolean env is quoted
+- Honor fail-on-init-error when no resources are found
+
 ### v0.17.0
 - Promote v0.17.0-rc.1 to GA
 
