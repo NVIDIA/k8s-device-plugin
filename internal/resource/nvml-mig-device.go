@@ -95,7 +95,7 @@ func (d nvmlMigDevice) GetCudaComputeCapability() (int, int, error) {
 // GetName returns the name of the nvmlMigDevice.
 // This is equal to the mig profile.
 func (d nvmlMigDevice) GetName() (string, error) {
-	p, err := d.MigDevice.GetProfile()
+	p, err := d.GetProfile()
 	if err != nil {
 		return "", fmt.Errorf("failed to get MIG profile: %v", err)
 	}
