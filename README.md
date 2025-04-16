@@ -359,7 +359,7 @@ options outside of this section are shared.
 
   This flag allows enable device filter feature. When set to `false`, it does
   nothing even if the belows flags `DEVICE_FILTER_SELECT_DEVICES`
-  and `DEVICE_FILTER_SELECT_DEVICES` are set.
+  and `DEVICE_FILTER_EXCLUDE_DEVICES` are set.
 
 **`DEVICE_FILTER_SELECT_DEVICES`**:
   the desired subset of devices will be selected from node's devices
