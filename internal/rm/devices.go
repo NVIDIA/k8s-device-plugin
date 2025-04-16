@@ -174,15 +174,19 @@ func (ds Devices) FilterByIDOrIndex(selected []string, excluded []string) Device
 	}
 
 	res := ds
-	// Skip on the edge cases when seleted/excluded is an empty slice ([]string{""})
+
+	// Only perform filtering when selected is not an empty slice ([]string{""})
 	if !(len(selected) == 1 && selected[0] == "") {
 		f := filterFunc(ds, selected)
 		res = res.Subset(f.GetIDs())
 	}
+
+	// Only perform filtering when excluded is not an empty slice ([]string{""})
 	if !(len(excluded) == 1 && excluded[0] == "") {
 		f := filterFunc(ds, excluded)
 		res = res.Difference(f)
 	}
+
 	return res
 }
 
