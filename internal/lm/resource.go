@@ -304,6 +304,9 @@ func getArchFamily(computeMajor, computeMinor int) string {
 		return "ada-lovelace"
 	case 9:
 		return "hopper"
+	// The Blackwell GPU family is bifurcated into two cuda compute capabilities 10.0 and 12.0
+	case 10, 12:
+		return "blackwell"
 	}
 	return "undefined"
 }
