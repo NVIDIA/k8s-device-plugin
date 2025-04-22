@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG GOLANG_VERSION=1.24.1
+ARG GOLANG_VERSION=1.24.2
 FROM nvcr.io/nvidia/cuda:12.8.1-base-ubi9 AS build
 
 RUN yum install -y \
