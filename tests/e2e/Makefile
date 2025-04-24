@@ -1,4 +1,4 @@
-# Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ GO_TEST_TIMEOUT ?= 30m
 
 include $(CURDIR)/versions.mk
 
-DRIVER_ENABLED ?= true
+NVIDIA_DRIVER_ENABLED ?= true
 
 E2E_IMAGE_REPO ?= $(REGISTRY)/$(DRIVER_NAME)
 E2E_IMAGE_TAG ?= $(VERSION)
@@ -28,21 +28,25 @@ E2E_IMAGE_PULL_POLICY ?= IfNotPresent
 HELM_CHART ?= $(CURDIR)/deployments/helm/nvidia-device-plugin
 LOG_ARTIFACTS ?= $(CURDIR)/e2e_logs
 
-.PHONY: test
-test:
-	@if [ -z ${KUBECONFIG} ]; then \
-		echo "[ERR] KUBECONFIG missing, must be defined"; \
-		exit 1; \
-	fi
-	cd $(CURDIR)/tests/e2e && $(GO_CMD) test -timeout $(GO_TEST_TIMEOUT) -v . -args \
-		-kubeconfig=$(KUBECONFIG) \
-		-driver-enabled=$(DRIVER_ENABLED) \
-		-image.repo=$(E2E_IMAGE_REPO) \
-		-image.tag=$(E2E_IMAGE_TAG) \
-		-image.pull-policy=$(E2E_IMAGE_PULL_POLICY) \
-		-log-artifacts=$(LOG_ARTIFACTS) \
-		-helm-chart=$(HELM_CHART) \
-		-helm-log-file=$(LOG_ARTIFACTS)/helm.log \
-		-ginkgo.focus="\[nvidia\]" \
-		-test.timeout=1h \
-		-ginkgo.v
+# Test configuration
+GINKGO_COMMON_ARGS := -v --fail-on-pending --randomize-all --trace
+GINKGO_REPORT_ARGS := --json-report=$(LOG_ARTIFACTS)/report.json --junit-report=$(LOG_ARTIFACTS)/junit.xml
+
+.PHONY: ginkgo test clean-artifacts
+
+GINKGO_VERSION = $(shell grep -Eo "github.com/onsi/ginkgo/v2.*$$" ./tests/go.mod | sed -e 's&github.com/onsi/ginkgo/v2[[:space:]]&&g')
+ginkgo:
+	mkdir -p $(CURDIR)/bin
+	GOBIN=$(CURDIR)/bin go install github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_VERSION)
+
+# Create artifacts directory
+$(LOG_ARTIFACTS):
+	mkdir -p $(LOG_ARTIFACTS)
+
+# Clean artifacts
+clean-artifacts:
+	rm -rf $(LOG_ARTIFACTS)
+
+# Run tests
+test: ginkgo $(LOG_ARTIFACTS)
+	$(CURDIR)/bin/ginkgo $(GINKGO_COMMON_ARGS) $(GINKGO_REPORT_ARGS) $(GINKGO_ARGS) ./tests/e2e/...

@@ -58,11 +58,14 @@ jobs:
     - name: Run e2e tests
       env:
         KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        HELM_CHART: ${{ github.workspace }}/deployments/helm/nvidia-device-plugin
         E2E_IMAGE_REPO: ghcr.io/nvidia/k8s-device-plugin
         E2E_IMAGE_TAG: ${{ inputs.version }}
+        E2E_IMAGE_PULL_POLICY: Always
+        NVIDIA_DRIVER_ENABLED: true
         LOG_ARTIFACTS: ${{ github.workspace }}/e2e_logs
       run: |
-        make test-e2e
+        make -f tests/e2e/Makefile test
 
     - name: Archive test logs
       if: ${{ failure() }}
@@ -70,6 +73,13 @@ jobs:
       with:
         name: e2e-test-logs
         path: ./e2e_logs/
+        retention-days: 15
+
+    - name: Archive Ginkgo logs
+      uses: actions/upload-artifact@v4
+      with:
+        name: ginkgo-logs
+        path: ginkgo.json
         retention-days: 15
 
     - name: Send Slack alert notification
@@ -80,8 +90,10 @@ jobs:
         SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         SUMMARY_URL: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
       with:
-        channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
-        slack-message: |
-          :x: On repository ${{ github.repository }} the Workflow *${{ github.workflow }}* has failed.
+        method: chat.postMessage
+        token: ${{ secrets.SLACK_BOT_TOKEN }}
+        payload: |
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          text: ":x: On repository ${{ github.repository }} the Workflow *${{ github.workflow }}* has failed.
 
-          Details: ${{ env.SUMMARY_URL }}
+          Details: ${{ env.SUMMARY_URL }}"
