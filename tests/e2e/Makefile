@@ -1,4 +1,5 @@
-# Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved. 
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,21 +29,10 @@ E2E_IMAGE_PULL_POLICY ?= IfNotPresent
 HELM_CHART ?= $(CURDIR)/deployments/helm/nvidia-device-plugin
 LOG_ARTIFACTS ?= $(CURDIR)/e2e_logs
 
-.PHONY: test
-test:
-	@if [ -z ${KUBECONFIG} ]; then \
-		echo "[ERR] KUBECONFIG missing, must be defined"; \
-		exit 1; \
-	fi
-	cd $(CURDIR)/tests/e2e && $(GO_CMD) test -timeout $(GO_TEST_TIMEOUT) -v . -args \
-		-kubeconfig=$(KUBECONFIG) \
-		-driver-enabled=$(DRIVER_ENABLED) \
-		-image.repo=$(E2E_IMAGE_REPO) \
-		-image.tag=$(E2E_IMAGE_TAG) \
-		-image.pull-policy=$(E2E_IMAGE_PULL_POLICY) \
-		-log-artifacts=$(LOG_ARTIFACTS) \
-		-helm-chart=$(HELM_CHART) \
-		-helm-log-file=$(LOG_ARTIFACTS)/helm.log \
-		-ginkgo.focus="\[nvidia\]" \
-		-test.timeout=1h \
-		-ginkgo.v
+.PHONY: ginkgo e2e-test
+ginkgo:
+	mkdir -p $(CURDIR)/bin
+	GOBIN=$(CURDIR)/bin go install github.com/onsi/ginkgo/v2/ginkgo@latest
+
+test-e2e: ginkgo
+	$(CURDIR)/bin/ginkgo $(GINKGO_ARGS) -v --json-report ginkgo.json ./tests/e2e/...
