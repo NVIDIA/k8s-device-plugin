@@ -29,6 +29,7 @@ stages:
   - scan
   - release
   - sign
+  - ngc-publish
 
 .pipeline-trigger-rules:
   rules:
@@ -209,3 +210,14 @@ release:staging-ubi9:
     - .dist-ubi9
   needs:
     - image-ubi9
+
+# Triggers the downstream container-dev/ngc-automation pipeline to publish the image to NGC
+# This stage is triggered specifically on tags   
+trigger-downstream-publishing-pipeline:
+  stage: ngc-publish
+  #rules:
+  #  - if: $CI_COMMIT_TAG
+  variables:
+    PROJECT_NAME: "k8s-device-plugin"
+    SOURCE_VERSION: "test"  # "${CI_COMMIT_TAG}"
+  trigger: dl/container-dev/ngc-automation
