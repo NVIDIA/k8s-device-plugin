@@ -42,7 +42,7 @@ type ResourceManager interface {
 	Devices() Devices
 	GetDevicePaths([]string) []string
 	GetPreferredAllocation(available, required []string, size int) ([]string, error)
-	CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error
+	CheckHealth(stop <-chan interface{}, unhealthy chan<- *DeviceEvent) error
 	ValidateRequest(AnnotatedIDs) error
 }
 

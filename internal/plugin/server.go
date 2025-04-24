@@ -272,11 +272,21 @@ func (plugin *nvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.D
 			return nil
 		case d := <-plugin.health:
 			// FIXME: there is no way to recover from the Unhealthy state.
-			d.Health = pluginapi.Unhealthy
-			klog.Infof("'%s' device marked unhealthy: %s", plugin.rm.Resource(), d.ID)
-			if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
-				return nil
+			if d.Event == rm.DeviceUnHalthy {
+				d.Device.Health = pluginapi.Unhealthy
+				klog.Infof("'%s' device marked unhealthy: %s", plugin.rm.Resource(), d.Device.ID)
+				if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
+					return nil
+				}
 			}
+			if d.Event == rm.DeviceHealthy {
+				d.Device.Health = pluginapi.Healthy
+				klog.Infof("'%s' device marked healthy: %s", plugin.rm.Resource(), d.Device.ID)
+				if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
+					return nil
+				}
+			}
+
 		}
 	}
 }

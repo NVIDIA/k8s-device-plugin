@@ -33,10 +33,14 @@ const (
 	// this is in addition to the Application errors that are already ignored.
 	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
 	allHealthChecks        = "xids"
+
+	nvmlEventTypeGpuRecoveryAction = 0x0000000000008000 // from https://docs.nvidia.com/deploy/nvml-api/group__nvmlEventType.html?
+
+	nvmlEventTypeGpuUnavailableError = 0x0000000000004000
 )
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
-func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
+func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *DeviceEvent) error {
 	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
 	if disableHealthChecks == "all" {
 		disableHealthChecks = allHealthChecks
@@ -92,12 +96,15 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 	deviceIDToGiMap := make(map[string]uint32)
 	deviceIDToCiMap := make(map[string]uint32)
 
-	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
+	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError | nvmlEventTypeGpuUnavailableError | nvmlEventTypeGpuRecoveryAction)
 	for _, d := range devices {
 		uuid, gi, ci, err := r.getDevicePlacement(d)
 		if err != nil {
 			klog.Warningf("Could not determine device placement for %v: %v; Marking it unhealthy.", d.ID, err)
-			unhealthy <- d
+			unhealthy <- &DeviceEvent{
+				Device: d,
+				Event:  DeviceUnHalthy,
+			}
 			continue
 		}
 		deviceIDToGiMap[d.ID] = gi
@@ -107,14 +114,20 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		gpu, ret := r.nvml.DeviceGetHandleByUUID(uuid)
 		if ret != nvml.SUCCESS {
 			klog.Infof("unable to get device handle from UUID: %v; marking it as unhealthy", ret)
-			unhealthy <- d
+			unhealthy <- &DeviceEvent{
+				Device: d,
+				Event:  DeviceUnHalthy,
+			}
 			continue
 		}
 
 		supportedEvents, ret := gpu.GetSupportedEventTypes()
 		if ret != nvml.SUCCESS {
 			klog.Infof("unable to determine the supported events for %v: %v; marking it as unhealthy", d.ID, ret)
-			unhealthy <- d
+			unhealthy <- &DeviceEvent{
+				Device: d,
+				Event:  DeviceUnHalthy,
+			}
 			continue
 		}
 
@@ -124,7 +137,10 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		}
 		if ret != nvml.SUCCESS {
 			klog.Infof("Marking device %v as unhealthy: %v", d.ID, ret)
-			unhealthy <- d
+			unhealthy <- &DeviceEvent{
+				Device: d,
+				Event:  DeviceUnHalthy,
+			}
 		}
 	}
 
@@ -142,7 +158,10 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		if ret != nvml.SUCCESS {
 			klog.Infof("Error waiting for event: %v; Marking all devices as unhealthy", ret)
 			for _, d := range devices {
-				unhealthy <- d
+				unhealthy <- &DeviceEvent{
+					Device: d,
+					Event:  DeviceUnHalthy,
+				}
 			}
 			continue
 		}
@@ -163,7 +182,10 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 			// If we cannot reliably determine the device UUID, we mark all devices as unhealthy.
 			klog.Infof("Failed to determine uuid for event %v: %v; Marking all devices as unhealthy.", e, ret)
 			for _, d := range devices {
-				unhealthy <- d
+				unhealthy <- &DeviceEvent{
+					Device: d,
+					Event:  DeviceUnHalthy,
+				}
 			}
 			continue
 		}
@@ -172,6 +194,15 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		if !exists {
 			klog.Infof("Ignoring event for unexpected device: %v", eventUUID)
 			continue
+		}
+		// nvmlEventTypeRecovery is a special case, where we mark the device as healthy.
+		if e.EventType == nvmlEventTypeGpuRecoveryAction {
+			klog.Infof("Gpu recovery event: %+v", e)
+			unhealthy <- &DeviceEvent{
+				Device: d,
+				Event:  DeviceHealthy,
+			}
+
 		}
 
 		if d.IsMigDevice() && e.GpuInstanceId != 0xFFFFFFFF && e.ComputeInstanceId != 0xFFFFFFFF {
@@ -184,7 +215,10 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		}
 
 		klog.Infof("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
-		unhealthy <- d
+		unhealthy <- &DeviceEvent{
+			Device: d,
+			Event:  DeviceUnHalthy,
+		}
 	}
 }
 
