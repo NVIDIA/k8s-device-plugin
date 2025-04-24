@@ -166,11 +166,6 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 			continue
 		}
 
-		if e.EventType != nvml.EventTypeXidCriticalError {
-			klog.Infof("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
-			continue
-		}
-
 		if skippedXids[e.EventData] {
 			klog.Infof("Skipping event %+v", e)
 			continue
@@ -202,7 +197,22 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 				Device: d,
 				Event:  DeviceHealthy,
 			}
+			continue
 
+		}
+
+		if e.EventType == nvmlEventTypeGpuUnavailableError {
+			klog.Infof("Gpu unavailable event: %+v", e)
+			unhealthy <- &DeviceEvent{
+				Device: d,
+				Event:  DeviceUnHalthy,
+			}
+			continue
+		}
+
+		if e.EventType != nvml.EventTypeXidCriticalError {
+			klog.Infof("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
+			continue
 		}
 
 		if d.IsMigDevice() && e.GpuInstanceId != 0xFFFFFFFF && e.ComputeInstanceId != 0xFFFFFFFF {
