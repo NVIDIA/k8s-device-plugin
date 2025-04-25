@@ -133,15 +133,12 @@ var _ = Describe("GPU Device Plugin", Ordered, func() {
 		})
 		It("it should run GPU jobs", func(ctx context.Context) {
 			By("Creating a GPU job")
-			job := newGPUJob(testNamespace.Name)
-			job.Namespace = testNamespace.Name
-
-			_, err := clientSet.BatchV1().Jobs(testNamespace.Name).Create(ctx, job, metav1.CreateOptions{})
+			job, err := CreateOrUpdateJobsFromFile(ctx, clientSet, "job-1.yaml", testNamespace.Name)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Waiting for job to complete")
 			Eventually(func() error {
-				job, err := clientSet.BatchV1().Jobs(testNamespace.Name).Get(ctx, job.Name, metav1.GetOptions{})
+				job, err := clientSet.BatchV1().Jobs(testNamespace.Name).Get(ctx, job[0], metav1.GetOptions{})
 				if err != nil {
 					return err
 				}
