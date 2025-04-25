@@ -170,5 +170,5 @@ This test code is released under the same license as the NVIDIA k8s‑device‑
 ## 11  References
 * [Ginkgo v2](https://github.com/onsi/ginkgo)
 * [mittwald/go‑helm‑client](https://github.com/mittwald/go-helm-client)
-* [Kubernetes‑sigs/Node Feature Discovery](https://github.com/kubernetes-sigs/node-feature-discovery)
+* [kubernetes‑sigs/node-feature-discovery](https://github.com/kubernetes-sigs/node-feature-discovery)
 * [Kubernetes blog – *End‑to‑End Testing for Everyone*](https://kubernetes.io/blog/2020/07/27/kubernetes-e2e-testing-for-everyone/)

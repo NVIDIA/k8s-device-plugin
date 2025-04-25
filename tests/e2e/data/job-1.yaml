@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: j-e2e-1
+  labels:
+    app.nvidia.com: k8s-device-plugin-test-app
+spec:
+  template:
+    metadata:
+      name: gpu-pod
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: cuda-container
+          image: nvcr.io/nvidia/k8s/cuda-sample:nbody-cuda11.7.1-ubuntu18.04
+          args:
+            - "--benchmark"
+            - "--numbodies=10000"
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+      tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
