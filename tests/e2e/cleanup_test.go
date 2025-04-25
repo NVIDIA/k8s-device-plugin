@@ -17,7 +17,6 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -41,8 +40,8 @@ func cleanupNamespaceResources(namespace string) {
 	err = cleanupHelmDeployments(namespace)
 	Expect(err).NotTo(HaveOccurred())
 
-	cleanupNode(ctx, clientSet)
-	cleanupNFDObjects(ctx, nfdClient, testNamespace.Name)
+	cleanupNode(clientSet)
+	cleanupNFDObjects(nfdClient, testNamespace.Name)
 	cleanupCRDs()
 }
 
@@ -145,7 +144,7 @@ func cleanupCRDs() {
 
 // cleanupNode deletes all NFD/GFD related metadata from the Node object, i.e.
 // labels and annotations
-func cleanupNode(ctx context.Context, cs clientset.Interface) {
+func cleanupNode(cs clientset.Interface) {
 	// Per-node cleanup function
 	cleanup := func(nodeName string) error {
 		node, err := cs.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
@@ -236,13 +235,13 @@ func cleanupNode(ctx context.Context, cs clientset.Interface) {
 	}
 }
 
-func cleanupNFDObjects(ctx context.Context, cli *nfdclient.Clientset, namespace string) {
-	cleanupNodeFeatureRules(ctx, cli)
-	cleanupNodeFeatures(ctx, cli, namespace)
+func cleanupNFDObjects(cli *nfdclient.Clientset, namespace string) {
+	cleanupNodeFeatureRules(cli)
+	cleanupNodeFeatures(cli, namespace)
 }
 
 // cleanupNodeFeatures deletes all NodeFeature objects in the given namespace
-func cleanupNodeFeatures(ctx context.Context, cli *nfdclient.Clientset, namespace string) {
+func cleanupNodeFeatures(cli *nfdclient.Clientset, namespace string) {
 	nfs, err := cli.NfdV1alpha1().NodeFeatures(namespace).List(ctx, metav1.ListOptions{})
 	if errors.IsNotFound(err) {
 		// Omitted error, nothing to do.
@@ -264,7 +263,7 @@ func cleanupNodeFeatures(ctx context.Context, cli *nfdclient.Clientset, namespac
 }
 
 // cleanupNodeFeatureRules deletes all NodeFeatureRule objects
-func cleanupNodeFeatureRules(ctx context.Context, cli *nfdclient.Clientset) {
+func cleanupNodeFeatureRules(cli *nfdclient.Clientset) {
 	nfrs, err := cli.NfdV1alpha1().NodeFeatureRules().List(ctx, metav1.ListOptions{})
 	if errors.IsNotFound(err) {
 		// Omitted error, nothing to do.
