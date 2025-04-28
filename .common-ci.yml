@@ -215,11 +215,11 @@ release:staging-ubi9:
 # This stage is triggered specifically on tags   
 trigger-downstream-publishing-pipeline:
   stage: ngc-publish
-  #rules:
-  #  - if: $CI_COMMIT_TAG
+  rules:
+    - if: $CI_COMMIT_TAG
   variables:
     PROJECT_NAME: "k8s-device-plugin"
-    SOURCE_VERSION: "test"  # "${CI_COMMIT_TAG}" 
+    SOURCE_VERSION: "${CI_COMMIT_TAG}"
   trigger: 
     project: "dl/container-dev/ngc-automation"
     strategy: depend
