@@ -101,6 +101,7 @@ runtimeClassName: null
 
 devicePlugin:
   enabled: true
+  kubeletRootDir: "/var/lib/kubelet"
 
 gfd:
   enabled: false
