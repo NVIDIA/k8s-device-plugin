@@ -17,7 +17,7 @@ MODULE := github.com/NVIDIA/$(DRIVER_NAME)
 
 REGISTRY ?= nvcr.io/nvidia
 
-VERSION ?= v0.17.1
+VERSION ?= v0.17.2
 
 # vVERSION represents the version with a guaranteed v-prefix
 vVERSION := v$(VERSION:v%=%)
