@@ -1,5 +1,9 @@
 ## Changelog
 
+### Version v0.17.2
+- Update nvidia.com/gpu.product label to include blackwell architectures
+- Update documentation to indicate that nvidia.com/gpu.memory label is in MiB instead of MB
+
 ### Version v0.17.1
 - Ensure that generated CDI specs do not contain `enable-cuda-compat` hooks
 - Remove nvidia.com/gpu.imex-domain label
