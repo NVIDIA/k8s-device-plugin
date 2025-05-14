@@ -212,6 +212,8 @@ spec:
             mountPath: /mps
           - name: cdi-root
             mountPath: /var/run/cdi
+          - name: nri-root
+            mountPath: /var/run/nri
         {{- if $options.hasConfigMap }}
           - name: available-configs
             mountPath: /available-configs
@@ -241,6 +243,10 @@ spec:
         - name: cdi-root
           hostPath:
             path: /var/run/cdi
+            type: DirectoryOrCreate
+        - name: nri-root
+          hostPath:
+            path: /var/run/nri
             type: DirectoryOrCreate
       {{- if $options.hasConfigMap }}
         - name: available-configs
