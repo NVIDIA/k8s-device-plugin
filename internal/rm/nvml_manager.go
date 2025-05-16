@@ -58,6 +58,14 @@ func NewNVMLResourceManagers(infolib info.Interface, nvmllib nvml.Interface, dev
 		if len(devices) == 0 {
 			continue
 		}
+
+		if *config.Flags.DeviceFilter.Enabled {
+			devices = devices.FilterByIDOrIndex(
+				config.Flags.DeviceFilter.GetSelectDevicesList(),
+				config.Flags.DeviceFilter.GetExcludeDevicesList(),
+			)
+		}
+
 		r := &nvmlResourceManager{
 			resourceManager: resourceManager{
 				config:   config,
