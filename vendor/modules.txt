@@ -2,7 +2,7 @@
 ## explicit; go 1.20
 github.com/NVIDIA/go-gpuallocator/gpuallocator
 github.com/NVIDIA/go-gpuallocator/internal/links
-# github.com/NVIDIA/go-nvlib v0.7.1
+# github.com/NVIDIA/go-nvlib v0.7.2
 ## explicit; go 1.20
 github.com/NVIDIA/go-nvlib/pkg/nvlib/device
 github.com/NVIDIA/go-nvlib/pkg/nvlib/info
@@ -14,7 +14,7 @@ github.com/NVIDIA/go-nvlib/pkg/pciids
 ## explicit; go 1.20
 github.com/NVIDIA/go-nvml/pkg/dl
 github.com/NVIDIA/go-nvml/pkg/nvml
-# github.com/NVIDIA/nvidia-container-toolkit v1.17.6
+# github.com/NVIDIA/nvidia-container-toolkit v1.17.7
 ## explicit; go 1.22
 github.com/NVIDIA/nvidia-container-toolkit/internal/config/image
 github.com/NVIDIA/nvidia-container-toolkit/internal/discover
