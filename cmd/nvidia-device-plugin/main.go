@@ -35,7 +35,6 @@ import (
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
-	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/plugin"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
@@ -319,7 +318,7 @@ func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) 
 	if err != nil {
 		return nil, false, fmt.Errorf("unable to load config: %v", err)
 	}
-	spec.DisableResourceNamingInConfig(logger.ToKlog, config)
+	spec.DisableResourceNamingInConfig(config)
 
 	driverRoot := root(*config.Flags.Plugin.ContainerDriverRoot)
 	// We construct an NVML library specifying the path to libnvidia-ml.so.1

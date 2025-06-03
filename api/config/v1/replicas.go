@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"k8s.io/klog/v2"
 )
 
 // ReplicatedResources defines generic options for replicating devices.
@@ -32,7 +33,7 @@ type ReplicatedResources struct {
 	Resources                  []ReplicatedResource `json:"resources,omitempty"                  yaml:"resources,omitempty"`
 }
 
-func (rrs *ReplicatedResources) disableResoureRenaming(logger logger, id string) {
+func (rrs *ReplicatedResources) disableResoureRenaming(id string) {
 	if rrs == nil {
 		return
 	}
@@ -56,10 +57,10 @@ func (rrs *ReplicatedResources) disableResoureRenaming(logger logger, id string)
 		}
 	}
 	if setsNonDefaultRename {
-		logger.Warningf("Setting the 'rename' field in sharing.%s.resources is not yet supported in the config. Ignoring...", id)
+		klog.Warningf("Setting the 'rename' field in sharing.%s.resources is not yet supported in the config. Ignoring...", id)
 	}
 	if setsDevices {
-		logger.Warningf("Customizing the 'devices' field in sharing.%s.resources is not yet supported in the config. Ignoring...", id)
+		klog.Warningf("Customizing the 'devices' field in sharing.%s.resources is not yet supported in the config. Ignoring...", id)
 	}
 
 }
