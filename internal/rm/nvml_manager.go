@@ -101,10 +101,12 @@ func (r *nvmlResourceManager) getPreferredAllocation(available, required []strin
 	// If all of the available devices are full GPUs without replicas, then
 	// calculate an aligned allocation across those devices.
 	if r.Devices().AlignedAllocationSupported() && !AnnotatedIDs(available).AnyHasAnnotations() {
+		klog.Infof("Using aligned allocation; available: %v, required: %v, size: %d", available, required, size)
 		return r.alignedAlloc(available, required, size)
 	}
 
 	// Otherwise, distribute them evenly across all replicated GPUs
+	klog.Infof("Using distributed allocation; available: %v, required: %v, size: %d", available, required, size)
 	return r.distributedAlloc(available, required, size)
 }
 
