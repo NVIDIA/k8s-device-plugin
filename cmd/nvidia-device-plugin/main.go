@@ -36,6 +36,7 @@ import (
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
 	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
+	"github.com/NVIDIA/k8s-device-plugin/internal/nri"
 	"github.com/NVIDIA/k8s-device-plugin/internal/plugin"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
@@ -248,6 +249,7 @@ func start(c *cli.Context, o *options) error {
 	var started bool
 	var restartTimeout <-chan time.Time
 	var plugins []plugin.Interface
+	var numaPlugin *nri.NUMAFilterPlugin
 restart:
 	// If we are restarting, stop plugins from previous run.
 	if started {
@@ -255,9 +257,17 @@ restart:
 		if err != nil {
 			return fmt.Errorf("error stopping plugins from previous run: %v", err)
 		}
+		numaPlugin.Stop()
 	}
 
 	klog.Info("Starting Plugins.")
+
+	// Start the NRI plugin
+	nriPlugin := nri.NewNUMAFilterPlugin()
+	if err := nriPlugin.Start(c.Context); err != nil {
+		klog.Fatalf("Error starting NRI plugin: %v", err)
+	}
+
 	plugins, restartPlugins, err := startPlugins(c, o)
 	if err != nil {
 		return fmt.Errorf("error starting plugins: %v", err)
@@ -309,6 +319,7 @@ exit:
 	if err != nil {
 		return fmt.Errorf("error stopping plugins: %v", err)
 	}
+	nriPlugin.Stop()
 	return nil
 }
 
