@@ -165,6 +165,11 @@ func main() {
 			Usage:   "The specified IMEX channels are required",
 			EnvVars: []string{"IMEX_REQUIRED"},
 		},
+		&cli.StringSliceFlag{
+			Name:    "preferred-allocation-strategy",
+			Usage:   "the strategies supported for preferred allocation:\n\t\t[none | ... ]",
+			EnvVars: []string{"PREFERRED_ALLOCATION_STRATEGY"},
+		},
 	}
 	o.flags = c.Flags
 

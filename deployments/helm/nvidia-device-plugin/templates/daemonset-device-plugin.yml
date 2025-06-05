@@ -157,6 +157,10 @@ spec:
           - name: DEVICE_ID_STRATEGY
             value: {{ .Values.deviceIDStrategy }}
         {{- end }}
+        {{- if typeIs "string" .Values.preferredAllocationStrategy }}
+          - name: PREFERRED_ALLOCATION_STRATEGY
+            value: {{ .Values.preferredAllocationStrategy }}
+        {{- end }}
         {{- if typeIs "string" .Values.nvidiaDriverRoot }}
           - name: NVIDIA_DRIVER_ROOT
             value: {{ .Values.nvidiaDriverRoot }}
