@@ -354,7 +354,7 @@ func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) 
 
 	// Get the set of plugins.
 	klog.Info("Retrieving plugins.")
-	plugins, err := GetPlugins(infolib, nvmllib, devicelib, config)
+	plugins, err := GetPlugins(c.Context, infolib, nvmllib, devicelib, config)
 	if err != nil {
 		return nil, false, fmt.Errorf("error getting plugins: %v", err)
 	}
