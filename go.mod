@@ -14,7 +14,7 @@ require (
 	github.com/prometheus/procfs v0.15.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
-	github.com/urfave/cli/v2 v2.27.5
+	github.com/urfave/cli/v2 v2.27.7
 	golang.org/x/mod v0.20.0
 	google.golang.org/grpc v1.65.1
 	k8s.io/api v0.31.3
@@ -30,7 +30,7 @@ require (
 )
 
 require (
-	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.11.3 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
