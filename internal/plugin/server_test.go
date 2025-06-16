@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 
-	v1 "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 )
@@ -138,11 +138,11 @@ func TestCDIAllocateResponse(t *testing.T) {
 	for i := range testCases {
 		tc := testCases[i]
 		t.Run(tc.description, func(t *testing.T) {
-			deviceListStrategies, _ := v1.NewDeviceListStrategies(tc.deviceListStrategies)
+			deviceListStrategies, _ := spec.NewDeviceListStrategies(tc.deviceListStrategies)
 			plugin := nvidiaDevicePlugin{
-				config: &v1.Config{
-					Flags: v1.Flags{
-						CommandLineFlags: v1.CommandLineFlags{
+				config: &spec.Config{
+					Flags: spec.Flags{
+						CommandLineFlags: spec.CommandLineFlags{
 							GDSEnabled:   &tc.GDSEnabled,
 							MOFEDEnabled: &tc.MOFEDEnabled,
 						},
@@ -163,6 +163,63 @@ func TestCDIAllocateResponse(t *testing.T) {
 
 			require.Nil(t, err)
 			require.EqualValues(t, &tc.expectedResponse, &response)
+		})
+	}
+}
+
+func TestGetPreferredAllocationStrategies(t *testing.T) {
+	testCases := []struct {
+		description string
+		input       *spec.StringOrSliceFlag
+		expected    []string
+	}{
+		{
+			description: "nil strategy returns auto",
+			input:       nil,
+			expected:    []string{"auto"},
+		},
+		{
+			description: "empty strategy returns auto",
+			input:       &spec.StringOrSliceFlag{},
+			expected:    []string{"auto"},
+		},
+		{
+			description: "strategy with none returns nil",
+			input:       &spec.StringOrSliceFlag{"none"},
+			expected:    nil,
+		},
+		{
+			description: "single strategy returns that strategy",
+			input:       &spec.StringOrSliceFlag{"guaranteed-single"},
+			expected:    []string{"guaranteed-single"},
+		},
+		{
+			description: "multiple strategies returns all strategies",
+			input:       &spec.StringOrSliceFlag{"guaranteed-single", "best-effort"},
+			expected:    []string{"guaranteed-single", "best-effort"},
+		},
+		{
+			description: "none among other strategies still returns nil",
+			input:       &spec.StringOrSliceFlag{"guaranteed-single", "none", "best-effort"},
+			expected:    nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			o := &options{
+				config: &spec.Config{
+					Flags: spec.Flags{
+						CommandLineFlags: spec.CommandLineFlags{
+							Plugin: &spec.PluginCommandLineFlags{
+								PreferredAllocationStrategy: tc.input,
+							},
+						},
+					},
+				},
+			}
+			result := o.getPreferredAllocationStrategies()
+			require.Equal(t, tc.expected, result)
 		})
 	}
 }
