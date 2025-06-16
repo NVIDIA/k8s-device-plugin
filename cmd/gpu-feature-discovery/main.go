@@ -21,7 +21,6 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/flags"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
 	"github.com/NVIDIA/k8s-device-plugin/internal/lm"
-	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 	"github.com/NVIDIA/k8s-device-plugin/internal/vgpu"
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
@@ -170,7 +169,7 @@ func start(c *cli.Context, cfg *Config) error {
 		if err != nil {
 			return fmt.Errorf("unable to load config: %v", err)
 		}
-		spec.DisableResourceNamingInConfig(logger.ToKlog, config)
+		spec.DisableResourceNamingInConfig(config)
 
 		// Print the config to the output.
 		configJSON, err := json.MarshalIndent(config, "", "  ")
