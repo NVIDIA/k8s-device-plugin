@@ -183,11 +183,13 @@ func (plugin *nvidiaDevicePlugin) Serve() error {
 	go func() {
 		lastCrashTime := time.Now()
 		restartCount := 0
+		// quite if it has been restarted too often
+		// i.e. if server has crashed more than 5 times and it didn't last more than one hour each time
+		maxRestarts := 5
+		crashTimeout := 1 * time.Hour
 
 		for {
-			// quite if it has been restarted too often
-			// i.e. if server has crashed more than 5 times and it didn't last more than one hour each time
-			if restartCount > 5 {
+			if restartCount > maxRestarts {
 				// quit
 				klog.Fatalf("GRPC server for '%s' has repeatedly crashed recently. Quitting", plugin.rm.Resource())
 			}
@@ -198,17 +200,29 @@ func (plugin *nvidiaDevicePlugin) Serve() error {
 				break
 			}
 
-			klog.Infof("GRPC server for '%s' crashed with error: %v", plugin.rm.Resource(), err)
-
-			timeSinceLastCrash := time.Since(lastCrashTime).Seconds()
+			timeSinceLastCrash := time.Since(lastCrashTime)
 			lastCrashTime = time.Now()
-			if timeSinceLastCrash > 3600 {
-				// it has been one hour since the last crash.. reset the count
-				// to reflect on the frequency
+
+			klog.Errorf(
+				"GRPC server for '%s' crashed with error: %v. Retry attempt: %d, Time since last crash: %.2f seconds",
+				plugin.rm.Resource(),
+				err,
+				restartCount+1,
+				timeSinceLastCrash.Seconds(),
+			)
+
+			if timeSinceLastCrash > crashTimeout {
+				// time since last crash exceeds crashTimeout, reset the restartCount
+				klog.Infof("Time since last crash exceeds crashTimeout (%v), resetting restart count", crashTimeout)
 				restartCount = 0
 			} else {
 				restartCount++
 			}
+
+			// add a small delay before restarting to prevent tight loops
+			retryDelay := time.Millisecond * 500
+			klog.Infof("Waiting for %v before attempting to restart GRPC server for '%s'", retryDelay.String(), plugin.rm.Resource())
+			time.Sleep(retryDelay)
 		}
 	}()
 
