@@ -36,6 +36,18 @@ type Device struct {
 	Replicas int
 }
 
+type DeviceEventType int
+
+const (
+	DeviceUnHalthy DeviceEventType = iota
+	DeviceHealthy
+)
+
+type DeviceEvent struct {
+	Device *Device
+	Event  DeviceEventType
+}
+
 // deviceInfo defines the information the required to construct a Device
 type deviceInfo interface {
 	GetUUID() (string, error)
