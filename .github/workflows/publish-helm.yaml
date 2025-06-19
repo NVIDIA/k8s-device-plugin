@@ -48,3 +48,22 @@ jobs:
     - name: Push updated Helm charts and index to gh-pages branch
       run: |
         git -C $HELM_REPO_PATH push https://${GITHUB_ACTOR}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} gh-pages
+
+  publish-helm-repo:
+    uses: ./.github/workflows/deploy-to-pages.yaml
+    secrets: inherit
+
+  check-helm-repo:
+    name: Checks for updated Helm repo
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install Helm
+      uses: azure/setup-helm@v4.3.0
+      with:
+        version: 3.14.4
+
+    - name: Check help repo
+      run: |
+        helm repo add nvdp https://nvidia.github.io/k8s-device-plugin
+        helm repo update
+        helm search repo nvdp --version ${{ github.event.release.tag_name }} --fail-on-no-result

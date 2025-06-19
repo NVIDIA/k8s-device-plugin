@@ -16,10 +16,24 @@ name: Deploy Helm charts to GitHub Pages
 
 on:
   push:
-    branches: ["gh-pages"]
+    branches:
+      - gh-pages
 
-  # Allows you to run this workflow manually from the Actions tab
+  # Allow this workflow to be called from other workflows.
+  workflow_call:
+    inputs:
+      git_ref_to_deploy:
+        required: false
+        type: string
+        default: gh-pages
+
+  # Allow this workflow to be run from the Actions tab.
   workflow_dispatch:
+      git_ref_to_deploy:
+        description: The git reference to deploy
+        required: false
+        type: string
+        default: gh-pages
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -40,6 +54,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref_to_deploy }}
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Build with Jekyll
