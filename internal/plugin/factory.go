@@ -17,6 +17,7 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
@@ -46,7 +47,7 @@ type options struct {
 }
 
 // New a new set of plugins with the supplied options.
-func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, opts ...Option) ([]Interface, error) {
+func New(ctx context.Context, infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, opts ...Option) ([]Interface, error) {
 	o := &options{
 		infolib:   infolib,
 		nvmllib:   nvmllib,
@@ -72,7 +73,7 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 
 	var plugins []Interface
 	for _, resourceManager := range resourceManagers {
-		plugin, err := o.devicePluginForResource(resourceManager)
+		plugin, err := o.devicePluginForResource(ctx, resourceManager)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create plugin: %w", err)
 		}

@@ -50,6 +50,7 @@ const (
 
 // nvidiaDevicePlugin implements the Kubernetes device plugin API
 type nvidiaDevicePlugin struct {
+	ctx                  context.Context
 	rm                   rm.ResourceManager
 	config               *spec.Config
 	deviceListStrategies spec.DeviceListStrategies
@@ -68,13 +69,14 @@ type nvidiaDevicePlugin struct {
 }
 
 // devicePluginForResource creates a device plugin for the specified resource.
-func (o *options) devicePluginForResource(resourceManager rm.ResourceManager) (Interface, error) {
+func (o *options) devicePluginForResource(ctx context.Context, resourceManager rm.ResourceManager) (Interface, error) {
 	mpsOptions, err := o.getMPSOptions(resourceManager)
 	if err != nil {
 		return nil, err
 	}
 
 	plugin := nvidiaDevicePlugin{
+		ctx:                  ctx,
 		rm:                   resourceManager,
 		config:               o.config,
 		deviceListStrategies: o.deviceListStrategies,
@@ -245,7 +247,7 @@ func (plugin *nvidiaDevicePlugin) Register(kubeletSocket string) error {
 		},
 	}
 
-	_, err = client.Register(context.Background(), reqt)
+	_, err = client.Register(plugin.ctx, reqt)
 	if err != nil {
 		return err
 	}
@@ -432,7 +434,7 @@ func (plugin *nvidiaDevicePlugin) PreStartContainer(context.Context, *pluginapi.
 
 // dial establishes the gRPC communication with the registered device plugin.
 func (plugin *nvidiaDevicePlugin) dial(unixSocketPath string, timeout time.Duration) (*grpc.ClientConn, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(plugin.ctx, timeout)
 	defer cancel()
 	//nolint:staticcheck  // TODO: Switch to grpc.NewClient
 	c, err := grpc.DialContext(ctx, unixSocketPath,

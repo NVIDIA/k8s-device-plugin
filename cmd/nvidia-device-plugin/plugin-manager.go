@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
@@ -30,7 +31,7 @@ import (
 )
 
 // GetPlugins returns a set of plugins for the specified configuration.
-func GetPlugins(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) ([]plugin.Interface, error) {
+func GetPlugins(ctx context.Context, infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) ([]plugin.Interface, error) {
 	// TODO: We could consider passing this as an argument since it should already be used to construct nvmllib.
 	driverRoot := root(*config.Flags.Plugin.ContainerDriverRoot)
 
@@ -61,7 +62,7 @@ func GetPlugins(infolib info.Interface, nvmllib nvml.Interface, devicelib device
 		return nil, fmt.Errorf("unable to create cdi handler: %v", err)
 	}
 
-	plugins, err := plugin.New(infolib, nvmllib, devicelib,
+	plugins, err := plugin.New(ctx, infolib, nvmllib, devicelib,
 		plugin.WithCDIHandler(cdiHandler),
 		plugin.WithConfig(config),
 		plugin.WithDeviceListStrategies(deviceListStrategies),
