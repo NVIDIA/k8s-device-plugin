@@ -38,7 +38,7 @@ OUT_IMAGE_TAG = $(OUT_IMAGE_VERSION)-$(DIST)
 OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ##### Public rules #####
-DEFAULT_PUSH_TARGET := ubi9
+DEFAULT_PUSH_TARGET := image
 DISTRIBUTIONS = $(DEFAULT_PUSH_TARGET)
 
 IMAGE_TARGETS := $(patsubst %,image-%,$(DISTRIBUTIONS))
@@ -65,11 +65,8 @@ ifeq ($(PUSH_MULTIPLE_TAGS),true)
 push-$(DEFAULT_PUSH_TARGET): push-short
 endif
 
-push-%: DIST = $(*)
-push-short: DIST = $(DEFAULT_PUSH_TARGET)
 
-build-%: DIST = $(*)
-build-%: DOCKERFILE = $(CURDIR)/deployments/container/Dockerfile
+DOCKERFILE = $(CURDIR)/deployments/container/Dockerfile
 
 # Use a generic build target to build the relevant images
 $(IMAGE_TARGETS): image-%:
@@ -90,7 +87,6 @@ $(IMAGE_TARGETS): image-%:
 .PHONY: build
 build: $(DEFAULT_PUSH_TARGET)
 $(DEFAULT_PUSH_TARGET): build-$(DEFAULT_PUSH_TARGET)
-$(DEFAULT_PUSH_TARGET): DIST = $(DEFAULT_PUSH_TARGET)
 
 REGCTL ?= regctl
 $(PUSH_TARGETS): push-%:
