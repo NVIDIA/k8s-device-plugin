@@ -214,8 +214,8 @@ sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 h1:/Rv+M11QRah1itp8VhT6HoVx1
 sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3/go.mod h1:18nIHnGi6636UCz6m8i4DhaJ65T6EruyzmoQqI2BVDo=
 sigs.k8s.io/node-feature-discovery v0.16.6 h1:G+n0gStHnLojsLVLgP/ArsC2gwP1fkw7TrHr0MJ4x8k=
 sigs.k8s.io/node-feature-discovery v0.16.6/go.mod h1:7qS1l8P6UdfLa/ec8VneMvINbdWbuhTuuQr1wZ7/Jbg=
-sigs.k8s.io/node-feature-discovery/api/nfd v0.17.1 h1:Ugn+nnCp08bOc0cA3QyonGZpkOy9j0y0O5gRXdtc720=
-sigs.k8s.io/node-feature-discovery/api/nfd v0.17.1/go.mod h1:LxvqM3WtCMHxCFvJ6faI16O1BbW0eekHGg/jwxecF3M=
+sigs.k8s.io/node-feature-discovery/api/nfd v0.17.3 h1:BJMNJ5ggnmlvzsANrxk6xPZISw1HSY0o7gL55EYu4Xc=
+sigs.k8s.io/node-feature-discovery/api/nfd v0.17.3/go.mod h1:XzGgUqDUyV/X+qkXEwG+CgfTUUeZix5iuobsmLoT0Ck=
 sigs.k8s.io/structured-merge-diff/v4 v4.4.2 h1:MdmvkGuXi/8io6ixD5wud3vOLwc1rj0aNqRlpuvjmwA=
 sigs.k8s.io/structured-merge-diff/v4 v4.4.2/go.mod h1:N8f93tFZh9U6vpxwRArLiikrE5/2tiu1w1AGfACIGE4=
 sigs.k8s.io/yaml v1.4.0 h1:Mk1wCc2gy/F0THH0TAp1QYyJNzRm2KCLy3o5ASXVI5E=
