@@ -33,8 +33,8 @@ RUN set -eux; \
     wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${ARCH}.tar.gz \
     | tar -C /usr/local -xz
 
-ENV GOPATH /go
-ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
+ENV GOPATH=/go
+ENV PATH=$GOPATH/bin:/usr/local/go/bin:$PATH
 
 WORKDIR /build
 COPY . .
@@ -50,22 +50,11 @@ FROM redhat/ubi9-minimal:latest AS minimal
 RUN rpm -qa --queryformat='^%{NAME}-\[0-9\].*\.%{ARCH}$\n' | sort -u > /tmp/package-names.minimal
 RUN rpm -qa | sort -u > /tmp/package-list.minimal
 
-# We define the following image as a base image and remove unneeded packages.
-FROM nvcr.io/nvidia/cuda:12.9.1-base-ubi9 AS base
+FROM nvcr.io/nvidia/distroless/go:v3.1.9-dev
 
-WORKDIR /cleanup
-
-COPY --from=minimal /tmp/package-names.minimal package-names.minimal
-COPY --from=minimal /tmp/package-list.minimal package-list.minimal
-COPY deployments/container/cleanup/* .
-
-RUN ./cleanup.sh
-
-WORKDIR /
-
-# We use the base images constructed above.
-# TODO: We will move to a shared base image once this implementation has been stabilized.
-FROM base
+USER 0:0
+SHELL ["/busybox/sh", "-c"]
+RUN ln -s /busybox/sh /bin/sh
 
 ENV NVIDIA_DISABLE_REQUIRE="true"
 ENV NVIDIA_VISIBLE_DEVICES=all
@@ -83,7 +72,7 @@ LABEL release="N/A"
 LABEL summary="NVIDIA device plugin for Kubernetes"
 LABEL description="See summary"
 
-RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
+COPY LICENSE /licenses/
 
 COPY --from=build /artifacts/config-manager         /usr/bin/config-manager
 COPY --from=build /artifacts/gpu-feature-discovery  /usr/bin/gpu-feature-discovery
