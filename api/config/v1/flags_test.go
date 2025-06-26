@@ -114,7 +114,7 @@ func TestUnmarshalFlags(t *testing.T) {
 			output: Flags{
 				CommandLineFlags{
 					Plugin: &PluginCommandLineFlags{
-						DeviceListStrategy: &deviceListStrategyFlag{"envvar"},
+						DeviceListStrategy: &StringOrSliceFlag{"envvar"},
 					},
 				},
 			},
@@ -128,7 +128,7 @@ func TestUnmarshalFlags(t *testing.T) {
 			output: Flags{
 				CommandLineFlags{
 					Plugin: &PluginCommandLineFlags{
-						DeviceListStrategy: &deviceListStrategyFlag{"envvar", "cdi-annotations"},
+						DeviceListStrategy: &StringOrSliceFlag{"envvar", "cdi-annotations"},
 					},
 				},
 			},
