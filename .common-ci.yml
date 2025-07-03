@@ -68,11 +68,6 @@ trigger-pipeline:
       allow_failure: false
     - when: always
 
-# The .dist- dummy steps set the DIST variable for the targeted distribution.
-.dist-ubi9:
-  variables:
-    DIST: "ubi9"
-
 # Define the platform targets
 .platform-amd64:
   variables:
@@ -101,7 +96,7 @@ trigger-pipeline:
 .scan-base:
   stage: scan
   variables:
-    IMAGE: "${CI_REGISTRY_IMAGE}/k8s-device-plugin:${CI_COMMIT_SHORT_SHA}-${DIST}"
+    IMAGE: "${CI_REGISTRY_IMAGE}/k8s-device-plugin:${CI_COMMIT_SHORT_SHA}"
     IMAGE_ARCHIVE: "k8s-device-plugin.tar"
   except:
     variables:
@@ -119,22 +114,20 @@ trigger-pipeline:
     - .scan-base
 
 # Define the scan targets
-scan-ubi9-amd64:
+scan-amd64:
   extends:
     - .scan
-    - .dist-ubi9
     - .platform-amd64
   needs:
-    - image-ubi9
+    - image-pull
 
-scan-ubi9-arm64:
+scan-arm64:
   extends:
     - .scan
-    - .dist-ubi9
     - .platform-arm64
   needs:
-    - image-ubi9
-    - scan-ubi9-amd64
+    - image-pull
+    - scan-amd64
 
 # Download the regctl binary for use in the release steps
 .regctl-setup:
@@ -177,7 +170,7 @@ scan-ubi9-arm64:
 
     # Since OUT_IMAGE_NAME and OUT_IMAGE_VERSION are set, this will push the CI image to the
     # Target
-    - make -f deployments/container/Makefile push-${DIST}
+    - make -f deployments/container/Makefile push-image
 
 # Define a staging release step that pushes an image to an internal "staging" repository
 # This is triggered for all pipelines (i.e. not only tags) to test the pipeline steps
@@ -204,9 +197,8 @@ scan-ubi9-arm64:
       variables:
         OUT_IMAGE_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
 
-release:staging-ubi9:
+release:staging:
   extends:
     - .release:staging
-    - .dist-ubi9
   needs:
-    - image-ubi9
+    - image-pull
