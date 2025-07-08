@@ -277,7 +277,7 @@ func iterateGPUPartitions(devices []*Device, size int, callback func([][]*Device
 			// the set '[[0 1 2 3 <nil>], [4 5 6 7 <nil>]]' as a candidate for
 			// allocating 5 GPUs from a set of 8.
 			p := gpuSetCountPadding(set)
-			if !(p == 0 || p == padding) {
+			if p != 0 && p != padding {
 				return
 			}
 
@@ -311,7 +311,7 @@ func calculateGPUPairScore(gpu0 *Device, gpu1 *Device) int {
 	}
 
 	if len(gpu0.Links[gpu1.Index]) != len(gpu1.Links[gpu0.Index]) {
-		err := fmt.Errorf("Internal error in bestEffort GPU allocator: all P2PLinks between 2 GPUs should be bidirectional")
+		err := fmt.Errorf("internal error in bestEffort GPU allocator: all P2PLinks between 2 GPUs should be bidirectional")
 		panic(err)
 	}
 

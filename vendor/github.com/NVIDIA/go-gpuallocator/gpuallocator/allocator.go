@@ -87,7 +87,7 @@ func (a *Allocator) Allocate(num int) []*Device {
 
 	err := a.AllocateSpecific(devices...)
 	if err != nil {
-		err = fmt.Errorf("Internal error while allocating GPUs: %v", err)
+		err = fmt.Errorf("internal error while allocating GPUs: %v", err)
 		panic(err)
 	}
 
