@@ -60,15 +60,14 @@ variables:
     - !reference [.regctl-setup, before_script]
     - apk add --no-cache make bash
     - >
-      regctl manifest get ${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION}-${DIST} --list > /dev/null && echo "${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION}-${DIST}" || ( echo "${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION}-${DIST} does not exist" && sleep infinity )
+      regctl manifest get ${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION} --list > /dev/null && echo "${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION}" || ( echo "${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION} does not exist" && sleep infinity )
   script:
     - regctl registry login "${OUT_REGISTRY}" -u "${OUT_REGISTRY_USER}" -p "${OUT_REGISTRY_TOKEN}"
-    - make -f deployments/container/Makefile IMAGE=${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION}-${DIST} OUT_IMAGE=${OUT_IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}-${DIST} push-${DIST}
+    - make -f deployments/container/Makefile IMAGE=${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION} OUT_IMAGE=${OUT_IMAGE_NAME}:${CI_COMMIT_SHORT_SHA} push-image
 
-image-ubi9:
+image-pull:
   extends:
     - .image-pull
-    - .dist-ubi9
 
 # We skip the integration tests for the internal CI:
 .integration:
@@ -113,10 +112,9 @@ image-ubi9:
 
 # Define the external release targets
 # Release to NGC
-release:ngc-ubi9:
+release:ngc:
   extends:
     - .release:ngc
-    - .dist-ubi9
 
 # Define the external image signing steps for NGC
 # Download the ngc cli binary for use in the sign steps
@@ -144,7 +142,7 @@ release:ngc-ubi9:
   variables:
     NGC_CLI_API_KEY: "${NGC_REGISTRY_TOKEN}"
     IMAGE_NAME: "${NGC_REGISTRY_IMAGE}"
-    IMAGE_TAG: "${CI_COMMIT_TAG}-${DIST}"
+    IMAGE_TAG: "${CI_COMMIT_TAG}"
   retry:
     max: 2
   before_script:
@@ -156,17 +154,10 @@ release:ngc-ubi9:
     - 'echo "Signing the image ${IMAGE_NAME}:${IMAGE_TAG}"'
     - ngc-cli/ngc registry image publish --source ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:${IMAGE_TAG} --public --discoverable --allow-guest --sign --org nvidia
 
-sign:ngc-short-tag:
+sign:ngc:
   extends:
     - .sign:ngc
   needs:
-    - release:ngc-ubi9
+    - release:ngc
   variables:
     IMAGE_TAG: "${CI_COMMIT_TAG}"
-
-sign:ngc-ubi9:
-  extends:
-    - .dist-ubi9
-    - .sign:ngc
-  needs:
-    - release:ngc-ubi9
