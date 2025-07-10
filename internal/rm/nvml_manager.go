@@ -91,8 +91,8 @@ func (r *nvmlResourceManager) GetDevicePaths(ids []string) []string {
 }
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
-func (r *nvmlResourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
-	return r.checkHealth(stop, r.devices, unhealthy)
+func (r *nvmlResourceManager) CheckHealth(stop <-chan interface{}, healthy chan<- *Device, unhealthy chan<- *Device) error {
+	return r.checkHealth(stop, r.devices, healthy, unhealthy)
 }
 
 // getPreferredAllocation runs an allocation algorithm over the inputs.
