@@ -40,8 +40,8 @@ func updateFromCLIFlag[T any](pflag **T, c *cli.Context, flagName string) {
 			*flag = ptr(c.Bool(flagName))
 		case **Duration:
 			*flag = ptr(Duration(c.Duration(flagName)))
-		case **deviceListStrategyFlag:
-			*flag = ptr((deviceListStrategyFlag)(c.StringSlice(flagName)))
+		case **StringOrSliceFlag:
+			*flag = ptr((StringOrSliceFlag)(c.StringSlice(flagName)))
 		default:
 			panic(fmt.Errorf("unsupported flag type for %v: %T", flagName, flag))
 		}
@@ -70,21 +70,22 @@ type CommandLineFlags struct {
 
 // PluginCommandLineFlags holds the list of command line flags specific to the device plugin.
 type PluginCommandLineFlags struct {
-	PassDeviceSpecs     *bool                   `json:"passDeviceSpecs"     yaml:"passDeviceSpecs"`
-	DeviceListStrategy  *deviceListStrategyFlag `json:"deviceListStrategy"  yaml:"deviceListStrategy"`
-	DeviceIDStrategy    *string                 `json:"deviceIDStrategy"    yaml:"deviceIDStrategy"`
-	CDIAnnotationPrefix *string                 `json:"cdiAnnotationPrefix" yaml:"cdiAnnotationPrefix"`
-	NvidiaCTKPath       *string                 `json:"nvidiaCTKPath"       yaml:"nvidiaCTKPath"`
-	ContainerDriverRoot *string                 `json:"containerDriverRoot" yaml:"containerDriverRoot"`
+	PassDeviceSpecs             *bool              `json:"passDeviceSpecs"             yaml:"passDeviceSpecs"`
+	DeviceListStrategy          *StringOrSliceFlag `json:"deviceListStrategy"          yaml:"deviceListStrategy"`
+	DeviceIDStrategy            *string            `json:"deviceIDStrategy"            yaml:"deviceIDStrategy"`
+	CDIAnnotationPrefix         *string            `json:"cdiAnnotationPrefix"         yaml:"cdiAnnotationPrefix"`
+	NvidiaCTKPath               *string            `json:"nvidiaCTKPath"               yaml:"nvidiaCTKPath"`
+	ContainerDriverRoot         *string            `json:"containerDriverRoot"         yaml:"containerDriverRoot"`
+	PreferredAllocationStrategy *StringOrSliceFlag `json:"preferredAllocationStrategy" yaml:"preferredAllocationStrategy"`
 }
 
-// deviceListStrategyFlag is a custom type for parsing the deviceListStrategy flag.
-type deviceListStrategyFlag []string
+// StringOrSliceFlag is a custom type for parsing the deviceListStrategy flag.
+type StringOrSliceFlag []string
 
-// UnmarshalJSON implements the custom unmarshaler for the deviceListStrategyFlag type.
+// UnmarshalJSON implements the custom unmarshaler for the StringOrSliceFlag type.
 // Since this option allows a single string or a list of strings to be specified,
 // we need to handle both cases.
-func (f *deviceListStrategyFlag) UnmarshalJSON(b []byte) error {
+func (f *StringOrSliceFlag) UnmarshalJSON(b []byte) error {
 	var single string
 	err := json.Unmarshal(b, &single)
 	if err == nil {
@@ -152,6 +153,8 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.Plugin.NvidiaCTKPath, c, n)
 			case "container-driver-root":
 				updateFromCLIFlag(&f.Plugin.ContainerDriverRoot, c, n)
+			case "disable-preferred-allocation":
+				updateFromCLIFlag(&f.Plugin.PreferredAllocationStrategy, c, n)
 			}
 			// GFD specific flags
 			if f.GFD == nil {

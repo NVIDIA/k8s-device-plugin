@@ -66,6 +66,8 @@ type nvidiaDevicePlugin struct {
 	imexChannels imex.Channels
 
 	mps mpsOptions
+
+	preferredAllocationStrategies []string
 }
 
 // devicePluginForResource creates a device plugin for the specified resource.
@@ -94,8 +96,28 @@ func (o *options) devicePluginForResource(ctx context.Context, resourceManager r
 		server: nil,
 		health: nil,
 		stop:   nil,
+
+		preferredAllocationStrategies: o.getPreferredAllocationStrategies(),
 	}
 	return &plugin, nil
+}
+
+func (o *options) getPreferredAllocationStrategies() []string {
+	if o.config.Flags.Plugin.PreferredAllocationStrategy == nil {
+		return []string{"auto"}
+	}
+	if len(*o.config.Flags.Plugin.PreferredAllocationStrategy) == 0 {
+		return []string{"auto"}
+	}
+
+	var preferredAllocationStrategies []string
+	for _, strategy := range *o.config.Flags.Plugin.PreferredAllocationStrategy {
+		if strategy == "none" {
+			return nil
+		}
+		preferredAllocationStrategies = append(preferredAllocationStrategies, strategy)
+	}
+	return preferredAllocationStrategies
 }
 
 // getPluginSocketPath returns the socket to use for the specified resource.
@@ -237,14 +259,17 @@ func (plugin *nvidiaDevicePlugin) Register(kubeletSocket string) error {
 	}
 	defer conn.Close()
 
+	pluginOptions, err := plugin.GetDevicePluginOptions(context.Background(), &pluginapi.Empty{})
+	if err != nil {
+		return fmt.Errorf("failed to get device plugin options: %w", err)
+	}
+
 	client := pluginapi.NewRegistrationClient(conn)
 	reqt := &pluginapi.RegisterRequest{
 		Version:      pluginapi.Version,
 		Endpoint:     path.Base(plugin.socket),
 		ResourceName: string(plugin.rm.Resource()),
-		Options: &pluginapi.DevicePluginOptions{
-			GetPreferredAllocationAvailable: true,
-		},
+		Options:      pluginOptions,
 	}
 
 	_, err = client.Register(plugin.ctx, reqt)
@@ -257,7 +282,7 @@ func (plugin *nvidiaDevicePlugin) Register(kubeletSocket string) error {
 // GetDevicePluginOptions returns the values of the optional settings for this plugin
 func (plugin *nvidiaDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
 	options := &pluginapi.DevicePluginOptions{
-		GetPreferredAllocationAvailable: true,
+		GetPreferredAllocationAvailable: len(plugin.preferredAllocationStrategies) > 0,
 	}
 	return options, nil
 }
