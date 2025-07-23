@@ -145,7 +145,7 @@ fi
 
 git fetch
 git diff --quiet FETCH_HEAD
-if [[ $? -ne 0 ]]; then
+if [[ "$FORCE_BRANCH" != "yes" && $? -ne 0 ]]; then
     echo "Local changes detected:"
     git diff FETCH_HEAD | cat
     echo "Exiting"
