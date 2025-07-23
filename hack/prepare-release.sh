@@ -130,7 +130,7 @@ pre_semver=${previous_version:1}
 # Modify files in the repo to point to new release
 #
 # Darwin or Linux
-DOCKER="docker"
+: ${DOCKER:="docker"}
 if [[ "$(uname)" == "Darwin" ]]; then
     SED="$DOCKER run -i --rm -v $(PWD):$(PWD) -w $(PWD) alpine:latest sed"
 else
@@ -145,7 +145,7 @@ fi
 
 git fetch
 git diff --quiet FETCH_HEAD
-if [[ $? -ne 0 ]]; then
+if [[ "$FORCE_BRANCH" != "yes" && $? -ne 0 ]]; then
     echo "Local changes detected:"
     git diff FETCH_HEAD | cat
     echo "Exiting"
