@@ -130,7 +130,7 @@ pre_semver=${previous_version:1}
 # Modify files in the repo to point to new release
 #
 # Darwin or Linux
-DOCKER="docker"
+: ${DOCKER:="docker"}
 if [[ "$(uname)" == "Darwin" ]]; then
     SED="$DOCKER run -i --rm -v $(PWD):$(PWD) -w $(PWD) alpine:latest sed"
 else
