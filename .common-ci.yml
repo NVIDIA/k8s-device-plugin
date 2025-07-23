@@ -182,7 +182,7 @@ scan-arm64:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
     OUT_REGISTRY: "${NGC_REGISTRY}"
-    OUT_IMAGE_NAME: "${NGC_REGISTRY_STAGING_IMAGE_NAME}"
+    OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/k8s-device-plugin"
 
 # Define an external release step that pushes an image to an external repository.
 # This includes a devlopment image off main.
