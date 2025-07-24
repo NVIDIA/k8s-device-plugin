@@ -36,6 +36,7 @@ nvidiaDriverRoot: null
 gdsEnabled: null
 mofedEnabled: null
 deviceDiscoveryStrategy: null
+preferredAllocationStrategy: null
 
 nameOverride: ""
 fullnameOverride: ""
