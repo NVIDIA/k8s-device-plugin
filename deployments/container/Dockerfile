@@ -50,7 +50,7 @@ FROM redhat/ubi9-minimal:latest AS minimal
 RUN rpm -qa --queryformat='^%{NAME}-\[0-9\].*\.%{ARCH}$\n' | sort -u > /tmp/package-names.minimal
 RUN rpm -qa | sort -u > /tmp/package-list.minimal
 
-FROM nvcr.io/nvidia/distroless/go:v3.1.9-dev
+FROM nvcr.io/nvidia/distroless/go:v3.1.10-dev
 
 USER 0:0
 SHELL ["/busybox/sh", "-c"]
