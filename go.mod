@@ -29,7 +29,7 @@ require (
 	sigs.k8s.io/node-feature-discovery/api/nfd v0.17.3
 	sigs.k8s.io/yaml v1.4.0
 	tags.cncf.io/container-device-interface v0.8.1
-	tags.cncf.io/container-device-interface/specs-go v0.8.0
+	tags.cncf.io/container-device-interface/specs-go v1.0.0
 )
 
 require (
