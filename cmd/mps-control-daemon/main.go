@@ -33,6 +33,7 @@ import (
 
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mount"
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mps"
+	"github.com/NVIDIA/k8s-device-plugin/internal/flags"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
@@ -76,6 +77,8 @@ func main() {
 		},
 	}
 	c.Flags = config.flags
+
+	c.Flags = append(c.Flags, (&flags.DeviceFilter{}).Flags()...)
 
 	klog.InfoS(c.Name, "version", c.Version)
 	err := c.Run(os.Args)
