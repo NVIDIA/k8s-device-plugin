@@ -28,7 +28,6 @@ stages:
   - test
   - scan
   - release
-  - sign
 
 .pipeline-trigger-rules:
   rules:
@@ -182,20 +181,7 @@ scan-arm64:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
     OUT_REGISTRY: "${NGC_REGISTRY}"
-    OUT_IMAGE_NAME: "${NGC_REGISTRY_STAGING_IMAGE_NAME}"
-
-# Define an external release step that pushes an image to an external repository.
-# This includes a devlopment image off main.
-.release:external:
-  extends:
-    - .release
-  rules:
-    - if: $CI_COMMIT_TAG
-      variables:
-        OUT_IMAGE_VERSION: "${CI_COMMIT_TAG}"
-    - if: $CI_COMMIT_BRANCH == $RELEASE_DEVEL_BRANCH
-      variables:
-        OUT_IMAGE_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
+    OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/k8s-device-plugin"
 
 release:staging:
   extends:
