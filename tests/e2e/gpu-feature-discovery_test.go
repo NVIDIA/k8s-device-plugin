@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+ * SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,21 +28,14 @@ import (
 
 	helm "github.com/mittwald/go-helm-client"
 	helmValues "github.com/mittwald/go-helm-client/values"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	extclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
-	nfdclient "sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned"
 
-	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common"
-	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common/diagnostics"
-	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework"
+	"github.com/NVIDIA/k8s-test-infra/pkg/diagnostics"
 )
 
 // Actual test suite
-var _ = NVDescribe("GPU Feature Discovery", func() {
-	f := framework.NewFramework("gpu-feature-discovery")
-
+var _ = Describe("GPU Feature Discovery", Ordered, func() {
 	expectedLabelPatterns := k8sLabels{
 		"nvidia.com/gfd.timestamp":        "[0-9]{10}",
 		"nvidia.com/cuda.driver.major":    "[0-9]+",
@@ -71,113 +65,85 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 		"nodeFeature",
 	}
 
-	Context("When deploying GFD", Ordered, func() {
-		// helm-chart is required
-		if *HelmChart == "" {
-			Fail("No helm-chart for GPU-Feature-Discovery specified")
+	// Init global suite vars vars
+	var (
+		helmReleaseName string
+		chartSpec       helm.ChartSpec
+
+		collectLogsFrom      []string
+		diagnosticsCollector diagnostics.Collector
+	)
+
+	values := helmValues.Options{
+		Values: []string{
+			fmt.Sprintf("image.repository=%s", ImageRepo),
+			fmt.Sprintf("image.tag=%s", ImageTag),
+			fmt.Sprintf("image.pullPolicy=%s", ImagePullPolicy),
+			"gfd.enabled=true",
+			"devicePlugin.enabled=false",
+		},
+	}
+
+	// checkNodeFeatureObject is a helper function to check if NodeFeature object was created
+	checkNodeFeatureObject := func(ctx context.Context, name string) bool {
+		gfdNodeFeature := fmt.Sprintf("nvidia-features-for-%s", name)
+		_, err := nfdClient.NfdV1alpha1().NodeFeatures(testNamespace.Name).Get(ctx, gfdNodeFeature, metav1.GetOptions{})
+		return err == nil
+	}
+
+	// check Collector objects
+	collectLogsFrom = defaultCollectorObjects
+	if CollectLogsFrom != "" && CollectLogsFrom != "default" {
+		collectLogsFrom = strings.Split(CollectLogsFrom, ",")
+	}
+
+	BeforeAll(func(ctx context.Context) {
+		helmReleaseName = "gfd-e2e-test" + rand.String(5)
+
+		// reset Helm Client
+		chartSpec = helm.ChartSpec{
+			ReleaseName:   helmReleaseName,
+			ChartName:     HelmChart,
+			Namespace:     testNamespace.Name,
+			Wait:          true,
+			Timeout:       1 * time.Minute,
+			ValuesOptions: values,
+			CleanupOnFail: true,
 		}
 
-		// Init global suite vars vars
-		var (
-			crds      []*apiextensionsv1.CustomResourceDefinition
-			extClient *extclient.Clientset
-			nfdClient *nfdclient.Clientset
+		By("Installing GFD Helm chart")
+		_, err := helmClient.InstallChart(ctx, &chartSpec, nil)
+		Expect(err).NotTo(HaveOccurred())
+	})
 
-			chartSpec       helm.ChartSpec
-			helmReleaseName string
-
-			collectLogsFrom      []string
-			diagnosticsCollector diagnostics.Collector
-		)
-
-		values := helmValues.Options{
-			Values: []string{
-				fmt.Sprintf("image.repository=%s", *ImageRepo),
-				fmt.Sprintf("image.tag=%s", *ImageTag),
-				fmt.Sprintf("image.pullPolicy=%s", *ImagePullPolicy),
-				"gfd.enabled=true",
-				"devicePlugin.enabled=false",
-			},
-		}
-
-		// checkNodeFeatureObject is a helper function to check if NodeFeature object was created
-		checkNodeFeatureObject := func(ctx context.Context, name string) bool {
-			gfdNodeFeature := fmt.Sprintf("nvidia-features-for-%s", name)
-			_, err := nfdClient.NfdV1alpha1().NodeFeatures(f.Namespace.Name).Get(ctx, gfdNodeFeature, metav1.GetOptions{})
-			return err == nil
-		}
-
-		// check Collector objects
-		collectLogsFrom = defaultCollectorObjects
-		if *CollectLogsFrom != "" && *CollectLogsFrom != "default" {
-			collectLogsFrom = strings.Split(*CollectLogsFrom, ",")
-		}
-
-		BeforeAll(func(ctx context.Context) {
-			// Create clients for apiextensions and our CRD api
-			extClient = extclient.NewForConfigOrDie(f.ClientConfig())
-			nfdClient = nfdclient.NewForConfigOrDie(f.ClientConfig())
-			helmReleaseName = "gfd-e2e-test" + rand.String(5)
-		})
-
-		JustBeforeEach(func(ctx context.Context) {
-			// reset Helm Client
-			chartSpec = helm.ChartSpec{
-				ReleaseName:   helmReleaseName,
-				ChartName:     *HelmChart,
-				Namespace:     f.Namespace.Name,
-				Wait:          true,
-				Timeout:       1 * time.Minute,
-				ValuesOptions: values,
-				CleanupOnFail: true,
-			}
-
-			By("Installing GFD Helm chart")
-			_, err := f.HelmClient.InstallChart(ctx, &chartSpec, nil)
+	// Cleanup before next test run
+	AfterEach(func(ctx context.Context) {
+		// Run diagnostic collector if test failed
+		if CurrentSpecReport().Failed() {
+			var err error
+			diagnosticsCollector, err = diagnostics.New(
+				diagnostics.WithNamespace(testNamespace.Name),
+				diagnostics.WithArtifactDir(LogArtifactDir),
+				diagnostics.WithKubernetesClient(clientSet),
+				diagnostics.WithNFDClient(nfdClient),
+				diagnostics.WithObjects(collectLogsFrom...),
+			)
 			Expect(err).NotTo(HaveOccurred())
-		})
 
-		// Cleanup before next test run
-		AfterEach(func(ctx context.Context) {
-			// Run diagnostic collector if test failed
-			if CurrentSpecReport().Failed() {
-				var err error
-				diagnosticsCollector, err = diagnostics.New(
-					diagnostics.WithNamespace(f.Namespace.Name),
-					diagnostics.WithArtifactDir(*LogArtifactDir),
-					diagnostics.WithKubernetesClient(f.ClientSet),
-					diagnostics.WithNFDClient(nfdClient),
-					diagnostics.WithObjects(collectLogsFrom...),
-				)
-				Expect(err).NotTo(HaveOccurred())
-
-				err = diagnosticsCollector.Collect(ctx)
-				Expect(err).NotTo(HaveOccurred())
-			}
-			// Delete Helm release
-			err := f.HelmClient.UninstallReleaseByName(helmReleaseName)
+			err = diagnosticsCollector.Collect(ctx)
 			Expect(err).NotTo(HaveOccurred())
-			// Cleanup environment
-			By("[Cleanup]\tCleaning up environment")
-			common.CleanupNode(ctx, f.ClientSet)
-			common.CleanupNFDObjects(ctx, nfdClient, f.Namespace.Name)
-		})
+		}
+	})
 
-		AfterAll(func(ctx context.Context) {
-			for _, crd := range crds {
-				err := extClient.ApiextensionsV1().CustomResourceDefinitions().Delete(ctx, crd.Name, metav1.DeleteOptions{})
-				Expect(err).NotTo(HaveOccurred())
-			}
-		})
-
-		Context("and NV Driver is not installed", func() {
+	When("When deploying GFD", Ordered, func() {
+		Context("NV Driver is not installed", func() {
 			It("it should create nvidia.com timestamp label", func(ctx context.Context) {
-				nodeList, err := f.ClientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+				nodeList, err := clientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(nodeList.Items)).ToNot(BeZero())
 
 				// We pick one node targeted for our NodeFeature objects
-				nodes, err := common.GetNonControlPlaneNodes(ctx, f.ClientSet)
+				nodes, err := getNonControlPlaneNodes(ctx, clientSet)
 				Expect(err).NotTo(HaveOccurred())
 
 				targetNodeName := nodes[0].Name
@@ -188,7 +154,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 					targetNodeName: {
 						"nvidia.com/gfd.timestamp": "[0-9]{10}",
 					}}
-				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(labelChecker, nodes))
+				eventuallyNonControlPlaneNodes(ctx, clientSet).Should(MatchLabels(labelChecker, nodes))
 			})
 			Context("and the NodeFeature API is enabled", func() {
 				It("gfd should create node feature object", func(ctx context.Context) {
@@ -197,11 +163,11 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 					newValues.Values = append(newValues.Values, "nfd.enableNodeFeatureApi=true")
 					chartSpec.ValuesOptions = newValues
 					chartSpec.Replace = true
-					_, err := f.HelmClient.UpgradeChart(ctx, &chartSpec, nil)
+					_, err := helmClient.UpgradeChart(ctx, &chartSpec, nil)
 					Expect(err).NotTo(HaveOccurred())
 
 					By("Checking if NodeFeature CR object is created")
-					nodes, err := common.GetNonControlPlaneNodes(ctx, f.ClientSet)
+					nodes, err := getNonControlPlaneNodes(ctx, clientSet)
 					Expect(err).NotTo(HaveOccurred())
 
 					targetNodeName := nodes[0].Name
@@ -215,25 +181,24 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 						targetNodeName: {
 							"nvidia.com/gfd.timestamp": "[0-9]{10}",
 						}}
-					eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(labelChecker, nodes))
+					eventuallyNonControlPlaneNodes(ctx, clientSet).Should(MatchLabels(labelChecker, nodes))
 				})
 			})
 		})
 
-		Context("and NV Driver is installed", func() {
-			BeforeEach(func(ctx context.Context) {
-				// Skip test if NVIDIA_DRIVER_ENABLED is not set
-				if !*NVIDIA_DRIVER_ENABLED {
+		When("NV Driver is installed", func() {
+			It("it should create nvidia.com labels", func(ctx context.Context) {
+				if !NVIDIA_DRIVER_ENABLED {
 					Skip("NVIDIA_DRIVER_ENABLED is not set")
 				}
-			})
-			It("it should create nvidia.com labels", func(ctx context.Context) {
-				nodeList, err := f.ClientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+
+				By("Checking the node labels")
+				nodeList, err := clientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(nodeList.Items)).ToNot(BeZero())
 
 				// We pick one node targeted for our NodeFeature objects
-				nodes, err := common.GetNonControlPlaneNodes(ctx, f.ClientSet)
+				nodes, err := getNonControlPlaneNodes(ctx, clientSet)
 				Expect(err).NotTo(HaveOccurred())
 
 				targetNodeName := nodes[0].Name
@@ -242,20 +207,23 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 				By("Checking the node labels")
 				labelChecker := map[string]k8sLabels{
 					targetNodeName: expectedLabelPatterns}
-				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(labelChecker, nodes))
+				eventuallyNonControlPlaneNodes(ctx, clientSet).Should(MatchLabels(labelChecker, nodes))
 			})
 			Context("and the NodeFeature API is enabled", func() {
 				It("gfd should create node feature object", func(ctx context.Context) {
+					if !NVIDIA_DRIVER_ENABLED {
+						Skip("NVIDIA_DRIVER_ENABLED is not set")
+					}
 					By("Updating GFD Helm chart values")
 					newValues := values
 					newValues.Values = append(newValues.Values, "nfd.enableNodeFeatureApi=true")
 					chartSpec.ValuesOptions = newValues
 					chartSpec.Replace = true
-					_, err := f.HelmClient.UpgradeChart(ctx, &chartSpec, nil)
+					_, err := helmClient.UpgradeChart(ctx, &chartSpec, nil)
 					Expect(err).NotTo(HaveOccurred())
 
 					By("Checking if NodeFeature CR object is created")
-					nodes, err := common.GetNonControlPlaneNodes(ctx, f.ClientSet)
+					nodes, err := getNonControlPlaneNodes(ctx, clientSet)
 					Expect(err).NotTo(HaveOccurred())
 
 					targetNodeName := nodes[0].Name
@@ -267,7 +235,7 @@ var _ = NVDescribe("GPU Feature Discovery", func() {
 					By("Checking that node labels are created from NodeFeature CR object")
 					checkForLabels := map[string]k8sLabels{
 						targetNodeName: expectedLabelPatterns}
-					eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchLabels(checkForLabels, nodes))
+					eventuallyNonControlPlaneNodes(ctx, clientSet).Should(MatchLabels(checkForLabels, nodes))
 				})
 			})
 		})
