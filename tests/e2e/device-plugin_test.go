@@ -111,6 +111,16 @@ var _ = Describe("GPU Device Plugin", Ordered, func() {
 		}
 	})
 
+	AfterAll(func(ctx context.Context) {
+		By("Deleting the job")
+		job, err := clientSet.BatchV1().Jobs(testNamespace.Name).List(ctx, metav1.ListOptions{})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(len(job.Items)).ToNot(BeZero())
+
+		err = clientSet.BatchV1().Jobs(testNamespace.Name).Delete(ctx, job.Items[0].Name, metav1.DeleteOptions{})
+		Expect(err).NotTo(HaveOccurred())
+	})
+
 	When("When deploying k8s-device-plugin", Ordered, func() {
 		It("it should create nvidia.com/gpu resource", func(ctx context.Context) {
 			nodeList, err := clientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
