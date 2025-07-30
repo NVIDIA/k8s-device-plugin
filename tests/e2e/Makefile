@@ -29,10 +29,60 @@ E2E_IMAGE_PULL_POLICY ?= IfNotPresent
 HELM_CHART ?= $(CURDIR)/deployments/helm/nvidia-device-plugin
 LOG_ARTIFACTS ?= $(CURDIR)/e2e_logs
 
-.PHONY: ginkgo e2e-test
+# Test configuration
+GINKGO_PARALLEL_PROCS ?= 4
+GINKGO_FLAKE_ATTEMPTS ?= 2
+GINKGO_COMMON_ARGS := -v --fail-on-pending --randomize-all --trace
+GINKGO_REPORT_ARGS := --json-report=$(LOG_ARTIFACTS)/report.json --junit-report=$(LOG_ARTIFACTS)/junit.xml
+
+.PHONY: ginkgo e2e-test e2e-test-parallel e2e-test-serial e2e-test-all clean-artifacts
+
 ginkgo:
 	mkdir -p $(CURDIR)/bin
 	GOBIN=$(CURDIR)/bin go install github.com/onsi/ginkgo/v2/ginkgo@latest
 
-test-e2e: ginkgo
-	$(CURDIR)/bin/ginkgo $(GINKGO_ARGS) -v --json-report ginkgo.json ./tests/e2e/...
+# Create artifacts directory
+$(LOG_ARTIFACTS):
+	mkdir -p $(LOG_ARTIFACTS)
+
+# Clean artifacts
+clean-artifacts:
+	rm -rf $(LOG_ARTIFACTS)
+
+# Run all tests (default)
+test-e2e: ginkgo $(LOG_ARTIFACTS)
+	$(CURDIR)/bin/ginkgo $(GINKGO_COMMON_ARGS) $(GINKGO_REPORT_ARGS) $(GINKGO_ARGS) ./tests/e2e/...
+
+# Run only parallel-safe tests
+test-e2e-parallel: ginkgo $(LOG_ARTIFACTS)
+	$(CURDIR)/bin/ginkgo $(GINKGO_COMMON_ARGS) $(GINKGO_REPORT_ARGS) \
+		--procs=$(GINKGO_PARALLEL_PROCS) \
+		--label-filter='!serial' \
+		$(GINKGO_ARGS) ./tests/e2e/...
+
+# Run only serial tests (cluster-mutating)
+test-e2e-serial: ginkgo $(LOG_ARTIFACTS)
+	$(CURDIR)/bin/ginkgo $(GINKGO_COMMON_ARGS) $(GINKGO_REPORT_ARGS) \
+		--label-filter='serial' \
+		$(GINKGO_ARGS) ./tests/e2e/...
+
+# Run parallel tests first, then serial tests
+test-e2e-all: test-e2e-parallel test-e2e-serial
+
+# Run tests with flake attempts
+test-e2e-flaky: ginkgo $(LOG_ARTIFACTS)
+	$(CURDIR)/bin/ginkgo $(GINKGO_COMMON_ARGS) $(GINKGO_REPORT_ARGS) \
+		--flake-attempts=$(GINKGO_FLAKE_ATTEMPTS) \
+		$(GINKGO_ARGS) ./tests/e2e/...
+
+# Run specific test by label
+test-e2e-label: ginkgo $(LOG_ARTIFACTS)
+	$(CURDIR)/bin/ginkgo $(GINKGO_COMMON_ARGS) $(GINKGO_REPORT_ARGS) \
+		--label-filter='$(LABEL)' \
+		$(GINKGO_ARGS) ./tests/e2e/...
+
+# Run tests and generate coverage
+test-e2e-coverage: ginkgo $(LOG_ARTIFACTS)
+	$(CURDIR)/bin/ginkgo $(GINKGO_COMMON_ARGS) $(GINKGO_REPORT_ARGS) \
+		--cover --coverprofile=$(LOG_ARTIFACTS)/coverage.out \
+		$(GINKGO_ARGS) ./tests/e2e/...
