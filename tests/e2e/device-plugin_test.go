@@ -18,7 +18,6 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -30,6 +29,7 @@ import (
 	helmValues "github.com/mittwald/go-helm-client/values"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/internal"
 	"github.com/NVIDIA/k8s-test-infra/pkg/diagnostics"
 )
 
@@ -38,7 +38,7 @@ const (
 )
 
 // Actual test suite
-var _ = Describe("GPU Device Plugin", Ordered, func() {
+var _ = Describe("GPU Device Plugin", Ordered, Label("gpu", "e2e", "device-plugin"), func() {
 	// Init global suite vars vars
 	var (
 		helmReleaseName string
@@ -75,7 +75,7 @@ var _ = Describe("GPU Device Plugin", Ordered, func() {
 		collectLogsFrom = strings.Split(CollectLogsFrom, ",")
 	}
 
-	BeforeAll(func(ctx context.Context) {
+	BeforeAll(func(ctx SpecContext) {
 		// Create clients for apiextensions and our CRD api
 		helmReleaseName = "nvdp-e2e-test-" + randomSuffix()
 
@@ -92,9 +92,24 @@ var _ = Describe("GPU Device Plugin", Ordered, func() {
 		By("Installing k8s-device-plugin Helm chart")
 		_, err := helmClient.InstallChart(ctx, &chartSpec, nil)
 		Expect(err).NotTo(HaveOccurred())
+
+		// Wait for all DaemonSets to be ready
+		// Note: DaemonSet names are dynamically generated with the Helm release prefix,
+		// so we wait for all DaemonSets in the namespace rather than specific names
+		By("Waiting for all DaemonSets to be ready")
+		err = internal.WaitForAllDaemonSetsReady(ctx, clientSet, testNamespace.Name)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
-	AfterEach(func(ctx context.Context) {
+	AfterAll(func(ctx SpecContext) {
+		By("Uninstalling k8s-device-plugin Helm chart")
+		err := helmClient.UninstallReleaseByName(helmReleaseName)
+		if err != nil {
+			GinkgoWriter.Printf("Failed to uninstall helm release %s: %v\n", helmReleaseName, err)
+		}
+	})
+
+	AfterEach(func(ctx SpecContext) {
 		// Run diagnostic collector if test failed
 		if CurrentSpecReport().Failed() {
 			var err error
@@ -111,18 +126,8 @@ var _ = Describe("GPU Device Plugin", Ordered, func() {
 		}
 	})
 
-	AfterAll(func(ctx context.Context) {
-		By("Deleting the job")
-		job, err := clientSet.BatchV1().Jobs(testNamespace.Name).List(ctx, metav1.ListOptions{})
-		Expect(err).NotTo(HaveOccurred())
-		Expect(len(job.Items)).ToNot(BeZero())
-
-		err = clientSet.BatchV1().Jobs(testNamespace.Name).Delete(ctx, job.Items[0].Name, metav1.DeleteOptions{})
-		Expect(err).NotTo(HaveOccurred())
-	})
-
-	When("When deploying k8s-device-plugin", Ordered, func() {
-		It("it should create nvidia.com/gpu resource", func(ctx context.Context) {
+	When("When deploying k8s-device-plugin", Ordered, Label("serial"), func() {
+		It("it should create nvidia.com/gpu resource", Label("gpu-resource"), func(ctx SpecContext) {
 			nodeList, err := clientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(nodeList.Items)).ToNot(BeZero())
@@ -141,25 +146,35 @@ var _ = Describe("GPU Device Plugin", Ordered, func() {
 				}}
 			eventuallyNonControlPlaneNodes(ctx, clientSet).Should(MatchCapacity(capacityChecker, nodes), "Node capacity does not match")
 		})
-		It("it should run GPU jobs", func(ctx context.Context) {
+		It("it should run GPU jobs", Label("gpu-job"), func(ctx SpecContext) {
 			By("Creating a GPU job")
-			job, err := CreateOrUpdateJobsFromFile(ctx, clientSet, "job-1.yaml", testNamespace.Name)
+			jobNames, err := CreateOrUpdateJobsFromFile(ctx, clientSet, "job-1.yaml", testNamespace.Name)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(jobNames).NotTo(BeEmpty())
+
+			// Defer cleanup for the job
+			DeferCleanup(func(ctx SpecContext) {
+				By("Deleting the GPU job")
+				err := clientSet.BatchV1().Jobs(testNamespace.Name).Delete(ctx, jobNames[0], metav1.DeleteOptions{})
+				if err != nil {
+					GinkgoWriter.Printf("Failed to delete job %s: %v\n", jobNames[0], err)
+				}
+			})
 
 			By("Waiting for job to complete")
-			Eventually(func() error {
-				job, err := clientSet.BatchV1().Jobs(testNamespace.Name).Get(ctx, job[0], metav1.GetOptions{})
+			Eventually(func(g Gomega) error {
+				job, err := clientSet.BatchV1().Jobs(testNamespace.Name).Get(ctx, jobNames[0], metav1.GetOptions{})
 				if err != nil {
 					return err
 				}
+				if job.Status.Failed > 0 {
+					return fmt.Errorf("job %s/%s has failed pods: %d", job.Namespace, job.Name, job.Status.Failed)
+				}
 				if job.Status.Succeeded != 1 {
-					return fmt.Errorf("job %s/%s failed", job.Namespace, job.Name)
+					return fmt.Errorf("job %s/%s not completed yet: %d succeeded", job.Namespace, job.Name, job.Status.Succeeded)
 				}
-				if job.Status.Succeeded == 1 {
-					return nil
-				}
-				return fmt.Errorf("job %s/%s not completed yet", job.Namespace, job.Name)
-			}, devicePluginEventuallyTimeout, 5*time.Second).Should(BeNil())
+				return nil
+			}).WithContext(ctx).WithPolling(5 * time.Second).WithTimeout(devicePluginEventuallyTimeout).Should(Succeed())
 		})
 	})
 })

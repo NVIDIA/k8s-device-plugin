@@ -48,19 +48,17 @@ func cleanupNamespaceResources(namespace string) {
 // waitForDeletion polls the provided checkFunc until a NotFound error is returned,
 // confirming that the resource is deleted.
 func waitForDeletion(resourceName string, checkFunc func() error) error {
-	timeout := 2 * time.Minute
-	interval := 5 * time.Second
-	start := time.Now()
-	for {
+	EventuallyWithOffset(1, func(g Gomega) error {
 		err := checkFunc()
 		if err != nil && errors.IsNotFound(err) {
 			return nil
 		}
-		if time.Since(start) > timeout {
-			return fmt.Errorf("timed out waiting for deletion of %s", resourceName)
+		if err != nil {
+			return err
 		}
-		time.Sleep(interval)
-	}
+		return fmt.Errorf("%s still exists", resourceName)
+	}).WithPolling(5 * time.Second).WithTimeout(2 * time.Minute).WithContext(ctx).Should(Succeed())
+	return nil
 }
 
 // cleanupTestPods deletes all test Pods in the namespace that have the label "app.nvidia.com=k8s-dra-driver-gpu-test-app".
@@ -224,14 +222,10 @@ func cleanupNode(cs clientset.Interface) {
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, n := range nodeList.Items {
-		var err error
-		for retry := 0; retry < 5; retry++ {
-			if err = cleanup(n.Name); err == nil {
-				break
-			}
-			time.Sleep(100 * time.Millisecond)
-		}
-		Expect(err).NotTo(HaveOccurred())
+		nodeName := n.Name
+		Eventually(func(g Gomega) error {
+			return cleanup(nodeName)
+		}).WithPolling(100 * time.Millisecond).WithTimeout(500 * time.Millisecond).Should(Succeed())
 	}
 }
 
