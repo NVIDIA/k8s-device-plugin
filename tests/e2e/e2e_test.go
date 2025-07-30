@@ -103,13 +103,17 @@ func TestMain(t *testing.T) {
 	ctx = context.Background()
 	getTestEnv()
 
+	// Log random seed for reproducibility
+	GinkgoWriter.Printf("Random seed: %d\n", GinkgoRandomSeed())
+
 	RunSpecs(t,
 		suiteName,
+		Label("e2e"),
 	)
 }
 
 // BeforeSuite runs before the test suite
-var _ = BeforeSuite(func() {
+var _ = BeforeSuite(func(ctx SpecContext) {
 	var err error
 
 	cwd, err = os.Getwd()
@@ -130,14 +134,29 @@ var _ = BeforeSuite(func() {
 	getHelmClient()
 })
 
-var _ = AfterSuite(func() {
+var _ = AfterSuite(func(ctx SpecContext) {
 	By("Cleaning up namespace resources")
-	// Remove finalizers and force delete resourceclaims, resourceclaimtemplates, daemonsets, and pods.
 	cleanupNamespaceResources(testNamespace.Name)
 
 	By("Deleting the test namespace")
-	// Delete the test namespace to remove any remaining objects.
 	deleteTestNamespace()
+})
+
+// Add ReportAfterSuite for logging test summary and random seed
+var _ = ReportAfterSuite("", func(report Report) {
+	// Log test summary
+	failedCount := 0
+	for _, specReport := range report.SpecReports {
+		if specReport.Failed() {
+			failedCount++
+		}
+	}
+
+	GinkgoWriter.Printf("\nTest Summary:\n")
+	GinkgoWriter.Printf("  Total Specs: %d\n", len(report.SpecReports))
+	GinkgoWriter.Printf("  Random Seed: %d\n", report.SuiteConfig.RandomSeed)
+	GinkgoWriter.Printf("  Failed: %d\n", failedCount)
+	GinkgoWriter.Printf("  Duration: %.2fs\n", report.RunTime.Seconds())
 })
 
 // getK8sClients creates the k8s clients
@@ -297,7 +316,7 @@ type k8sLabels map[string]string
 //
 //nolint:unused
 func eventuallyNonControlPlaneNodes(ctx context.Context, cli clientset.Interface) AsyncAssertion {
-	return Eventually(func(g Gomega, ctx context.Context) ([]corev1.Node, error) {
+	return Eventually(func(g Gomega) ([]corev1.Node, error) {
 		return getNonControlPlaneNodes(ctx, cli)
 	}).WithPolling(1 * time.Second).WithTimeout(1 * time.Minute).WithContext(ctx)
 }

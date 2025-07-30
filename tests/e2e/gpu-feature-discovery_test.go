@@ -31,11 +31,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
 
+	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/internal"
 	"github.com/NVIDIA/k8s-test-infra/pkg/diagnostics"
 )
 
 // Actual test suite
-var _ = Describe("GPU Feature Discovery", Ordered, func() {
+var _ = Describe("GPU Feature Discovery", Ordered, Label("gfd", "gpu", "e2e"), func() {
 	expectedLabelPatterns := k8sLabels{
 		"nvidia.com/gfd.timestamp":        "[0-9]{10}",
 		"nvidia.com/cuda.driver.major":    "[0-9]+",
@@ -97,7 +98,7 @@ var _ = Describe("GPU Feature Discovery", Ordered, func() {
 		collectLogsFrom = strings.Split(CollectLogsFrom, ",")
 	}
 
-	BeforeAll(func(ctx context.Context) {
+	BeforeAll(func(ctx SpecContext) {
 		helmReleaseName = "gfd-e2e-test" + rand.String(5)
 
 		// reset Helm Client
@@ -114,10 +115,25 @@ var _ = Describe("GPU Feature Discovery", Ordered, func() {
 		By("Installing GFD Helm chart")
 		_, err := helmClient.InstallChart(ctx, &chartSpec, nil)
 		Expect(err).NotTo(HaveOccurred())
+
+		// Wait for all DaemonSets to be ready
+		// Note: DaemonSet names are dynamically generated with the Helm release prefix,
+		// so we wait for all DaemonSets in the namespace rather than specific names
+		By("Waiting for all DaemonSets to be ready")
+		err = internal.WaitForAllDaemonSetsReady(ctx, clientSet, testNamespace.Name)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	AfterAll(func(ctx SpecContext) {
+		By("Uninstalling GFD Helm chart")
+		err := helmClient.UninstallReleaseByName(helmReleaseName)
+		if err != nil {
+			GinkgoWriter.Printf("Failed to uninstall helm release %s: %v\n", helmReleaseName, err)
+		}
 	})
 
 	// Cleanup before next test run
-	AfterEach(func(ctx context.Context) {
+	AfterEach(func(ctx SpecContext) {
 		// Run diagnostic collector if test failed
 		if CurrentSpecReport().Failed() {
 			var err error
@@ -135,9 +151,17 @@ var _ = Describe("GPU Feature Discovery", Ordered, func() {
 		}
 	})
 
-	When("When deploying GFD", Ordered, func() {
+	When("When deploying GFD", Ordered, Label("serial"), func() {
 		Context("NV Driver is not installed", func() {
-			It("it should create nvidia.com timestamp label", func(ctx context.Context) {
+			BeforeEach(func() {
+				// Skip this context when driver is enabled since "NV Driver is installed"
+				// context provides more comprehensive testing
+				if NVIDIA_DRIVER_ENABLED {
+					Skip("Skipping driver-not-installed tests when NVIDIA_DRIVER_ENABLED is true")
+				}
+			})
+
+			It("it should create nvidia.com timestamp label", Label("timestamp"), func(ctx SpecContext) {
 				nodeList, err := clientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(nodeList.Items)).ToNot(BeZero())
@@ -157,7 +181,7 @@ var _ = Describe("GPU Feature Discovery", Ordered, func() {
 				eventuallyNonControlPlaneNodes(ctx, clientSet).Should(MatchLabels(labelChecker, nodes))
 			})
 			Context("and the NodeFeature API is enabled", func() {
-				It("gfd should create node feature object", func(ctx context.Context) {
+				It("gfd should create node feature object", Label("nodefeature"), func(ctx SpecContext) {
 					By("Updating GFD Helm chart values")
 					newValues := values
 					newValues.Values = append(newValues.Values, "nfd.enableNodeFeatureApi=true")
@@ -172,9 +196,9 @@ var _ = Describe("GPU Feature Discovery", Ordered, func() {
 
 					targetNodeName := nodes[0].Name
 					Expect(targetNodeName).ToNot(BeEmpty())
-					Eventually(func() bool {
+					Eventually(func(g Gomega) bool {
 						return checkNodeFeatureObject(ctx, targetNodeName)
-					}, 2*time.Minute, 5*time.Second).Should(BeTrue())
+					}).WithContext(ctx).WithPolling(5 * time.Second).WithTimeout(2 * time.Minute).Should(BeTrue())
 
 					By("Checking that node labels are created from NodeFeature object")
 					labelChecker := map[string]k8sLabels{
@@ -187,7 +211,7 @@ var _ = Describe("GPU Feature Discovery", Ordered, func() {
 		})
 
 		When("NV Driver is installed", func() {
-			It("it should create nvidia.com labels", func(ctx context.Context) {
+			It("it should create nvidia.com labels", Label("driver", "labels"), func(ctx SpecContext) {
 				if !NVIDIA_DRIVER_ENABLED {
 					Skip("NVIDIA_DRIVER_ENABLED is not set")
 				}
@@ -210,7 +234,7 @@ var _ = Describe("GPU Feature Discovery", Ordered, func() {
 				eventuallyNonControlPlaneNodes(ctx, clientSet).Should(MatchLabels(labelChecker, nodes))
 			})
 			Context("and the NodeFeature API is enabled", func() {
-				It("gfd should create node feature object", func(ctx context.Context) {
+				It("gfd should create node feature object", Label("driver", "nodefeature"), func(ctx SpecContext) {
 					if !NVIDIA_DRIVER_ENABLED {
 						Skip("NVIDIA_DRIVER_ENABLED is not set")
 					}
@@ -228,9 +252,9 @@ var _ = Describe("GPU Feature Discovery", Ordered, func() {
 
 					targetNodeName := nodes[0].Name
 					Expect(targetNodeName).ToNot(BeEmpty())
-					Eventually(func() bool {
+					Eventually(func(g Gomega) bool {
 						return checkNodeFeatureObject(ctx, targetNodeName)
-					}, 2*time.Minute, 5*time.Second).Should(BeTrue())
+					}).WithContext(ctx).WithPolling(5 * time.Second).WithTimeout(2 * time.Minute).Should(BeTrue())
 
 					By("Checking that node labels are created from NodeFeature CR object")
 					checkForLabels := map[string]k8sLabels{

@@ -29,6 +29,14 @@ This repository contains a self‑contained Ginkgo v2 / Gomega end‑to‑end (
 On test failure the suite gathers logs and **ensures full cleanup** (namespace deletion, finalizer removal).
 The suite targets CI pipelines and developers validating chart or driver changes before promotion.
 
+### Key Features
+- **Ginkgo v2 idioms**: Uses `SpecContext`, `DeferCleanup`, `Label`, and `ReportAfterSuite`
+- **Parallel execution**: Label-based test sharding for faster CI runs
+- **Deterministic cleanup**: LIFO order cleanup with proper context handling
+- **No blind sleeps**: All waits use `Eventually` with explicit timeouts and context
+- **CI-ready reporting**: Built-in JSON and JUnit report generation
+- **GPU Feature Discovery**: Tests GFD label creation and NodeFeature API integration
+
 ---
 
 ## 2  Prerequisites
@@ -55,6 +63,8 @@ The suite targets CI pipelines and developers validating chart or driver changes
 | `LOG_ARTIFACTS_DIR` | ✖ | `./artifacts` | Directory for Helm & test logs. |
 | `COLLECT_LOGS_FROM` | ✖ | (unset) | Comma‑separated node list or `all` for log collection. |
 | `NVIDIA_DRIVER_ENABLED` | ✖ | `false` | Skip GPU job when driver is unavailable. |
+| `GINKGO_PARALLEL_PROCS` | ✖ | `4` | Number of parallel Ginkgo processes for parallel test execution. |
+| `GINKGO_FLAKE_ATTEMPTS` | ✖ | `2` | Number of retry attempts for flaky tests (should be reduced to 1 when stable). |
 
 > *Unset variables fall back to defaults via `getIntEnvVar` / `getBoolEnvVar`.*
 
