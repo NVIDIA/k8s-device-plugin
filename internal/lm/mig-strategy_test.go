@@ -183,7 +183,7 @@ func TestMigStrategyNoneLabels(t *testing.T) {
 					},
 				},
 				Sharing: spec.Sharing{
-					TimeSlicing: tc.timeSlicing,
+					TimeSlicing: &tc.timeSlicing,
 				},
 			}
 
