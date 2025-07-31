@@ -11,22 +11,11 @@ spec:
   instance:
     type: g4dn.xlarge
     region: us-west-1
-    ingressIpRanges:
-    - 18.190.12.32/32
-    - 3.143.46.93/32
-    - 52.15.119.136/32
-    - 35.155.108.162/32
-    - 35.162.190.51/32
-    - 54.201.61.24/32
-    - 52.24.205.48/32
-    - 44.235.4.62/32
-    - 44.230.241.223/32
     image:
       architecture: amd64
   containerRuntime:
     install: true
     name: containerd
-    version: 1.7.24
   nvidiaDriver:
     install: true
   nvidiaContainerToolkit:
