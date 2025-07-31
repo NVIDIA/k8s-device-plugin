@@ -1,0 +1,217 @@
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:22:29 creating 3 resource(s)
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:22:29 beginning wait for 3 resources with timeout of 1m0s
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:22:30 Clearing REST mapper cache
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:22:40 creating 12 resource(s)
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:22:42 beginning wait for 12 resources with timeout of 1m0s
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:22:43 Deployment is not ready: k8s-device-plugin-e2e-test-3833/gfd-e2e-testsrg5c-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:22:45 Deployment is not ready: k8s-device-plugin-e2e-test-3833/gfd-e2e-testsrg5c-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:22:47 Deployment is not ready: k8s-device-plugin-e2e-test-3833/gfd-e2e-testsrg5c-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:22:49 Deployment is not ready: k8s-device-plugin-e2e-test-3833/gfd-e2e-testsrg5c-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:22:51 Deployment is not ready: k8s-device-plugin-e2e-test-3833/gfd-e2e-testsrg5c-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:22:53 Deployment is not ready: k8s-device-plugin-e2e-test-3833/gfd-e2e-testsrg5c-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:22:55 release installed successfully: gfd-e2e-testsrg5c/nvidia-device-plugin-0.17.1
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:22:56 preparing upgrade for gfd-e2e-testsrg5c
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:06 performing update for gfd-e2e-testsrg5c
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:21 creating upgraded release for gfd-e2e-testsrg5c
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:21 checking 18 resources for changes
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:22 Looks like there are no changes for ServiceAccount "node-feature-discovery"
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:22 Created a new ServiceAccount called "gfd-e2e-testsrg5c-node-feature-discovery-gc" in k8s-device-plugin-e2e-test-3833
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:23 Looks like there are no changes for ServiceAccount "gfd-e2e-testsrg5c-node-feature-discovery-worker"
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:23 Created a new ServiceAccount called "gfd-e2e-testsrg5c-nvidia-device-plugin-service-account" in k8s-device-plugin-e2e-test-3833
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:24 Looks like there are no changes for ConfigMap "gfd-e2e-testsrg5c-node-feature-discovery-master-conf"
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:24 Looks like there are no changes for ConfigMap "gfd-e2e-testsrg5c-node-feature-discovery-worker-conf"
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:25 Looks like there are no changes for ClusterRole "gfd-e2e-testsrg5c-node-feature-discovery"
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:25 Created a new ClusterRole called "gfd-e2e-testsrg5c-node-feature-discovery-gc" in 
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:26 Created a new ClusterRole called "gfd-e2e-testsrg5c-nvidia-device-plugin-role" in 
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:26 Looks like there are no changes for ClusterRoleBinding "gfd-e2e-testsrg5c-node-feature-discovery"
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:27 Created a new ClusterRoleBinding called "gfd-e2e-testsrg5c-node-feature-discovery-gc" in 
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:27 Created a new ClusterRoleBinding called "gfd-e2e-testsrg5c-nvidia-device-plugin-role-binding" in 
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:28 Looks like there are no changes for Role "gfd-e2e-testsrg5c-node-feature-discovery-worker"
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:28 Looks like there are no changes for RoleBinding "gfd-e2e-testsrg5c-node-feature-discovery-worker"
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:29 Patch DaemonSet "gfd-e2e-testsrg5c-node-feature-discovery-worker" in namespace k8s-device-plugin-e2e-test-3833
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:29 Patch DaemonSet "gfd-e2e-testsrg5c-nvidia-device-plugin-gpu-feature-discovery" in namespace k8s-device-plugin-e2e-test-3833
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:30 Patch Deployment "gfd-e2e-testsrg5c-node-feature-discovery-master" in namespace k8s-device-plugin-e2e-test-3833
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:30 Created a new Deployment called "gfd-e2e-testsrg5c-node-feature-discovery-gc" in k8s-device-plugin-e2e-test-3833
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:30 Deleting Service "gfd-e2e-testsrg5c-node-feature-discovery-master" in namespace k8s-device-plugin-e2e-test-3833...
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:31 waiting for release gfd-e2e-testsrg5c resources (created: 7 updated: 11  deleted: 1)
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:31 beginning wait for 18 resources with timeout of 1m0s
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:32 Deployment is not ready: k8s-device-plugin-e2e-test-3833/gfd-e2e-testsrg5c-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:34 Deployment is not ready: k8s-device-plugin-e2e-test-3833/gfd-e2e-testsrg5c-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:36 Deployment is not ready: k8s-device-plugin-e2e-test-3833/gfd-e2e-testsrg5c-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:38 Deployment is not ready: k8s-device-plugin-e2e-test-3833/gfd-e2e-testsrg5c-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:40 Deployment is not ready: k8s-device-plugin-e2e-test-3833/gfd-e2e-testsrg5c-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:42 Deployment is not ready: k8s-device-plugin-e2e-test-3833/gfd-e2e-testsrg5c-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:44 updating status for upgraded release for gfd-e2e-testsrg5c
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:44 release upgraded successfully: gfd-e2e-testsrg5c/nvidia-device-plugin-0.17.1
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:45 uninstall: Deleting gfd-e2e-testsrg5c
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:53 uninstall: given cascade value: , defaulting to delete propagation background
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:53 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-gc" Deployment
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:53 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-master" Deployment
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:53 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-worker" DaemonSet
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:53 Starting delete for "gfd-e2e-testsrg5c-nvidia-device-plugin-gpu-feature-discovery" DaemonSet
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:53 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-worker" RoleBinding
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:53 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-worker" Role
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:53 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery" ClusterRoleBinding
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:53 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-gc" ClusterRoleBinding
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:53 Starting delete for "gfd-e2e-testsrg5c-nvidia-device-plugin-role-binding" ClusterRoleBinding
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:54 Starting delete for "gfd-e2e-testsrg5c-nvidia-device-plugin-role" ClusterRole
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:54 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery" ClusterRole
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:54 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-gc" ClusterRole
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:54 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-worker-conf" ConfigMap
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:54 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-master-conf" ConfigMap
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:54 Starting delete for "gfd-e2e-testsrg5c-nvidia-device-plugin-service-account" ServiceAccount
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:54 Starting delete for "node-feature-discovery" ServiceAccount
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:54 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-gc" ServiceAccount
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:54 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-worker" ServiceAccount
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:55 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-prune" ServiceAccount
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:55 Ignoring delete failure for "gfd-e2e-testsrg5c-node-feature-discovery-prune" /v1, Kind=ServiceAccount: serviceaccounts "gfd-e2e-testsrg5c-node-feature-discovery-prune" not found
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:55 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:57 creating 1 resource(s)
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:58 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-prune" ClusterRole
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:58 Ignoring delete failure for "gfd-e2e-testsrg5c-node-feature-discovery-prune" rbac.authorization.k8s.io/v1, Kind=ClusterRole: clusterroles.rbac.authorization.k8s.io "gfd-e2e-testsrg5c-node-feature-discovery-prune" not found
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:58 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:23:59 creating 1 resource(s)
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:00 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-prune" ClusterRoleBinding
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:00 Ignoring delete failure for "gfd-e2e-testsrg5c-node-feature-discovery-prune" rbac.authorization.k8s.io/v1, Kind=ClusterRoleBinding: clusterrolebindings.rbac.authorization.k8s.io "gfd-e2e-testsrg5c-node-feature-discovery-prune" not found
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:00 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:01 creating 1 resource(s)
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:02 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-prune" Job
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:02 Ignoring delete failure for "gfd-e2e-testsrg5c-node-feature-discovery-prune" batch/v1, Kind=Job: jobs.batch "gfd-e2e-testsrg5c-node-feature-discovery-prune" not found
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:02 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:03 creating 1 resource(s)
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:04 Watching for changes to Job gfd-e2e-testsrg5c-node-feature-discovery-prune with timeout of 0s
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:04 Add/Modify event for gfd-e2e-testsrg5c-node-feature-discovery-prune: ADDED
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:04 gfd-e2e-testsrg5c-node-feature-discovery-prune: Jobs active: 1, jobs failed: 0, jobs succeeded: 0
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:05 Add/Modify event for gfd-e2e-testsrg5c-node-feature-discovery-prune: MODIFIED
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:05 gfd-e2e-testsrg5c-node-feature-discovery-prune: Jobs active: 1, jobs failed: 0, jobs succeeded: 0
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:06 Add/Modify event for gfd-e2e-testsrg5c-node-feature-discovery-prune: MODIFIED
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:06 gfd-e2e-testsrg5c-node-feature-discovery-prune: Jobs active: 1, jobs failed: 0, jobs succeeded: 0
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:07 Add/Modify event for gfd-e2e-testsrg5c-node-feature-discovery-prune: MODIFIED
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:07 gfd-e2e-testsrg5c-node-feature-discovery-prune: Jobs active: 0, jobs failed: 0, jobs succeeded: 0
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:07 Add/Modify event for gfd-e2e-testsrg5c-node-feature-discovery-prune: MODIFIED
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:07 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-prune" Job
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:07 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:08 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-prune" ClusterRoleBinding
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:08 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:09 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-prune" ClusterRole
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:09 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:10 Starting delete for "gfd-e2e-testsrg5c-node-feature-discovery-prune" ServiceAccount
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:10 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:10 purge requested for gfd-e2e-testsrg5c
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:11 release uninstalled, response: &{0x1400037b2d0 }
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:14 creating 2 resource(s)
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:14 beginning wait for 2 resources with timeout of 1m0s
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:15 release installed successfully: nvdp-e2e-test-88/nvidia-device-plugin-0.17.1
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:38 uninstall: Deleting nvdp-e2e-test-88
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:39 uninstall: given cascade value: , defaulting to delete propagation background
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:39 Starting delete for "nvdp-e2e-test-88-nvidia-device-plugin-mps-control-daemon" DaemonSet
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:39 Starting delete for "nvdp-e2e-test-88-nvidia-device-plugin" DaemonSet
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:39 purge requested for nvdp-e2e-test-88
+k8s-device-plugin-e2e-test-3833	2025/07/31 14:24:39 release uninstalled, response: &{0x140003bba40 }
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:09:51 creating 3 resource(s)
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:09:51 beginning wait for 3 resources with timeout of 1m0s
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:09:52 Clearing REST mapper cache
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:02 creating 12 resource(s)
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:04 beginning wait for 12 resources with timeout of 1m0s
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:05 Deployment is not ready: k8s-device-plugin-e2e-test-8713/gfd-e2e-testwl4nm-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:07 Deployment is not ready: k8s-device-plugin-e2e-test-8713/gfd-e2e-testwl4nm-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:09 Deployment is not ready: k8s-device-plugin-e2e-test-8713/gfd-e2e-testwl4nm-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:11 Deployment is not ready: k8s-device-plugin-e2e-test-8713/gfd-e2e-testwl4nm-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:13 Deployment is not ready: k8s-device-plugin-e2e-test-8713/gfd-e2e-testwl4nm-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:15 Deployment is not ready: k8s-device-plugin-e2e-test-8713/gfd-e2e-testwl4nm-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:17 Deployment is not ready: k8s-device-plugin-e2e-test-8713/gfd-e2e-testwl4nm-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:19 release installed successfully: gfd-e2e-testwl4nm/nvidia-device-plugin-0.17.1
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:20 preparing upgrade for gfd-e2e-testwl4nm
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:33 performing update for gfd-e2e-testwl4nm
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:49 creating upgraded release for gfd-e2e-testwl4nm
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:49 checking 18 resources for changes
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:49 Looks like there are no changes for ServiceAccount "node-feature-discovery"
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:50 Created a new ServiceAccount called "gfd-e2e-testwl4nm-node-feature-discovery-gc" in k8s-device-plugin-e2e-test-8713
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:50 Looks like there are no changes for ServiceAccount "gfd-e2e-testwl4nm-node-feature-discovery-worker"
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:51 Created a new ServiceAccount called "gfd-e2e-testwl4nm-nvidia-device-plugin-service-account" in k8s-device-plugin-e2e-test-8713
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:51 Looks like there are no changes for ConfigMap "gfd-e2e-testwl4nm-node-feature-discovery-master-conf"
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:52 Looks like there are no changes for ConfigMap "gfd-e2e-testwl4nm-node-feature-discovery-worker-conf"
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:52 Looks like there are no changes for ClusterRole "gfd-e2e-testwl4nm-node-feature-discovery"
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:53 Created a new ClusterRole called "gfd-e2e-testwl4nm-node-feature-discovery-gc" in 
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:53 Created a new ClusterRole called "gfd-e2e-testwl4nm-nvidia-device-plugin-role" in 
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:53 Looks like there are no changes for ClusterRoleBinding "gfd-e2e-testwl4nm-node-feature-discovery"
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:54 Created a new ClusterRoleBinding called "gfd-e2e-testwl4nm-node-feature-discovery-gc" in 
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:54 Created a new ClusterRoleBinding called "gfd-e2e-testwl4nm-nvidia-device-plugin-role-binding" in 
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:55 Looks like there are no changes for Role "gfd-e2e-testwl4nm-node-feature-discovery-worker"
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:55 Looks like there are no changes for RoleBinding "gfd-e2e-testwl4nm-node-feature-discovery-worker"
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:56 Patch DaemonSet "gfd-e2e-testwl4nm-node-feature-discovery-worker" in namespace k8s-device-plugin-e2e-test-8713
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:57 Patch DaemonSet "gfd-e2e-testwl4nm-nvidia-device-plugin-gpu-feature-discovery" in namespace k8s-device-plugin-e2e-test-8713
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:57 Patch Deployment "gfd-e2e-testwl4nm-node-feature-discovery-master" in namespace k8s-device-plugin-e2e-test-8713
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:58 Created a new Deployment called "gfd-e2e-testwl4nm-node-feature-discovery-gc" in k8s-device-plugin-e2e-test-8713
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:58 Deleting Service "gfd-e2e-testwl4nm-node-feature-discovery-master" in namespace k8s-device-plugin-e2e-test-8713...
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:58 waiting for release gfd-e2e-testwl4nm resources (created: 7 updated: 11  deleted: 1)
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:58 beginning wait for 18 resources with timeout of 1m0s
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:10:59 Deployment is not ready: k8s-device-plugin-e2e-test-8713/gfd-e2e-testwl4nm-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:01 Deployment is not ready: k8s-device-plugin-e2e-test-8713/gfd-e2e-testwl4nm-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:03 Deployment is not ready: k8s-device-plugin-e2e-test-8713/gfd-e2e-testwl4nm-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:05 Deployment is not ready: k8s-device-plugin-e2e-test-8713/gfd-e2e-testwl4nm-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:07 Deployment is not ready: k8s-device-plugin-e2e-test-8713/gfd-e2e-testwl4nm-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:09 Deployment is not ready: k8s-device-plugin-e2e-test-8713/gfd-e2e-testwl4nm-node-feature-discovery-master. 0 out of 1 expected pods are ready
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:11 updating status for upgraded release for gfd-e2e-testwl4nm
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:12 release upgraded successfully: gfd-e2e-testwl4nm/nvidia-device-plugin-0.17.1
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:13 uninstall: Deleting gfd-e2e-testwl4nm
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:20 uninstall: given cascade value: , defaulting to delete propagation background
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:20 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-gc" Deployment
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:20 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-master" Deployment
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:20 Starting delete for "gfd-e2e-testwl4nm-nvidia-device-plugin-gpu-feature-discovery" DaemonSet
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:20 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-worker" DaemonSet
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:20 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-worker" RoleBinding
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:20 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-worker" Role
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:20 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery" ClusterRoleBinding
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:20 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-gc" ClusterRoleBinding
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:20 Starting delete for "gfd-e2e-testwl4nm-nvidia-device-plugin-role-binding" ClusterRoleBinding
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:21 Starting delete for "gfd-e2e-testwl4nm-nvidia-device-plugin-role" ClusterRole
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:21 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery" ClusterRole
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:21 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-gc" ClusterRole
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:21 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-worker-conf" ConfigMap
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:21 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-master-conf" ConfigMap
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:21 Starting delete for "gfd-e2e-testwl4nm-nvidia-device-plugin-service-account" ServiceAccount
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:21 Starting delete for "node-feature-discovery" ServiceAccount
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:21 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-gc" ServiceAccount
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:21 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-worker" ServiceAccount
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:22 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-prune" ServiceAccount
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:22 Ignoring delete failure for "gfd-e2e-testwl4nm-node-feature-discovery-prune" /v1, Kind=ServiceAccount: serviceaccounts "gfd-e2e-testwl4nm-node-feature-discovery-prune" not found
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:22 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:24 creating 1 resource(s)
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:25 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-prune" ClusterRole
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:25 Ignoring delete failure for "gfd-e2e-testwl4nm-node-feature-discovery-prune" rbac.authorization.k8s.io/v1, Kind=ClusterRole: clusterroles.rbac.authorization.k8s.io "gfd-e2e-testwl4nm-node-feature-discovery-prune" not found
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:25 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:28 creating 1 resource(s)
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:29 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-prune" ClusterRoleBinding
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:29 Ignoring delete failure for "gfd-e2e-testwl4nm-node-feature-discovery-prune" rbac.authorization.k8s.io/v1, Kind=ClusterRoleBinding: clusterrolebindings.rbac.authorization.k8s.io "gfd-e2e-testwl4nm-node-feature-discovery-prune" not found
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:29 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:30 creating 1 resource(s)
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:31 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-prune" Job
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:31 Ignoring delete failure for "gfd-e2e-testwl4nm-node-feature-discovery-prune" batch/v1, Kind=Job: jobs.batch "gfd-e2e-testwl4nm-node-feature-discovery-prune" not found
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:31 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:32 creating 1 resource(s)
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:33 Watching for changes to Job gfd-e2e-testwl4nm-node-feature-discovery-prune with timeout of 0s
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:33 Add/Modify event for gfd-e2e-testwl4nm-node-feature-discovery-prune: ADDED
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:33 gfd-e2e-testwl4nm-node-feature-discovery-prune: Jobs active: 1, jobs failed: 0, jobs succeeded: 0
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:36 Add/Modify event for gfd-e2e-testwl4nm-node-feature-discovery-prune: MODIFIED
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:36 gfd-e2e-testwl4nm-node-feature-discovery-prune: Jobs active: 0, jobs failed: 0, jobs succeeded: 0
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:36 Add/Modify event for gfd-e2e-testwl4nm-node-feature-discovery-prune: MODIFIED
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:36 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-prune" Job
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:37 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:37 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-prune" ClusterRoleBinding
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:37 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:38 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-prune" ClusterRole
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:38 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:39 Starting delete for "gfd-e2e-testwl4nm-node-feature-discovery-prune" ServiceAccount
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:39 beginning wait for 1 resources to be deleted with timeout of 0s
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:39 purge requested for gfd-e2e-testwl4nm
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:40 release uninstalled, response: &{0x1400029d730 }
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:43 creating 2 resource(s)
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:43 beginning wait for 2 resources with timeout of 1m0s
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:11:44 release installed successfully: nvdp-e2e-test-4045/nvidia-device-plugin-0.17.1
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:12:06 uninstall: Deleting nvdp-e2e-test-4045
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:12:07 uninstall: given cascade value: , defaulting to delete propagation background
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:12:07 Starting delete for "nvdp-e2e-test-4045-nvidia-device-plugin-mps-control-daemon" DaemonSet
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:12:07 Starting delete for "nvdp-e2e-test-4045-nvidia-device-plugin" DaemonSet
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:12:08 purge requested for nvdp-e2e-test-4045
+k8s-device-plugin-e2e-test-8713	2025/07/31 16:12:08 release uninstalled, response: &{0x140004310a0 }
