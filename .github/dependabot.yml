@@ -10,6 +10,7 @@ updates:
     - "/"
     - "deployments/devel"
     - "tests"
+    open-pull-requests-limit: 15
     schedule:
       interval: "daily"
     labels:
