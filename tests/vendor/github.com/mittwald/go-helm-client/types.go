@@ -176,6 +176,9 @@ type ChartSpec struct {
 	// ReuseValues indicates whether to reuse the values.yaml file during installation.
 	// +optional
 	ReuseValues bool `json:"reuseValues,omitempty"`
+	// ResetThenReuseValues will reset the values to the chart's built-ins then merge with user's last supplied values.
+	// +optional
+	ResetThenReuseValues bool
 	// Recreate indicates whether to recreate the release if it already exists.
 	// +optional
 	Recreate bool `json:"recreate,omitempty"`
@@ -199,4 +202,11 @@ type ChartSpec struct {
 	// Labels specifies a set of labels to be applied to the release
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
+	// IgnoreNotFound indicates whether to ignore not found error during uninstall.
+	// +optional
+	IgnoreNotFound bool `json:"ignoreNotFound,omitempty"`
+	// DeletionPropagation indicates type of deletion propagation when uninstalling chart.
+	// Valid options are orphan, foreground, background. Defaulting to background.
+	// +optional
+	DeletionPropagation string `json:"deletionPropagation,omitempty"`
 }
