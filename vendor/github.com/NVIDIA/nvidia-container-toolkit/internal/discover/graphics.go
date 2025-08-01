@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/config/image"
@@ -36,21 +37,21 @@ import (
 // TODO: The logic for creating DRM devices should be consolidated between this
 // and the logic for generating CDI specs for a single device. This is only used
 // when applying OCI spec modifications to an incoming spec in "legacy" mode.
-func NewDRMNodesDiscoverer(logger logger.Interface, devices image.VisibleDevices, devRoot string, nvidiaCDIHookPath string) (Discover, error) {
+func NewDRMNodesDiscoverer(logger logger.Interface, devices image.VisibleDevices, devRoot string, hookCreator HookCreator) (Discover, error) {
 	drmDeviceNodes, err := newDRMDeviceDiscoverer(logger, devices, devRoot)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create DRM device discoverer: %v", err)
 	}
 
-	drmByPathSymlinks := newCreateDRMByPathSymlinks(logger, drmDeviceNodes, devRoot, nvidiaCDIHookPath)
+	drmByPathSymlinks := newCreateDRMByPathSymlinks(logger, drmDeviceNodes, devRoot, hookCreator)
 
 	discover := Merge(drmDeviceNodes, drmByPathSymlinks)
 	return discover, nil
 }
 
 // NewGraphicsMountsDiscoverer creates a discoverer for the mounts required by graphics tools such as vulkan.
-func NewGraphicsMountsDiscoverer(logger logger.Interface, driver *root.Driver, nvidiaCDIHookPath string) (Discover, error) {
-	libraries := newGraphicsLibrariesDiscoverer(logger, driver, nvidiaCDIHookPath)
+func NewGraphicsMountsDiscoverer(logger logger.Interface, driver *root.Driver, hookCreator HookCreator) (Discover, error) {
+	libraries := newGraphicsLibrariesDiscoverer(logger, driver, hookCreator)
 
 	configs := NewMounts(
 		logger,
@@ -81,27 +82,38 @@ func NewGraphicsMountsDiscoverer(logger logger.Interface, driver *root.Driver, n
 // vulkan ICD files are at {{ .driverRoot }}/vulkan instead of in /etc/vulkan.
 func newVulkanConfigsDiscover(logger logger.Interface, driver *root.Driver) Discover {
 	locator := lookup.First(driver.Configs(), driver.Files())
+
+	required := []string{
+		"vulkan/icd.d/nvidia_icd.json",
+		"vulkan/icd.d/nvidia_layers.json",
+		"vulkan/implicit_layer.d/nvidia_layers.json",
+	}
+	// For some RPM-based driver packages, the vulkan ICD files are installed to
+	// /usr/share/vulkan/icd.d/nvidia_icd.%{_target_cpu}.json
+	// We also include this in the list of candidates for the ICD file.
+	switch runtime.GOARCH {
+	case "amd64":
+		required = append(required, "vulkan/icd.d/nvidia_icd.x86_64.json")
+	case "arm64":
+		required = append(required, "vulkan/icd.d/nvidia_icd.aarch64.json")
+	}
 	return &mountsToContainerPath{
-		logger:  logger,
-		locator: locator,
-		required: []string{
-			"vulkan/icd.d/nvidia_icd.json",
-			"vulkan/icd.d/nvidia_layers.json",
-			"vulkan/implicit_layer.d/nvidia_layers.json",
-		},
+		logger:        logger,
+		locator:       locator,
+		required:      required,
 		containerRoot: "/etc",
 	}
 }
 
 type graphicsDriverLibraries struct {
 	Discover
-	logger            logger.Interface
-	nvidiaCDIHookPath string
+	logger      logger.Interface
+	hookCreator HookCreator
 }
 
 var _ Discover = (*graphicsDriverLibraries)(nil)
 
-func newGraphicsLibrariesDiscoverer(logger logger.Interface, driver *root.Driver, nvidiaCDIHookPath string) Discover {
+func newGraphicsLibrariesDiscoverer(logger logger.Interface, driver *root.Driver, hookCreator HookCreator) Discover {
 	cudaLibRoot, cudaVersionPattern := getCUDALibRootAndVersionPattern(logger, driver)
 
 	libraries := NewMounts(
@@ -140,9 +152,9 @@ func newGraphicsLibrariesDiscoverer(logger logger.Interface, driver *root.Driver
 	)
 
 	return &graphicsDriverLibraries{
-		Discover:          Merge(libraries, xorgLibraries),
-		logger:            logger,
-		nvidiaCDIHookPath: nvidiaCDIHookPath,
+		Discover:    Merge(libraries, xorgLibraries),
+		logger:      logger,
+		hookCreator: hookCreator,
 	}
 }
 
@@ -203,9 +215,9 @@ func (d graphicsDriverLibraries) Hooks() ([]Hook, error) {
 		return nil, nil
 	}
 
-	hooks := CreateCreateSymlinkHook(d.nvidiaCDIHookPath, links)
+	hook := d.hookCreator.Create("create-symlinks", links...)
 
-	return hooks.Hooks()
+	return hook.Hooks()
 }
 
 // isDriverLibrary checks whether the specified filename is a specific driver library.
@@ -275,19 +287,19 @@ func buildXOrgSearchPaths(libRoot string) []string {
 
 type drmDevicesByPath struct {
 	None
-	logger            logger.Interface
-	nvidiaCDIHookPath string
-	devRoot           string
-	devicesFrom       Discover
+	logger      logger.Interface
+	hookCreator HookCreator
+	devRoot     string
+	devicesFrom Discover
 }
 
 // newCreateDRMByPathSymlinks creates a discoverer for a hook to create the by-path symlinks for DRM devices discovered by the specified devices discoverer
-func newCreateDRMByPathSymlinks(logger logger.Interface, devices Discover, devRoot string, nvidiaCDIHookPath string) Discover {
+func newCreateDRMByPathSymlinks(logger logger.Interface, devices Discover, devRoot string, hookCreator HookCreator) Discover {
 	d := drmDevicesByPath{
-		logger:            logger,
-		nvidiaCDIHookPath: nvidiaCDIHookPath,
-		devRoot:           devRoot,
-		devicesFrom:       devices,
+		logger:      logger,
+		hookCreator: hookCreator,
+		devRoot:     devRoot,
+		devicesFrom: devices,
 	}
 
 	return &d
@@ -315,13 +327,9 @@ func (d drmDevicesByPath) Hooks() ([]Hook, error) {
 		args = append(args, "--link", l)
 	}
 
-	hook := CreateNvidiaCDIHook(
-		d.nvidiaCDIHookPath,
-		"create-symlinks",
-		args...,
-	)
+	hook := d.hookCreator.Create("create-symlinks", args...)
 
-	return []Hook{hook}, nil
+	return hook.Hooks()
 }
 
 // getSpecificLinkArgs returns the required specific links that need to be created

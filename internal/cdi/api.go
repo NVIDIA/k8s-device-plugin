@@ -16,16 +16,10 @@
 
 package cdi
 
-import "github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/spec"
-
 // Interface provides the API to the 'cdi' package
 //
 //go:generate moq -stub -out api_mock.go . Interface
 type Interface interface {
 	CreateSpecFile() error
 	QualifiedName(string, string) string
-}
-
-type cdiSpecGenerator interface {
-	GetSpec() (spec.Interface, error)
 }
