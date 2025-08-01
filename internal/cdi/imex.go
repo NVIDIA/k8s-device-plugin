@@ -19,6 +19,7 @@ package cdi
 import (
 	"tags.cncf.io/container-device-interface/specs-go"
 
+	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi"
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/spec"
 
 	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
@@ -29,7 +30,7 @@ type imexChannelCDILib struct {
 	imexChannels imex.Channels
 }
 
-func (cdi *cdiHandler) newImexChannelSpecGenerator() cdiSpecGenerator {
+func (cdi *cdiHandler) newImexChannelSpecGenerator() nvcdi.SpecGenerator {
 	lib := &imexChannelCDILib{
 		vendor:       cdi.vendor,
 		imexChannels: cdi.imexChannels,
@@ -39,7 +40,7 @@ func (cdi *cdiHandler) newImexChannelSpecGenerator() cdiSpecGenerator {
 }
 
 // GetSpec returns the CDI specs for IMEX channels.
-func (l *imexChannelCDILib) GetSpec() (spec.Interface, error) {
+func (l *imexChannelCDILib) GetSpec(...string) (spec.Interface, error) {
 	var deviceSpecs []specs.Device
 	for _, channel := range l.imexChannels {
 		deviceSpec := specs.Device{

@@ -62,7 +62,7 @@ type cdiHandler struct {
 
 	imexChannels imex.Channels
 
-	cdilibs map[string]cdiSpecGenerator
+	cdilibs map[string]nvcdi.SpecGenerator
 }
 
 var _ Interface = &cdiHandler{}
@@ -111,7 +111,7 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 		return nil, err
 	}
 
-	c.cdilibs = make(map[string]cdiSpecGenerator)
+	c.cdilibs = make(map[string]nvcdi.SpecGenerator)
 
 	c.cdilibs["gpu"], err = nvcdi.New(
 		nvcdi.WithInfoLib(c.infolib),
