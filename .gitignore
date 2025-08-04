@@ -6,6 +6,7 @@
 deployments/helm/gpu-feature-discovery
 cmd/gpu-feature-discovery/gfd-test-loop
 e2e_logs
-
+bin
 *.out
 *.log
+ginkgo.json
