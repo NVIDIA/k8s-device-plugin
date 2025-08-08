@@ -28,12 +28,12 @@ import (
 )
 
 type nvsandboxutilsDGPU struct {
-	lib               nvsandboxutils.Interface
-	uuid              string
-	devRoot           string
-	isMig             bool
-	nvidiaCDIHookPath string
-	deviceLinks       []string
+	lib         nvsandboxutils.Interface
+	uuid        string
+	devRoot     string
+	isMig       bool
+	hookCreator discover.HookCreator
+	deviceLinks []string
 }
 
 var _ discover.Discover = (*nvsandboxutilsDGPU)(nil)
@@ -53,11 +53,11 @@ func (o *options) newNvsandboxutilsDGPUDiscoverer(d UUIDer) (discover.Discover, 
 	}
 
 	nvd := nvsandboxutilsDGPU{
-		lib:               o.nvsandboxutilslib,
-		uuid:              uuid,
-		devRoot:           strings.TrimSuffix(filepath.Clean(o.devRoot), "/dev"),
-		isMig:             o.isMigDevice,
-		nvidiaCDIHookPath: o.nvidiaCDIHookPath,
+		lib:         o.nvsandboxutilslib,
+		uuid:        uuid,
+		devRoot:     strings.TrimSuffix(filepath.Clean(o.devRoot), "/dev"),
+		isMig:       o.isMigDevice,
+		hookCreator: o.hookCreator,
 	}
 
 	return &nvd, nil
@@ -71,13 +71,13 @@ func (d *nvsandboxutilsDGPU) Devices() ([]discover.Device, error) {
 
 	var devices []discover.Device
 	for _, info := range gpuFileInfos {
-		switch {
-		case info.SubType == nvsandboxutils.NV_DEV_DRI_CARD, info.SubType == nvsandboxutils.NV_DEV_DRI_RENDERD:
+		switch info.SubType {
+		case nvsandboxutils.NV_DEV_DRI_CARD, nvsandboxutils.NV_DEV_DRI_RENDERD:
 			if d.isMig {
 				continue
 			}
 			fallthrough
-		case info.SubType == nvsandboxutils.NV_DEV_NVIDIA, info.SubType == nvsandboxutils.NV_DEV_NVIDIA_CAPS_NVIDIA_CAP:
+		case nvsandboxutils.NV_DEV_NVIDIA, nvsandboxutils.NV_DEV_NVIDIA_CAPS_NVIDIA_CAP:
 			containerPath := info.Path
 			if d.devRoot != "/" {
 				containerPath = strings.TrimPrefix(containerPath, d.devRoot)
@@ -89,7 +89,7 @@ func (d *nvsandboxutilsDGPU) Devices() ([]discover.Device, error) {
 				Path:     containerPath,
 			}
 			devices = append(devices, device)
-		case info.SubType == nvsandboxutils.NV_DEV_DRI_CARD_SYMLINK, info.SubType == nvsandboxutils.NV_DEV_DRI_RENDERD_SYMLINK:
+		case nvsandboxutils.NV_DEV_DRI_CARD_SYMLINK, nvsandboxutils.NV_DEV_DRI_RENDERD_SYMLINK:
 			if d.isMig {
 				continue
 			}
@@ -106,24 +106,19 @@ func (d *nvsandboxutilsDGPU) Devices() ([]discover.Device, error) {
 	return devices, nil
 }
 
+func (d *nvsandboxutilsDGPU) EnvVars() ([]discover.EnvVar, error) {
+	return nil, nil
+}
+
 // Hooks returns a hook to create the by-path symlinks for the discovered devices.
 func (d *nvsandboxutilsDGPU) Hooks() ([]discover.Hook, error) {
 	if len(d.deviceLinks) == 0 {
 		return nil, nil
 	}
 
-	var args []string
-	for _, l := range d.deviceLinks {
-		args = append(args, "--link", l)
-	}
+	hook := d.hookCreator.Create("create-symlinks", d.deviceLinks...)
 
-	hook := discover.CreateNvidiaCDIHook(
-		d.nvidiaCDIHookPath,
-		"create-symlinks",
-		args...,
-	)
-
-	return []discover.Hook{hook}, nil
+	return hook.Hooks()
 }
 
 func (d *nvsandboxutilsDGPU) Mounts() ([]discover.Mount, error) {
