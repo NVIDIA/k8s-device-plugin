@@ -8,9 +8,8 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
-
-	"golang.org/x/exp/slices"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
@@ -207,9 +206,11 @@ func (c *HelmClient) UpdateChartRepos() error {
 		}
 
 		chartRepo.CachePath = c.Settings.RepositoryCache
-		_, err = chartRepo.DownloadIndexFile()
-		if err != nil {
-			return err
+		if !registry.IsOCI(entry.URL) {
+			_, err = chartRepo.DownloadIndexFile()
+			if err != nil {
+				return err
+			}
 		}
 
 		c.storage.Update(entry)
@@ -794,7 +795,7 @@ func (c *HelmClient) RunChartTests(releaseName string) (bool, error) {
 	}
 
 	// Check that there are no test failures
-	return checkReleaseForTestFailure(rel) == false, nil
+	return !checkReleaseForTestFailure(rel), nil
 }
 
 // chartExists checks whether a chart is already installed
@@ -943,6 +944,7 @@ func mergeUpgradeOptions(chartSpec *ChartSpec, upgradeOptions *action.Upgrade) {
 	upgradeOptions.Force = chartSpec.Force
 	upgradeOptions.ResetValues = chartSpec.ResetValues
 	upgradeOptions.ReuseValues = chartSpec.ReuseValues
+	upgradeOptions.ResetThenReuseValues = chartSpec.ResetThenReuseValues
 	upgradeOptions.Recreate = chartSpec.Recreate
 	upgradeOptions.MaxHistory = chartSpec.MaxHistory
 	upgradeOptions.Atomic = chartSpec.Atomic
@@ -962,4 +964,6 @@ func mergeUninstallReleaseOptions(chartSpec *ChartSpec, uninstallReleaseOptions 
 	uninstallReleaseOptions.Description = chartSpec.Description
 	uninstallReleaseOptions.KeepHistory = chartSpec.KeepHistory
 	uninstallReleaseOptions.Wait = chartSpec.Wait
+	uninstallReleaseOptions.IgnoreNotFound = chartSpec.IgnoreNotFound
+	uninstallReleaseOptions.DeletionPropagation = chartSpec.DeletionPropagation
 }

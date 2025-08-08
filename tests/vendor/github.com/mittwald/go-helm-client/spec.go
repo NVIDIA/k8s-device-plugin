@@ -1,7 +1,8 @@
 package helmclient
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
+
 	"helm.sh/helm/v3/pkg/getter"
 	"sigs.k8s.io/yaml"
 
@@ -15,12 +16,12 @@ func (spec *ChartSpec) GetValuesMap(p getter.Providers) (map[string]interface{},
 
 	err := yaml.Unmarshal([]byte(spec.ValuesYaml), &valuesYaml)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to Parse ValuesYaml")
+		return nil, fmt.Errorf("failed to parse ValuesYaml: %w", err)
 	}
 
 	valuesOptions, err := spec.ValuesOptions.MergeValues(p)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to Parse ValuesOptions")
+		return nil, fmt.Errorf("failed to parse ValuesOptions: %w", err)
 	}
 
 	return values.MergeMaps(valuesYaml, valuesOptions), nil
