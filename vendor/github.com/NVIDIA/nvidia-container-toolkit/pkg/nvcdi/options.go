@@ -21,6 +21,7 @@ import (
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
 )
@@ -99,9 +100,9 @@ func WithNvmlLib(nvmllib nvml.Interface) Option {
 }
 
 // WithMode sets the discovery mode for the library
-func WithMode(mode string) Option {
+func WithMode[m modeConstraint](mode m) Option {
 	return func(l *nvcdilib) {
-		l.mode = mode
+		l.mode = Mode(mode)
 	}
 }
 
@@ -156,13 +157,49 @@ func WithLibrarySearchPaths(paths []string) Option {
 	}
 }
 
-// WithDisabledHook allows specific hooks to the disabled.
-// This option can be specified multiple times for each hook.
-func WithDisabledHook(hook HookName) Option {
+// WithDisabledHooks allows specific hooks to be disabled.
+func WithDisabledHooks[T string | HookName](hooks ...T) Option {
 	return func(o *nvcdilib) {
-		if o.disabledHooks == nil {
-			o.disabledHooks = make(map[HookName]bool)
+		for _, hook := range hooks {
+			o.disabledHooks = append(o.disabledHooks, discover.HookName(hook))
 		}
-		o.disabledHooks[hook] = true
 	}
+}
+
+// WithEnabledHooks explicitly enables a specific set of hooks.
+// If a hook is explicitly enabled, this takes precedence over it being disabled.
+func WithEnabledHooks[T string | HookName](hooks ...T) Option {
+	return func(o *nvcdilib) {
+		for _, hook := range hooks {
+			o.enabledHooks = append(o.enabledHooks, discover.HookName(hook))
+		}
+	}
+}
+
+// WithFeatureFlags allows the specified set of features to be toggled on.
+func WithFeatureFlags[T string | FeatureFlag](featureFlags ...T) Option {
+	return func(o *nvcdilib) {
+		if o.featureFlags == nil {
+			o.featureFlags = make(map[FeatureFlag]bool)
+		}
+		for _, featureFlag := range featureFlags {
+			o.featureFlags[FeatureFlag(featureFlag)] = true
+		}
+	}
+}
+
+// WithDisabledHook allows specific hooks to be disabled.
+// This option can be specified multiple times for each hook.
+//
+// Deprecated: Use WithDisabledHooks instead
+func WithDisabledHook[T string | HookName](hook T) Option {
+	return WithDisabledHooks(hook)
+}
+
+// WithFeatureFlag allows specified features to be toggled on.
+// This option can be specified multiple times for each feature flag.
+//
+// Deprecated: Use WithFeatureFlags
+func WithFeatureFlag[T string | FeatureFlag](featureFlag T) Option {
+	return WithFeatureFlags(featureFlag)
 }

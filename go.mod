@@ -2,13 +2,13 @@ module github.com/NVIDIA/k8s-device-plugin
 
 go 1.24.0
 
-toolchain go1.24.1
+toolchain go1.24.5
 
 require (
 	github.com/NVIDIA/go-gpuallocator v0.6.0
-	github.com/NVIDIA/go-nvlib v0.8.0
+	github.com/NVIDIA/go-nvlib v0.8.1
 	github.com/NVIDIA/go-nvml v0.13.0-1
-	github.com/NVIDIA/nvidia-container-toolkit v1.17.8
+	github.com/NVIDIA/nvidia-container-toolkit v1.18.0-rc.5
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/google/renameio v1.0.1
 	github.com/google/uuid v1.6.0
@@ -28,8 +28,8 @@ require (
 	sigs.k8s.io/node-feature-discovery v0.17.3
 	sigs.k8s.io/node-feature-discovery/api/nfd v0.17.3
 	sigs.k8s.io/yaml v1.4.0
-	tags.cncf.io/container-device-interface v0.8.1
-	tags.cncf.io/container-device-interface/specs-go v0.8.0
+	tags.cncf.io/container-device-interface v1.0.1
+	tags.cncf.io/container-device-interface/specs-go v1.0.0
 )
 
 require (
@@ -65,7 +65,7 @@ require (
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/term v0.30.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/time v0.8.0 // indirect
