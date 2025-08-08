@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	flg "github.com/NVIDIA/k8s-device-plugin/internal/flags"
 	cli "github.com/urfave/cli/v2"
 )
 
@@ -66,6 +67,7 @@ type CommandLineFlags struct {
 	DeviceDiscoveryStrategy *string                 `json:"deviceDiscoveryStrategy"    yaml:"deviceDiscoveryStrategy"`
 	Plugin                  *PluginCommandLineFlags `json:"plugin,omitempty"           yaml:"plugin,omitempty"`
 	GFD                     *GFDCommandLineFlags    `json:"gfd,omitempty"              yaml:"gfd,omitempty"`
+	DeviceFilter            *flg.DeviceFilter       `json:"deviceFilter,omitempty"     yaml:"deviceFilter,omitempty"`
 }
 
 // PluginCommandLineFlags holds the list of command line flags specific to the device plugin.
@@ -168,6 +170,18 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.GFD.NoTimestamp, c, n)
 			case "machine-type-file":
 				updateFromCLIFlag(&f.GFD.MachineTypeFile, c, n)
+			}
+			// DeviceFilter specific flags
+			if f.DeviceFilter == nil {
+				f.DeviceFilter = &flg.DeviceFilter{}
+			}
+			switch n {
+			case "device-filter-enabled":
+				updateFromCLIFlag(&f.DeviceFilter.Enabled, c, n)
+			case "device-filter-select-devices":
+				updateFromCLIFlag(&f.DeviceFilter.SelectDevices, c, n)
+			case "device-filter-exclude-devices":
+				updateFromCLIFlag(&f.DeviceFilter.ExcludeDevices, c, n)
 			}
 		}
 	}
