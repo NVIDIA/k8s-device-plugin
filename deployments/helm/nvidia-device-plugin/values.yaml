@@ -33,6 +33,7 @@ failOnInitError: null
 deviceListStrategy: null
 deviceIDStrategy: null
 nvidiaDriverRoot: null
+gdrcopyEnabled: null
 gdsEnabled: null
 mofedEnabled: null
 deviceDiscoveryStrategy: null

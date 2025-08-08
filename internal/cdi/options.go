@@ -80,6 +80,13 @@ func WithVendor(vendor string) Option {
 	}
 }
 
+// WithGdrcopyEnabled provides and option to set whether a GDS CDI spec should be generated
+func WithGdrcopyEnabled(enabled bool) Option {
+	return func(c *cdiHandler) {
+		c.gdrcopyEnabled = enabled
+	}
+}
+
 // WithGdsEnabled provides and option to set whether a GDS CDI spec should be generated
 func WithGdsEnabled(enabled bool) Option {
 	return func(c *cdiHandler) {
