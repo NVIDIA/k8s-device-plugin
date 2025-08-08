@@ -57,8 +57,9 @@ type cdiHandler struct {
 
 	deviceListStrategies spec.DeviceListStrategies
 
-	gdsEnabled   bool
-	mofedEnabled bool
+	gdsEnabled     bool
+	mofedEnabled   bool
+	gdrcopyEnabled bool
 
 	imexChannels imex.Channels
 
@@ -134,6 +135,9 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 	}
 
 	var additionalModes []string
+	if c.gdrcopyEnabled {
+		additionalModes = append(additionalModes, "gdrcopy")
+	}
 	if c.gdsEnabled {
 		additionalModes = append(additionalModes, "gds")
 	}

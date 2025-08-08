@@ -160,6 +160,7 @@ func TestMarshalFlags(t *testing.T) {
 			output: `{
 				"migStrategy": null,
 				"failOnInitError": null,
+				"gdrcopyEnabled": null,
 				"gdsEnabled": null,
 				"mofedEnabled": null,
 				"useNodeFeatureAPI": null,
@@ -177,6 +178,7 @@ func TestMarshalFlags(t *testing.T) {
 			output: `{
 				"migStrategy": null,
 				"failOnInitError": null,
+				"gdrcopyEnabled": null,
 				"gdsEnabled": null,
 				"mofedEnabled": null,
 				"useNodeFeatureAPI": null,
@@ -201,6 +203,7 @@ func TestMarshalFlags(t *testing.T) {
 			output: `{
 				"migStrategy": null,
 				"failOnInitError": null,
+				"gdrcopyEnabled": null,
 				"gdsEnabled": null,
 				"mofedEnabled": null,
 				"useNodeFeatureAPI": null,

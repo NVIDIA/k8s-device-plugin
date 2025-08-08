@@ -60,6 +60,7 @@ type CommandLineFlags struct {
 	MpsRoot                 *string                 `json:"mpsRoot,omitempty"          yaml:"mpsRoot,omitempty"`
 	NvidiaDriverRoot        *string                 `json:"nvidiaDriverRoot,omitempty" yaml:"nvidiaDriverRoot,omitempty"`
 	NvidiaDevRoot           *string                 `json:"nvidiaDevRoot,omitempty"    yaml:"nvidiaDevRoot,omitempty"`
+	GDRCopyEnabled          *bool                   `json:"gdrcopyEnabled"             yaml:"gdrcopyEnabled"`
 	GDSEnabled              *bool                   `json:"gdsEnabled"                 yaml:"gdsEnabled"`
 	MOFEDEnabled            *bool                   `json:"mofedEnabled"               yaml:"mofedEnabled"`
 	UseNodeFeatureAPI       *bool                   `json:"useNodeFeatureAPI"          yaml:"useNodeFeatureAPI"`
@@ -126,6 +127,8 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.NvidiaDriverRoot, c, n)
 			case "dev-root", "nvidia-dev-root":
 				updateFromCLIFlag(&f.NvidiaDevRoot, c, n)
+			case "gdrcopy-enabled":
+				updateFromCLIFlag(&f.GDRCopyEnabled, c, n)
 			case "gds-enabled":
 				updateFromCLIFlag(&f.GDSEnabled, c, n)
 			case "mofed-enabled":
