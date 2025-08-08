@@ -351,6 +351,9 @@ func (plugin *nvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 	if *plugin.config.Flags.Plugin.PassDeviceSpecs {
 		response.Devices = append(response.Devices, plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDevRoot, requestIds)...)
 	}
+	if *plugin.config.Flags.GDRCopyEnabled {
+		response.Envs["NVIDIA_GDRCOPY"] = "enabled"
+	}
 	if *plugin.config.Flags.GDSEnabled {
 		response.Envs["NVIDIA_GDS"] = "enabled"
 	}
@@ -382,6 +385,9 @@ func (plugin *nvidiaDevicePlugin) updateResponseForCDI(response *pluginapi.Conta
 	}
 	if *plugin.config.Flags.MOFEDEnabled {
 		devices = append(devices, plugin.cdiHandler.QualifiedName("mofed", "all"))
+	}
+	if *plugin.config.Flags.GDRCopyEnabled {
+		devices = append(devices, plugin.cdiHandler.QualifiedName("gdrcopy", "all"))
 	}
 
 	if len(devices) == 0 {
