@@ -22,38 +22,32 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"golang.org/x/sys/unix"
 
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/cuda"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/root"
 )
 
 // NewDriverDiscoverer creates a discoverer for the libraries and binaries associated with a driver installation.
 // The supplied NVML Library is used to query the expected driver version.
 func (l *nvmllib) NewDriverDiscoverer() (discover.Discover, error) {
-	if r := l.nvmllib.Init(); r != nvml.SUCCESS {
-		return nil, fmt.Errorf("failed to initialize NVML: %v", r)
-	}
-	defer func() {
-		if r := l.nvmllib.Shutdown(); r != nvml.SUCCESS {
-			l.logger.Warningf("failed to shutdown NVML: %v", r)
-		}
-	}()
-
-	version, r := l.nvmllib.SystemGetDriverVersion()
-	if r != nvml.SUCCESS {
-		return nil, fmt.Errorf("failed to determine driver version: %v", r)
-	}
-
-	return (*nvcdilib)(l).newDriverVersionDiscoverer(version)
+	return (*nvcdilib)(l).newDriverVersionDiscoverer()
 }
 
-func (l *nvcdilib) newDriverVersionDiscoverer(version string) (discover.Discover, error) {
-	libraries, err := l.NewDriverLibraryDiscoverer(version)
+func (l *nvcdilib) newDriverVersionDiscoverer() (discover.Discover, error) {
+	version, err := l.driver.Version()
+	if err != nil || version == "" || version == "*.*" {
+		return nil, fmt.Errorf("failed to determine driver version (%q): %w", version, err)
+	}
+
+	libcudasoParentDirPath, err := l.driver.GetLibcudaParentDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get libcuda.so parent path: %w", err)
+	}
+
+	libraries, err := l.NewDriverLibraryDiscoverer(version, libcudasoParentDirPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create discoverer for driver libraries: %v", err)
 	}
@@ -81,7 +75,7 @@ func (l *nvcdilib) newDriverVersionDiscoverer(version string) (discover.Discover
 }
 
 // NewDriverLibraryDiscoverer creates a discoverer for the libraries associated with the specified driver version.
-func (l *nvcdilib) NewDriverLibraryDiscoverer(version string) (discover.Discover, error) {
+func (l *nvcdilib) NewDriverLibraryDiscoverer(version string, libcudaSoParentDirPath string) (discover.Discover, error) {
 	libraryPaths, err := getVersionLibs(l.logger, l.driver, version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get libraries for driver version: %v", err)
@@ -100,20 +94,32 @@ func (l *nvcdilib) NewDriverLibraryDiscoverer(version string) (discover.Discover
 	var discoverers []discover.Discover
 
 	driverDotSoSymlinksDiscoverer := discover.WithDriverDotSoSymlinks(
+		l.logger,
 		libraries,
 		version,
-		l.nvidiaCDIHookPath,
+		l.hookCreator,
 	)
 	discoverers = append(discoverers, driverDotSoSymlinksDiscoverer)
 
-	if l.HookIsSupported(HookEnableCudaCompat) {
-		// TODO: The following should use the version directly.
-		cudaCompatLibHookDiscoverer := discover.NewCUDACompatHookDiscoverer(l.logger, l.nvidiaCDIHookPath, l.driver)
-		discoverers = append(discoverers, cudaCompatLibHookDiscoverer)
-	}
+	// TODO: The following should use the version directly.
+	cudaCompatLibHookDiscoverer := discover.NewCUDACompatHookDiscoverer(l.logger, l.hookCreator, version)
+	discoverers = append(discoverers, cudaCompatLibHookDiscoverer)
 
-	updateLDCache, _ := discover.NewLDCacheUpdateHook(l.logger, libraries, l.nvidiaCDIHookPath, l.ldconfigPath)
+	updateLDCache, _ := discover.NewLDCacheUpdateHook(l.logger, libraries, l.hookCreator, l.ldconfigPath)
 	discoverers = append(discoverers, updateLDCache)
+
+	disableDeviceNodeModification := l.hookCreator.Create(DisableDeviceNodeModificationHook)
+	discoverers = append(discoverers, disableDeviceNodeModification)
+
+	libCudaSoParentDirectoryPath, err := l.driver.GetLibcudaParentDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get libcuda.so parent directory path: %w", err)
+	}
+	environmentVariable := &discover.EnvVar{
+		Name:  "NVIDIA_CTK_LIBCUDA_DIR",
+		Value: libCudaSoParentDirectoryPath,
+	}
+	discoverers = append(discoverers, environmentVariable)
 
 	d := discover.Merge(discoverers...)
 
@@ -205,22 +211,10 @@ func NewDriverBinariesDiscoverer(logger logger.Interface, driverRoot string) dis
 func getVersionLibs(logger logger.Interface, driver *root.Driver, version string) ([]string, error) {
 	logger.Infof("Using driver version %v", version)
 
-	libCudaPaths, err := cuda.New(
-		driver.Libraries(),
-	).Locate("." + version)
+	libraries, err := driver.DriverLibraryLocator()
 	if err != nil {
-		return nil, fmt.Errorf("failed to locate libcuda.so.%v: %v", version, err)
+		return nil, fmt.Errorf("failed to get driver library locator: %w", err)
 	}
-	libRoot := filepath.Dir(libCudaPaths[0])
-
-	libraries := lookup.NewFileLocator(
-		lookup.WithLogger(logger),
-		lookup.WithSearchPaths(
-			libRoot,
-			filepath.Join(libRoot, "vdpau"),
-		),
-		lookup.WithOptional(true),
-	)
 
 	libs, err := libraries.Locate("*.so." + version)
 	if err != nil {
