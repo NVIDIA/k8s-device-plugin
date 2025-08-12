@@ -37,11 +37,13 @@ const (
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
 func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
+	// Apply environment variable overrides for backward compatibility
+	healthConfig := r.config.Health
 	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
-	if disableHealthChecks == "all" {
-		disableHealthChecks = allHealthChecks
-	}
-	if strings.Contains(disableHealthChecks, "xids") {
+	healthConfig.ApplyEnvironmentOverrides(disableHealthChecks)
+
+	// Check if health checks are disabled
+	if healthConfig.GetDisabled() {
 		return nil
 	}
 
@@ -59,27 +61,6 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		}
 	}()
 
-	// FIXME: formalize the full list and document it.
-	// http://docs.nvidia.com/deploy/xid-errors/index.html#topic_4
-	// Application errors: the GPU should still be healthy
-	ignoredXids := []uint64{
-		13,  // Graphics Engine Exception
-		31,  // GPU memory page fault
-		43,  // GPU stopped processing
-		45,  // Preemptive cleanup, due to previous errors
-		68,  // Video processor exception
-		109, // Context Switch Timeout Error
-	}
-
-	skippedXids := make(map[uint64]bool)
-	for _, id := range ignoredXids {
-		skippedXids[id] = true
-	}
-
-	for _, additionalXid := range getAdditionalXids(disableHealthChecks) {
-		skippedXids[additionalXid] = true
-	}
-
 	eventSet, ret := r.nvml.EventSetCreate()
 	if ret != nvml.SUCCESS {
 		return fmt.Errorf("failed to create event set: %v", ret)
@@ -92,7 +73,11 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 	deviceIDToGiMap := make(map[string]uint32)
 	deviceIDToCiMap := make(map[string]uint32)
 
-	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
+	// Get event mask from health config
+	eventMask, err := healthConfig.GetEventMask()
+	if err != nil {
+		return fmt.Errorf("failed to get event mask from health config: %v", err)
+	}
 	for _, d := range devices {
 		uuid, gi, ci, err := r.getDevicePlacement(d)
 		if err != nil {
@@ -152,8 +137,15 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 			continue
 		}
 
-		if skippedXids[e.EventData] {
-			klog.Infof("Skipping event %+v", e)
+		// Use health config to determine if XID should be ignored
+		if healthConfig.IsXIDIgnored(e.EventData) {
+			klog.Infof("Skipping ignored XID event %+v", e)
+			continue
+		}
+
+		// Check if XID should be treated as critical
+		if !healthConfig.IsXIDCritical(e.EventData) {
+			klog.Infof("Skipping non-critical XID event %+v", e)
 			continue
 		}
 
@@ -186,31 +178,6 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		klog.Infof("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
 		unhealthy <- d
 	}
-}
-
-// getAdditionalXids returns a list of additional Xids to skip from the specified string.
-// The input is treaded as a comma-separated string and all valid uint64 values are considered as Xid values. Invalid values
-// are ignored.
-func getAdditionalXids(input string) []uint64 {
-	if input == "" {
-		return nil
-	}
-
-	var additionalXids []uint64
-	for _, additionalXid := range strings.Split(input, ",") {
-		trimmed := strings.TrimSpace(additionalXid)
-		if trimmed == "" {
-			continue
-		}
-		xid, err := strconv.ParseUint(trimmed, 10, 64)
-		if err != nil {
-			klog.Infof("Ignoring malformed Xid value %v: %v", trimmed, err)
-			continue
-		}
-		additionalXids = append(additionalXids, xid)
-	}
-
-	return additionalXids
 }
 
 // getDevicePlacement returns the placement of the specified device.

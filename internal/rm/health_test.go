@@ -17,58 +17,97 @@
 package rm
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
-func TestGetAdditionalXids(t *testing.T) {
+func TestHealthConfigEnvironmentOverrides(t *testing.T) {
 	testCases := []struct {
-		input    string
-		expected []uint64
+		name          string
+		input         string
+		initialHealth spec.Health
+		expectedXIDs  []uint64
+		expectDisabled bool
 	}{
-		{},
 		{
-			input: ",",
+			name:            "empty input",
+			expectedXIDs:    []uint64{13, 31, 43, 45, 68, 109},
 		},
 		{
-			input: "not-an-int",
+			name:  "disable all with 'all'",
+			input: "all",
+			expectedXIDs:  []uint64{13, 31, 43, 45, 68, 109},
+			expectDisabled: true,
 		},
 		{
-			input:    "68",
-			expected: []uint64{68},
+			name:  "disable all with 'xids'",
+			input: "xids",
+			expectedXIDs:  []uint64{13, 31, 43, 45, 68, 109},
+			expectDisabled: true,
 		},
 		{
-			input: "-68",
+			name:         "comma only",
+			input:        ",",
+			expectedXIDs: []uint64{13, 31, 43, 45, 68, 109},
 		},
 		{
-			input:    "68  ",
-			expected: []uint64{68},
+			name:         "non-numeric value",
+			input:        "not-an-int",
+			expectedXIDs: []uint64{13, 31, 43, 45, 68, 109},
 		},
 		{
-			input:    "68,",
-			expected: []uint64{68},
+			name:         "single XID",
+			input:        "68",
+			expectedXIDs: []uint64{13, 31, 43, 45, 68, 109},
 		},
 		{
-			input:    ",68",
-			expected: []uint64{68},
+			name:         "negative number ignored",
+			input:        "-68",
+			expectedXIDs: []uint64{13, 31, 43, 45, 68, 109},
 		},
 		{
-			input:    "68,67",
-			expected: []uint64{68, 67},
+			name:         "XID with spaces",
+			input:        "68  ",
+			expectedXIDs: []uint64{13, 31, 43, 45, 68, 109},
 		},
 		{
-			input:    "68,not-an-int,67",
-			expected: []uint64{68, 67},
+			name:         "XID with trailing comma",
+			input:        "68,",
+			expectedXIDs: []uint64{13, 31, 43, 45, 68, 109},
+		},
+		{
+			name:         "XID with leading comma",
+			input:        ",68",
+			expectedXIDs: []uint64{13, 31, 43, 45, 68, 109},
+		},
+		{
+			name:         "multiple XIDs",
+			input:        "200,201",
+			expectedXIDs: []uint64{13, 31, 43, 45, 68, 109, 200, 201},
+		},
+		{
+			name:         "mixed valid and invalid XIDs",
+			input:        "200,not-an-int,201",
+			expectedXIDs: []uint64{13, 31, 43, 45, 68, 109, 200, 201},
 		},
 	}
 
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("test case %d", i), func(t *testing.T) {
-			xids := getAdditionalXids(tc.input)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			health := tc.initialHealth
+			health.ApplyEnvironmentOverrides(tc.input)
 
-			require.EqualValues(t, tc.expected, xids)
+			if tc.expectDisabled {
+				require.True(t, health.GetDisabled())
+			} else {
+				require.False(t, health.GetDisabled())
+				// Compare ignored XIDs (order doesn't matter)
+				actualXIDs := health.GetIgnoredXIDs()
+				require.ElementsMatch(t, tc.expectedXIDs, actualXIDs)
+			}
 		})
 	}
 }

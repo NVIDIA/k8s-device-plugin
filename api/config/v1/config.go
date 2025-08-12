@@ -36,6 +36,7 @@ type Config struct {
 	Flags     Flags     `json:"flags,omitempty"     yaml:"flags,omitempty"`
 	Resources Resources `json:"resources,omitempty" yaml:"resources,omitempty"`
 	Sharing   Sharing   `json:"sharing,omitempty"   yaml:"sharing,omitempty"`
+	Health    Health    `json:"health,omitempty"    yaml:"health,omitempty"`
 	Imex      Imex      `json:"imex,omitempty"      yaml:"imex,omitempty"`
 }
 

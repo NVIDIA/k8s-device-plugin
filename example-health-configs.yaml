@@ -1,0 +1,65 @@
+# NVIDIA Device Plugin Configuration - Health Check Examples
+
+# NVIDIA Default Configuration (matches current behavior)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvidia-plugin-config-nvidia
+data:
+  config.yaml: |
+    version: v1
+    health:
+      disabled: false
+      eventTypes:
+        - EventTypeXidCriticalError
+        - EventTypeDoubleBitEccError
+        - EventTypeSingleBitEccError
+      ignoredXIDs: [13, 31, 43, 45, 68, 109]
+      criticalXIDs: all
+
+---
+
+# GKE Compatible Configuration 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvidia-plugin-config-gke
+data:
+  config.yaml: |
+    version: v1
+    health:
+      disabled: false
+      eventTypes: [EventTypeXidCriticalError]
+      ignoredXIDs: []
+      criticalXIDs: [48]
+
+---
+
+# Disabled Health Checks Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvidia-plugin-config-no-health
+data:
+  config.yaml: |
+    version: v1
+    health:
+      disabled: true
+
+---
+
+# Custom Health Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvidia-plugin-config-custom
+data:
+  config.yaml: |
+    version: v1
+    health:
+      disabled: false
+      eventTypes:
+        - EventTypeXidCriticalError
+        - EventTypeDoubleBitEccError
+      ignoredXIDs: [13, 31, 43, 45, 68, 109, 200, 201]
+      criticalXIDs: [48, 49, 64]
