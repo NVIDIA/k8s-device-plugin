@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ARG GOLANG_VERSION=1.22.6
-FROM nvcr.io/nvidia/cuda:12.9.1-base-ubi9 AS build
+FROM nvcr.io/nvidia/cuda:13.0.0-base-ubi9 AS build
 
 RUN yum install -y \
     wget make git gcc \
