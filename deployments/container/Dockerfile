@@ -44,12 +44,6 @@ ARG VERSION="N/A"
 ARG GIT_COMMIT="unknown"
 RUN make PREFIX=/artifacts cmds
 
-# We use the ubi9-minimal image as a reference image in removing unneeded dependencies.
-FROM redhat/ubi9-minimal:latest AS minimal
-
-RUN rpm -qa --queryformat='^%{NAME}-\[0-9\].*\.%{ARCH}$\n' | sort -u > /tmp/package-names.minimal
-RUN rpm -qa | sort -u > /tmp/package-list.minimal
-
 FROM nvcr.io/nvidia/distroless/go:v3.1.11-dev
 
 USER 0:0
