@@ -19,9 +19,6 @@ REGISTRY ?= nvcr.io/nvidia
 
 VERSION ?= v0.17.1
 
-# vVERSION represents the version with a guaranteed v-prefix
-vVERSION := v$(VERSION:v%=%)
-
 GOLANG_VERSION := $(shell ./hack/golang-version.sh)
 
 BUILDIMAGE_TAG ?= devel-go$(GOLANG_VERSION)
