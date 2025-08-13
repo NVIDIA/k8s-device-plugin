@@ -31,7 +31,6 @@ DOCKERFILE_CONTEXT = deployments/devel
 .build-image:
 	$(DOCKER) build \
 		--progress=plain \
-		--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
 		--tag $(BUILDIMAGE) \
 		-f $(DOCKERFILE_DEVEL) \
 		$(DOCKERFILE_CONTEXT)
