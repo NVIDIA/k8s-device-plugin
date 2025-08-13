@@ -30,7 +30,7 @@ jobs:
       golang_version: ${{ steps.golang_version.outputs.golang_version }}
     steps:
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Generate Commit Short SHA
       id: version
