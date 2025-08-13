@@ -135,8 +135,10 @@ spec:
         name: nvidia-device-plugin-ctr
         command: ["nvidia-device-plugin"]
         env:
+        {{- if .Values.mps.enabled }}
           - name: MPS_ROOT
             value: {{ .Values.mps.root }}
+        {{- end }}
         {{- if typeIs "string" .Values.migStrategy }}
           - name: MIG_STRATEGY
             value: {{ .Values.migStrategy }}
@@ -205,6 +207,7 @@ spec:
             mountPath: /driver-root
             readOnly: true
         {{- end }}
+        {{- if .Values.mps.enabled }}
           # The MPS /dev/shm is needed to allow for MPS daemon health-checking.
           - name: mps-shm
             mountPath: /dev/shm
@@ -212,6 +215,7 @@ spec:
             mountPath: /mps
           - name: cdi-root
             mountPath: /var/run/cdi
+        {{- end }}
         {{- if $options.hasConfigMap }}
           - name: available-configs
             mountPath: /available-configs
@@ -226,6 +230,7 @@ spec:
         - name: device-plugin
           hostPath:
             path: /var/lib/kubelet/device-plugins
+        {{- if .Values.mps.enabled }}
         - name: mps-root
           hostPath:
             path: {{ .Values.mps.root }}
@@ -233,15 +238,16 @@ spec:
         - name: mps-shm
           hostPath:
             path: {{ .Values.mps.root }}/shm
+        - name: cdi-root
+          hostPath:
+            path: /var/run/cdi
+            type: DirectoryOrCreate
+        {{- end }}
        {{- if typeIs "string" .Values.nvidiaDriverRoot }}
         - name: driver-root
           hostPath:
             path: {{ .Values.nvidiaDriverRoot }}
         {{- end }}
-        - name: cdi-root
-          hostPath:
-            path: /var/run/cdi
-            type: DirectoryOrCreate
       {{- if $options.hasConfigMap }}
         - name: available-configs
           configMap:
