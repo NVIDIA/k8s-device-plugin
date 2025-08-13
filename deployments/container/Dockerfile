@@ -14,6 +14,18 @@
 
 FROM golang:1.24.6 AS base
 
+# The devel image is used for local development.
+FROM base AS devel
+
+WORKDIR /work
+COPY * .
+
+RUN make install-tools
+
+# We need to set the /work directory as a safe directory.
+# This allows git commands to run in the container.
+RUN git config --file=/.gitconfig --add safe.directory /work
+
 # The build image is used to build the device plugin applications.
 FROM base AS build
 

@@ -24,7 +24,7 @@ install-tools: download
 DOCKER ?= docker
 -include $(CURDIR)/versions.mk
 
-DOCKERFILE_DEVEL = deployments/devel/Dockerfile
+DOCKERFILE_DEVEL = deployments/container/Dockerfile
 DOCKERFILE_CONTEXT = deployments/devel
 
 .PHONY: .build-image
@@ -32,6 +32,7 @@ DOCKERFILE_CONTEXT = deployments/devel
 	$(DOCKER) build \
 		--progress=plain \
 		--tag $(BUILDIMAGE) \
+		--target=devel \
 		-f $(DOCKERFILE_DEVEL) \
 		$(DOCKERFILE_CONTEXT)
 
