@@ -12,29 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG GOLANG_VERSION=1.22.6
-FROM nvcr.io/nvidia/cuda:12.9.1-base-ubi9 AS build
+FROM golang:1.24.6 AS base
 
-RUN yum install -y \
-    wget make git gcc \
-     && \
-    rm -rf /var/cache/yum/*
+# The devel image is used for local development.
+FROM base AS devel
 
-ARG GOLANG_VERSION=x.x.x
-RUN set -eux; \
-    \
-    arch="$(uname -m)"; \
-    case "${arch##*-}" in \
-        x86_64 | amd64) ARCH='amd64' ;; \
-        ppc64el | ppc64le) ARCH='ppc64le' ;; \
-        aarch64) ARCH='arm64' ;; \
-        *) echo "unsupported architecture" ; exit 1 ;; \
-    esac; \
-    wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${ARCH}.tar.gz \
-    | tar -C /usr/local -xz
+WORKDIR /work
+COPY * .
 
-ENV GOPATH=/go
-ENV PATH=$GOPATH/bin:/usr/local/go/bin:$PATH
+RUN make install-tools
+
+# We need to set the /work directory as a safe directory.
+# This allows git commands to run in the container.
+RUN git config --file=/.gitconfig --add safe.directory /work
+
+# The build image is used to build the device plugin applications.
+FROM base AS build
 
 WORKDIR /build
 COPY . .
@@ -44,13 +37,7 @@ ARG VERSION="N/A"
 ARG GIT_COMMIT="unknown"
 RUN make PREFIX=/artifacts cmds
 
-# We use the ubi9-minimal image as a reference image in removing unneeded dependencies.
-FROM redhat/ubi9-minimal:latest AS minimal
-
-RUN rpm -qa --queryformat='^%{NAME}-\[0-9\].*\.%{ARCH}$\n' | sort -u > /tmp/package-names.minimal
-RUN rpm -qa | sort -u > /tmp/package-list.minimal
-
-FROM nvcr.io/nvidia/distroless/go:v3.1.11-dev
+FROM nvcr.io/nvidia/distroless/go:v3.1.11-dev AS application
 
 USER 0:0
 SHELL ["/busybox/sh", "-c"]

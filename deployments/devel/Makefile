@@ -24,15 +24,15 @@ install-tools: download
 DOCKER ?= docker
 -include $(CURDIR)/versions.mk
 
-DOCKERFILE_DEVEL = deployments/devel/Dockerfile
+DOCKERFILE_DEVEL = deployments/container/Dockerfile
 DOCKERFILE_CONTEXT = deployments/devel
 
 .PHONY: .build-image
 .build-image:
 	$(DOCKER) build \
 		--progress=plain \
-		--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
 		--tag $(BUILDIMAGE) \
+		--target=devel \
 		-f $(DOCKERFILE_DEVEL) \
 		$(DOCKERFILE_CONTEXT)
 
