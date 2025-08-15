@@ -99,7 +99,15 @@ Also note the configuration instructions for:
 Remembering to restart each runtime after applying the configuration changes.
 
 If the `nvidia` runtime should be set as the default runtime (with non-cri docker versions, for example), the `--set-as-default` argument
-must also be included in the commands above. If this is not done, a RuntimeClass needs to be defined.
+must also be included in the commands above. If this is not done, a RuntimeClass needs to be defined:
+
+```yaml
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: nvidia
+handler: nvidia
+```
 
 ##### Notes on `CRI-O` configuration
 
