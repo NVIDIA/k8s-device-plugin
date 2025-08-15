@@ -32,6 +32,7 @@ const (
 	// disabled entirely. If set, the envvar is treated as a comma-separated list of Xids to ignore. Note that
 	// this is in addition to the Application errors that are already ignored.
 	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
+	envEnableHealthChecks  = "DP_ENABLE_HEALTHCHECKS"
 	allHealthChecks        = "xids"
 )
 
@@ -44,6 +45,8 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 	if strings.Contains(disableHealthChecks, "xids") {
 		return nil
 	}
+
+	enableHealthChecks := strings.ToLower(os.Getenv(envEnableHealthChecks))
 
 	ret := r.nvml.Init()
 	if ret != nvml.SUCCESS {
@@ -79,6 +82,12 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 	for _, additionalXid := range getAdditionalXids(disableHealthChecks) {
 		skippedXids[additionalXid] = true
 	}
+
+	for _, additionalXid := range getAdditionalXids(enableHealthChecks) {
+		delete(skippedXids, additionalXid)
+	}
+
+	klog.Infof("Health checks are disabled for xids: %v", skippedXids)
 
 	eventSet, ret := r.nvml.EventSetCreate()
 	if ret != nvml.SUCCESS {
