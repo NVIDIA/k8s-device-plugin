@@ -37,6 +37,7 @@ type Config struct {
 	Resources Resources `json:"resources,omitempty" yaml:"resources,omitempty"`
 	Sharing   Sharing   `json:"sharing,omitempty"   yaml:"sharing,omitempty"`
 	Imex      Imex      `json:"imex,omitempty"      yaml:"imex,omitempty"`
+	Health    *Health   `json:"health,omitempty"    yaml:"health,omitempty"`
 }
 
 // NewConfig builds out a Config struct from a config file (or command line flags).
@@ -75,6 +76,16 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 	// makes the semantics of a request unclear.
 	if config.Sharing.MPS != nil {
 		config.Sharing.MPS.FailRequestsGreaterThanOne = true
+	}
+
+	// Initialize health configuration with defaults if not specified
+	if config.Health == nil {
+		config.Health = DefaultHealth()
+	}
+
+	// Validate health configuration
+	if err := config.Health.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid health configuration: %v", err)
 	}
 
 	return config, nil
