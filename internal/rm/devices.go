@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/klog/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
@@ -73,7 +74,7 @@ func BuildDevice(index string, d deviceInfo) (*Device, error) {
 
 	totalMemory, err := d.GetTotalMemory()
 	if err != nil {
-		return nil, fmt.Errorf("error getting device memory: %w", err)
+		klog.Warningf("Ignoring error getting device memory: %v", err)
 	}
 
 	computeCapability, err := d.GetComputeCapability()
