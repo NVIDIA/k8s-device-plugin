@@ -25,7 +25,7 @@ import (
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
-	nfdclient "sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned"
+	nfdclientset "sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned"
 	"sigs.k8s.io/yaml"
 )
 
@@ -35,7 +35,7 @@ type Collector interface {
 
 type Config struct {
 	Clientset kubernetes.Interface
-	NfdClient *nfdclient.Clientset
+	NfdClient *nfdclientset.Clientset
 
 	artifactDir string
 	namespace   string
