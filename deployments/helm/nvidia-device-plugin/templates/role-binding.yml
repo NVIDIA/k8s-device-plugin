@@ -1,6 +1,9 @@
 ---
+<<<<<<< HEAD
 {{- $options := (include "nvidia-device-plugin.options" . | fromJson) }}
 {{- if or $options.hasConfigMap ( and .Values.gfd.enabled .Values.nfd.enableNodeFeatureApi ) }}
+=======
+>>>>>>> 81a0e5e8f (Always use dedicated service account in device-plugin helm chart)
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -15,4 +18,3 @@ roleRef:
   kind: ClusterRole
   name: {{ include "nvidia-device-plugin.fullname" . }}-role
   apiGroup: rbac.authorization.k8s.io
-{{- end }}
