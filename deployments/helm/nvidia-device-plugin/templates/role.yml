@@ -1,6 +1,4 @@
 ---
-{{- $options := (include "nvidia-device-plugin.options" . | fromJson) }}
-{{- if or $options.hasConfigMap ( and .Values.gfd.enabled .Values.nfd.enableNodeFeatureApi ) }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -16,4 +14,3 @@ rules:
     resources: ["nodefeatures"]
     verbs: ["get", "list", "watch", "create", "update"]
   {{- end }}
-{{- end }}
