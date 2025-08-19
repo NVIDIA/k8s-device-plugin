@@ -60,6 +60,7 @@ type CommandLineFlags struct {
 	MpsRoot                 *string                 `json:"mpsRoot,omitempty"          yaml:"mpsRoot,omitempty"`
 	NvidiaDriverRoot        *string                 `json:"nvidiaDriverRoot,omitempty" yaml:"nvidiaDriverRoot,omitempty"`
 	NvidiaDevRoot           *string                 `json:"nvidiaDevRoot,omitempty"    yaml:"nvidiaDevRoot,omitempty"`
+	GDRCopyEnabled          *bool                   `json:"gdrcopyEnabled"             yaml:"gdrcopyEnabled"`
 	GDSEnabled              *bool                   `json:"gdsEnabled"                 yaml:"gdsEnabled"`
 	MOFEDEnabled            *bool                   `json:"mofedEnabled"               yaml:"mofedEnabled"`
 	UseNodeFeatureAPI       *bool                   `json:"useNodeFeatureAPI"          yaml:"useNodeFeatureAPI"`

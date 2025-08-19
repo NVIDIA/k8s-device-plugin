@@ -101,6 +101,11 @@ func main() {
 			EnvVars: []string{"DEVICE_ID_STRATEGY"},
 		},
 		&cli.BoolFlag{
+			Name:    "gdrcopy-enabled",
+			Usage:   "ensure that containers are started with NVIDIA_GDRCOPY=enabled",
+			EnvVars: []string{"GDRCOPY_ENABLED"},
+		},
+		&cli.BoolFlag{
 			Name:    "gds-enabled",
 			Usage:   "ensure that containers are started with NVIDIA_GDS=enabled",
 			EnvVars: []string{"GDS_ENABLED"},
