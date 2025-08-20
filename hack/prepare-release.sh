@@ -130,9 +130,19 @@ pre_semver=${previous_version:1}
 # Modify files in the repo to point to new release
 #
 # Darwin or Linux
-DOCKER="docker"
 if [[ "$(uname)" == "Darwin" ]]; then
-    SED="$DOCKER run -i --rm -v $(PWD):$(PWD) -w $(PWD) alpine:latest sed"
+    # Try gsed first (GNU sed installed via Homebrew)
+    if command -v gsed &>/dev/null; then
+        SED="gsed"
+    # Fall back to Docker if gsed not available
+    elif docker version &>/dev/null; then
+        SED="docker run -i --rm -v $(PWD):$(PWD) -w $(PWD) alpine:latest sed"
+    else
+        echo "ERROR: Neither gsed nor Docker is available on macOS."
+        echo "Install GNU sed with: brew install gnu-sed"
+        echo "Or ensure Docker Desktop is running."
+        exit 1
+    fi
 else
     SED="sed"
 fi
@@ -175,9 +185,15 @@ git commit -s -m "Bump version for $release release"
 echo Patching deployments to refer to $semver
 find deployments/static -type f \( -name "*.yaml" -o -name "*.yml" -o -name "*.template" \) -type f ! -name "nfd.yaml" \
     -exec $SED -E -i \
-    -e s",^([[:space:]]+)app.kubernetes.io\/version:.+$,\1app.kubernetes.io\/version: $semver," \
-    -e s",^([[:space:]]+)- image:.+$,\1- image: $container_image," \
+    -e s",^([[:space:]]*)app.kubernetes.io\/version:.+$,\1app.kubernetes.io\/version: $semver," \
+    -e s",^([[:space:]]*)- image:.+$,\1- image: $container_image," \
     {} +
+
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to patch deployments/static files"
+    echo "Please check if Docker is running or install GNU sed with: brew install gnu-sed"
+    exit 1
+fi
 
 # Patch deployments/helm/Chart.yaml
 echo Patching deployments/helm/Chart.yaml to refer to $semver
