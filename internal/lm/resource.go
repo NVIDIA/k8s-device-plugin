@@ -21,6 +21,8 @@ import (
 	"regexp"
 	"strings"
 
+	"k8s.io/klog/v2"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 )
@@ -46,7 +48,7 @@ func NewGPUResourceLabeler(config *spec.Config, device resource.Device, count in
 
 	totalMemoryMiB, err := device.GetTotalMemoryMiB()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get memory info for device: %v", err)
+		klog.Warningf("Ignoring error getting memory info for device: %v", err)
 	}
 
 	resourceLabeler := newResourceLabeler(fullGPUResourceName, config)
