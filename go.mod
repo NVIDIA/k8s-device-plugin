@@ -6,8 +6,8 @@ toolchain go1.24.1
 
 require (
 	github.com/NVIDIA/go-gpuallocator v0.6.0
-	github.com/NVIDIA/go-nvlib v0.7.4
-	github.com/NVIDIA/go-nvml v0.12.9-0
+	github.com/NVIDIA/go-nvlib v0.8.0
+	github.com/NVIDIA/go-nvml v0.13.0-0
 	github.com/NVIDIA/nvidia-container-toolkit v1.17.8
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/google/renameio v1.0.1
