@@ -23,12 +23,12 @@ Changes:
 package values
 
 import (
+	"fmt"
 	"io"
 	"net/url"
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/getter"
@@ -65,7 +65,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 		}
 
 		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
-			return nil, errors.Wrapf(err, "failed to parse %s", filePath)
+			return nil, fmt.Errorf("failed to parse %s: %w", filePath, err)
 		}
 		// Merge with the previous map
 		base = MergeMaps(base, currentMap)
@@ -74,21 +74,21 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 	// User specified a value via --set-json
 	for _, value := range opts.JSONValues {
 		if err := strvals.ParseJSON(value, base); err != nil {
-			return nil, errors.Errorf("failed parsing --set-json data %s", value)
+			return nil, fmt.Errorf("failed parsing --set-json data %s: %w", value, err)
 		}
 	}
 
 	// User specified a value via --set
 	for _, value := range opts.Values {
 		if err := strvals.ParseInto(value, base); err != nil {
-			return nil, errors.Wrap(err, "failed parsing --set data")
+			return nil, fmt.Errorf("failed parsing --set data: %w", err)
 		}
 	}
 
 	// User specified a value via --set-string
 	for _, value := range opts.StringValues {
 		if err := strvals.ParseIntoString(value, base); err != nil {
-			return nil, errors.Wrap(err, "failed parsing --set-string data")
+			return nil, fmt.Errorf("failed parsing --set-string data: %w", err)
 		}
 	}
 
@@ -102,7 +102,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 			return string(bytes), err
 		}
 		if err := strvals.ParseIntoFile(value, base, reader); err != nil {
-			return nil, errors.Wrap(err, "failed parsing --set-file data")
+			return nil, fmt.Errorf("failed parsing --set-file data: %w", err)
 		}
 	}
 
