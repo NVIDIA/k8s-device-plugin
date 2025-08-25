@@ -15,7 +15,7 @@ require (
 	github.com/opencontainers/selinux v1.12.0
 	github.com/prometheus/procfs v0.17.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.0
 	github.com/urfave/cli/v2 v2.27.7
 	golang.org/x/mod v0.27.0
 	google.golang.org/grpc v1.69.0
