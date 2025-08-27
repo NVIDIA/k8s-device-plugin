@@ -19,7 +19,7 @@ github.com/MakeNowJust/heredoc
 # github.com/Masterminds/goutils v1.1.1
 ## explicit
 github.com/Masterminds/goutils
-# github.com/Masterminds/semver/v3 v3.3.0
+# github.com/Masterminds/semver/v3 v3.4.0
 ## explicit; go 1.21
 github.com/Masterminds/semver/v3
 # github.com/Masterminds/sprig/v3 v3.3.0
@@ -169,7 +169,7 @@ github.com/go-errors/errors
 # github.com/go-gorp/gorp/v3 v3.1.0
 ## explicit; go 1.18
 github.com/go-gorp/gorp/v3
-# github.com/go-logr/logr v1.4.2
+# github.com/go-logr/logr v1.4.3
 ## explicit; go 1.18
 github.com/go-logr/logr
 github.com/go-logr/logr/funcr
@@ -397,7 +397,7 @@ github.com/munnerz/goautoneg
 # github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f
 ## explicit
 github.com/mxk/go-flowrate/flowrate
-# github.com/onsi/ginkgo/v2 v2.23.4
+# github.com/onsi/ginkgo/v2 v2.25.1
 ## explicit; go 1.23.0
 github.com/onsi/ginkgo/v2
 github.com/onsi/ginkgo/v2/config
@@ -419,7 +419,7 @@ github.com/onsi/ginkgo/v2/internal/parallel_support
 github.com/onsi/ginkgo/v2/internal/testingtproxy
 github.com/onsi/ginkgo/v2/reporters
 github.com/onsi/ginkgo/v2/types
-# github.com/onsi/gomega v1.38.0
+# github.com/onsi/gomega v1.38.2
 ## explicit; go 1.23.0
 github.com/onsi/gomega
 github.com/onsi/gomega/format
@@ -514,10 +514,10 @@ go.uber.org/automaxprocs/maxprocs
 # go.yaml.in/yaml/v2 v2.4.2
 ## explicit; go 1.15
 go.yaml.in/yaml/v2
-# go.yaml.in/yaml/v3 v3.0.3
-## explicit; go 1.22
+# go.yaml.in/yaml/v3 v3.0.4
+## explicit; go 1.16
 go.yaml.in/yaml/v3
-# golang.org/x/crypto v0.40.0
+# golang.org/x/crypto v0.41.0
 ## explicit; go 1.23.0
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
@@ -542,7 +542,7 @@ golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 ## explicit; go 1.20
 golang.org/x/exp/constraints
 golang.org/x/exp/slices
-# golang.org/x/net v0.41.0
+# golang.org/x/net v0.43.0
 ## explicit; go 1.23.0
 golang.org/x/net/context
 golang.org/x/net/html
@@ -565,16 +565,16 @@ golang.org/x/oauth2/internal
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/syncmap
-# golang.org/x/sys v0.34.0
+# golang.org/x/sys v0.35.0
 ## explicit; go 1.23.0
 golang.org/x/sys/cpu
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/term v0.33.0
+# golang.org/x/term v0.34.0
 ## explicit; go 1.23.0
 golang.org/x/term
-# golang.org/x/text v0.27.0
+# golang.org/x/text v0.28.0
 ## explicit; go 1.23.0
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
@@ -607,7 +607,7 @@ golang.org/x/text/unicode/norm
 # golang.org/x/time v0.9.0
 ## explicit; go 1.18
 golang.org/x/time/rate
-# golang.org/x/tools v0.34.0
+# golang.org/x/tools v0.36.0
 ## explicit; go 1.23.0
 golang.org/x/tools/cover
 golang.org/x/tools/go/ast/edge
@@ -625,7 +625,7 @@ google.golang.org/grpc/internal
 google.golang.org/grpc/internal/status
 google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/status
-# google.golang.org/protobuf v1.36.6
+# google.golang.org/protobuf v1.36.7
 ## explicit; go 1.22
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
