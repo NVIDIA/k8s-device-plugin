@@ -1,5 +1,10 @@
 ## Changelog
 
+### Version v0.17.3
+- Bump nvidia-container-toolkit to 1.17.8
+- Bump github.com/NVIDIA/go-nvml from 0.12.4-1 to 0.12.9-0
+- Bump golang version to 1.23.11
+
 ### Version v0.17.2
 - Update nvidia.com/gpu.product label to include blackwell architectures
 - Update documentation to indicate that nvidia.com/gpu.memory label is in MiB instead of MB
