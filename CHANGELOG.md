@@ -1,5 +1,11 @@
 ## Changelog
 
+## Version v0.17.4
+- Bump github.com/NVIDIA/go-nvlib from 0.7.2 to 0.7.4
+- Bump golang version to 1.23.12
+- Ensure that directory volumes have Directory type
+- Ignore errors getting device memory using NVML
+
 ### Version v0.17.3
 - Bump nvidia-container-toolkit to 1.17.8
 - Bump github.com/NVIDIA/go-nvml from 0.12.4-1 to 0.12.9-0
