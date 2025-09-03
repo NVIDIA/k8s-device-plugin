@@ -53,6 +53,13 @@ RUN rpm -qa | sort -u > /tmp/package-list.minimal
 # We define the following image as a base image and remove unneeded packages.
 FROM nvcr.io/nvidia/cuda:13.0.0-base-ubi9 AS base
 
+# Upgrade packages here that are required to resolve CVEs
+ARG CVE_UPDATES
+RUN if [ -n "${CVE_UPDATES}" ]; then \
+        dnf update -y ${CVE_UPDATES} && \
+        rm -rf /var/cache/yum/*; \
+    fi
+
 WORKDIR /cleanup
 
 COPY --from=minimal /tmp/package-names.minimal package-names.minimal
