@@ -28,6 +28,7 @@ stages:
   - test
   - scan
   - release
+  - ngc-publish
 
 .pipeline-trigger-rules:
   rules:
