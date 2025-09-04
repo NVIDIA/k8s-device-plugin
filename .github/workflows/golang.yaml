@@ -28,7 +28,7 @@ jobs:
     - uses: actions/checkout@v5
       name: Checkout code
     - name: Install Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ inputs.golang_version }}
     - name: Lint
@@ -48,7 +48,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.golang_version }}
       - run: make test
@@ -59,7 +59,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.golang_version }}
       - run: make build
