@@ -44,7 +44,7 @@ jobs:
         GOLANG_VERSION=$(./hack/golang-version.sh)
         echo "GOLANG_VERSION=${GOLANG_VERSION##GOLANG_VERSION := }" >> $GITHUB_ENV
     - name: Install Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ env.GOLANG_VERSION }}
     - name: Initialize CodeQL
