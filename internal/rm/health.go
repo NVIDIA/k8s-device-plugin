@@ -24,6 +24,8 @@ import (
 
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"k8s.io/klog/v2"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 const (
@@ -32,16 +34,15 @@ const (
 	// disabled entirely. If set, the envvar is treated as a comma-separated list of Xids to ignore. Note that
 	// this is in addition to the Application errors that are already ignored.
 	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
-	allHealthChecks        = "xids"
 )
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
 func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
-	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
-	if disableHealthChecks == "all" {
-		disableHealthChecks = allHealthChecks
-	}
-	if strings.Contains(disableHealthChecks, "xids") {
+	// Apply backward compatibility with environment variable if health config is not set
+	healthConfig := r.getHealthConfig()
+
+	if healthConfig.Disabled {
+		klog.Info("Health checks are disabled via configuration")
 		return nil
 	}
 
@@ -59,25 +60,10 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		}
 	}()
 
-	// FIXME: formalize the full list and document it.
-	// http://docs.nvidia.com/deploy/xid-errors/index.html#topic_4
-	// Application errors: the GPU should still be healthy
-	ignoredXids := []uint64{
-		13,  // Graphics Engine Exception
-		31,  // GPU memory page fault
-		43,  // GPU stopped processing
-		45,  // Preemptive cleanup, due to previous errors
-		68,  // Video processor exception
-		109, // Context Switch Timeout Error
-	}
-
-	skippedXids := make(map[uint64]bool)
-	for _, id := range ignoredXids {
-		skippedXids[id] = true
-	}
-
-	for _, additionalXid := range getAdditionalXids(disableHealthChecks) {
-		skippedXids[additionalXid] = true
+	// Build the event mask from configuration
+	eventMask, err := buildEventMask(healthConfig.EventTypes)
+	if err != nil {
+		return fmt.Errorf("failed to build event mask: %v", err)
 	}
 
 	eventSet, ret := r.nvml.EventSetCreate()
@@ -92,7 +78,6 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 	deviceIDToGiMap := make(map[string]uint32)
 	deviceIDToCiMap := make(map[string]uint32)
 
-	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
 	for _, d := range devices {
 		uuid, gi, ci, err := r.getDevicePlacement(d)
 		if err != nil {
@@ -147,13 +132,15 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 			continue
 		}
 
+		// Only process XID critical error events
 		if e.EventType != nvml.EventTypeXidCriticalError {
-			klog.Infof("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
+			klog.Infof("Skipping non-XidCriticalError event: %+v", e)
 			continue
 		}
 
-		if skippedXids[e.EventData] {
-			klog.Infof("Skipping event %+v", e)
+		// Check if this XID should be treated as critical based on configuration
+		if !healthConfig.IsCritical(e.EventData) {
+			klog.Infof("Skipping non-critical XID %d based on health configuration", e.EventData)
 			continue
 		}
 
@@ -188,29 +175,99 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 	}
 }
 
-// getAdditionalXids returns a list of additional Xids to skip from the specified string.
-// The input is treaded as a comma-separated string and all valid uint64 values are considered as Xid values. Invalid values
-// are ignored.
-func getAdditionalXids(input string) []uint64 {
+// getHealthConfig returns the health configuration, applying backward compatibility
+// with the DP_DISABLE_HEALTHCHECKS environment variable if needed.
+func (r *nvmlResourceManager) getHealthConfig() *spec.Health {
+	envDisableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
+
+	// If health config is explicitly set, use it
+	if r.config.Health != nil {
+		if envDisableHealthChecks != "" {
+			// Clone the config to avoid modifying the original
+			healthConfig := *r.config.Health
+
+			if envDisableHealthChecks == "all" || strings.Contains(envDisableHealthChecks, "xids") {
+				healthConfig.Disabled = true
+				klog.Info("Health checks disabled via DP_DISABLE_HEALTHCHECKS environment variable (backward compatibility)")
+			} else {
+				// Parse additional XIDs to ignore from environment variable
+				additionalIgnored := parseXidsFromEnv(envDisableHealthChecks)
+				if len(additionalIgnored) > 0 {
+					healthConfig.IgnoredXIDs = append(healthConfig.IgnoredXIDs, additionalIgnored...)
+					klog.Infof("Adding XIDs %v to ignored list from DP_DISABLE_HEALTHCHECKS environment variable", additionalIgnored)
+				}
+			}
+			return &healthConfig
+		}
+		return r.config.Health
+	}
+
+	// Fallback to default configuration with environment variable support
+	healthConfig := spec.DefaultHealth()
+
+	// Apply environment variable for backward compatibility
+	if envDisableHealthChecks == "all" || strings.Contains(envDisableHealthChecks, "xids") {
+		healthConfig.Disabled = true
+		klog.Info("Health checks disabled via DP_DISABLE_HEALTHCHECKS environment variable")
+	} else if envDisableHealthChecks != "" {
+		additionalIgnored := parseXidsFromEnv(envDisableHealthChecks)
+		if len(additionalIgnored) > 0 {
+			healthConfig.IgnoredXIDs = append(healthConfig.IgnoredXIDs, additionalIgnored...)
+			klog.Infof("Adding XIDs %v to ignored list from DP_DISABLE_HEALTHCHECKS environment variable", additionalIgnored)
+		}
+	}
+
+	return healthConfig
+}
+
+// parseXidsFromEnv parses a comma-separated list of XIDs from an environment variable value
+func parseXidsFromEnv(input string) []uint64 {
 	if input == "" {
 		return nil
 	}
 
-	var additionalXids []uint64
-	for _, additionalXid := range strings.Split(input, ",") {
-		trimmed := strings.TrimSpace(additionalXid)
+	var xids []uint64
+	for _, xidStr := range strings.Split(input, ",") {
+		trimmed := strings.TrimSpace(xidStr)
 		if trimmed == "" {
 			continue
 		}
 		xid, err := strconv.ParseUint(trimmed, 10, 64)
 		if err != nil {
-			klog.Infof("Ignoring malformed Xid value %v: %v", trimmed, err)
+			klog.Infof("Ignoring malformed XID value %v: %v", trimmed, err)
 			continue
 		}
-		additionalXids = append(additionalXids, xid)
+		xids = append(xids, xid)
+	}
+	return xids
+}
+
+// buildEventMask converts event type strings from configuration to NVML event mask
+func buildEventMask(eventTypes []string) (uint64, error) {
+	if len(eventTypes) == 0 {
+		// Default to all event types if none specified
+		return uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError), nil
 	}
 
-	return additionalXids
+	var eventMask uint64
+	for _, eventType := range eventTypes {
+		switch eventType {
+		case "EventTypeXidCriticalError":
+			eventMask |= uint64(nvml.EventTypeXidCriticalError)
+		case "EventTypeDoubleBitEccError":
+			eventMask |= uint64(nvml.EventTypeDoubleBitEccError)
+		case "EventTypeSingleBitEccError":
+			eventMask |= uint64(nvml.EventTypeSingleBitEccError)
+		default:
+			return 0, fmt.Errorf("unknown event type: %s", eventType)
+		}
+	}
+
+	if eventMask == 0 {
+		return 0, fmt.Errorf("no valid event types specified")
+	}
+
+	return eventMask, nil
 }
 
 // getDevicePlacement returns the placement of the specified device.
