@@ -93,6 +93,7 @@ var (
 
 	ctx         context.Context
 	packagePath string
+	projectRoot string
 )
 
 func TestMain(t *testing.T) {
@@ -103,6 +104,7 @@ func TestMain(t *testing.T) {
 	// get the package path
 	_, thisFile, _, _ := runtime.Caller(0)
 	packagePath = filepath.Dir(thisFile)
+	projectRoot = filepath.Join(packagePath, "..", "..")
 
 	ctx = context.Background()
 	getTestEnv()
@@ -286,8 +288,6 @@ func CreateTestingNS(baseName string, c clientset.Interface, labels map[string]s
 type k8sLabels map[string]string
 
 // eventuallyNonControlPlaneNodes is a helper for asserting node properties
-//
-//nolint:unused
 func eventuallyNonControlPlaneNodes(ctx context.Context, cli clientset.Interface) AsyncAssertion {
 	return Eventually(func(g Gomega) ([]corev1.Node, error) {
 		return getNonControlPlaneNodes(ctx, cli)
@@ -498,8 +498,8 @@ func getNode(nodes []corev1.Node, nodeName string) corev1.Node {
 }
 
 // CreateOrUpdateJobsFromFile creates or updates jobs from a file
-func CreateOrUpdateJobsFromFile(ctx context.Context, cli clientset.Interface, filename, namespace string) ([]string, error) {
-	jobs, err := newJobFromfile(filepath.Join(packagePath, "..", "..", "testdata", filename))
+func CreateOrUpdateJobsFromFile(ctx context.Context, cli clientset.Interface, namespace string, filename string) ([]string, error) {
+	jobs, err := newJobFromfile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Job from file: %w", err)
 	}

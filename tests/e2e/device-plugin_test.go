@@ -19,6 +19,7 @@ package e2e
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	helm "github.com/mittwald/go-helm-client"
 	helmValues "github.com/mittwald/go-helm-client/values"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common/diagnostics"
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/internal"
@@ -39,7 +41,7 @@ const (
 
 // Actual test suite
 var _ = Describe("GPU Device Plugin", Ordered, Label("gpu", "e2e", "device-plugin"), func() {
-	// Init global suite vars vars
+	// Init global suite vars
 	var (
 		helmReleaseName string
 		chartSpec       helm.ChartSpec
@@ -74,7 +76,7 @@ var _ = Describe("GPU Device Plugin", Ordered, Label("gpu", "e2e", "device-plugi
 
 	BeforeAll(func(ctx SpecContext) {
 		// Create clients for apiextensions and our CRD api
-		helmReleaseName = "nvdp-e2e-test-" + randomSuffix()
+		helmReleaseName = "nvdp-e2e-test-" + rand.String(5)
 
 		chartSpec = helm.ChartSpec{
 			ReleaseName:   helmReleaseName,
@@ -145,9 +147,9 @@ var _ = Describe("GPU Device Plugin", Ordered, Label("gpu", "e2e", "device-plugi
 		})
 		It("it should run GPU jobs", Label("gpu-job"), func(ctx SpecContext) {
 			By("Creating a GPU job")
-			jobNames, err := CreateOrUpdateJobsFromFile(ctx, clientSet, "job-1.yaml", testNamespace.Name)
+			jobNames, err := CreateOrUpdateJobsFromFile(ctx, clientSet, testNamespace.Name, filepath.Join(projectRoot, "testdata", "job-1.yaml"))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(jobNames).NotTo(BeEmpty())
+			Expect(jobNames).NotTo(HaveLen(1))
 
 			// Defer cleanup for the job
 			DeferCleanup(func(ctx SpecContext) {
