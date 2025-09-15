@@ -59,7 +59,7 @@ jobs:
       env:
         KUBECONFIG: ${{ github.workspace }}/kubeconfig
         E2E_IMAGE_REPO: ghcr.io/nvidia/k8s-device-plugin
-        E2E_IMAGE_TAG: ${{ inputs.version }}-ubi9
+        E2E_IMAGE_TAG: ${{ inputs.version }}
         LOG_ARTIFACTS: ${{ github.workspace }}/e2e_logs
       run: |
         make test-e2e
