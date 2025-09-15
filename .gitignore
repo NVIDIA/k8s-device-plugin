@@ -9,3 +9,4 @@ e2e_logs
 
 *.out
 *.log
+.idea
