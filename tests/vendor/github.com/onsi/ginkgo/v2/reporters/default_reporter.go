@@ -404,7 +404,7 @@ func (r *DefaultReporter) emitTimeline(indent uint, report types.SpecReport, tim
 		case types.ReportEntry:
 			r.emitReportEntry(indent, x)
 		case types.ProgressReport:
-			r.emitProgressReport(indent, false, x)
+			r.emitProgressReport(indent, false, false, x)
 		case types.SpecEvent:
 			if isVeryVerbose || !x.IsOnlyVisibleAtVeryVerbose() || r.conf.ShowNodeEvents {
 				r.emitSpecEvent(indent, x, isVeryVerbose)
@@ -458,7 +458,7 @@ func (r *DefaultReporter) emitFailure(indent uint, state types.SpecState, failur
 
 	if !failure.ProgressReport.IsZero() {
 		r.emitBlock("\n")
-		r.emitProgressReport(indent, false, failure.ProgressReport)
+		r.emitProgressReport(indent, false, false, failure.ProgressReport)
 	}
 
 	if failure.AdditionalFailure != nil && includeAdditionalFailure {
@@ -474,11 +474,11 @@ func (r *DefaultReporter) EmitProgressReport(report types.ProgressReport) {
 		r.emit(r.fi(1, "{{coral}}Progress Report for Ginkgo Process #{{bold}}%d{{/}}\n", report.ParallelProcess))
 	}
 	shouldEmitGW := report.RunningInParallel || r.conf.Verbosity().LT(types.VerbosityLevelVerbose)
-	r.emitProgressReport(1, shouldEmitGW, report)
+	r.emitProgressReport(1, shouldEmitGW, true, report)
 	r.emitDelimiter(1)
 }
 
-func (r *DefaultReporter) emitProgressReport(indent uint, emitGinkgoWriterOutput bool, report types.ProgressReport) {
+func (r *DefaultReporter) emitProgressReport(indent uint, emitGinkgoWriterOutput, emitGroup bool, report types.ProgressReport) {
 	if report.Message != "" {
 		r.emitBlock(r.fi(indent, report.Message+"\n"))
 		indent += 1
@@ -512,6 +512,10 @@ func (r *DefaultReporter) emitProgressReport(indent uint, emitGinkgoWriterOutput
 
 	if indent > 0 {
 		indent -= 1
+	}
+
+	if r.conf.GithubOutput && emitGroup {
+		r.emitBlock(r.fi(indent, "::group::Progress Report"))
 	}
 
 	if emitGinkgoWriterOutput && report.CapturedGinkgoWriterOutput != "" {
@@ -559,6 +563,10 @@ func (r *DefaultReporter) emitProgressReport(indent uint, emitGinkgoWriterOutput
 		r.emit("\n")
 		r.emit(r.fi(indent, "{{gray}}{{bold}}{{underline}}Other Goroutines{{/}}\n"))
 		r.emitGoroutines(indent, otherGoroutines...)
+	}
+
+	if r.conf.GithubOutput && emitGroup {
+		r.emitBlock(r.fi(indent, "::endgroup::"))
 	}
 }
 
