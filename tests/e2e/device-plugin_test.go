@@ -148,7 +148,7 @@ var _ = Describe("GPU Device Plugin", Ordered, Label("gpu", "e2e", "device-plugi
 			By("Creating a GPU job")
 			jobNames, err := CreateOrUpdateJobsFromFile(ctx, clientSet, testNamespace.Name, filepath.Join(projectRoot, "testdata", "job-1.yaml"))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(jobNames).NotTo(HaveLen(1))
+			Expect(jobNames).To(HaveLen(1))
 
 			// Defer cleanup for the job
 			DeferCleanup(func(ctx SpecContext) {
