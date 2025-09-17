@@ -34,9 +34,10 @@ GINKGO_REPORT_ARGS := --json-report=$(LOG_ARTIFACTS)/report.json --junit-report=
 
 .PHONY: ginkgo test clean-artifacts
 
+GINKGO_VERSION = $(shell grep -Eo "github.com/onsi/ginkgo/v2.*$$" ./tests/go.mod | sed -e 's&github.com/onsi/ginkgo/v2[[:space:]]&&g')
 ginkgo:
 	mkdir -p $(CURDIR)/bin
-	GOBIN=$(CURDIR)/bin go install github.com/onsi/ginkgo/v2/ginkgo@latest
+	GOBIN=$(CURDIR)/bin go install github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_VERSION)
 
 # Create artifacts directory
 $(LOG_ARTIFACTS):
