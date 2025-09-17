@@ -876,7 +876,7 @@ func getEnvVarOrDefault[T any](key string, defaultValue T) T {
 }
 
 // waitForDaemonSetsReady waits for DaemonSets in a namespace to be ready, optionally filtered by label selector
-func waitForDaemonSetsReady(ctx context.Context, client kubernetes.Interface, namespace, labelSelector string) error {
+func waitForDaemonSetsReady(ctx context.Context, client clientset.Interface, namespace, labelSelector string) error {
 	EventuallyWithOffset(1, func(g Gomega) error {
 		dsList, err := client.AppsV1().DaemonSets(namespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labelSelector,
