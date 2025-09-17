@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetAdditionalXids(t *testing.T) {
+func TestParseXidsFromEnvLegacy(t *testing.T) {
 	testCases := []struct {
 		input    string
 		expected []uint64
@@ -66,7 +66,7 @@ func TestGetAdditionalXids(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("test case %d", i), func(t *testing.T) {
-			xids := getAdditionalXids(tc.input)
+			xids := parseXidsFromEnv(tc.input)
 
 			require.EqualValues(t, tc.expected, xids)
 		})
