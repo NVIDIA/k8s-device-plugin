@@ -32,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common/diagnostics"
-	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/internal"
 )
 
 var expectedLabelPatterns = k8sLabels{
@@ -117,7 +116,7 @@ var _ = Describe("GPU Feature Discovery", Ordered, Label("gfd", "gpu", "e2e"), f
 		// Note: DaemonSet names are dynamically generated with the Helm release prefix,
 		// so we wait for all DaemonSets in the namespace rather than specific names
 		By("Waiting for all DaemonSets to be ready")
-		err = internal.WaitForDaemonSetsReady(ctx, clientSet, testNamespace.Name, "app.kubernetes.io/name=nvidia-device-plugin")
+		err = waitForDaemonSetsReady(ctx, clientSet, testNamespace.Name, "app.kubernetes.io/name=nvidia-device-plugin")
 		Expect(err).NotTo(HaveOccurred())
 	})
 

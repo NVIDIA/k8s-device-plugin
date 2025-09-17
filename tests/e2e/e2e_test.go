@@ -874,3 +874,45 @@ func getEnvVarOrDefault[T any](key string, defaultValue T) T {
 	}
 	return val
 }
+
+// waitForDaemonSetsReady waits for DaemonSets in a namespace to be ready, optionally filtered by label selector
+func waitForDaemonSetsReady(ctx context.Context, client kubernetes.Interface, namespace, labelSelector string) error {
+	EventuallyWithOffset(1, func(g Gomega) error {
+		dsList, err := client.AppsV1().DaemonSets(namespace).List(ctx, metav1.ListOptions{
+			LabelSelector: labelSelector,
+		})
+		if err != nil {
+			return err
+		}
+
+		if len(dsList.Items) == 0 {
+			return fmt.Errorf("no daemonsets found in namespace %s with selector '%s'", namespace, labelSelector)
+		}
+
+		for _, ds := range dsList.Items {
+			// Skip if no pods are desired
+			if ds.Status.DesiredNumberScheduled == 0 {
+				continue
+			}
+
+			if ds.Status.NumberReady != ds.Status.DesiredNumberScheduled {
+				return fmt.Errorf("daemonset %s/%s rollout incomplete: %d/%d pods ready",
+					namespace, ds.Name, ds.Status.NumberReady, ds.Status.DesiredNumberScheduled)
+			}
+
+			if ds.Status.UpdatedNumberScheduled != ds.Status.DesiredNumberScheduled {
+				return fmt.Errorf("daemonset %s/%s update incomplete: %d/%d pods updated",
+					namespace, ds.Name, ds.Status.UpdatedNumberScheduled, ds.Status.DesiredNumberScheduled)
+			}
+
+			// Check generation to ensure we're looking at the latest spec
+			if ds.Generation != ds.Status.ObservedGeneration {
+				return fmt.Errorf("daemonset %s/%s generation mismatch: %d != %d",
+					namespace, ds.Name, ds.Generation, ds.Status.ObservedGeneration)
+			}
+		}
+
+		return nil
+	}).WithContext(ctx).WithPolling(2 * time.Second).WithTimeout(5 * time.Minute).Should(Succeed())
+	return nil
+}
