@@ -19,13 +19,13 @@ require (
 	github.com/urfave/cli/v2 v2.27.7
 	golang.org/x/mod v0.28.0
 	google.golang.org/grpc v1.69.0
-	k8s.io/api v0.32.3
-	k8s.io/apimachinery v0.32.3
-	k8s.io/client-go v0.32.3
+	k8s.io/api v0.32.9
+	k8s.io/apimachinery v0.32.9
+	k8s.io/client-go v0.32.9
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/kubelet v0.32.3
-	k8s.io/mount-utils v0.32.3
-	sigs.k8s.io/node-feature-discovery v0.17.3
+	k8s.io/kubelet v0.32.9
+	k8s.io/mount-utils v0.32.9
+	sigs.k8s.io/node-feature-discovery v0.17.4
 	sigs.k8s.io/node-feature-discovery/api/nfd v0.17.3
 	sigs.k8s.io/yaml v1.4.0
 	tags.cncf.io/container-device-interface v0.8.1
@@ -64,7 +64,7 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/oauth2 v0.27.0 // indirect
+	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/term v0.30.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
