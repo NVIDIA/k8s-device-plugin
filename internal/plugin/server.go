@@ -380,15 +380,8 @@ func (plugin *nvidiaDevicePlugin) updateResponseForCDI(response *pluginapi.Conta
 	for _, channel := range plugin.imexChannels {
 		devices = append(devices, plugin.cdiHandler.QualifiedName("imex-channel", channel.ID))
 	}
-	if *plugin.config.Flags.GDSEnabled {
-		devices = append(devices, plugin.cdiHandler.QualifiedName("gds", "all"))
-	}
-	if *plugin.config.Flags.MOFEDEnabled {
-		devices = append(devices, plugin.cdiHandler.QualifiedName("mofed", "all"))
-	}
-	if *plugin.config.Flags.GDRCopyEnabled {
-		devices = append(devices, plugin.cdiHandler.QualifiedName("gdrcopy", "all"))
-	}
+
+	devices = append(devices, plugin.cdiHandler.AdditionalDevices()...)
 
 	if len(devices) == 0 {
 		return nil
