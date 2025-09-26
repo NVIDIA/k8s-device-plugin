@@ -23,6 +23,7 @@ on:
 
 jobs:
   basic:
+    secrets: inherit
     uses: ./.github/workflows/basic-checks.yaml
 
   image:
