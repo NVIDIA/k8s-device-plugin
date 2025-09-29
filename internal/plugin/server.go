@@ -351,6 +351,9 @@ func (plugin *nvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 	if *plugin.config.Flags.Plugin.PassDeviceSpecs {
 		response.Devices = append(response.Devices, plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDevRoot, requestIds)...)
 	}
+	if *plugin.config.Flags.GDRCopyEnabled {
+		response.Envs["NVIDIA_GDRCOPY"] = "enabled"
+	}
 	if *plugin.config.Flags.GDSEnabled {
 		response.Envs["NVIDIA_GDS"] = "enabled"
 	}
@@ -377,12 +380,8 @@ func (plugin *nvidiaDevicePlugin) updateResponseForCDI(response *pluginapi.Conta
 	for _, channel := range plugin.imexChannels {
 		devices = append(devices, plugin.cdiHandler.QualifiedName("imex-channel", channel.ID))
 	}
-	if *plugin.config.Flags.GDSEnabled {
-		devices = append(devices, plugin.cdiHandler.QualifiedName("gds", "all"))
-	}
-	if *plugin.config.Flags.MOFEDEnabled {
-		devices = append(devices, plugin.cdiHandler.QualifiedName("mofed", "all"))
-	}
+
+	devices = append(devices, plugin.cdiHandler.AdditionalDevices()...)
 
 	if len(devices) == 0 {
 		return nil
