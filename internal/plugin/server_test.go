@@ -17,6 +17,7 @@
 package plugin
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,7 +26,87 @@ import (
 	v1 "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
+	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 )
+
+func TestAllocate(t *testing.T) {
+	testCases := []struct {
+		description      string
+		request          *pluginapi.AllocateRequest
+		expectedError    error
+		expectedResponse *pluginapi.AllocateResponse
+	}{
+		{
+			description: "single device",
+			request: &pluginapi.AllocateRequest{
+				ContainerRequests: []*pluginapi.ContainerAllocateRequest{
+					{
+						DevicesIDs: []string{"foo"},
+					},
+				},
+			},
+			expectedResponse: &pluginapi.AllocateResponse{
+				ContainerResponses: []*pluginapi.ContainerAllocateResponse{
+					{
+						Envs: map[string]string{
+							"NVIDIA_VISIBLE_DEVICES": "foo",
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "duplicate device IDs",
+			request: &pluginapi.AllocateRequest{
+				ContainerRequests: []*pluginapi.ContainerAllocateRequest{
+					{
+						DevicesIDs: []string{"foo", "bar", "foo"},
+					},
+				},
+			},
+			expectedResponse: &pluginapi.AllocateResponse{
+				ContainerResponses: []*pluginapi.ContainerAllocateResponse{
+					{
+						Envs: map[string]string{
+							"NVIDIA_VISIBLE_DEVICES": "foo,bar",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			plugin := nvidiaDevicePlugin{
+				rm: &rm.ResourceManagerMock{
+					ValidateRequestFunc: func(annotatedIDs rm.AnnotatedIDs) error {
+						return nil
+					},
+				},
+				config: &v1.Config{
+					Flags: v1.Flags{
+						CommandLineFlags: v1.CommandLineFlags{
+							Plugin: &v1.PluginCommandLineFlags{
+								DeviceIDStrategy: ptr(v1.DeviceIDStrategyUUID),
+							},
+						},
+					},
+				},
+				cdiHandler: &cdi.InterfaceMock{
+					QualifiedNameFunc: func(c string, s string) string {
+						return "nvidia.com/" + c + "=" + s
+					},
+				},
+				deviceListStrategies: v1.DeviceListStrategies{"envvar": true},
+			}
+
+			response, err := plugin.Allocate(context.TODO(), tc.request)
+			require.EqualValues(t, tc.expectedError, err)
+			require.EqualValues(t, tc.expectedResponse, response)
+		})
+	}
+}
 
 func TestCDIAllocateResponse(t *testing.T) {
 	testCases := []struct {
@@ -168,4 +249,8 @@ func TestCDIAllocateResponse(t *testing.T) {
 			require.EqualValues(t, &tc.expectedResponse, &response)
 		})
 	}
+}
+
+func ptr[T any](x T) *T {
+	return &x
 }
