@@ -20,6 +20,9 @@ FROM base AS devel
 WORKDIR /work
 COPY * .
 
+ARG GOPROXY="https://proxy.golang.org,direct"
+ENV GOPROXY=$GOPROXY
+
 RUN make install-tools
 
 # We need to set the /work directory as a safe directory.

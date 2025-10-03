@@ -23,6 +23,8 @@ MKDIR    ?= mkdir
 ##### Global variables #####
 include $(CURDIR)/versions.mk
 
+GOPROXY ?= https://proxy.golang.org,direct
+
 ifeq ($(IMAGE_NAME),)
 IMAGE_NAME := $(REGISTRY)/$(DRIVER_NAME)
 endif
@@ -78,6 +80,7 @@ $(IMAGE_TARGETS): image-%:
 		--tag $(IMAGE) \
 		--build-arg VERSION="$(VERSION)" \
 		--build-arg GIT_COMMIT="$(GIT_COMMIT)" \
+		--build-arg GOPROXY="$(GOPROXY)" \
 		$(if $(LABEL_IMAGE_SOURCE),--label "org.opencontainers.image.source=$(LABEL_IMAGE_SOURCE)",) \
 		-f $(DOCKERFILE) \
 		$(CURDIR)

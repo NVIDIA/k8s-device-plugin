@@ -27,6 +27,10 @@ on:
 jobs:
   build:
     runs-on: linux-amd64-cpu4
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
     steps:
       - uses: actions/checkout@v5
         name: Check out code
@@ -42,12 +46,16 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup Go Proxy
+        id: setup-go-proxy
+        uses: nv-gha-runners/setup-artifactory-go-proxy@main
       - name: Build image
         env:
           IMAGE_NAME: ghcr.io/nvidia/k8s-device-plugin
           VERSION: ${{ inputs.version }}
           PUSH_ON_BUILD: true
           BUILD_MULTI_ARCH_IMAGES: ${{ inputs.build_multi_arch_images }}
+          GOPROXY: ${{ steps.setup-go-proxy.outputs.goproxy }}
         run: |
           echo "${VERSION}"
           make -f deployments/container/Makefile build
