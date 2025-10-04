@@ -319,7 +319,7 @@ func (plugin *nvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.
 }
 
 func (plugin *nvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*pluginapi.ContainerAllocateResponse, error) {
-	deviceIDs := plugin.deviceIDsFromAnnotatedDeviceIDs(requestIds)
+	deviceIDs := plugin.uniqueDeviceIDsFromAnnotatedDeviceIDs(requestIds)
 
 	// Create an empty response that will be updated as required below.
 	response := &pluginapi.ContainerAllocateResponse{
@@ -348,13 +348,13 @@ func (plugin *nvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyVolumeMounts) {
 		plugin.updateResponseForDeviceMounts(response, deviceIDs...)
 	}
-	if *plugin.config.Flags.Plugin.PassDeviceSpecs {
+	if plugin.config.Flags.Plugin.PassDeviceSpecs != nil && *plugin.config.Flags.Plugin.PassDeviceSpecs {
 		response.Devices = append(response.Devices, plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDevRoot, requestIds)...)
 	}
-	if *plugin.config.Flags.GDSEnabled {
+	if plugin.config.Flags.GDSEnabled != nil && *plugin.config.Flags.GDSEnabled {
 		response.Envs["NVIDIA_GDS"] = "enabled"
 	}
-	if *plugin.config.Flags.MOFEDEnabled {
+	if plugin.config.Flags.MOFEDEnabled != nil && *plugin.config.Flags.MOFEDEnabled {
 		response.Envs["NVIDIA_MOFED"] = "enabled"
 	}
 	return response, nil
@@ -377,10 +377,10 @@ func (plugin *nvidiaDevicePlugin) updateResponseForCDI(response *pluginapi.Conta
 	for _, channel := range plugin.imexChannels {
 		devices = append(devices, plugin.cdiHandler.QualifiedName("imex-channel", channel.ID))
 	}
-	if *plugin.config.Flags.GDSEnabled {
+	if plugin.config.Flags.GDSEnabled != nil && *plugin.config.Flags.GDSEnabled {
 		devices = append(devices, plugin.cdiHandler.QualifiedName("gds", "all"))
 	}
-	if *plugin.config.Flags.MOFEDEnabled {
+	if plugin.config.Flags.MOFEDEnabled != nil && *plugin.config.Flags.MOFEDEnabled {
 		devices = append(devices, plugin.cdiHandler.QualifiedName("mofed", "all"))
 	}
 
@@ -452,7 +452,7 @@ func (plugin *nvidiaDevicePlugin) dial(unixSocketPath string, timeout time.Durat
 	return c, nil
 }
 
-func (plugin *nvidiaDevicePlugin) deviceIDsFromAnnotatedDeviceIDs(ids []string) []string {
+func (plugin *nvidiaDevicePlugin) uniqueDeviceIDsFromAnnotatedDeviceIDs(ids []string) []string {
 	var deviceIDs []string
 	if *plugin.config.Flags.Plugin.DeviceIDStrategy == spec.DeviceIDStrategyUUID {
 		deviceIDs = rm.AnnotatedIDs(ids).GetIDs()
@@ -460,7 +460,16 @@ func (plugin *nvidiaDevicePlugin) deviceIDsFromAnnotatedDeviceIDs(ids []string) 
 	if *plugin.config.Flags.Plugin.DeviceIDStrategy == spec.DeviceIDStrategyIndex {
 		deviceIDs = plugin.rm.Devices().Subset(ids).GetIndices()
 	}
-	return deviceIDs
+	var uniqueIDs []string
+	seen := make(map[string]bool)
+	for _, id := range deviceIDs {
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		uniqueIDs = append(uniqueIDs, id)
+	}
+	return uniqueIDs
 }
 
 func (plugin *nvidiaDevicePlugin) apiDevices() []*pluginapi.Device {

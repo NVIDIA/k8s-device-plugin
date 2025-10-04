@@ -37,6 +37,8 @@ type resourceManager struct {
 }
 
 // ResourceManager provides an interface for listing a set of Devices and checking health on them
+//
+//go:generate moq -rm -fmt=goimports -stub -out rm_mock.go . ResourceManager
 type ResourceManager interface {
 	Resource() spec.ResourceName
 	Devices() Devices
