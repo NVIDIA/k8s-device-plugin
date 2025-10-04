@@ -217,7 +217,7 @@ func (rl resourceLabeler) getReplicas() int {
 // sharingDisabled checks whether the resourceLabeler has sharing disabled
 // TODO: The nil check here is because we call NewGPUResourceLabeler with a nil config when sharing is disabled.
 func (rl resourceLabeler) sharingDisabled() bool {
-	return rl.sharing == nil
+	return rl.sharing == nil || (rl.sharing.SharingStrategy() == spec.SharingStrategyNone)
 }
 
 // isShared checks whether the resource is shared.
