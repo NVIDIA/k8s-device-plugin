@@ -33,6 +33,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 		deviceIds            []string
 		deviceListStrategies []string
 		CDIPrefix            string
+		AdditionalCDIDevices []string
 		GDSEnabled           bool
 		MOFEDEnabled         bool
 		imexChannels         []*imex.Channel
@@ -91,7 +92,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 			description:          "mofed devices are selected if configured",
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			MOFEDEnabled:         true,
+			AdditionalCDIDevices: []string{"nvidia.com/mofed=all"},
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/mofed=all",
@@ -102,7 +103,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 			description:          "gds devices are selected if configured",
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			GDSEnabled:           true,
+			AdditionalCDIDevices: []string{"nvidia.com/gds=all"},
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gds=all",
@@ -114,8 +115,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 			deviceIds:            []string{"gpu0"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			GDSEnabled:           true,
-			MOFEDEnabled:         true,
+			AdditionalCDIDevices: []string{"nvidia.com/gds=all", "nvidia.com/mofed=all"},
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gpu=gpu0,nvidia.com/gds=all,nvidia.com/mofed=all",
@@ -151,6 +151,9 @@ func TestCDIAllocateResponse(t *testing.T) {
 				cdiHandler: &cdi.InterfaceMock{
 					QualifiedNameFunc: func(c string, s string) string {
 						return "nvidia.com/" + c + "=" + s
+					},
+					AdditionalDevicesFunc: func() []string {
+						return tc.AdditionalCDIDevices
 					},
 				},
 				deviceListStrategies: deviceListStrategies,

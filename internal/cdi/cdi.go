@@ -57,12 +57,14 @@ type cdiHandler struct {
 
 	deviceListStrategies spec.DeviceListStrategies
 
-	gdsEnabled   bool
-	mofedEnabled bool
+	gdsEnabled     bool
+	mofedEnabled   bool
+	gdrcopyEnabled bool
 
 	imexChannels imex.Channels
 
-	cdilibs map[string]cdiSpecGenerator
+	cdilibs         map[string]nvcdi.SpecGenerator
+	additionalModes []string
 }
 
 var _ Interface = &cdiHandler{}
@@ -111,7 +113,7 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 		return nil, err
 	}
 
-	c.cdilibs = make(map[string]cdiSpecGenerator)
+	c.cdilibs = make(map[string]nvcdi.SpecGenerator)
 
 	c.cdilibs["gpu"], err = nvcdi.New(
 		nvcdi.WithInfoLib(c.infolib),
@@ -133,15 +135,17 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 		c.cdilibs["imex-channel"] = c.newImexChannelSpecGenerator()
 	}
 
-	var additionalModes []string
+	if c.gdrcopyEnabled {
+		c.additionalModes = append(c.additionalModes, "gdrcopy")
+	}
 	if c.gdsEnabled {
-		additionalModes = append(additionalModes, "gds")
+		c.additionalModes = append(c.additionalModes, "gds")
 	}
 	if c.mofedEnabled {
-		additionalModes = append(additionalModes, "mofed")
+		c.additionalModes = append(c.additionalModes, "mofed")
 	}
 
-	for _, mode := range additionalModes {
+	for _, mode := range c.additionalModes {
 		lib, err := nvcdi.New(
 			nvcdi.WithInfoLib(c.infolib),
 			nvcdi.WithLogger(c.logger),
@@ -162,6 +166,7 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 
 // CreateSpecFile creates a CDI spec file for the specified devices.
 func (cdi *cdiHandler) CreateSpecFile() error {
+	var emptySpecs []string
 	for class, cdilib := range cdi.cdilibs {
 		cdi.logger.Infof("Generating CDI spec for resource: %s/%s", cdi.vendor, class)
 
@@ -193,8 +198,20 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 
 		err = spec.Save(filepath.Join(cdiRoot, specName+".json"))
 		if err != nil {
+			// TODO: This is a brittle check since it relies on exact string matches.
+			// We should pull this functionality into the CDI tooling instead.
+			if strings.Contains(err.Error(), "invalid device, empty device edits") {
+				klog.ErrorS(err, "Ignoring empty CDI specs", "vendor", cdi.vendor, "class", class)
+				emptySpecs = append(emptySpecs, class)
+				continue
+			}
 			return fmt.Errorf("failed to save CDI spec: %v", err)
 		}
+	}
+
+	// Remove the classes with empty specs from the supported types.
+	for _, emptySpec := range emptySpecs {
+		delete(cdi.cdilibs, emptySpec)
 	}
 
 	return nil
@@ -228,4 +245,19 @@ func (cdi *cdiHandler) getRootTransformer() transform.Transformer {
 // Note: This assumes that the specified id matches the device name returned by the naming strategy.
 func (cdi *cdiHandler) QualifiedName(class string, id string) string {
 	return cdiparser.QualifiedName(cdi.vendor, class, id)
+}
+
+// AdditionalDevices returns the optional CDI devices based on the device plugin
+// configuration.
+// Here we check for requested modes as well as whether the modes have a valid
+// CDI spec associated with them.
+func (cdi *cdiHandler) AdditionalDevices() []string {
+	var devices []string
+	for _, mode := range cdi.additionalModes {
+		if cdi.cdilibs[mode] == nil {
+			continue
+		}
+		devices = append(devices, cdi.QualifiedName(mode, "all"))
+	}
+	return devices
 }

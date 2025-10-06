@@ -52,6 +52,7 @@ func (o tegraOptions) newDiscovererFromCSVFiles() (discover.Discover, error) {
 	// We create a discoverer for mounted libraries and add additional .so
 	// symlinks for the driver.
 	libraries := discover.WithDriverDotSoSymlinks(
+		o.logger,
 		discover.NewMounts(
 			o.logger,
 			o.symlinkLocator,
@@ -59,7 +60,7 @@ func (o tegraOptions) newDiscovererFromCSVFiles() (discover.Discover, error) {
 			targetsByType[csv.MountSpecLib],
 		),
 		"",
-		o.nvidiaCDIHookPath,
+		o.hookCreator,
 	)
 
 	// We process the explicitly requested symlinks.

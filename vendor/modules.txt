@@ -2,7 +2,7 @@
 ## explicit; go 1.20
 github.com/NVIDIA/go-gpuallocator/gpuallocator
 github.com/NVIDIA/go-gpuallocator/internal/links
-# github.com/NVIDIA/go-nvlib v0.8.0
+# github.com/NVIDIA/go-nvlib v0.8.1
 ## explicit; go 1.20
 github.com/NVIDIA/go-nvlib/pkg/nvlib/device
 github.com/NVIDIA/go-nvlib/pkg/nvlib/info
@@ -14,8 +14,8 @@ github.com/NVIDIA/go-nvlib/pkg/pciids
 ## explicit; go 1.20
 github.com/NVIDIA/go-nvml/pkg/dl
 github.com/NVIDIA/go-nvml/pkg/nvml
-# github.com/NVIDIA/nvidia-container-toolkit v1.17.8
-## explicit; go 1.22
+# github.com/NVIDIA/nvidia-container-toolkit v1.18.0-rc.5
+## explicit; go 1.24.0
 github.com/NVIDIA/nvidia-container-toolkit/internal/config/image
 github.com/NVIDIA/nvidia-container-toolkit/internal/discover
 github.com/NVIDIA/nvidia-container-toolkit/internal/dxcore
@@ -25,7 +25,6 @@ github.com/NVIDIA/nvidia-container-toolkit/internal/info/proc
 github.com/NVIDIA/nvidia-container-toolkit/internal/ldcache
 github.com/NVIDIA/nvidia-container-toolkit/internal/logger
 github.com/NVIDIA/nvidia-container-toolkit/internal/lookup
-github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/cuda
 github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/root
 github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/symlinks
 github.com/NVIDIA/nvidia-container-toolkit/internal/nvcaps
@@ -197,8 +196,8 @@ golang.org/x/net/trace
 ## explicit; go 1.23.0
 golang.org/x/oauth2
 golang.org/x/oauth2/internal
-# golang.org/x/sys v0.33.0
-## explicit; go 1.23.0
+# golang.org/x/sys v0.36.0
+## explicit; go 1.24.0
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
@@ -639,12 +638,12 @@ sigs.k8s.io/structured-merge-diff/v4/value
 ## explicit; go 1.12
 sigs.k8s.io/yaml
 sigs.k8s.io/yaml/goyaml.v2
-# tags.cncf.io/container-device-interface v0.8.1
+# tags.cncf.io/container-device-interface v1.0.1
 ## explicit; go 1.20
 tags.cncf.io/container-device-interface/internal/validation
 tags.cncf.io/container-device-interface/internal/validation/k8s
 tags.cncf.io/container-device-interface/pkg/cdi
 tags.cncf.io/container-device-interface/pkg/parser
-# tags.cncf.io/container-device-interface/specs-go v0.8.0
+# tags.cncf.io/container-device-interface/specs-go v1.0.0
 ## explicit; go 1.19
 tags.cncf.io/container-device-interface/specs-go
