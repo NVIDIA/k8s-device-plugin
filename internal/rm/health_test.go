@@ -18,55 +18,61 @@ package rm
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetAdditionalXids(t *testing.T) {
+func TestNewHealthCheckXIDs(t *testing.T) {
 	testCases := []struct {
 		input    string
-		expected []uint64
+		expected healthCheckXIDs
 	}{
-		{},
 		{
-			input: ",",
+			expected: healthCheckXIDs{},
 		},
 		{
-			input: "not-an-int",
+			input:    ",",
+			expected: healthCheckXIDs{},
+		},
+		{
+			input:    "not-an-int",
+			expected: healthCheckXIDs{},
 		},
 		{
 			input:    "68",
-			expected: []uint64{68},
+			expected: healthCheckXIDs{68: true},
 		},
 		{
-			input: "-68",
+			input:    "-68",
+			expected: healthCheckXIDs{},
 		},
 		{
 			input:    "68  ",
-			expected: []uint64{68},
+			expected: healthCheckXIDs{68: true},
 		},
 		{
 			input:    "68,",
-			expected: []uint64{68},
+			expected: healthCheckXIDs{68: true},
 		},
 		{
 			input:    ",68",
-			expected: []uint64{68},
+			expected: healthCheckXIDs{68: true},
 		},
 		{
 			input:    "68,67",
-			expected: []uint64{68, 67},
+			expected: healthCheckXIDs{67: true, 68: true},
 		},
 		{
 			input:    "68,not-an-int,67",
-			expected: []uint64{68, 67},
+			expected: healthCheckXIDs{67: true, 68: true},
 		},
 	}
 
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("test case %d", i), func(t *testing.T) {
-			xids := getAdditionalXids(tc.input)
+			xids := newHealthCheckXIDs(strings.Split(tc.input, ",")...)
 
 			require.EqualValues(t, tc.expected, xids)
 		})

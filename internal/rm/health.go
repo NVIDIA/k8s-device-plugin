@@ -27,26 +27,26 @@ import (
 )
 
 const (
+	allHealthChecks = "xids"
 	// envDisableHealthChecks defines the environment variable that is checked to determine whether healthchecks
 	// should be disabled. If this envvar is set to "all" or contains the string "xids", healthchecks are
 	// disabled entirely. If set, the envvar is treated as a comma-separated list of Xids to ignore. Note that
 	// this is in addition to the Application errors that are already ignored.
 	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
-	envEnableHealthChecks  = "DP_ENABLE_HEALTHCHECKS"
-	allHealthChecks        = "xids"
+	// envEnableHealthChecks defines the environment variable that is checked to
+	// determine which XIDs should be explicitly enabled. XIDs specified here
+	// override the ones specified in the `DP_DISABLE_HEALTHCHECKS`.
+	// Note that this also allows individual XIDs to be selected when ALL XIDs
+	// are disabled.
+	envEnableHealthChecks = "DP_ENABLE_HEALTHCHECKS"
 )
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
 func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
-	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
-	if disableHealthChecks == "all" {
-		disableHealthChecks = allHealthChecks
-	}
-	if strings.Contains(disableHealthChecks, "xids") {
+	skippedXids := getHealthCheckXids()
+	if skippedXids.IsAllDisabled() {
 		return nil
 	}
-
-	enableHealthChecks := strings.ToLower(os.Getenv(envEnableHealthChecks))
 
 	ret := r.nvml.Init()
 	if ret != nvml.SUCCESS {
@@ -61,31 +61,6 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 			klog.Infof("Error shutting down NVML: %v", ret)
 		}
 	}()
-
-	// FIXME: formalize the full list and document it.
-	// http://docs.nvidia.com/deploy/xid-errors/index.html#topic_4
-	// Application errors: the GPU should still be healthy
-	ignoredXids := []uint64{
-		13,  // Graphics Engine Exception
-		31,  // GPU memory page fault
-		43,  // GPU stopped processing
-		45,  // Preemptive cleanup, due to previous errors
-		68,  // Video processor exception
-		109, // Context Switch Timeout Error
-	}
-
-	skippedXids := make(map[uint64]bool)
-	for _, id := range ignoredXids {
-		skippedXids[id] = true
-	}
-
-	for _, additionalXid := range getAdditionalXids(disableHealthChecks) {
-		skippedXids[additionalXid] = true
-	}
-
-	for _, additionalXid := range getAdditionalXids(enableHealthChecks) {
-		delete(skippedXids, additionalXid)
-	}
 
 	klog.Infof("Health checks are disabled for xids: %v", skippedXids)
 
@@ -161,7 +136,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 			continue
 		}
 
-		if skippedXids[e.EventData] {
+		if skippedXids.IsNonFatal(e.EventData) {
 			klog.Infof("Skipping event %+v", e)
 			continue
 		}
@@ -197,29 +172,86 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 	}
 }
 
-// getAdditionalXids returns a list of additional Xids to skip from the specified string.
-// The input is treaded as a comma-separated string and all valid uint64 values are considered as Xid values. Invalid values
-// are ignored.
-func getAdditionalXids(input string) []uint64 {
-	if input == "" {
+const allXIDs = 0
+
+type healthCheckXIDs map[uint64]bool
+
+func (h healthCheckXIDs) IsAllDisabled() bool {
+	return h[allXIDs] && len(h) == 1
+}
+
+func (h healthCheckXIDs) IsNonFatal(xid uint64) bool {
+	// If the xid has either been explicitly disabled or enabled, we return that
+	// value.
+	if isNonFatal, ok := h[xid]; ok {
+		return isNonFatal
+	}
+	// Otherwise we check whether ALL XIDs were disabled.
+	return h[allXIDs]
+}
+
+// newHealthCheckXIDs converts a list of Xids to a healthCheckXIDs map.
+// Special xid values 'all' and 'xids' return a special map that matches all
+// xids.
+// For other xids, these are converted to a uint64 values with invalid values
+// being ignored.
+func newHealthCheckXIDs(xids ...string) healthCheckXIDs {
+	if len(xids) == 0 {
 		return nil
 	}
-
-	var additionalXids []uint64
-	for _, additionalXid := range strings.Split(input, ",") {
-		trimmed := strings.TrimSpace(additionalXid)
+	output := make(healthCheckXIDs)
+	for _, xid := range xids {
+		trimmed := strings.TrimSpace(xid)
+		if trimmed == "all" || trimmed == "xids" {
+			// TODO: We should have a different type for "all" and "all-except"
+			return healthCheckXIDs{0: true}
+		}
 		if trimmed == "" {
 			continue
 		}
-		xid, err := strconv.ParseUint(trimmed, 10, 64)
+		id, err := strconv.ParseUint(trimmed, 10, 64)
 		if err != nil {
 			klog.Infof("Ignoring malformed Xid value %v: %v", trimmed, err)
 			continue
 		}
-		additionalXids = append(additionalXids, xid)
+
+		output[id] = true
+	}
+	return output
+}
+
+// getHealthCheckXids returns the XIDs that are considered fatal.
+func getHealthCheckXids() healthCheckXIDs {
+	disableHealthChecks := newHealthCheckXIDs(
+		strings.Split(strings.ToLower(os.Getenv(envDisableHealthChecks)), ",")...,
+	)
+	enabledHealthChecks := newHealthCheckXIDs(
+		strings.Split(strings.ToLower(os.Getenv(envEnableHealthChecks)), ",")...,
+	)
+	// TODO: 0 is the same as ALL
+	if disableHealthChecks[allXIDs] && len(enabledHealthChecks) == 0 {
+		return disableHealthChecks
 	}
 
-	return additionalXids
+	// FIXME: formalize the full list and document it.
+	// http://docs.nvidia.com/deploy/xid-errors/index.html#topic_4
+	// Application errors: the GPU should still be healthy
+	ignoredXids := []uint64{
+		13,  // Graphics Engine Exception
+		31,  // GPU memory page fault
+		43,  // GPU stopped processing
+		45,  // Preemptive cleanup, due to previous errors
+		68,  // Video processor exception
+		109, // Context Switch Timeout Error
+	}
+	for _, ignored := range ignoredXids {
+		disableHealthChecks[ignored] = true
+	}
+
+	for enabled := range enabledHealthChecks {
+		disableHealthChecks[enabled] = false
+	}
+	return disableHealthChecks
 }
 
 // getDevicePlacement returns the placement of the specified device.
