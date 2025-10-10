@@ -42,7 +42,7 @@ const (
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
 func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
-	xids := getHealthCheckXids()
+	xids := getDisabledHealthCheckXids()
 	if xids.IsAllDisabled() {
 		return nil
 	}
@@ -61,7 +61,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		}
 	}()
 
-	klog.Infof("Using XIDs for health checks: %v", xids)
+	klog.Infof("Ignoring the following XIDs for health checks: %v", xids)
 
 	eventSet, ret := r.nvml.EventSetCreate()
 	if ret != nvml.SUCCESS {
@@ -206,7 +206,7 @@ func (h disabledXIDs) IsDisabled(xid uint64) bool {
 	return h.IsAllDisabled()
 }
 
-// getHealthCheckXids returns the XIDs that are considered fatal.
+// getDisabledHealthCheckXids returns the XIDs that should be ignored.
 // Here we combine the following (in order of precedence):
 // * A list of explicitly disabled XIDs (including all XIDs)
 // * A list of hardcoded disabled XIDs
@@ -214,7 +214,7 @@ func (h disabledXIDs) IsDisabled(xid uint64) bool {
 //
 // Note that if an XID is explicitly enabled, this takes precedence over it
 // having been disabled either explicitly or implicitly.
-func getHealthCheckXids() disabledXIDs {
+func getDisabledHealthCheckXids() disabledXIDs {
 	disabled := newHealthCheckXIDs(
 		// TODO: We should not read the envvar here directly, but instead
 		// "upgrade" this to a top-level config option.
