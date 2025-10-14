@@ -79,7 +79,7 @@ func TestNewHealthCheckXIDs(t *testing.T) {
 	}
 }
 
-func TestGetHealthCheckXids(t *testing.T) {
+func TestGetDisabledHealthCheckXids(t *testing.T) {
 	testCases := []struct {
 		description         string
 		enabled             string
@@ -209,7 +209,7 @@ func TestGetHealthCheckXids(t *testing.T) {
 			t.Setenv(envDisableHealthChecks, tc.disabled)
 			t.Setenv(envEnableHealthChecks, tc.enabled)
 
-			xids := getHealthCheckXids()
+			xids := getDisabledHealthCheckXids()
 			require.EqualValues(t, tc.expectedContents, xids)
 			require.Equal(t, tc.expectedAllDisabled, xids.IsAllDisabled())
 
