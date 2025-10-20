@@ -1192,7 +1192,7 @@ sigs.k8s.io/kustomize/kyaml/yaml/walk
 sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned
 sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned/scheme
 sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned/typed/nfd/v1alpha1
-# sigs.k8s.io/node-feature-discovery/api/nfd v0.17.3
+# sigs.k8s.io/node-feature-discovery/api/nfd v0.18.2
 ## explicit; go 1.23.0
 sigs.k8s.io/node-feature-discovery/api/nfd/v1alpha1
 # sigs.k8s.io/randfill v1.0.0
