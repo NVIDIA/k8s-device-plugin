@@ -1,5 +1,37 @@
 ## Changelog
 
+### v0.18.0
+- Rename getHealthCheckXids and clarify documentation
+- Add support for explicitly enabling XIDs in health checks
+- Deduplicate requested device IDs
+- Check for nil before reading boolean config values
+- Make gated modes (GDS, MOFED, GDRCOPY) optional in CDI
+- Add support for setting gdrcopyEnabled
+- Ignore errors getting device memory using NVML
+- Ensure that directory volumes have Directory type
+- Switch to plain golang image for builds
+- Remove unneeded intermediate container
+- Update CI definitions
+- Switch to distroless golang image
+- Update README.md with RuntimeClass
+- Pass a single context throughout the device-plugin method call stack (#1284)
+- Remove internal logger in favour of klog (#1277)
+- Remove FAIL_ON_INIT_ERROR from static examples
+- Detect blackwell architecture
+- Updated .release:staging to stage device-plugin images in nvstaging
+- Use MiB instead of MB for gpu-memory
+- Ignore XID error 109
+- Update README.md adjust set docker runtime default
+- Remove nvidia.com/gpu.imex-domain label
+- Fix containerd runc config error when creating a kind cluster
+- Use stable nividia-container-toolkit repo when creating a kind cluster
+- Switch to context package in go stdlib
+- Raise a warning instead of an error if GPU mode labeler fails
+- Add ada-lovelace architecture label for compute capability 8.9
+- Ensure FAIL_ON_INIT_ERROR boolean env is quoted
+- Honor fail-on-init-error when no resources are found
+- Enable hostPID in the mps-control-daemon pod (#1045)
+
 ### Version v0.17.1
 - Ensure that generated CDI specs do not contain `enable-cuda-compat` hooks
 - Remove nvidia.com/gpu.imex-domain label
