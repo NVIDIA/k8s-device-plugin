@@ -535,8 +535,8 @@ sigs.k8s.io/kustomize/kyaml v0.19.0 h1:RFge5qsO1uHhwJsu3ipV7RNolC7Uozc0jUBC/61XS
 sigs.k8s.io/kustomize/kyaml v0.19.0/go.mod h1:FeKD5jEOH+FbZPpqUghBP8mrLjJ3+zD3/rf9NNu1cwY=
 sigs.k8s.io/node-feature-discovery v0.17.3 h1:CArk8De9LBP5bj3Z6Bz/mpnC8kDNfBhDAu0xJp4u/A8=
 sigs.k8s.io/node-feature-discovery v0.17.3/go.mod h1:N7lJLSoLzbTbliRtfBLXf12av2MjBiFM8dEaq8FESag=
-sigs.k8s.io/node-feature-discovery/api/nfd v0.17.3 h1:BJMNJ5ggnmlvzsANrxk6xPZISw1HSY0o7gL55EYu4Xc=
-sigs.k8s.io/node-feature-discovery/api/nfd v0.17.3/go.mod h1:XzGgUqDUyV/X+qkXEwG+CgfTUUeZix5iuobsmLoT0Ck=
+sigs.k8s.io/node-feature-discovery/api/nfd v0.18.2 h1:K1tEFsNBTkNMyIUfhLZXNC63tdHdy8zX+4hwNRZR+Ew=
+sigs.k8s.io/node-feature-discovery/api/nfd v0.18.2/go.mod h1:XzGgUqDUyV/X+qkXEwG+CgfTUUeZix5iuobsmLoT0Ck=
 sigs.k8s.io/randfill v0.0.0-20250304075658-069ef1bbf016/go.mod h1:XeLlZ/jmk4i1HRopwe7/aU3H5n1zNUcX6TM94b3QxOY=
 sigs.k8s.io/randfill v1.0.0 h1:JfjMILfT8A6RbawdsK2JXGBR5AQVfd+9TbzrlneTyrU=
 sigs.k8s.io/randfill v1.0.0/go.mod h1:XeLlZ/jmk4i1HRopwe7/aU3H5n1zNUcX6TM94b3QxOY=
