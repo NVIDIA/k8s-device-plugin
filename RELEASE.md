@@ -34,8 +34,6 @@ The device plugin consists in two artifacts:
       ```
 - If the `Publish Helm Chart` GitHub Action fails:
     - Check the logs for the error.
-    - Download the release artifacts:
-
     - Update the Helm package index on the `gh-pages` branch by running:
       ```
       ./hack/update-helm-index.sh --version {{ .VERSION }}
