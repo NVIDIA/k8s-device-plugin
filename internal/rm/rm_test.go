@@ -53,7 +53,7 @@ func TestValidateRequest(t *testing.T) {
 		{
 			description: "timeslicing with single device",
 			sharing: spec.Sharing{
-				TimeSlicing: spec.ReplicatedResources{
+				TimeSlicing: &spec.ReplicatedResources{
 					Resources: []spec.ReplicatedResource{
 						{
 							Name:     "nvidia.com/gpu",
@@ -73,7 +73,7 @@ func TestValidateRequest(t *testing.T) {
 		{
 			description: "timeslicing with two devices",
 			sharing: spec.Sharing{
-				TimeSlicing: spec.ReplicatedResources{
+				TimeSlicing: &spec.ReplicatedResources{
 					Resources: []spec.ReplicatedResource{
 						{
 							Name:     "nvidia.com/gpu",
@@ -93,7 +93,7 @@ func TestValidateRequest(t *testing.T) {
 		{
 			description: "timeslicing with two devices -- failRequestsGreaterThanOne",
 			sharing: spec.Sharing{
-				TimeSlicing: spec.ReplicatedResources{
+				TimeSlicing: &spec.ReplicatedResources{
 					FailRequestsGreaterThanOne: true,
 					Resources: []spec.ReplicatedResource{
 						{
