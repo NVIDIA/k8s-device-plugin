@@ -33,7 +33,6 @@ jobs:
     secrets: inherit
     with:
       version: ${{ needs.basic.outputs.version }}
-      build_multi_arch_images: ${{ github.ref_name == 'main' || startsWith(github.ref_name, 'release-') }}
 
   e2e-test:
     needs:
