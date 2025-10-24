@@ -217,6 +217,7 @@ func start(c *cli.Context, cfg *Config) error {
 			config:        config,
 			labelOutputer: labelOutputer,
 		}
+		fmt.Printf("labelOutputer created %v\n", labelOutputer)
 		restart, err := d.run(sigs)
 		if err != nil {
 			return err
@@ -278,6 +279,8 @@ rerun:
 	if err := d.labelOutputer.Output(labels); err != nil {
 		return false, err
 	}
+
+	fmt.Printf("labelOutputer output %v\n", labels)
 
 	if *d.config.Flags.GFD.Oneshot {
 		return false, nil
