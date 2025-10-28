@@ -66,6 +66,15 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 {{- end }}
 
+# PEZA: Added to fix identical template matchLabels
+{{- define "nvidia-device-plugin-mps-control-daemon.templateLabels" -}}
+app.kubernetes.io/name: {{ printf "%s-mps-control-daemon" (include "nvidia-device-plugin.name" .) }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if .Values.selectorLabelsOverrideMPSControlDaemon }}
+{{ toYaml .Values.selectorLabelsOverrideMPSControlDaemon }}
+{{- end }}
+{{- end }}
+
 {{/*
 Selector labels
 */}}
@@ -74,6 +83,15 @@ Selector labels
 {{ toYaml .Values.selectorLabelsOverride }}
 {{- else -}}
 {{ include "nvidia-device-plugin.templateLabels" . }}
+{{- end }}
+{{- end }}
+
+# PEZA: Added to fix identical template matchLabels
+{{- define "nvidia-device-plugin-mps-control-daemon.selectorLabels" -}}
+{{- if .Values.selectorLabelsOverrideMPSControlDaemon -}}
+{{ toYaml .Values.selectorLabelsOverrideMPSControlDaemon }}
+{{- else -}}
+{{ include "nvidia-device-plugin-mps-control-daemon.templateLabels" . }}
 {{- end }}
 {{- end }}
 
