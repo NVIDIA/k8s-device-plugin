@@ -57,6 +57,9 @@ type cdiHandler struct {
 
 	deviceListStrategies spec.DeviceListStrategies
 
+	// nvcdiFeatureFlags allows finer control over CDI spec generation.
+	nvcdiFeatureFlags []string
+
 	gdsEnabled     bool
 	mofedEnabled   bool
 	gdrcopyEnabled bool
@@ -117,6 +120,7 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 		nvcdi.WithDeviceLib(c.devicelib),
 		nvcdi.WithDevRoot(c.devRoot),
 		nvcdi.WithDriverRoot(c.driverRoot),
+		nvcdi.WithFeatureFlags(c.nvcdiFeatureFlags...),
 		nvcdi.WithInfoLib(c.infolib),
 		nvcdi.WithLogger(c.logger),
 		nvcdi.WithNVIDIACDIHookPath(c.nvidiaCTKPath),
