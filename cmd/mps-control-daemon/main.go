@@ -66,13 +66,13 @@ func main() {
 			Name:        "config-file",
 			Usage:       "the path to a config file as an alternative to command line options or environment variables",
 			Destination: &config.configFile,
-			EnvVars:     []string{"CONFIG_FILE"},
+			Sources:     cli.EnvVars("CONFIG_FILE"),
 		},
 		&cli.StringFlag{
 			Name:    "mig-strategy",
 			Value:   spec.MigStrategyNone,
 			Usage:   "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
-			EnvVars: []string{"MIG_STRATEGY"},
+			Sources: cli.EnvVars("MIG_STRATEGY"),
 		},
 	}
 	c.Flags = config.flags

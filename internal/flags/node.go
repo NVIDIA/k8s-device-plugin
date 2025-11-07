@@ -33,13 +33,13 @@ func (n *NodeConfig) Flags() []cli.Flag {
 			Usage:       "The namespace used for the custom resources.",
 			Value:       "default",
 			Destination: &n.Namespace,
-			EnvVars:     []string{"NAMESPACE"},
+			Sources:     cli.EnvVars("NAMESPACE"),
 		},
 		&cli.StringFlag{
 			Name:        "node-name",
 			Usage:       "The name of the node to be worked on.",
 			Destination: &n.Name,
-			EnvVars:     []string{"NODE_NAME"},
+			Sources:     cli.EnvVars("NODE_NAME"),
 		},
 	}
 	return flags
