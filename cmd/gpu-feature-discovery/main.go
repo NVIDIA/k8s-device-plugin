@@ -40,7 +40,7 @@ type Config struct {
 func main() {
 	config := &Config{}
 
-	c := cli.NewApp()
+	c := cli.Command{}
 	c.Name = "GPU Feature Discovery"
 	c.Usage = "generate labels for NVIDIA devices"
 	c.Version = info.GetVersionString()

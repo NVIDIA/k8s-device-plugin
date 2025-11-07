@@ -116,7 +116,7 @@ func (m *SyncableConfig) Get() string {
 func main() {
 	flags := Flags{}
 
-	c := cli.NewApp()
+	c := cli.Command{}
 	c.Before = func(c *cli.Context) error {
 		return validateFlags(c, &flags)
 	}

@@ -51,7 +51,7 @@ type Config struct {
 func main() {
 	config := &Config{}
 
-	c := cli.NewApp()
+	c := cli.Command{}
 	c.Name = "NVIDIA MPS Control Daemon"
 	c.Version = info.GetVersionString()
 	c.Action = func(ctx *cli.Context) error {

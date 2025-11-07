@@ -47,8 +47,9 @@ type options struct {
 }
 
 func main() {
-	c := cli.NewApp()
 	o := &options{}
+
+	c := cli.Command{}
 	c.Name = "NVIDIA Device Plugin"
 	c.Usage = "NVIDIA device plugin for Kubernetes"
 	c.Version = info.GetVersionString()
