@@ -68,7 +68,7 @@ type Flags struct {
 	ConfigFileSrcdir   string
 	ConfigFileDst      string
 	DefaultConfig      string
-	FallbackStrategies cli.StringSlice
+	FallbackStrategies []string
 	SendSignal         bool
 	Signal             int
 	ProcessToSignal    string
@@ -365,8 +365,8 @@ func updateConfigName(config string, f *Flags) (string, error) {
 	}
 
 	// Otherwise, if no explicit default is set, step through the configured fallbacks.
-	klog.Infof("No value set and no default set. Attempting fallback strategies: %v", f.FallbackStrategies.Value())
-	for _, fallback := range f.FallbackStrategies.Value() {
+	klog.Infof("No value set and no default set. Attempting fallback strategies: %v", f.FallbackStrategies)
+	for _, fallback := range f.FallbackStrategies {
 		switch fallback {
 		case FallbackStrategyNamedConfig:
 			klog.Infof("Attempting to find config named: %v", NamedConfigFallback)
