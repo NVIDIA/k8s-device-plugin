@@ -169,6 +169,11 @@ func main() {
 			Usage:   "The specified IMEX channels are required",
 			EnvVars: []string{"IMEX_REQUIRED"},
 		},
+		&cli.StringSliceFlag{
+			Name:    "cdi-feature-flags",
+			Usage:   "A set of feature flags to be passed to the CDI spec generation logic",
+			EnvVars: []string{"CDI_FEATURE_FLAGS"},
+		},
 	}
 	o.flags = c.Flags
 
