@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	cli "github.com/urfave/cli/v2"
+	cli "github.com/urfave/cli/v3"
 )
 
 // prt returns a reference to whatever type is passed into it

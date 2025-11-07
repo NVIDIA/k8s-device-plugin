@@ -29,7 +29,7 @@ import (
 	nvinfo "github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/fsnotify/fsnotify"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	"k8s.io/klog/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 

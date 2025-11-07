@@ -21,7 +21,7 @@ import (
 	"io"
 	"os"
 
-	cli "github.com/urfave/cli/v2"
+	cli "github.com/urfave/cli/v3"
 	"k8s.io/klog/v2"
 
 	"sigs.k8s.io/yaml"

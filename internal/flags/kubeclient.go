@@ -20,7 +20,7 @@ package flags
 import (
 	"fmt"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	coreclientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"

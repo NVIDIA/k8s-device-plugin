@@ -25,7 +25,7 @@ import (
 	"syscall"
 
 	"github.com/prometheus/procfs"
-	cli "github.com/urfave/cli/v2"
+	cli "github.com/urfave/cli/v3"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
