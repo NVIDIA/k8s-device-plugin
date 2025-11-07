@@ -113,19 +113,25 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 		return nil, err
 	}
 
+	commonOptions := []nvcdi.Option{
+		nvcdi.WithDeviceLib(c.devicelib),
+		nvcdi.WithDevRoot(c.devRoot),
+		nvcdi.WithDriverRoot(c.driverRoot),
+		nvcdi.WithInfoLib(c.infolib),
+		nvcdi.WithLogger(c.logger),
+		nvcdi.WithNVIDIACDIHookPath(c.nvidiaCTKPath),
+		nvcdi.WithNvmlLib(c.nvmllib),
+		nvcdi.WithVendor(c.vendor),
+	}
+
 	c.cdilibs = make(map[string]nvcdi.SpecGenerator)
 
 	c.cdilibs["gpu"], err = nvcdi.New(
-		nvcdi.WithInfoLib(c.infolib),
-		nvcdi.WithNvmlLib(c.nvmllib),
-		nvcdi.WithDeviceLib(c.devicelib),
-		nvcdi.WithLogger(c.logger),
-		nvcdi.WithNVIDIACDIHookPath(c.nvidiaCTKPath),
-		nvcdi.WithDriverRoot(c.driverRoot),
-		nvcdi.WithDevRoot(c.devRoot),
-		nvcdi.WithDeviceNamers(deviceNamer),
-		nvcdi.WithVendor(c.vendor),
-		nvcdi.WithClass("gpu"),
+		append(
+			commonOptions,
+			nvcdi.WithDeviceNamers(deviceNamer),
+			nvcdi.WithClass("gpu"),
+		)...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create nvcdi library: %v", err)
@@ -147,13 +153,10 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 
 	for _, mode := range c.additionalModes {
 		lib, err := nvcdi.New(
-			nvcdi.WithInfoLib(c.infolib),
-			nvcdi.WithLogger(c.logger),
-			nvcdi.WithNVIDIACDIHookPath(c.nvidiaCTKPath),
-			nvcdi.WithDriverRoot(c.driverRoot),
-			nvcdi.WithDevRoot(c.devRoot),
-			nvcdi.WithVendor(c.vendor),
-			nvcdi.WithMode(mode),
+			append(
+				commonOptions,
+				nvcdi.WithMode(mode),
+			)...,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create nvcdi library: %v", err)
