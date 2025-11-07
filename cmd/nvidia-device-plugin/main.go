@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -53,8 +54,8 @@ func main() {
 	c.Name = "NVIDIA Device Plugin"
 	c.Usage = "NVIDIA device plugin for Kubernetes"
 	c.Version = info.GetVersionString()
-	c.Action = func(ctx *cli.Context) error {
-		return start(ctx, o)
+	c.Action = func(ctx context.Context, cmd *cli.Command) error {
+		return start(ctx, cmd, o)
 	}
 
 	c.Flags = []cli.Flag{
@@ -173,7 +174,7 @@ func main() {
 	}
 	o.flags = c.Flags
 
-	err := c.Run(os.Args)
+	err := c.Run(context.Background(), os.Args)
 	if err != nil {
 		klog.Error(err)
 		os.Exit(1)
@@ -227,7 +228,7 @@ func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 	return nil
 }
 
-func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
+func loadConfig(c *cli.Command, flags []cli.Flag) (*spec.Config, error) {
 	config, err := spec.NewConfig(c, flags)
 	if err != nil {
 		return nil, fmt.Errorf("unable to finalize config: %v", err)
@@ -236,8 +237,8 @@ func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 	return config, nil
 }
 
-func start(c *cli.Context, o *options) error {
-	klog.InfoS(fmt.Sprintf("Starting %s", c.App.Name), "version", c.App.Version)
+func start(ctx context.Context, c *cli.Command, o *options) error {
+	klog.InfoS(fmt.Sprintf("Starting %s", c.Name), "version", c.Version)
 
 	kubeletSocketDir := filepath.Dir(o.kubeletSocket)
 	klog.Infof("Starting FS watcher for %v", kubeletSocketDir)
@@ -263,7 +264,7 @@ restart:
 	}
 
 	klog.Info("Starting Plugins.")
-	plugins, restartPlugins, err := startPlugins(c, o)
+	plugins, restartPlugins, err := startPlugins(ctx, c, o)
 	if err != nil {
 		return fmt.Errorf("error starting plugins: %v", err)
 	}
@@ -317,7 +318,7 @@ exit:
 	return nil
 }
 
-func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) {
+func startPlugins(ctx context.Context, c *cli.Command, o *options) ([]plugin.Interface, bool, error) {
 	// Load the configuration file
 	klog.Info("Loading configuration.")
 	config, err := loadConfig(c, o.flags)
@@ -359,7 +360,7 @@ func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) 
 
 	// Get the set of plugins.
 	klog.Info("Retrieving plugins.")
-	plugins, err := GetPlugins(c.Context, infolib, nvmllib, devicelib, config)
+	plugins, err := GetPlugins(ctx, infolib, nvmllib, devicelib, config)
 	if err != nil {
 		return nil, false, fmt.Errorf("error getting plugins: %v", err)
 	}

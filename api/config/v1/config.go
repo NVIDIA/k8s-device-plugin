@@ -42,7 +42,7 @@ type Config struct {
 // NewConfig builds out a Config struct from a config file (or command line flags).
 // The data stored in the config will be populated in order of precedence from
 // (1) command line, (2) environment variable, (3) config file.
-func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
+func NewConfig(c *cli.Command, flags []cli.Flag) (*Config, error) {
 	config := &Config{Version: Version}
 
 	if configFile := c.String("config-file"); configFile != "" {

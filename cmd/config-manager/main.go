@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -117,11 +118,11 @@ func main() {
 	flags := Flags{}
 
 	c := cli.Command{}
-	c.Before = func(c *cli.Context) error {
-		return validateFlags(c, &flags)
+	c.Before = func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
+		return ctx, validateFlags(cmd, &flags)
 	}
-	c.Action = func(c *cli.Context) error {
-		return start(c, &flags)
+	c.Action = func(_ context.Context, cmd *cli.Command) error {
+		return start(cmd, &flags)
 	}
 
 	c.Flags = []cli.Flag{
@@ -203,14 +204,14 @@ func main() {
 		},
 	}
 
-	err := c.Run(os.Args)
+	err := c.Run(context.Background(), os.Args)
 	if err != nil {
 		klog.Error(err)
 		os.Exit(1)
 	}
 }
 
-func validateFlags(c *cli.Context, f *Flags) error {
+func validateFlags(c *cli.Command, f *Flags) error {
 	if f.NodeName == "" {
 		return fmt.Errorf("invalid <node-name>: must not be empty string")
 	}
@@ -226,7 +227,7 @@ func validateFlags(c *cli.Context, f *Flags) error {
 	return nil
 }
 
-func start(c *cli.Context, f *Flags) error {
+func start(c *cli.Command, f *Flags) error {
 	kubeconfig, err := clientcmd.BuildConfigFromFlags("", f.Kubeconfig)
 	if err != nil {
 		return fmt.Errorf("error building kubernetes clientcmd config: %s", err)

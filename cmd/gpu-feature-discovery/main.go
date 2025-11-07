@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -44,8 +45,8 @@ func main() {
 	c.Name = "GPU Feature Discovery"
 	c.Usage = "generate labels for NVIDIA devices"
 	c.Version = info.GetVersionString()
-	c.Action = func(ctx *cli.Context) error {
-		return start(ctx, config)
+	c.Action = func(_ context.Context, cmd *cli.Command) error {
+		return start(cmd, config)
 	}
 
 	config.flags = []cli.Flag{
@@ -122,7 +123,7 @@ func main() {
 
 	c.Flags = config.flags
 
-	if err := c.Run(os.Args); err != nil {
+	if err := c.Run(context.Background(), os.Args); err != nil {
 		klog.Error(err)
 		os.Exit(1)
 	}
@@ -141,7 +142,7 @@ func validateFlags(config *spec.Config) error {
 }
 
 // loadConfig loads the config from the spec file.
-func (cfg *Config) loadConfig(c *cli.Context) (*spec.Config, error) {
+func (cfg *Config) loadConfig(c *cli.Command) (*spec.Config, error) {
 	config, err := spec.NewConfig(c, cfg.flags)
 	if err != nil {
 		return nil, fmt.Errorf("unable to finalize config: %v", err)
@@ -154,7 +155,7 @@ func (cfg *Config) loadConfig(c *cli.Context) (*spec.Config, error) {
 	return config, nil
 }
 
-func start(c *cli.Context, cfg *Config) error {
+func start(c *cli.Command, cfg *Config) error {
 	defer func() {
 		klog.Info("Exiting")
 	}()

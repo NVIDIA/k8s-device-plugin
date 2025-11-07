@@ -29,7 +29,7 @@ func ptr[T any](x T) *T {
 }
 
 // updateFromCLIFlag conditionally updates the config flag at 'pflag' to the value of the CLI flag with name 'flagName'
-func updateFromCLIFlag[T any](pflag **T, c *cli.Context, flagName string) {
+func updateFromCLIFlag[T any](pflag **T, c *cli.Command, flagName string) {
 	if c.IsSet(flagName) || *pflag == (*T)(nil) {
 		switch flag := any(pflag).(type) {
 		case **string:
@@ -112,7 +112,7 @@ type GFDCommandLineFlags struct {
 }
 
 // UpdateFromCLIFlags updates Flags from settings in the cli Flags if they are set.
-func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
+func (f *Flags) UpdateFromCLIFlags(c *cli.Command, flags []cli.Flag) {
 	for _, flag := range flags {
 		for _, n := range flag.Names() {
 			// Common flags
