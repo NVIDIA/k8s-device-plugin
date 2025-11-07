@@ -163,3 +163,6 @@ cdi:
   # nvidiaHookPath specifies the path to the nvidia-cdi-hook or nvidia-ctk executables on the host.
   # This is required to ensure that the generated CDI specification refers to the correct CDI hooks.
   nvidiaHookPath: null
+  # featureFlags allows CDI feature flags to be specified for CDI specification generation.
+  # This is specified as a comma-separated list of strings.
+  featureFlags: null
