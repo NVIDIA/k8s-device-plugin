@@ -18,13 +18,14 @@ package mount
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	"k8s.io/klog/v2"
 	"k8s.io/mount-utils"
 )
@@ -41,7 +42,7 @@ func NewCommand() *cli.Command {
 }
 
 // mountShm creates a tmpfs mount at /mps/shm to be used by the mps control daemon.
-func mountShm(c *cli.Context) error {
+func mountShm(_ context.Context, c *cli.Command) error {
 	mountExecutable, err := exec.LookPath("mount")
 	if err != nil {
 		return fmt.Errorf("error finding 'mount' executable: %w", err)

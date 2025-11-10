@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,7 +30,7 @@ import (
 	nvinfo "github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/fsnotify/fsnotify"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	"k8s.io/klog/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 
@@ -47,13 +48,14 @@ type options struct {
 }
 
 func main() {
-	c := cli.NewApp()
 	o := &options{}
+
+	c := cli.Command{}
 	c.Name = "NVIDIA Device Plugin"
 	c.Usage = "NVIDIA device plugin for Kubernetes"
 	c.Version = info.GetVersionString()
-	c.Action = func(ctx *cli.Context) error {
-		return start(ctx, o)
+	c.Action = func(ctx context.Context, cmd *cli.Command) error {
+		return start(ctx, cmd, o)
 	}
 
 	c.Flags = []cli.Flag{
@@ -61,118 +63,118 @@ func main() {
 			Name:    "mig-strategy",
 			Value:   spec.MigStrategyNone,
 			Usage:   "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
-			EnvVars: []string{"MIG_STRATEGY"},
+			Sources: cli.EnvVars("MIG_STRATEGY"),
 		},
 		&cli.BoolFlag{
 			Name:    "fail-on-init-error",
 			Value:   true,
 			Usage:   "fail the plugin if an error is encountered during initialization, otherwise block indefinitely",
-			EnvVars: []string{"FAIL_ON_INIT_ERROR"},
+			Sources: cli.EnvVars("FAIL_ON_INIT_ERROR"),
 		},
 		&cli.StringFlag{
 			Name:    "driver-root",
 			Aliases: []string{"nvidia-driver-root"},
 			Value:   "/",
 			Usage:   "the root path for the NVIDIA driver installation on the host (typical values are '/' or '/run/nvidia/driver')",
-			EnvVars: []string{"NVIDIA_DRIVER_ROOT"},
+			Sources: cli.EnvVars("NVIDIA_DRIVER_ROOT"),
 		},
 		&cli.StringFlag{
 			Name:    "dev-root",
 			Aliases: []string{"nvidia-dev-root"},
 			Usage:   "the root path for the NVIDIA device nodes on the host (typical values are '/' or '/run/nvidia/driver')",
-			EnvVars: []string{"NVIDIA_DEV_ROOT"},
+			Sources: cli.EnvVars("NVIDIA_DEV_ROOT"),
 		},
 		&cli.BoolFlag{
 			Name:    "pass-device-specs",
 			Value:   false,
 			Usage:   "pass the list of DeviceSpecs to the kubelet on Allocate()",
-			EnvVars: []string{"PASS_DEVICE_SPECS"},
+			Sources: cli.EnvVars("PASS_DEVICE_SPECS"),
 		},
 		&cli.StringSliceFlag{
 			Name:    "device-list-strategy",
-			Value:   cli.NewStringSlice(string(spec.DeviceListStrategyEnvVar)),
+			Value:   []string{string(spec.DeviceListStrategyEnvVar)},
 			Usage:   "the desired strategy for passing the device list to the underlying runtime:\n\t\t[envvar | volume-mounts | cdi-annotations]",
-			EnvVars: []string{"DEVICE_LIST_STRATEGY"},
+			Sources: cli.EnvVars("DEVICE_LIST_STRATEGY"),
 		},
 		&cli.StringFlag{
 			Name:    "device-id-strategy",
 			Value:   spec.DeviceIDStrategyUUID,
 			Usage:   "the desired strategy for passing device IDs to the underlying runtime:\n\t\t[uuid | index]",
-			EnvVars: []string{"DEVICE_ID_STRATEGY"},
+			Sources: cli.EnvVars("DEVICE_ID_STRATEGY"),
 		},
 		&cli.BoolFlag{
 			Name:    "gdrcopy-enabled",
 			Usage:   "ensure that containers that request NVIDIA GPU resources are started with GDRCopy support",
-			EnvVars: []string{"GDRCOPY_ENABLED"},
+			Sources: cli.EnvVars("GDRCOPY_ENABLED"),
 		},
 		&cli.BoolFlag{
 			Name:    "gds-enabled",
 			Usage:   "ensure that containers that request NVIDIA GPU resources are started with GPUDirect Storage support",
-			EnvVars: []string{"GDS_ENABLED"},
+			Sources: cli.EnvVars("GDS_ENABLED"),
 		},
 		&cli.BoolFlag{
 			Name:    "mofed-enabled",
 			Usage:   "ensure that containers that request NVIDIA GPU resources are started with MOFED support",
-			EnvVars: []string{"MOFED_ENABLED"},
+			Sources: cli.EnvVars("MOFED_ENABLED"),
 		},
 		&cli.StringFlag{
 			Name:        "kubelet-socket",
 			Value:       pluginapi.KubeletSocket,
 			Usage:       "specify the socket for communicating with the kubelet; if this is empty, no connection with the kubelet is attempted",
 			Destination: &o.kubeletSocket,
-			EnvVars:     []string{"KUBELET_SOCKET"},
+			Sources:     cli.EnvVars("KUBELET_SOCKET"),
 		},
 		&cli.StringFlag{
 			Name:        "config-file",
 			Usage:       "the path to a config file as an alternative to command line options or environment variables",
 			Destination: &o.configFile,
-			EnvVars:     []string{"CONFIG_FILE"},
+			Sources:     cli.EnvVars("CONFIG_FILE"),
 		},
 		&cli.StringFlag{
 			Name:    "cdi-annotation-prefix",
 			Value:   spec.DefaultCDIAnnotationPrefix,
 			Usage:   "the prefix to use for CDI container annotation keys",
-			EnvVars: []string{"CDI_ANNOTATION_PREFIX"},
+			Sources: cli.EnvVars("CDI_ANNOTATION_PREFIX"),
 		},
 		&cli.StringFlag{
 			Name:    "nvidia-cdi-hook-path",
 			Aliases: []string{"nvidia-ctk-path"},
 			Value:   spec.DefaultNvidiaCTKPath,
 			Usage:   "the path to use for NVIDIA CDI hooks in the generated CDI specification",
-			EnvVars: []string{"NVIDIA_CDI_HOOK_PATH", "NVIDIA_CTK_PATH"},
+			Sources: cli.EnvVars("NVIDIA_CDI_HOOK_PATH", "NVIDIA_CTK_PATH"),
 		},
 		&cli.StringFlag{
 			Name:    "driver-root-ctr-path",
 			Aliases: []string{"container-driver-root"},
 			Value:   spec.DefaultContainerDriverRoot,
 			Usage:   "the path where the NVIDIA driver root is mounted in the container; used for generating CDI specifications",
-			EnvVars: []string{"DRIVER_ROOT_CTR_PATH", "CONTAINER_DRIVER_ROOT"},
+			Sources: cli.EnvVars("DRIVER_ROOT_CTR_PATH", "CONTAINER_DRIVER_ROOT"),
 		},
 		&cli.StringFlag{
 			Name:    "mps-root",
 			Usage:   "the path on the host where MPS-specific mounts and files are created by the MPS control daemon manager",
-			EnvVars: []string{"MPS_ROOT"},
+			Sources: cli.EnvVars("MPS_ROOT"),
 		},
 		&cli.StringFlag{
 			Name:    "device-discovery-strategy",
 			Value:   "auto",
 			Usage:   "the strategy to use to discover devices: 'auto', 'nvml', or 'tegra'",
-			EnvVars: []string{"DEVICE_DISCOVERY_STRATEGY"},
+			Sources: cli.EnvVars("DEVICE_DISCOVERY_STRATEGY"),
 		},
 		&cli.IntSliceFlag{
 			Name:    "imex-channel-ids",
 			Usage:   "A list of IMEX channels to inject.",
-			EnvVars: []string{"IMEX_CHANNEL_IDS"},
+			Sources: cli.EnvVars("IMEX_CHANNEL_IDS"),
 		},
 		&cli.BoolFlag{
 			Name:    "imex-required",
 			Usage:   "The specified IMEX channels are required",
-			EnvVars: []string{"IMEX_REQUIRED"},
+			Sources: cli.EnvVars("IMEX_REQUIRED"),
 		},
 	}
 	o.flags = c.Flags
 
-	err := c.Run(os.Args)
+	err := c.Run(context.Background(), os.Args)
 	if err != nil {
 		klog.Error(err)
 		os.Exit(1)
@@ -226,7 +228,7 @@ func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 	return nil
 }
 
-func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
+func loadConfig(c *cli.Command, flags []cli.Flag) (*spec.Config, error) {
 	config, err := spec.NewConfig(c, flags)
 	if err != nil {
 		return nil, fmt.Errorf("unable to finalize config: %v", err)
@@ -235,8 +237,8 @@ func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 	return config, nil
 }
 
-func start(c *cli.Context, o *options) error {
-	klog.InfoS(fmt.Sprintf("Starting %s", c.App.Name), "version", c.App.Version)
+func start(ctx context.Context, c *cli.Command, o *options) error {
+	klog.InfoS(fmt.Sprintf("Starting %s", c.Name), "version", c.Version)
 
 	kubeletSocketDir := filepath.Dir(o.kubeletSocket)
 	klog.Infof("Starting FS watcher for %v", kubeletSocketDir)
@@ -262,7 +264,7 @@ restart:
 	}
 
 	klog.Info("Starting Plugins.")
-	plugins, restartPlugins, err := startPlugins(c, o)
+	plugins, restartPlugins, err := startPlugins(ctx, c, o)
 	if err != nil {
 		return fmt.Errorf("error starting plugins: %v", err)
 	}
@@ -316,7 +318,7 @@ exit:
 	return nil
 }
 
-func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) {
+func startPlugins(ctx context.Context, c *cli.Command, o *options) ([]plugin.Interface, bool, error) {
 	// Load the configuration file
 	klog.Info("Loading configuration.")
 	config, err := loadConfig(c, o.flags)
@@ -358,7 +360,7 @@ func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) 
 
 	// Get the set of plugins.
 	klog.Info("Retrieving plugins.")
-	plugins, err := GetPlugins(c.Context, infolib, nvmllib, devicelib, config)
+	plugins, err := GetPlugins(ctx, infolib, nvmllib, devicelib, config)
 	if err != nil {
 		return nil, false, fmt.Errorf("error getting plugins: %v", err)
 	}

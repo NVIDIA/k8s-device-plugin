@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,7 +25,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	"k8s.io/klog/v2"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
@@ -51,11 +52,11 @@ type Config struct {
 func main() {
 	config := &Config{}
 
-	c := cli.NewApp()
+	c := cli.Command{}
 	c.Name = "NVIDIA MPS Control Daemon"
 	c.Version = info.GetVersionString()
-	c.Action = func(ctx *cli.Context) error {
-		return start(ctx, config)
+	c.Action = func(ctx context.Context, cmd *cli.Command) error {
+		return start(ctx, cmd, config)
 	}
 	c.Commands = []*cli.Command{
 		mount.NewCommand(),
@@ -66,19 +67,19 @@ func main() {
 			Name:        "config-file",
 			Usage:       "the path to a config file as an alternative to command line options or environment variables",
 			Destination: &config.configFile,
-			EnvVars:     []string{"CONFIG_FILE"},
+			Sources:     cli.EnvVars("CONFIG_FILE"),
 		},
 		&cli.StringFlag{
 			Name:    "mig-strategy",
 			Value:   spec.MigStrategyNone,
 			Usage:   "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
-			EnvVars: []string{"MIG_STRATEGY"},
+			Sources: cli.EnvVars("MIG_STRATEGY"),
 		},
 	}
 	c.Flags = config.flags
 
 	klog.InfoS(c.Name, "version", c.Version)
-	err := c.Run(os.Args)
+	err := c.Run(context.Background(), os.Args)
 	if err != nil {
 		klog.Error(err)
 		os.Exit(1)
@@ -91,7 +92,7 @@ func validateFlags(config *spec.Config) error {
 }
 
 // loadConfig loads the config from the spec file.
-func (cfg *Config) loadConfig(c *cli.Context) (*spec.Config, error) {
+func (cfg *Config) loadConfig(c *cli.Command) (*spec.Config, error) {
 	config, err := spec.NewConfig(c, cfg.flags)
 	if err != nil {
 		return nil, fmt.Errorf("unable to finalize config: %w", err)
@@ -105,7 +106,7 @@ func (cfg *Config) loadConfig(c *cli.Context) (*spec.Config, error) {
 	return config, nil
 }
 
-func start(c *cli.Context, cfg *Config) error {
+func start(ctx context.Context, c *cli.Command, cfg *Config) error {
 	klog.Info("Starting OS watcher.")
 	sigs := watch.Signals(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	var started bool
@@ -121,7 +122,7 @@ restart:
 	}
 
 	klog.Info("Starting Daemons.")
-	daemons, restartDaemons, err := startDaemons(c, cfg)
+	daemons, restartDaemons, err := startDaemons(ctx, c, cfg)
 	if err != nil {
 		return fmt.Errorf("error starting plugins: %v", err)
 	}
@@ -161,7 +162,7 @@ exit:
 	return nil
 }
 
-func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
+func startDaemons(ctx context.Context, c *cli.Command, cfg *Config) ([]*mps.Daemon, bool, error) {
 	// Load the configuration file
 	klog.Info("Loading configuration.")
 	config, err := cfg.loadConfig(c)
@@ -208,7 +209,7 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 	// Loop through all MPS daemons and start them.
 	// If any daemon fails to start, all daemons are started again.
 	for _, mpsDaemon := range mpsDaemons {
-		if err := mpsDaemon.Start(); err != nil {
+		if err := mpsDaemon.Start(ctx); err != nil {
 			klog.Errorf("Failed to start MPS daemon: %v", err)
 			return mpsDaemons, true, nil
 		}

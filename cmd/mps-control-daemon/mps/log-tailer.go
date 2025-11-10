@@ -37,8 +37,8 @@ func newTailer(filename string) *tailer {
 }
 
 // Start starts tailing the specified filename.
-func (t *tailer) Start() error {
-	ctx, cancel := context.WithCancel(context.Background())
+func (t *tailer) Start(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
 	t.cancel = cancel
 
 	//nolint:gosec // G204: Subprocess launched with a potential tainted input or cmd arguments (gosec)

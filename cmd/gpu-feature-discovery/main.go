@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	"k8s.io/klog/v2"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
@@ -40,12 +41,12 @@ type Config struct {
 func main() {
 	config := &Config{}
 
-	c := cli.NewApp()
+	c := cli.Command{}
 	c.Name = "GPU Feature Discovery"
 	c.Usage = "generate labels for NVIDIA devices"
 	c.Version = info.GetVersionString()
-	c.Action = func(ctx *cli.Context) error {
-		return start(ctx, config)
+	c.Action = func(_ context.Context, cmd *cli.Command) error {
+		return start(cmd, config)
 	}
 
 	config.flags = []cli.Flag{
@@ -53,67 +54,67 @@ func main() {
 			Name:    "mig-strategy",
 			Value:   spec.MigStrategyNone,
 			Usage:   "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
-			EnvVars: []string{"GFD_MIG_STRATEGY", "MIG_STRATEGY"},
+			Sources: cli.EnvVars("GFD_MIG_STRATEGY", "MIG_STRATEGY"),
 		},
 		&cli.BoolFlag{
 			Name:    "fail-on-init-error",
 			Value:   true,
 			Usage:   "fail the plugin if an error is encountered during initialization, otherwise block indefinitely",
-			EnvVars: []string{"GFD_FAIL_ON_INIT_ERROR", "FAIL_ON_INIT_ERROR"},
+			Sources: cli.EnvVars("GFD_FAIL_ON_INIT_ERROR", "FAIL_ON_INIT_ERROR"),
 		},
 		&cli.BoolFlag{
 			Name:    "oneshot",
 			Value:   false,
 			Usage:   "Label once and exit",
-			EnvVars: []string{"GFD_ONESHOT"},
+			Sources: cli.EnvVars("GFD_ONESHOT"),
 		},
 		&cli.BoolFlag{
 			Name:    "no-timestamp",
 			Value:   false,
 			Usage:   "Do not add the timestamp to the labels",
-			EnvVars: []string{"GFD_NO_TIMESTAMP"},
+			Sources: cli.EnvVars("GFD_NO_TIMESTAMP"),
 		},
 		&cli.DurationFlag{
 			Name:    "sleep-interval",
 			Value:   60 * time.Second,
 			Usage:   "Time to sleep between labeling",
-			EnvVars: []string{"GFD_SLEEP_INTERVAL"},
+			Sources: cli.EnvVars("GFD_SLEEP_INTERVAL"),
 		},
 		&cli.StringFlag{
 			Name:    "output-file",
 			Aliases: []string{"output", "o"},
 			Value:   "/etc/kubernetes/node-feature-discovery/features.d/gfd",
-			EnvVars: []string{"GFD_OUTPUT_FILE"},
+			Sources: cli.EnvVars("GFD_OUTPUT_FILE"),
 		},
 		&cli.StringFlag{
 			Name:    "machine-type-file",
 			Value:   "/sys/class/dmi/id/product_name",
 			Usage:   "a path to a file that contains the DMI (SMBIOS) information for the node",
-			EnvVars: []string{"GFD_MACHINE_TYPE_FILE"},
+			Sources: cli.EnvVars("GFD_MACHINE_TYPE_FILE"),
 		},
 		&cli.StringFlag{
 			Name:        "config-file",
 			Usage:       "the path to a config file as an alternative to command line options or environment variables",
 			Destination: &config.configFile,
-			EnvVars:     []string{"GFD_CONFIG_FILE", "CONFIG_FILE"},
+			Sources:     cli.EnvVars("GFD_CONFIG_FILE", "CONFIG_FILE"),
 		},
 		&cli.BoolFlag{
 			Name:    "use-node-feature-api",
 			Usage:   "Use NFD NodeFeature API to publish labels",
-			EnvVars: []string{"GFD_USE_NODE_FEATURE_API", "USE_NODE_FEATURE_API"},
+			Sources: cli.EnvVars("GFD_USE_NODE_FEATURE_API", "USE_NODE_FEATURE_API"),
 		},
 		&cli.StringFlag{
 			Name:    "device-discovery-strategy",
 			Value:   "auto",
 			Usage:   "the strategy to use to discover devices: 'auto', 'nvml', 'tegra' or 'vfio'",
-			EnvVars: []string{"DEVICE_DISCOVERY_STRATEGY"},
+			Sources: cli.EnvVars("DEVICE_DISCOVERY_STRATEGY"),
 		},
 		&cli.StringFlag{
 			Name:    "driver-root-ctr-path",
 			Aliases: []string{"container-driver-root"},
 			Value:   spec.DefaultContainerDriverRoot,
 			Usage:   "the path where the NVIDIA driver root is mounted in the container",
-			EnvVars: []string{"DRIVER_ROOT_CTR_PATH", "CONTAINER_DRIVER_ROOT"},
+			Sources: cli.EnvVars("DRIVER_ROOT_CTR_PATH", "CONTAINER_DRIVER_ROOT"),
 		},
 	}
 
@@ -122,7 +123,7 @@ func main() {
 
 	c.Flags = config.flags
 
-	if err := c.Run(os.Args); err != nil {
+	if err := c.Run(context.Background(), os.Args); err != nil {
 		klog.Error(err)
 		os.Exit(1)
 	}
@@ -141,7 +142,7 @@ func validateFlags(config *spec.Config) error {
 }
 
 // loadConfig loads the config from the spec file.
-func (cfg *Config) loadConfig(c *cli.Context) (*spec.Config, error) {
+func (cfg *Config) loadConfig(c *cli.Command) (*spec.Config, error) {
 	config, err := spec.NewConfig(c, cfg.flags)
 	if err != nil {
 		return nil, fmt.Errorf("unable to finalize config: %v", err)
@@ -154,7 +155,7 @@ func (cfg *Config) loadConfig(c *cli.Context) (*spec.Config, error) {
 	return config, nil
 }
 
-func start(c *cli.Context, cfg *Config) error {
+func start(c *cli.Command, cfg *Config) error {
 	defer func() {
 		klog.Info("Exiting")
 	}()
