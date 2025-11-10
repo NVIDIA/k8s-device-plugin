@@ -55,8 +55,8 @@ func main() {
 	c := cli.Command{}
 	c.Name = "NVIDIA MPS Control Daemon"
 	c.Version = info.GetVersionString()
-	c.Action = func(_ context.Context, cmd *cli.Command) error {
-		return start(cmd, config)
+	c.Action = func(ctx context.Context, cmd *cli.Command) error {
+		return start(ctx, cmd, config)
 	}
 	c.Commands = []*cli.Command{
 		mount.NewCommand(),
@@ -106,7 +106,7 @@ func (cfg *Config) loadConfig(c *cli.Command) (*spec.Config, error) {
 	return config, nil
 }
 
-func start(c *cli.Command, cfg *Config) error {
+func start(ctx context.Context, c *cli.Command, cfg *Config) error {
 	klog.Info("Starting OS watcher.")
 	sigs := watch.Signals(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	var started bool
@@ -122,7 +122,7 @@ restart:
 	}
 
 	klog.Info("Starting Daemons.")
-	daemons, restartDaemons, err := startDaemons(c, cfg)
+	daemons, restartDaemons, err := startDaemons(ctx, c, cfg)
 	if err != nil {
 		return fmt.Errorf("error starting plugins: %v", err)
 	}
@@ -162,7 +162,7 @@ exit:
 	return nil
 }
 
-func startDaemons(c *cli.Command, cfg *Config) ([]*mps.Daemon, bool, error) {
+func startDaemons(ctx context.Context, c *cli.Command, cfg *Config) ([]*mps.Daemon, bool, error) {
 	// Load the configuration file
 	klog.Info("Loading configuration.")
 	config, err := cfg.loadConfig(c)
@@ -209,7 +209,7 @@ func startDaemons(c *cli.Command, cfg *Config) ([]*mps.Daemon, bool, error) {
 	// Loop through all MPS daemons and start them.
 	// If any daemon fails to start, all daemons are started again.
 	for _, mpsDaemon := range mpsDaemons {
-		if err := mpsDaemon.Start(); err != nil {
+		if err := mpsDaemon.Start(ctx); err != nil {
 			klog.Errorf("Failed to start MPS daemon: %v", err)
 			return mpsDaemons, true, nil
 		}

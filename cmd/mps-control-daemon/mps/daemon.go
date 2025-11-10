@@ -18,6 +18,7 @@ package mps
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -89,7 +90,7 @@ func (d *Daemon) EnvVars() envvars {
 }
 
 // Start starts the MPS deamon as a background process.
-func (d *Daemon) Start() error {
+func (d *Daemon) Start(ctx context.Context) error {
 	if err := d.setComputeMode(computeModeExclusiveProcess); err != nil {
 		return fmt.Errorf("error setting compute mode %v: %w", computeModeExclusiveProcess, err)
 	}
@@ -137,7 +138,7 @@ func (d *Daemon) Start() error {
 
 	d.logTailer = newTailer(filepath.Join(logDir, "control.log"))
 	klog.InfoS("Starting log tailer", "resource", d.rm.Resource())
-	if err := d.logTailer.Start(); err != nil {
+	if err := d.logTailer.Start(ctx); err != nil {
 		klog.ErrorS(err, "Could not start tail command on control.log; ignoring logs")
 	}
 
