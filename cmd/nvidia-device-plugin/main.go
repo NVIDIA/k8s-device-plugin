@@ -333,6 +333,7 @@ func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) 
 	)
 	devicelib := device.New(nvmllib)
 	infolib := nvinfo.New(
+		nvinfo.WithRoot(string(driverRoot)),
 		nvinfo.WithNvmlLib(nvmllib),
 		nvinfo.WithDeviceLib(devicelib),
 	)
