@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,7 +26,7 @@ import (
 	"syscall"
 
 	"github.com/prometheus/procfs"
-	cli "github.com/urfave/cli/v2"
+	cli "github.com/urfave/cli/v3"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -68,7 +69,7 @@ type Flags struct {
 	ConfigFileSrcdir   string
 	ConfigFileDst      string
 	DefaultConfig      string
-	FallbackStrategies cli.StringSlice
+	FallbackStrategies []string
 	SendSignal         bool
 	Signal             int
 	ProcessToSignal    string
@@ -116,12 +117,12 @@ func (m *SyncableConfig) Get() string {
 func main() {
 	flags := Flags{}
 
-	c := cli.NewApp()
-	c.Before = func(c *cli.Context) error {
-		return validateFlags(c, &flags)
+	c := cli.Command{}
+	c.Before = func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
+		return ctx, validateFlags(cmd, &flags)
 	}
-	c.Action = func(c *cli.Context) error {
-		return start(c, &flags)
+	c.Action = func(_ context.Context, cmd *cli.Command) error {
+		return start(cmd, &flags)
 	}
 
 	c.Flags = []cli.Flag{
@@ -130,87 +131,87 @@ func main() {
 			Value:       DefaultOneshot,
 			Usage:       "check and update the config only once and then exit",
 			Destination: &flags.Oneshot,
-			EnvVars:     []string{"ONESHOT"},
+			Sources:     cli.EnvVars("ONESHOT"),
 		},
 		&cli.StringFlag{
 			Name:        "kubeconfig",
 			Value:       "",
 			Usage:       "absolute path to the kubeconfig file",
 			Destination: &flags.Kubeconfig,
-			EnvVars:     []string{"KUBECONFIG"},
+			Sources:     cli.EnvVars("KUBECONFIG"),
 		},
 		&cli.StringFlag{
 			Name:        "node-name",
 			Value:       "",
 			Usage:       "the name of the node to watch for label changes on",
 			Destination: &flags.NodeName,
-			EnvVars:     []string{"NODE_NAME"},
+			Sources:     cli.EnvVars("NODE_NAME"),
 		},
 		&cli.StringFlag{
 			Name:        "node-label",
 			Value:       DefaultConfigLabel,
 			Usage:       "the name of the node label to use for selecting a config",
 			Destination: &flags.NodeLabel,
-			EnvVars:     []string{"NODE_LABEL"},
+			Sources:     cli.EnvVars("NODE_LABEL"),
 		},
 		&cli.StringFlag{
 			Name:        "config-file-srcdir",
 			Value:       "",
 			Usage:       "the path to the directory containing available device configuration files",
 			Destination: &flags.ConfigFileSrcdir,
-			EnvVars:     []string{"CONFIG_FILE_SRCDIR"},
+			Sources:     cli.EnvVars("CONFIG_FILE_SRCDIR"),
 		},
 		&cli.StringFlag{
 			Name:        "config-file-dst",
 			Value:       "",
 			Usage:       "the path to destination device configuration file",
 			Destination: &flags.ConfigFileDst,
-			EnvVars:     []string{"CONFIG_FILE_DST"},
+			Sources:     cli.EnvVars("CONFIG_FILE_DST"),
 		},
 		&cli.StringFlag{
 			Name:        "default-config",
 			Value:       "",
 			Usage:       "the default config to use if no label is set",
 			Destination: &flags.DefaultConfig,
-			EnvVars:     []string{"DEFAULT_CONFIG"},
+			Sources:     cli.EnvVars("DEFAULT_CONFIG"),
 		},
 		&cli.StringSliceFlag{
 			Name:        "fallback-strategies",
 			Usage:       "ordered list of fallback strategies to use to set a default config when none is provided",
 			Destination: &flags.FallbackStrategies,
-			EnvVars:     []string{"FALLBACK_STRATEGIES"},
+			Sources:     cli.EnvVars("FALLBACK_STRATEGIES"),
 		},
 		&cli.BoolFlag{
 			Name:        "send-signal",
 			Value:       DefaultSendSignal,
 			Usage:       "send a signal to <process-to-signal> once a config change is made",
 			Destination: &flags.SendSignal,
-			EnvVars:     []string{"SEND_SIGNAL"},
+			Sources:     cli.EnvVars("SEND_SIGNAL"),
 		},
 		&cli.IntFlag{
 			Name:        "signal",
 			Value:       DefaultSignal,
 			Usage:       "the signal to sent to <process-to-signal> if <send-signal> is set",
 			Destination: &flags.Signal,
-			EnvVars:     []string{"SIGNAL"},
+			Sources:     cli.EnvVars("SIGNAL"),
 		},
 		&cli.StringFlag{
 			Name:        "process-to-signal",
 			Value:       DefaultProcessToSignal,
 			Usage:       "the name of the process to signal if <send-signal> is set",
 			Destination: &flags.ProcessToSignal,
-			EnvVars:     []string{"PROCESS_TO_SIGNAL"},
+			Sources:     cli.EnvVars("PROCESS_TO_SIGNAL"),
 		},
 	}
 
-	err := c.Run(os.Args)
+	err := c.Run(context.Background(), os.Args)
 	if err != nil {
 		klog.Error(err)
 		os.Exit(1)
 	}
 }
 
-func validateFlags(c *cli.Context, f *Flags) error {
+func validateFlags(c *cli.Command, f *Flags) error {
 	if f.NodeName == "" {
 		return fmt.Errorf("invalid <node-name>: must not be empty string")
 	}
@@ -226,7 +227,7 @@ func validateFlags(c *cli.Context, f *Flags) error {
 	return nil
 }
 
-func start(c *cli.Context, f *Flags) error {
+func start(c *cli.Command, f *Flags) error {
 	kubeconfig, err := clientcmd.BuildConfigFromFlags("", f.Kubeconfig)
 	if err != nil {
 		return fmt.Errorf("error building kubernetes clientcmd config: %s", err)
@@ -365,8 +366,8 @@ func updateConfigName(config string, f *Flags) (string, error) {
 	}
 
 	// Otherwise, if no explicit default is set, step through the configured fallbacks.
-	klog.Infof("No value set and no default set. Attempting fallback strategies: %v", f.FallbackStrategies.Value())
-	for _, fallback := range f.FallbackStrategies.Value() {
+	klog.Infof("No value set and no default set. Attempting fallback strategies: %v", f.FallbackStrategies)
+	for _, fallback := range f.FallbackStrategies {
 		switch fallback {
 		case FallbackStrategyNamedConfig:
 			klog.Infof("Attempting to find config named: %v", NamedConfigFallback)
