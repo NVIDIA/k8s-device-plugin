@@ -1,4 +1,5 @@
 //go:build !testify_yaml_fail && !testify_yaml_custom
+// +build !testify_yaml_fail,!testify_yaml_custom
 
 // Package yaml is just an indirection to handle YAML deserialization.
 //

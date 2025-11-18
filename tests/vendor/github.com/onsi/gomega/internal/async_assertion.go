@@ -452,7 +452,7 @@ func (assertion *AsyncAssertion) match(matcher types.GomegaMatcher, desiredMatch
 				}
 			} else {
 				var fgErr formattedGomegaError
-				if errors.As(matcherErr, &fgErr) {
+				if errors.As(actualErr, &fgErr) {
 					message += fgErr.FormattedGomegaError() + "\n"
 				} else {
 					message += renderError(fmt.Sprintf("The matcher passed to %s returned the following error:", assertion.asyncType), matcherErr)
