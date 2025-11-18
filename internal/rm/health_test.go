@@ -22,13 +22,14 @@ import (
 	"testing"
 	"time"
 
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/NVIDIA/go-nvml/pkg/nvml/mock"
 	"github.com/NVIDIA/go-nvml/pkg/nvml/mock/dgxa100"
-	"github.com/stretchr/testify/require"
 
-	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/stretchr/testify/require"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
@@ -848,4 +849,139 @@ func TestHandleEventWaitError_Phase1(t *testing.T) {
 				tc.errorCode, shouldContinue, unhealthyCount)
 		})
 	}
+}
+
+func TestDevice_Phase2_MarkUnhealthy(t *testing.T) {
+	device := &Device{
+		Device: pluginapi.Device{
+			ID:     "GPU-test",
+			Health: pluginapi.Healthy,
+		},
+	}
+
+	device.MarkUnhealthy("XID-79")
+
+	require.Equal(t, pluginapi.Unhealthy, device.Health)
+	require.Equal(t, "XID-79", device.UnhealthyReason)
+	require.Equal(t, 0, device.RecoveryAttempts)
+	require.False(t, device.LastUnhealthyTime.IsZero(), "LastUnhealthyTime should be set")
+	t.Log("✓ MarkUnhealthy correctly updates device state")
+}
+
+func TestDevice_Phase2_MarkHealthy(t *testing.T) {
+	device := &Device{
+		Device: pluginapi.Device{
+			ID:     "GPU-test",
+			Health: pluginapi.Unhealthy,
+		},
+		UnhealthyReason:  "XID-79",
+		RecoveryAttempts: 5,
+	}
+
+	device.MarkHealthy()
+
+	require.Equal(t, pluginapi.Healthy, device.Health)
+	require.Equal(t, "", device.UnhealthyReason)
+	require.Equal(t, 0, device.RecoveryAttempts)
+	require.False(t, device.LastHealthyTime.IsZero(), "LastHealthyTime should be set")
+	t.Log("✓ MarkHealthy correctly clears unhealthy state")
+}
+
+func TestDevice_Phase2_IsUnhealthy(t *testing.T) {
+	healthyDevice := &Device{
+		Device: pluginapi.Device{Health: pluginapi.Healthy},
+	}
+	unhealthyDevice := &Device{
+		Device: pluginapi.Device{Health: pluginapi.Unhealthy},
+	}
+
+	require.False(t, healthyDevice.IsUnhealthy())
+	require.True(t, unhealthyDevice.IsUnhealthy())
+	t.Log("✓ IsUnhealthy correctly reports device state")
+}
+
+func TestDevice_Phase2_UnhealthyDuration(t *testing.T) {
+	device := &Device{
+		Device: pluginapi.Device{
+			ID:     "GPU-test",
+			Health: pluginapi.Unhealthy,
+		},
+		LastUnhealthyTime: time.Now().Add(-5 * time.Minute),
+	}
+
+	duration := device.UnhealthyDuration()
+	require.Greater(t, duration, 4*time.Minute,
+		"Device should report ~5 minutes unhealthy")
+	require.Less(t, duration, 6*time.Minute,
+		"Duration should be approximately 5 minutes")
+
+	// Healthy device should return zero duration
+	device.MarkHealthy()
+	require.Equal(t, time.Duration(0), device.UnhealthyDuration())
+	t.Log("✓ UnhealthyDuration correctly calculates time")
+}
+
+func TestCheckDeviceHealth_Phase2_DeviceRecovers(t *testing.T) {
+	mockNVML := dgxa100.New()
+	mockDGXA100Setup(mockNVML)
+
+	// Device responds successfully
+	mockNVML.Devices[0].(*dgxa100.Device).GetNameFunc = func() (string, nvml.Return) {
+		return "Tesla V100", nvml.SUCCESS
+	}
+
+	rm := newMockResourceManager(t, mockNVML, 1)
+	deviceUUID := mockNVML.Devices[0].(*dgxa100.Device).UUID
+	device := rm.devices[deviceUUID]
+	device.MarkUnhealthy("XID-79")
+
+	healthy, err := rm.CheckDeviceHealth(device)
+
+	require.NoError(t, err)
+	require.True(t, healthy, "Device should be detected as healthy")
+	t.Log("✓ CheckDeviceHealth detects recovered device")
+}
+
+func TestCheckDeviceHealth_Phase2_DeviceStillFailing(t *testing.T) {
+	mockNVML := dgxa100.New()
+	mockDGXA100Setup(mockNVML)
+
+	// Device not responding
+	mockNVML.Devices[0].(*dgxa100.Device).GetNameFunc = func() (string, nvml.Return) {
+		return "", nvml.ERROR_GPU_IS_LOST
+	}
+
+	rm := newMockResourceManager(t, mockNVML, 1)
+	deviceUUID := mockNVML.Devices[0].(*dgxa100.Device).UUID
+	device := rm.devices[deviceUUID]
+	device.MarkUnhealthy("XID-79")
+
+	healthy, err := rm.CheckDeviceHealth(device)
+
+	require.Error(t, err)
+	require.False(t, healthy, "Device should still be unhealthy")
+	require.Contains(t, err.Error(), "not responsive")
+	t.Log("✓ CheckDeviceHealth detects device still failing")
+}
+
+func TestCheckDeviceHealth_Phase2_NVMLInitFailure(t *testing.T) {
+	mockNVML := dgxa100.New()
+	mockDGXA100Setup(mockNVML)
+
+	// Make NVML Init fail
+	mockNVML.InitFunc = func() nvml.Return {
+		return nvml.ERROR_UNINITIALIZED
+	}
+
+	rm := newMockResourceManager(t, mockNVML, 1)
+	deviceUUID := mockNVML.Devices[0].(*dgxa100.Device).UUID
+	device := rm.devices[deviceUUID]
+	device.MarkUnhealthy("XID-79")
+
+	healthy, err := rm.CheckDeviceHealth(device)
+
+	require.Error(t, err)
+	require.False(t, healthy)
+	require.Contains(t, err.Error(), "NVML init failed")
+	t.Log("✓ CheckDeviceHealth handles NVML init failures")
 }

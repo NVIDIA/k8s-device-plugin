@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"k8s.io/klog/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
@@ -35,6 +36,12 @@ type Device struct {
 	// Replicas stores the total number of times this device is replicated.
 	// If this is 0 or 1 then the device is not shared.
 	Replicas int
+
+	// Health tracking fields for recovery detection
+	LastHealthyTime   time.Time // Last time device was confirmed healthy
+	LastUnhealthyTime time.Time // When device became unhealthy
+	UnhealthyReason   string    // Human-readable reason (e.g., "XID-79")
+	RecoveryAttempts  int       // Number of recovery probes attempted
 }
 
 // deviceInfo defines the information the required to construct a Device
@@ -237,6 +244,40 @@ func (d *Device) IsMigDevice() bool {
 // GetUUID returns the UUID for the device from the annotated ID.
 func (d *Device) GetUUID() string {
 	return AnnotatedID(d.ID).GetID()
+}
+
+// MarkUnhealthy marks the device as unhealthy and records the reason and
+// timestamp. This should be called when a health check detects a device
+// failure (e.g., XID error).
+func (d *Device) MarkUnhealthy(reason string) {
+	d.Health = pluginapi.Unhealthy
+	d.LastUnhealthyTime = time.Now()
+	d.UnhealthyReason = reason
+	d.RecoveryAttempts = 0
+}
+
+// MarkHealthy marks the device as healthy and clears unhealthy state. This
+// should be called when recovery detection confirms the device is working
+// again.
+func (d *Device) MarkHealthy() {
+	d.Health = pluginapi.Healthy
+	d.LastHealthyTime = time.Now()
+	d.UnhealthyReason = ""
+	d.RecoveryAttempts = 0
+}
+
+// IsUnhealthy returns true if the device is currently marked as unhealthy.
+func (d *Device) IsUnhealthy() bool {
+	return d.Health == pluginapi.Unhealthy
+}
+
+// UnhealthyDuration returns how long the device has been unhealthy. Returns
+// zero duration if the device is healthy.
+func (d *Device) UnhealthyDuration() time.Duration {
+	if !d.IsUnhealthy() {
+		return 0
+	}
+	return time.Since(d.LastUnhealthyTime)
 }
 
 // NewAnnotatedID creates a new AnnotatedID from an ID and a replica number.

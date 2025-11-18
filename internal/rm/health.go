@@ -370,6 +370,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 
 			klog.Infof("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
 			stats.recordUnhealthy()
+			d.MarkUnhealthy(fmt.Sprintf("XID-%d", e.EventData))
 			sendUnhealthyDevice(unhealthy, d)
 		}
 	}
