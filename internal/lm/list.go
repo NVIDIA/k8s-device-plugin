@@ -16,7 +16,9 @@
 
 package lm
 
-import "fmt"
+import (
+	"k8s.io/klog/v2"
+)
 
 // list represents a list of labelers that iself implements the Labeler interface.
 type list []Labeler
@@ -29,13 +31,17 @@ func Merge(labelers ...Labeler) Labeler {
 }
 
 // Labels returns the labels from a set of labelers. Labels later in the list
-// overwrite earlier labels.
+// overwrite earlier labels. If a labeler fails, the error is logged as a
+// warning and the labeler is skipped, allowing the pipeline to continue with
+// partial results. This provides fault tolerance for unhealthy devices or
+// transient errors without crashing the entire labeling process.
 func (labelers list) Labels() (Labels, error) {
 	allLabels := make(Labels)
-	for _, labeler := range labelers {
+	for i, labeler := range labelers {
 		labels, err := labeler.Labels()
 		if err != nil {
-			return nil, fmt.Errorf("error generating labels: %v", err)
+			klog.Warningf("Labeler at index %d failed, skipping: %v", i, err)
+			continue
 		}
 		for k, v := range labels {
 			allLabels[k] = v
