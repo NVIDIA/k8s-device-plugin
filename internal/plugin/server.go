@@ -46,6 +46,14 @@ const (
 	deviceListEnvVar                          = "NVIDIA_VISIBLE_DEVICES"
 	deviceListAsVolumeMountsHostPath          = "/dev/null"
 	deviceListAsVolumeMountsContainerPathRoot = "/var/run/nvidia-container-devices"
+
+	// healthChannelBufferSize defines the buffer capacity for the health
+	// channel. This is sized to handle bursts of unhealthy device reports
+	// without blocking the health check goroutine. With 8 GPUs and
+	// potential for multiple events per GPU (XID errors, ECC errors, etc.),
+	// a buffer of 64 provides ample headroom while using a power-of-2 size
+	// for cache-friendly alignment.
+	healthChannelBufferSize = 64
 )
 
 // nvidiaDevicePlugin implements the Kubernetes device plugin API
@@ -108,7 +116,7 @@ func getPluginSocketPath(resource spec.ResourceName) string {
 
 func (plugin *nvidiaDevicePlugin) initialize() {
 	plugin.server = grpc.NewServer([]grpc.ServerOption{}...)
-	plugin.health = make(chan *rm.Device)
+	plugin.health = make(chan *rm.Device, healthChannelBufferSize)
 	plugin.stop = make(chan interface{})
 }
 
