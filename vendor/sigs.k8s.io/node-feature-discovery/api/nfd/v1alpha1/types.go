@@ -183,6 +183,17 @@ type GroupRule struct {
 	// Name of the rule.
 	Name string `json:"name"`
 
+	// Vars is the variables to store if the rule matches. Variables can be
+	// referenced from other rules enabling more complex rule hierarchies.
+	// +optional
+	Vars map[string]string `json:"vars"`
+
+	// VarsTemplate specifies a template to expand for dynamically generating
+	// multiple variables. Data (after template expansion) must be keys with an
+	// optional value (<key>[=<value>]) separated by newlines.
+	// +optional
+	VarsTemplate string `json:"varsTemplate"`
+
 	// MatchFeatures specifies a set of matcher terms all of which must match.
 	// +optional
 	MatchFeatures FeatureMatcher `json:"matchFeatures"`
@@ -285,15 +296,33 @@ type MatchExpression struct {
 	// In other cases Value should contain at least one element.
 	// +optional
 	Value MatchValue `json:"value,omitempty"`
+
+	// Type defines the value type for specific operators.
+	// The currently supported type is 'version' for Gt,Ge,Lt,Le,GtLt,GeLe operators.
+	// +optional
+	Type ValueType `json:"type,omitempty"`
 }
 
 // MatchOp is the match operator that is applied on values when evaluating a
 // MatchExpression.
-// +kubebuilder:validation:Enum="In";"NotIn";"InRegexp";"Exists";"DoesNotExist";"Gt";"Lt";"GtLt";"IsTrue";"IsFalse"
+// +kubebuilder:validation:Enum="In";"NotIn";"InRegexp";"Exists";"DoesNotExist";"Gt";"Ge";"Lt";"Le";"GtLt";"GeLe";"IsTrue";"IsFalse"
 type MatchOp string
 
 // MatchValue is the list of values associated with a MatchExpression.
 type MatchValue []string
+
+// ValueType represents the type of value in the expression.
+type ValueType string
+
+const (
+	// TypeEmpty is a default value for the expression type.
+	TypeEmpty ValueType = ""
+	// TypeVersion represents a version with the following supported formats (major.minor.patch):
+	// %d.%d.%d (e.g., 1.2.3),
+	// %d.%d (e.g., 1.2),
+	// %d (e.g., 1)
+	TypeVersion ValueType = "version"
+)
 
 const (
 	// MatchAny returns always true.
@@ -318,16 +347,31 @@ const (
 	// Both the input and value must be integer numbers, otherwise an error is
 	// returned.
 	MatchGt MatchOp = "Gt"
+	// MatchGe returns true if the input is greater than or equal to the value of the
+	// expression (number of values in the expression must be exactly one).
+	// Both the input and value must be integer numbers, otherwise an error is
+	// returned.
+	MatchGe MatchOp = "Ge"
 	// MatchLt returns true if the input is less  than the value of the
 	// expression (number of values in the expression must be exactly one).
 	// Both the input and value must be integer numbers, otherwise an error is
 	// returned.
 	MatchLt MatchOp = "Lt"
+	// MatchLe returns true if the input is less than or equal to the value of the
+	// expression (number of values in the expression must be exactly one).
+	// Both the input and value must be integer numbers, otherwise an error is
+	// returned.
+	MatchLe MatchOp = "Le"
 	// MatchGtLt returns true if the input is between two values, i.e. greater
 	// than the first value and less than the second value of the expression
 	// (number of values in the expression must be exactly two). Both the input
 	// and values must be integer numbers, otherwise an error is returned.
 	MatchGtLt MatchOp = "GtLt"
+	// MatchGeLe returns true if the input is between two values including the boundary values,
+	// i.e. greater than or equal to the first value and less than or equal to the second value
+	// of the expression (number of values in the expression must be exactly two). Both the input
+	// and values must be integer numbers, otherwise an error is returned.
+	MatchGeLe MatchOp = "GeLe"
 	// MatchIsTrue returns true if the input holds the value "true". The
 	// expression must not have any values.
 	MatchIsTrue MatchOp = "IsTrue"
