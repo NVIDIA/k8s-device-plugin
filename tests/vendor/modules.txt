@@ -367,7 +367,7 @@ github.com/mitchellh/hashstructure
 # github.com/mitchellh/reflectwalk v1.0.2
 ## explicit
 github.com/mitchellh/reflectwalk
-# github.com/mittwald/go-helm-client v0.12.18
+# github.com/mittwald/go-helm-client v0.12.19
 ## explicit; go 1.24.0
 github.com/mittwald/go-helm-client
 github.com/mittwald/go-helm-client/values
@@ -678,7 +678,7 @@ gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
-# helm.sh/helm/v3 v3.18.5
+# helm.sh/helm/v3 v3.19.0
 ## explicit; go 1.24.0
 helm.sh/helm/v3/internal/fileutil
 helm.sh/helm/v3/internal/resolver
