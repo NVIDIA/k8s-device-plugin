@@ -41,7 +41,7 @@ func TestAllocate(t *testing.T) {
 			request: &pluginapi.AllocateRequest{
 				ContainerRequests: []*pluginapi.ContainerAllocateRequest{
 					{
-						DevicesIDs: []string{"foo"},
+						DevicesIds: []string{"foo"},
 					},
 				},
 			},
@@ -60,7 +60,7 @@ func TestAllocate(t *testing.T) {
 			request: &pluginapi.AllocateRequest{
 				ContainerRequests: []*pluginapi.ContainerAllocateRequest{
 					{
-						DevicesIDs: []string{"foo", "bar", "foo"},
+						DevicesIds: []string{"foo", "bar", "foo"},
 					},
 				},
 			},
@@ -217,7 +217,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 	}
 
 	for i := range testCases {
-		tc := testCases[i]
+		tc := &testCases[i]
 		t.Run(tc.description, func(t *testing.T) {
 			deviceListStrategies, _ := v1.NewDeviceListStrategies(tc.deviceListStrategies)
 			plugin := nvidiaDevicePlugin{

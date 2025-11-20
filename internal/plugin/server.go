@@ -50,6 +50,7 @@ const (
 
 // nvidiaDevicePlugin implements the Kubernetes device plugin API
 type nvidiaDevicePlugin struct {
+	pluginapi.UnimplementedDevicePluginServer
 	ctx                  context.Context
 	rm                   rm.ResourceManager
 	config               *spec.Config
@@ -305,10 +306,10 @@ func (plugin *nvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r 
 func (plugin *nvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	responses := pluginapi.AllocateResponse{}
 	for _, req := range reqs.ContainerRequests {
-		if err := plugin.rm.ValidateRequest(req.DevicesIDs); err != nil {
+		if err := plugin.rm.ValidateRequest(req.DevicesIds); err != nil {
 			return nil, fmt.Errorf("invalid allocation request for %q: %w", plugin.rm.Resource(), err)
 		}
-		response, err := plugin.getAllocateResponse(req.DevicesIDs)
+		response, err := plugin.getAllocateResponse(req.DevicesIds)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get allocate response: %v", err)
 		}
@@ -399,7 +400,7 @@ func (plugin *nvidiaDevicePlugin) updateResponseForCDI(response *pluginapi.Conta
 			cdiDevice := pluginapi.CDIDevice{
 				Name: device,
 			}
-			response.CDIDevices = append(response.CDIDevices, &cdiDevice)
+			response.CdiDevices = append(response.CdiDevices, &cdiDevice)
 		}
 	}
 

@@ -213,8 +213,9 @@ func (ds Devices) AlignedAllocationSupported() bool {
 	return true
 }
 
-// AlignedAllocationSupported checks whether the device supports an aligned allocation
-func (d Device) AlignedAllocationSupported() bool {
+// AlignedAllocationSupported checks whether the device supports an aligned
+// allocation
+func (d *Device) AlignedAllocationSupported() bool {
 	if d.IsMigDevice() {
 		return false
 	}
@@ -229,12 +230,12 @@ func (d Device) AlignedAllocationSupported() bool {
 }
 
 // IsMigDevice returns checks whether d is a MIG device or not.
-func (d Device) IsMigDevice() bool {
+func (d *Device) IsMigDevice() bool {
 	return strings.Contains(d.Index, ":")
 }
 
 // GetUUID returns the UUID for the device from the annotated ID.
-func (d Device) GetUUID() string {
+func (d *Device) GetUUID() string {
 	return AnnotatedID(d.ID).GetID()
 }
 

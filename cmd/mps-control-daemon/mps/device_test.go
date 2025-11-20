@@ -102,7 +102,8 @@ func TestDevice(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
+	for i := range testCases {
+		tc := &testCases[i]
 		t.Run(tc.description, func(t *testing.T) {
 			require.Equal(t, tc.expectedIsAtLeastVolta, tc.input.isAtLeastVolta())
 			require.Equal(t, tc.expectedMaxClients, tc.input.maxClients())

@@ -19,22 +19,18 @@ help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 
-.PHONY: fmt
-fmt: ## Run go fmt against code.
-	go fmt ./...
-
-.PHONY: vet
-vet: ## Run go vet against code.
-	go vet ./...
+.PHONY: lint
+lint: ## Run golangci-lint against code.
+	golangci-lint run ./...
 
 ##@ Build
 
 .PHONY: build
-build: generate fmt vet ## Build binary.
+build: generate lint ## Build binary.
 	go build -o bin/client .
 
 .PHONY: test
-test: generate fmt vet ## Run tests.
+test: generate lint ## Run tests.
 	go test ./... -coverprofile cover.out
 
 .PHONY: generate
@@ -55,7 +51,7 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 
 ## Tool Versions
 MOCKGEN_VERSION ?= v0.4.0
-CONTROLLER_TOOLS_VERSION ?= v0.13.0
+CONTROLLER_TOOLS_VERSION ?= v0.16.1
 
 .PHONY: mockgen
 mockgen: $(MOCKGEN) ## Download mockgen locally if necessary.
