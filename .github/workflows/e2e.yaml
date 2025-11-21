@@ -40,7 +40,7 @@ jobs:
     runs-on: linux-amd64-cpu4
     steps:
     - name: Check out code
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Install Go
       uses: actions/setup-go@v6
