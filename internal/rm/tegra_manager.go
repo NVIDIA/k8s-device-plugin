@@ -17,6 +17,7 @@
 package rm
 
 import (
+	"context"
 	"fmt"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
@@ -70,7 +71,29 @@ func (r *tegraResourceManager) GetDevicePaths(ids []string) []string {
 	return nil
 }
 
-// CheckHealth is disabled for the tegraResourceManager
-func (r *tegraResourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
+// HealthProvider returns a no-op HealthProvider for Tegra devices.
+// Tegra devices do not support health monitoring.
+func (r *tegraResourceManager) HealthProvider() HealthProvider {
+	return &noopHealthProvider{}
+}
+
+// noopHealthProvider is a no-op implementation for platforms that don't
+// support health monitoring.
+type noopHealthProvider struct {
+	healthChan chan *Device
+}
+
+func (n *noopHealthProvider) Start(context.Context) error {
+	n.healthChan = make(chan *Device)
 	return nil
+}
+
+func (n *noopHealthProvider) Stop() {
+	if n.healthChan != nil {
+		close(n.healthChan)
+	}
+}
+
+func (n *noopHealthProvider) Health() <-chan *Device {
+	return n.healthChan
 }
