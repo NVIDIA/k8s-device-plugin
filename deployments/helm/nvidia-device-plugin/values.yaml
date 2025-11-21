@@ -42,6 +42,7 @@ nameOverride: ""
 fullnameOverride: ""
 namespaceOverride: ""
 selectorLabelsOverride: {}
+selectorLabelsOverrideMPSControlDaemon: {}
 
 allowDefaultNamespace: false
 
