@@ -249,10 +249,10 @@ func TestRunSleep(t *testing.T) {
 		runRestart, runError = d.run(sigs)
 	}()
 
-	outFileModificationTime := make([]int64, 2)
-	timestampLabels := make([]string, 2)
+	var outFileModificationTime []int64
+	var timestampLabels []string
 	// Read two iterations of the output file
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		outFile, err := waitForFile(*conf.Flags.GFD.OutputFile, 5, time.Second)
 		require.NoErrorf(t, err, "Open output file: %d", i)
 
@@ -266,13 +266,13 @@ func TestRunSleep(t *testing.T) {
 			require.NoError(t, err, "Getting output file info")
 
 			ts = outFileStat.ModTime().Unix()
-			if ts > outFileModificationTime[0] {
+			if len(outFileModificationTime) == 0 || ts > outFileModificationTime[0] {
 				break
 			}
 			// We wait for conf.SleepInterval, as the labels should be updated at least once in that period
 			time.Sleep(time.Duration(*conf.Flags.GFD.SleepInterval))
 		}
-		outFileModificationTime[i] = ts
+		outFileModificationTime = append(outFileModificationTime, ts)
 
 		output, err := io.ReadAll(outFile)
 		require.NoErrorf(t, err, "Read output file: %d", i)
@@ -289,7 +289,7 @@ func TestRunSleep(t *testing.T) {
 		require.NoErrorf(t, err, "Building map of labels from output file: %d", i)
 
 		require.Containsf(t, labels, "nvidia.com/gfd.timestamp", "Missing timestamp: %d", i)
-		timestampLabels[i] = labels["nvidia.com/gfd.timestamp"]
+		timestampLabels = append(timestampLabels, labels["nvidia.com/gfd.timestamp"])
 
 		require.Containsf(t, labels, "nvidia.com/vgpu.present", "Missing vgpu present label: %d", i)
 		require.Containsf(t, labels, "nvidia.com/vgpu.host-driver-version", "Missing vGPU host driver version label: %d", i)

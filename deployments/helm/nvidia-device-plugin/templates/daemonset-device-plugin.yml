@@ -170,6 +170,10 @@ spec:
           - name: NVIDIA_CDI_HOOK_PATH
             value: {{ .Values.cdi.nvidiaHookPath }}
         {{- end }}
+        {{- if typeIs "string" .Values.cdi.featureFlags }}
+          - name: CDI_FEATURE_FLAGS
+            value: {{ .Values.cdi.featureFlags }}
+        {{- end }}
         {{- if typeIs "bool" .Values.gdrcopyEnabled }}
           - name: GDRCOPY_ENABLED
             value: {{ .Values.gdrcopyEnabled | quote }}

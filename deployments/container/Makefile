@@ -14,10 +14,6 @@
 
 BUILD_MULTI_ARCH_IMAGES ?= no
 DOCKER ?= docker
-BUILDX  =
-ifeq ($(BUILD_MULTI_ARCH_IMAGES),true)
-BUILDX = buildx
-endif
 MKDIR    ?= mkdir
 
 ##### Global variables #####
@@ -72,8 +68,7 @@ DOCKERFILE = $(CURDIR)/deployments/container/Dockerfile
 
 # Use a generic build target to build the relevant images
 $(IMAGE_TARGETS): image-%:
-	DOCKER_BUILDKIT=1 \
-		$(DOCKER) $(BUILDX) build --pull \
+		$(DOCKER) build --pull \
 		--provenance=false --sbom=false \
 		$(DOCKER_BUILD_OPTIONS) \
 		$(DOCKER_BUILD_PLATFORM_OPTIONS) \

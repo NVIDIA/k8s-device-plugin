@@ -23,6 +23,7 @@ import (
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"k8s.io/klog/v2"
+	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
@@ -324,9 +325,19 @@ func updateDeviceMapWithReplicas(replicatedResources *spec.ReplicatedResources, 
 		for _, id := range ids {
 			for i := 0; i < r.Replicas; i++ {
 				annotatedID := string(NewAnnotatedID(id, i))
-				replicatedDevice := *(oDevices[r.Name][id])
-				replicatedDevice.ID = annotatedID
-				replicatedDevice.Replicas = r.Replicas
+				original := oDevices[r.Name][id]
+				replicatedDevice := Device{
+					Device: pluginapi.Device{
+						ID:       annotatedID,
+						Health:   original.Health,
+						Topology: original.Topology,
+					},
+					Paths:             original.Paths,
+					Index:             original.Index,
+					TotalMemory:       original.TotalMemory,
+					ComputeCapability: original.ComputeCapability,
+					Replicas:          r.Replicas,
+				}
 				devices.insert(name, &replicatedDevice)
 			}
 		}

@@ -24,6 +24,14 @@ import (
 // Option defines a function for passing options to the New() call
 type Option func(*cdiHandler)
 
+// WithFeatureFlags provides and option to set the feature flags for the nvcdi
+// spec generation instance.
+func WithFeatureFlags(featureFlags ...string) Option {
+	return func(c *cdiHandler) {
+		c.nvcdiFeatureFlags = featureFlags
+	}
+}
+
 // WithDeviceListStrategies provides an Option to set the enabled flag used by the 'cdi' interface
 func WithDeviceListStrategies(deviceListStrategies spec.DeviceListStrategies) Option {
 	return func(c *cdiHandler) {
