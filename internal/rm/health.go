@@ -32,16 +32,18 @@ import (
 )
 
 const (
-	// envDisableHealthChecks defines the environment variable that is checked to determine whether healthchecks
-	// should be disabled. If this envvar is set to "all" or contains the string "xids", healthchecks are
-	// disabled entirely. If set, the envvar is treated as a comma-separated list of Xids to ignore. Note that
-	// this is in addition to the Application errors that are already ignored.
+	// envDisableHealthChecks defines the environment variable that is
+	// checked to determine whether healthchecks should be disabled. If
+	// this envvar is set to "all" or contains the string "xids",
+	// healthchecks are disabled entirely. If set, the envvar is treated
+	// as a comma-separated list of Xids to ignore. Note that this is in
+	// addition to the Application errors that are already ignored.
 	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
-	// envEnableHealthChecks defines the environment variable that is checked to
-	// determine which XIDs should be explicitly enabled. XIDs specified here
-	// override the ones specified in the `DP_DISABLE_HEALTHCHECKS`.
-	// Note that this also allows individual XIDs to be selected when ALL XIDs
-	// are disabled.
+	// envEnableHealthChecks defines the environment variable that is
+	// checked to determine which XIDs should be explicitly enabled. XIDs
+	// specified here override the ones specified in the
+	// `DP_DISABLE_HEALTHCHECKS`. Note that this also allows individual
+	// XIDs to be selected when ALL XIDs are disabled.
 	envEnableHealthChecks = "DP_ENABLE_HEALTHCHECKS"
 )
 
