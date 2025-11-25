@@ -133,6 +133,22 @@ func TestUnmarshalFlags(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: `{
+				"plugin": {
+					"kubeletSocket": "/var/lib/kubelet/device-plugins/kubelet.sock",
+					"cdiFeatureFlags": "nvidia.com/gpu"
+				}
+			}`,
+			output: Flags{
+				CommandLineFlags{
+					Plugin: &PluginCommandLineFlags{
+						KubeletSocket:   ptr("/var/lib/kubelet/device-plugins/kubelet.sock"),
+						CDIFeatureFlags: ptr("nvidia.com/gpu"),
+					},
+				},
+			},
+		},
 	}
 
 	for i, tc := range testCases {
@@ -214,6 +230,35 @@ func TestMarshalFlags(t *testing.T) {
 					"outputFile": null,
 					"sleepInterval": "5ns",
 					"machineTypeFile": null
+				}
+			}`,
+		},
+		{
+			input: Flags{
+				CommandLineFlags{
+					Plugin: &PluginCommandLineFlags{
+						KubeletSocket:   ptr("/var/lib/kubelet/device-plugins/kubelet.sock"),
+						CDIFeatureFlags: ptr("nvidia.com/gpu"),
+					},
+				},
+			},
+			output: `{
+				"migStrategy": null,
+				"failOnInitError": null,
+				"gdrcopyEnabled": null,
+				"gdsEnabled": null,
+				"mofedEnabled": null,
+				"useNodeFeatureAPI": null,
+				"deviceDiscoveryStrategy": null,
+				"plugin": {
+					"passDeviceSpecs": null,
+					"deviceListStrategy": null,
+					"deviceIDStrategy": null,
+					"cdiAnnotationPrefix": null,
+					"nvidiaCTKPath": null,
+					"containerDriverRoot": null,
+					"kubeletSocket": "/var/lib/kubelet/device-plugins/kubelet.sock",
+					"cdiFeatureFlags": "nvidia.com/gpu"
 				}
 			}`,
 		},
