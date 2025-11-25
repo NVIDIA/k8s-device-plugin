@@ -155,7 +155,7 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.Plugin.CDIAnnotationPrefix, c, n)
 			case FlagNvidiaCDIHookPath, FlagNvidiaCTKPath:
 				updateFromCLIFlag(&f.Plugin.NvidiaCTKPath, c, n)
-			case FlagContainerDriverRoot:
+			case FlagContainerDriverRoot, FlagDriverRootCtrPath:
 				updateFromCLIFlag(&f.Plugin.ContainerDriverRoot, c, n)
 			case FlagKubeletSocket:
 				updateFromCLIFlag(&f.Plugin.KubeletSocket, c, n)

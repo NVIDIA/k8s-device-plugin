@@ -31,13 +31,12 @@ import (
 	nvinfo "github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mount"
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mps"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
-
-	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 // Config represents a collection of config options for the device plugin.
@@ -63,13 +62,13 @@ func main() {
 
 	config.flags = []cli.Flag{
 		&cli.StringFlag{
-			Name:        "config-file",
+			Name:        spec.FlagConfigFile,
 			Usage:       "the path to a config file as an alternative to command line options or environment variables",
 			Destination: &config.configFile,
 			EnvVars:     []string{"CONFIG_FILE"},
 		},
 		&cli.StringFlag{
-			Name:    "mig-strategy",
+			Name:    spec.FlagMigStrategy,
 			Value:   spec.MigStrategyNone,
 			Usage:   "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
 			EnvVars: []string{"MIG_STRATEGY"},

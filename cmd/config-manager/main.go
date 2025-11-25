@@ -24,6 +24,8 @@ import (
 	"sync"
 	"syscall"
 
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+
 	"github.com/prometheus/procfs"
 	cli "github.com/urfave/cli/v2"
 
@@ -126,76 +128,76 @@ func main() {
 
 	c.Flags = []cli.Flag{
 		&cli.BoolFlag{
-			Name:        "oneshot",
+			Name:        spec.FlagOneshot,
 			Value:       DefaultOneshot,
 			Usage:       "check and update the config only once and then exit",
 			Destination: &flags.Oneshot,
 			EnvVars:     []string{"ONESHOT"},
 		},
 		&cli.StringFlag{
-			Name:        "kubeconfig",
+			Name:        spec.FlagKubeconfig,
 			Value:       "",
 			Usage:       "absolute path to the kubeconfig file",
 			Destination: &flags.Kubeconfig,
 			EnvVars:     []string{"KUBECONFIG"},
 		},
 		&cli.StringFlag{
-			Name:        "node-name",
+			Name:        spec.FlagNodeName,
 			Value:       "",
 			Usage:       "the name of the node to watch for label changes on",
 			Destination: &flags.NodeName,
 			EnvVars:     []string{"NODE_NAME"},
 		},
 		&cli.StringFlag{
-			Name:        "node-label",
+			Name:        spec.FlagNodeLabel,
 			Value:       DefaultConfigLabel,
 			Usage:       "the name of the node label to use for selecting a config",
 			Destination: &flags.NodeLabel,
 			EnvVars:     []string{"NODE_LABEL"},
 		},
 		&cli.StringFlag{
-			Name:        "config-file-srcdir",
+			Name:        spec.FlagConfigFileSrcdir,
 			Value:       "",
 			Usage:       "the path to the directory containing available device configuration files",
 			Destination: &flags.ConfigFileSrcdir,
 			EnvVars:     []string{"CONFIG_FILE_SRCDIR"},
 		},
 		&cli.StringFlag{
-			Name:        "config-file-dst",
+			Name:        spec.FlagConfigFileDst,
 			Value:       "",
 			Usage:       "the path to destination device configuration file",
 			Destination: &flags.ConfigFileDst,
 			EnvVars:     []string{"CONFIG_FILE_DST"},
 		},
 		&cli.StringFlag{
-			Name:        "default-config",
+			Name:        spec.FlagDefaultConfig,
 			Value:       "",
 			Usage:       "the default config to use if no label is set",
 			Destination: &flags.DefaultConfig,
 			EnvVars:     []string{"DEFAULT_CONFIG"},
 		},
 		&cli.StringSliceFlag{
-			Name:        "fallback-strategies",
+			Name:        spec.FlagFallbackStrategies,
 			Usage:       "ordered list of fallback strategies to use to set a default config when none is provided",
 			Destination: &flags.FallbackStrategies,
 			EnvVars:     []string{"FALLBACK_STRATEGIES"},
 		},
 		&cli.BoolFlag{
-			Name:        "send-signal",
+			Name:        spec.FlagSendSignal,
 			Value:       DefaultSendSignal,
 			Usage:       "send a signal to <process-to-signal> once a config change is made",
 			Destination: &flags.SendSignal,
 			EnvVars:     []string{"SEND_SIGNAL"},
 		},
 		&cli.IntFlag{
-			Name:        "signal",
+			Name:        spec.FlagSignal,
 			Value:       DefaultSignal,
 			Usage:       "the signal to sent to <process-to-signal> if <send-signal> is set",
 			Destination: &flags.Signal,
 			EnvVars:     []string{"SIGNAL"},
 		},
 		&cli.StringFlag{
-			Name:        "process-to-signal",
+			Name:        spec.FlagProcessToSignal,
 			Value:       DefaultProcessToSignal,
 			Usage:       "the name of the process to signal if <send-signal> is set",
 			Destination: &flags.ProcessToSignal,
