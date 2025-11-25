@@ -56,11 +56,11 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 	config.Flags.UpdateFromCLIFlags(c, flags)
 	// TODO: This is currently not at the flags level?
 	// Does this mean that we should move UpdateFromCLIFlags to function off Config?
-	if c.IsSet("imex-channel-ids") {
-		config.Imex.ChannelIDs = c.IntSlice("imex-channel-ids")
+	if c.IsSet(FlagImexChannelIDs) {
+		config.Imex.ChannelIDs = c.IntSlice(FlagImexChannelIDs)
 	}
-	if c.IsSet("imex-required") {
-		config.Imex.Required = c.Bool("imex-required")
+	if c.IsSet(FlagImexRequired) {
+		config.Imex.Required = c.Bool(FlagImexRequired)
 	}
 
 	// If nvidiaDevRoot (the path to the device nodes on the host) is not set,

@@ -77,6 +77,8 @@ type PluginCommandLineFlags struct {
 	CDIAnnotationPrefix *string                 `json:"cdiAnnotationPrefix" yaml:"cdiAnnotationPrefix"`
 	NvidiaCTKPath       *string                 `json:"nvidiaCTKPath"       yaml:"nvidiaCTKPath"`
 	ContainerDriverRoot *string                 `json:"containerDriverRoot" yaml:"containerDriverRoot"`
+	KubeletSocket       *string                 `json:"kubeletSocket,omitempty" yaml:"kubeletSocket,omitempty"`
+	CDIFeatureFlags     *string                 `json:"cdiFeatureFlags,omitempty" yaml:"cdiFeatureFlags,omitempty"`
 }
 
 // deviceListStrategyFlag is a custom type for parsing the deviceListStrategy flag.
@@ -117,25 +119,25 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 		for _, n := range flag.Names() {
 			// Common flags
 			switch n {
-			case "mig-strategy":
+			case FlagMigStrategy:
 				updateFromCLIFlag(&f.MigStrategy, c, n)
-			case "fail-on-init-error":
+			case FlagFailOnInitError:
 				updateFromCLIFlag(&f.FailOnInitError, c, n)
-			case "mps-root":
+			case FlagMpsRoot:
 				updateFromCLIFlag(&f.MpsRoot, c, n)
-			case "driver-root", "nvidia-driver-root":
+			case FlagDriverRoot, FlagNvidiaDriverRoot:
 				updateFromCLIFlag(&f.NvidiaDriverRoot, c, n)
-			case "dev-root", "nvidia-dev-root":
+			case FlagDevRoot, FlagNvidiaDevRoot:
 				updateFromCLIFlag(&f.NvidiaDevRoot, c, n)
-			case "gdrcopy-enabled":
+			case FlagGDRCopyEnabled:
 				updateFromCLIFlag(&f.GDRCopyEnabled, c, n)
-			case "gds-enabled":
+			case FlagGDSEnabled:
 				updateFromCLIFlag(&f.GDSEnabled, c, n)
-			case "mofed-enabled":
+			case FlagMOFEDEnabled:
 				updateFromCLIFlag(&f.MOFEDEnabled, c, n)
-			case "use-node-feature-api":
+			case FlagUseNodeFeatureAPI:
 				updateFromCLIFlag(&f.UseNodeFeatureAPI, c, n)
-			case "device-discovery-strategy":
+			case FlagDeviceDiscoveryStrategy:
 				updateFromCLIFlag(&f.DeviceDiscoveryStrategy, c, n)
 			}
 			// Plugin specific flags
@@ -143,33 +145,37 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				f.Plugin = &PluginCommandLineFlags{}
 			}
 			switch n {
-			case "pass-device-specs":
+			case FlagPassDeviceSpecs:
 				updateFromCLIFlag(&f.Plugin.PassDeviceSpecs, c, n)
-			case "device-list-strategy":
+			case FlagDeviceListStrategy:
 				updateFromCLIFlag(&f.Plugin.DeviceListStrategy, c, n)
-			case "device-id-strategy":
+			case FlagDeviceIDStrategy:
 				updateFromCLIFlag(&f.Plugin.DeviceIDStrategy, c, n)
-			case "cdi-annotation-prefix":
+			case FlagCDIAnnotationPrefix:
 				updateFromCLIFlag(&f.Plugin.CDIAnnotationPrefix, c, n)
-			case "nvidia-cdi-hook-path", "nvidia-ctk-path":
+			case FlagNvidiaCDIHookPath, FlagNvidiaCTKPath:
 				updateFromCLIFlag(&f.Plugin.NvidiaCTKPath, c, n)
-			case "container-driver-root":
+			case FlagContainerDriverRoot:
 				updateFromCLIFlag(&f.Plugin.ContainerDriverRoot, c, n)
+			case FlagKubeletSocket:
+				updateFromCLIFlag(&f.Plugin.KubeletSocket, c, n)
+			case FlagCDIFeatureFlags:
+				updateFromCLIFlag(&f.Plugin.CDIFeatureFlags, c, n)
 			}
 			// GFD specific flags
 			if f.GFD == nil {
 				f.GFD = &GFDCommandLineFlags{}
 			}
 			switch n {
-			case "oneshot":
+			case FlagOneshot:
 				updateFromCLIFlag(&f.GFD.Oneshot, c, n)
-			case "output-file":
+			case FlagOutputFile:
 				updateFromCLIFlag(&f.GFD.OutputFile, c, n)
-			case "sleep-interval":
+			case FlagSleepInterval:
 				updateFromCLIFlag(&f.GFD.SleepInterval, c, n)
-			case "no-timestamp":
+			case FlagNoTimestamp:
 				updateFromCLIFlag(&f.GFD.NoTimestamp, c, n)
-			case "machine-type-file":
+			case FlagMachineTypeFile:
 				updateFromCLIFlag(&f.GFD.MachineTypeFile, c, n)
 			}
 		}
