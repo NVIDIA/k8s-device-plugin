@@ -54,3 +54,67 @@ const (
 	DefaultNvidiaCTKPath       = "/usr/bin/nvidia-ctk"
 	DefaultContainerDriverRoot = "/driver-root"
 )
+
+// Command line flag names - Common flags
+const (
+	FlagMigStrategy             = "mig-strategy"
+	FlagFailOnInitError         = "fail-on-init-error"
+	FlagMpsRoot                 = "mps-root"
+	FlagDriverRoot              = "driver-root"
+	FlagNvidiaDriverRoot        = "nvidia-driver-root"
+	FlagDevRoot                 = "dev-root"
+	FlagNvidiaDevRoot           = "nvidia-dev-root"
+	FlagGDRCopyEnabled          = "gdrcopy-enabled"
+	FlagGDSEnabled              = "gds-enabled"
+	FlagMOFEDEnabled            = "mofed-enabled"
+	FlagUseNodeFeatureAPI       = "use-node-feature-api"
+	FlagDeviceDiscoveryStrategy = "device-discovery-strategy"
+	FlagConfigFile              = "config-file"
+)
+
+// Command line flag names - Plugin specific flags
+const (
+	FlagPassDeviceSpecs     = "pass-device-specs"
+	FlagDeviceListStrategy  = "device-list-strategy"
+	FlagDeviceIDStrategy    = "device-id-strategy"
+	FlagCDIAnnotationPrefix = "cdi-annotation-prefix"
+	FlagNvidiaCDIHookPath   = "nvidia-cdi-hook-path"
+	FlagNvidiaCTKPath       = "nvidia-ctk-path"
+	FlagContainerDriverRoot = "container-driver-root"
+	FlagDriverRootCtrPath   = "driver-root-ctr-path"
+)
+
+// Command line flag names - GFD specific flags
+const (
+	FlagOneshot         = "oneshot"
+	FlagNoTimestamp     = "no-timestamp"
+	FlagSleepInterval   = "sleep-interval"
+	FlagOutputFile      = "output-file"
+	FlagMachineTypeFile = "machine-type-file"
+)
+
+// Command line flag names - IMEX specific flags
+const (
+	FlagImexChannelIDs = "imex-channel-ids"
+	FlagImexRequired   = "imex-required"
+)
+
+// Command line flag names - Plugin additional flags
+const (
+	FlagKubeletSocket   = "kubelet-socket"
+	FlagCDIFeatureFlags = "cdi-feature-flags"
+)
+
+// Command line flag names - Config manager specific flags
+const (
+	FlagKubeconfig         = "kubeconfig"
+	FlagNodeName           = "node-name"
+	FlagNodeLabel          = "node-label"
+	FlagConfigFileSrcdir   = "config-file-srcdir"
+	FlagConfigFileDst      = "config-file-dst"
+	FlagDefaultConfig      = "default-config"
+	FlagFallbackStrategies = "fallback-strategies"
+	FlagSendSignal         = "send-signal"
+	FlagSignal             = "signal"
+	FlagProcessToSignal    = "process-to-signal"
+)
