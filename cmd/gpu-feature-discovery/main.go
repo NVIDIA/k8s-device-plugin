@@ -99,6 +99,7 @@ func main() {
 		},
 		&cli.BoolFlag{
 			Name:    "use-node-feature-api",
+			Value:   true,
 			Usage:   "Use NFD NodeFeature API to publish labels",
 			EnvVars: []string{"GFD_USE_NODE_FEATURE_API", "USE_NODE_FEATURE_API"},
 		},

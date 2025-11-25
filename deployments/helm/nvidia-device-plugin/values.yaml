@@ -118,7 +118,6 @@ gfd:
 # Helm dependency
 nfd:
   nameOverride: node-feature-discovery
-  enableNodeFeatureApi: false
   master:
     serviceAccount:
       name: node-feature-discovery

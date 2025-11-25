@@ -15,7 +15,7 @@
 {{- if .Values.gfd.enabled }}
 ---
 {{- $options := (include "nvidia-device-plugin.options" . | fromJson) }}
-{{- $useServiceAccount := or ( $options.hasConfigMap ) ( and .Values.gfd.enabled .Values.nfd.enableNodeFeatureApi ) }}
+{{- $useServiceAccount := or $options.hasConfigMap .Values.gfd.enabled }}
 {{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}
 {{- $daemonsetName := printf "%s-gpu-feature-discovery" (include "nvidia-device-plugin.fullname" .) | trunc 63 | trimSuffix "-" }}
 apiVersion: apps/v1
@@ -160,10 +160,6 @@ spec:
         {{- if or (typeIs "string" .Values.sleepInterval) (typeIs "int" .Values.sleepInterval) }}
           - name: GFD_SLEEP_INTERVAL
             value: {{ .Values.sleepInterval | quote }}
-        {{- end }}
-        {{- if typeIs "bool" .Values.nfd.enableNodeFeatureApi }}
-          - name: GFD_USE_NODE_FEATURE_API
-            value: {{ .Values.nfd.enableNodeFeatureApi | quote }}
         {{- end }}
         {{- if $options.hasConfigMap }}
           - name: CONFIG_FILE
