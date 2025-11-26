@@ -40,8 +40,20 @@ const (
 	envEnableHealthChecks = "DP_ENABLE_HEALTHCHECKS"
 )
 
+type nvmlHealthProvider struct {
+	nvmllib           nvml.Interface
+	devices           Devices
+	parentToDeviceMap map[string]*Device
+	deviceIDToGiMap   map[string]uint32
+	deviceIDToCiMap   map[string]uint32
+
+	// TODO: Rename this to xidsDisabled as a follow-up.
+	xids      disabledXIDs
+	unhealthy chan<- *Device
+}
+
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
-func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
+func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhealthy chan<- *Device) error {
 	xids := getDisabledHealthCheckXids()
 	if xids.IsAllDisabled() {
 		return nil
@@ -71,13 +83,14 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		_ = eventSet.Free()
 	}()
 
+	// Construct the device maps.
+	// TODO: This should be factored out. The main issue is marking the devices
+	// unhealthy as part of this loop.
 	parentToDeviceMap := make(map[string]*Device)
 	deviceIDToGiMap := make(map[string]uint32)
 	deviceIDToCiMap := make(map[string]uint32)
-
-	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
 	for _, d := range devices {
-		uuid, gi, ci, err := r.getDevicePlacement(d)
+		uuid, gi, ci, err := (&withDevicePlacements{r.nvml}).getDevicePlacement(d)
 		if err != nil {
 			klog.Warningf("Could not determine device placement for %v: %v; Marking it unhealthy.", d.ID, err)
 			unhealthy <- d
@@ -86,33 +99,56 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		deviceIDToGiMap[d.ID] = gi
 		deviceIDToCiMap[d.ID] = ci
 		parentToDeviceMap[uuid] = d
+	}
 
-		gpu, ret := r.nvml.DeviceGetHandleByUUID(uuid)
+	p := nvmlHealthProvider{
+		nvmllib:           r.nvml,
+		devices:           devices,
+		unhealthy:         unhealthy,
+		parentToDeviceMap: parentToDeviceMap,
+		deviceIDToGiMap:   deviceIDToGiMap,
+		deviceIDToCiMap:   deviceIDToCiMap,
+		xids:              xids,
+	}
+	p.registerDeviceEvents(eventSet)
+
+	return p.runEventMonitor(stop, eventSet)
+}
+
+func (r *nvmlHealthProvider) registerDeviceEvents(eventSet nvml.EventSet) {
+	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
+	for uuid, d := range r.parentToDeviceMap {
+		gpu, ret := r.nvmllib.DeviceGetHandleByUUID(uuid)
 		if ret != nvml.SUCCESS {
 			klog.Infof("unable to get device handle from UUID: %v; marking it as unhealthy", ret)
-			unhealthy <- d
+			r.unhealthy <- d
 			continue
 		}
-
 		supportedEvents, ret := gpu.GetSupportedEventTypes()
 		if ret != nvml.SUCCESS {
 			klog.Infof("unable to determine the supported events for %v: %v; marking it as unhealthy", d.ID, ret)
-			unhealthy <- d
+			r.unhealthy <- d
 			continue
 		}
 
 		ret = gpu.RegisterEvents(eventMask&supportedEvents, eventSet)
 		if ret == nvml.ERROR_NOT_SUPPORTED {
 			klog.Warningf("Device %v is too old to support healthchecking.", d.ID)
+			// TODO: We don't properly handle this case. We should probably
+			// just remove it, since we would ALWAYS mark the device as unhealthy
+			// below.
 		}
 		if ret != nvml.SUCCESS {
 			klog.Infof("Marking device %v as unhealthy: %v", d.ID, ret)
-			unhealthy <- d
+			r.unhealthy <- d
 		}
 	}
+}
 
+func (r *nvmlHealthProvider) runEventMonitor(stop <-chan interface{}, eventSet nvml.EventSet) error {
 	for {
 		select {
+		// TODO: Instead of a stop channel, we should switch to a waitgroup.
 		case <-stop:
 			return nil
 		default:
@@ -124,18 +160,20 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		}
 		if ret != nvml.SUCCESS {
 			klog.Infof("Error waiting for event: %v; Marking all devices as unhealthy", ret)
-			for _, d := range devices {
-				unhealthy <- d
+			for _, d := range r.devices {
+				r.unhealthy <- d
 			}
 			continue
 		}
 
+		// TODO: We create an event mask for other event types but don't handle
+		// them here.
 		if e.EventType != nvml.EventTypeXidCriticalError {
 			klog.Infof("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
 			continue
 		}
 
-		if xids.IsDisabled(e.EventData) {
+		if r.xids.IsDisabled(e.EventData) {
 			klog.Infof("Skipping event %+v", e)
 			continue
 		}
@@ -145,21 +183,21 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		if ret != nvml.SUCCESS {
 			// If we cannot reliably determine the device UUID, we mark all devices as unhealthy.
 			klog.Infof("Failed to determine uuid for event %v: %v; Marking all devices as unhealthy.", e, ret)
-			for _, d := range devices {
-				unhealthy <- d
+			for _, d := range r.devices {
+				r.unhealthy <- d
 			}
 			continue
 		}
 
-		d, exists := parentToDeviceMap[eventUUID]
+		d, exists := r.parentToDeviceMap[eventUUID]
 		if !exists {
 			klog.Infof("Ignoring event for unexpected device: %v", eventUUID)
 			continue
 		}
 
 		if d.IsMigDevice() && e.GpuInstanceId != 0xFFFFFFFF && e.ComputeInstanceId != 0xFFFFFFFF {
-			gi := deviceIDToGiMap[d.ID]
-			ci := deviceIDToCiMap[d.ID]
+			gi := r.deviceIDToGiMap[d.ID]
+			ci := r.deviceIDToCiMap[d.ID]
 			if gi != e.GpuInstanceId || ci != e.ComputeInstanceId {
 				continue
 			}
@@ -167,7 +205,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		}
 
 		klog.Infof("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
-		unhealthy <- d
+		r.unhealthy <- d
 	}
 }
 
@@ -276,10 +314,14 @@ func newHealthCheckXIDs(xids ...string) disabledXIDs {
 	return output
 }
 
+type withDevicePlacements struct {
+	nvml.Interface
+}
+
 // getDevicePlacement returns the placement of the specified device.
 // For a MIG device the placement is defined by the 3-tuple <parent UUID, GI, CI>
 // For a full device the returned 3-tuple is the device's uuid and 0xFFFFFFFF for the other two elements.
-func (r *nvmlResourceManager) getDevicePlacement(d *Device) (string, uint32, uint32, error) {
+func (r *withDevicePlacements) getDevicePlacement(d *Device) (string, uint32, uint32, error) {
 	if !d.IsMigDevice() {
 		return d.GetUUID(), 0xFFFFFFFF, 0xFFFFFFFF, nil
 	}
@@ -287,14 +329,14 @@ func (r *nvmlResourceManager) getDevicePlacement(d *Device) (string, uint32, uin
 }
 
 // getMigDeviceParts returns the parent GI and CI ids of the MIG device.
-func (r *nvmlResourceManager) getMigDeviceParts(d *Device) (string, uint32, uint32, error) {
+func (r *withDevicePlacements) getMigDeviceParts(d *Device) (string, uint32, uint32, error) {
 	if !d.IsMigDevice() {
 		return "", 0, 0, fmt.Errorf("cannot get GI and CI of full device")
 	}
 
 	uuid := d.GetUUID()
 	// For older driver versions, the call to DeviceGetHandleByUUID will fail for MIG devices.
-	mig, ret := r.nvml.DeviceGetHandleByUUID(uuid)
+	mig, ret := r.DeviceGetHandleByUUID(uuid)
 	if ret == nvml.SUCCESS {
 		parentHandle, ret := mig.GetDeviceHandleFromMigDeviceHandle()
 		if ret != nvml.SUCCESS {
