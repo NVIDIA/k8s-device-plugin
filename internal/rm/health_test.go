@@ -21,6 +21,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
+	"github.com/NVIDIA/go-nvml/pkg/nvml/mock"
+	"github.com/NVIDIA/go-nvml/pkg/nvml/mock/dgxa100"
 	"github.com/stretchr/testify/require"
 )
 
@@ -220,4 +223,87 @@ func TestGetDisabledHealthCheckXids(t *testing.T) {
 			require.Equal(t, tc.expectedDisabled, disabled)
 		})
 	}
+}
+
+func TestCheckHealth(t *testing.T) {
+
+	stop := make(chan any)
+	unhealthy := make(chan *Device)
+
+	server := dgxa100.New()
+
+	if deviceMock := server.Devices[0].(*dgxa100.Device); true {
+		deviceMock.GetSupportedEventTypesFunc = func() (uint64, nvml.Return) {
+			return nvml.EventTypeXidCriticalError, nvml.SUCCESS
+		}
+		// TODO: Should this be more dynamic?
+		deviceMock.RegisterEventsFunc = func(v uint64, eventSet nvml.EventSet) nvml.Return {
+			return nvml.SUCCESS
+		}
+	}
+
+	var count int
+	eventData := []nvml.EventData{
+		{
+			EventData: 109,
+			EventType: nvml.EventTypeXidCriticalError,
+			Device:    server.Devices[0],
+		},
+		{
+			EventData: 48,
+			EventType: nvml.EventTypeXidCriticalError,
+			Device:    server.Devices[0],
+		},
+	}
+
+	server.EventSetCreateFunc = func() (nvml.EventSet, nvml.Return) {
+		es := &mock.EventSet{
+			WaitFunc: func(v uint32) (nvml.EventData, nvml.Return) {
+				ed := eventData[count%len(eventData)]
+				count += 1
+				if count == len(eventData) {
+					// TODO: We close the stop channel here to ensure that the
+					// health checker terminates after the predefined events
+					// have been triggered.
+					close(stop)
+				}
+				return ed, nvml.SUCCESS
+			},
+			FreeFunc: func() nvml.Return {
+				return nvml.SUCCESS
+			},
+		}
+		return es, nvml.SUCCESS
+	}
+
+	r := &nvmlResourceManager{
+		nvml: server,
+	}
+
+	var unhealthyDevices []*Device
+
+	go func() {
+		// TODO: We may want to also trigger close(stop) here to ensure that
+		// the test terminates.
+		for d := range unhealthy {
+			unhealthyDevices = append(unhealthyDevices, d)
+		}
+	}()
+
+	var expecteDevices []*Device
+
+	devices := make(Devices)
+	for i, d := range server.Devices {
+		device, err := BuildDevice(newNvmlGPUDevice(i, d))
+		require.NoError(t, err)
+		devices[device.GetUUID()] = device
+		expecteDevices = append(expecteDevices, device)
+		// TODO: We only expect a single unhealthy event for the first device.
+		break
+	}
+
+	err := r.checkHealth(stop, devices, unhealthy)
+	require.NoError(t, err)
+
+	require.EqualValues(t, expecteDevices, unhealthyDevices)
 }
