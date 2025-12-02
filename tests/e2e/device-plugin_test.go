@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+ * SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +18,8 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -27,14 +28,10 @@ import (
 
 	helm "github.com/mittwald/go-helm-client"
 	helmValues "github.com/mittwald/go-helm-client/values"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	extclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
 
-	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common"
 	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/common/diagnostics"
-	"github.com/NVIDIA/k8s-device-plugin/tests/e2e/framework"
 )
 
 const (
@@ -42,63 +39,49 @@ const (
 )
 
 // Actual test suite
-var _ = NVDescribe("GPU Device Plugin", func() {
-	f := framework.NewFramework("k8s-device-plugin")
+var _ = Describe("GPU Device Plugin", Ordered, Label("gpu", "e2e", "device-plugin"), func() {
+	// Init global suite vars
+	var (
+		helmReleaseName string
+		chartSpec       helm.ChartSpec
 
-	Context("When deploying k8s-device-plugin", Ordered, func() {
-		// helm-chart is required
-		if *HelmChart == "" {
-			Fail("No helm-chart for k8s-device-plugin specified")
-		}
+		collectLogsFrom      []string
+		diagnosticsCollector *diagnostics.Diagnostic
+	)
 
-		// Init global suite vars vars
-		var (
-			crds      []*apiextensionsv1.CustomResourceDefinition
-			extClient *extclient.Clientset
+	collectLogsFrom = []string{
+		"pods",
+		"nodes",
+		"namespaces",
+		"deployments",
+		"daemonsets",
+		"jobs",
+	}
+	if CollectLogsFrom != "" && CollectLogsFrom != "default" {
+		collectLogsFrom = strings.Split(CollectLogsFrom, ",")
+	}
 
-			helmReleaseName string
-			chartSpec       helm.ChartSpec
+	values := helmValues.Options{
+		Values: []string{
+			fmt.Sprintf("image.repository=%s", ImageRepo),
+			fmt.Sprintf("image.tag=%s", ImageTag),
+			fmt.Sprintf("image.pullPolicy=%s", ImagePullPolicy),
+			"devicePlugin.enabled=true",
+			// We need to make affinity null, if not deploying NFD/GFD
+			// test will fail if not run on a GPU node
+			"affinity=",
+		},
+	}
 
-			collectLogsFrom      []string
-			diagnosticsCollector *diagnostics.Diagnostic
-		)
-
-		defaultCollectorObjects := []string{
-			"pods",
-			"nodes",
-			"namespaces",
-			"deployments",
-			"daemonsets",
-			"jobs",
-		}
-
-		values := helmValues.Options{
-			Values: []string{
-				fmt.Sprintf("image.repository=%s", *ImageRepo),
-				fmt.Sprintf("image.tag=%s", *ImageTag),
-				fmt.Sprintf("image.pullPolicy=%s", *ImagePullPolicy),
-				"devicePlugin.enabled=true",
-				// We need to make affinity is none if not deploying NFD/GFD
-				// test will fail if not run on a GPU node
-				"affinity=",
-			},
-		}
-
-		// check Collector objects
-		collectLogsFrom = defaultCollectorObjects
-		if *CollectLogsFrom != "" && *CollectLogsFrom != "default" {
-			collectLogsFrom = strings.Split(*CollectLogsFrom, ",")
-		}
-
-		BeforeAll(func(ctx context.Context) {
+	When("deploying k8s-device-plugin", Ordered, func() {
+		BeforeAll(func(ctx SpecContext) {
 			// Create clients for apiextensions and our CRD api
-			extClient = extclient.NewForConfigOrDie(f.ClientConfig())
-			helmReleaseName = "nvdp-e2e-test" + rand.String(5)
+			helmReleaseName = "nvdp-e2e-test-" + rand.String(5)
 
 			chartSpec = helm.ChartSpec{
 				ReleaseName:   helmReleaseName,
-				ChartName:     *HelmChart,
-				Namespace:     f.Namespace.Name,
+				ChartName:     HelmChart,
+				Namespace:     testNamespace.Name,
 				Wait:          true,
 				Timeout:       1 * time.Minute,
 				ValuesOptions: values,
@@ -106,21 +89,33 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 			}
 
 			By("Installing k8s-device-plugin Helm chart")
-			_, err := f.HelmClient.InstallChart(ctx, &chartSpec, nil)
+			_, err := helmClient.InstallChart(ctx, &chartSpec, nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Wait for all DaemonSets to be ready
+			// Note: DaemonSet names are dynamically generated with the Helm release prefix,
+			// so we wait for all DaemonSets in the namespace rather than specific names
+			By("Waiting for all DaemonSets to be ready")
+			err = waitForDaemonSetsReady(ctx, clientSet, testNamespace.Name, "app.kubernetes.io/name=nvidia-device-plugin")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		JustBeforeEach(func(ctx context.Context) {
+		AfterAll(func(ctx SpecContext) {
+			By("Uninstalling k8s-device-plugin Helm chart")
+			err := helmClient.UninstallReleaseByName(helmReleaseName)
+			if err != nil {
+				GinkgoWriter.Printf("Failed to uninstall helm release %s: %v\n", helmReleaseName, err)
+			}
 		})
 
-		AfterEach(func(ctx context.Context) {
+		AfterEach(func(ctx SpecContext) {
 			// Run diagnostic collector if test failed
 			if CurrentSpecReport().Failed() {
 				var err error
 				diagnosticsCollector, err = diagnostics.New(
-					diagnostics.WithNamespace(f.Namespace.Name),
-					diagnostics.WithArtifactDir(*LogArtifactDir),
-					diagnostics.WithKubernetesClient(f.ClientSet),
+					diagnostics.WithNamespace(testNamespace.Name),
+					diagnostics.WithArtifactDir(LogArtifactDir),
+					diagnostics.WithKubernetesClient(clientSet),
 					diagnostics.WithObjects(collectLogsFrom...),
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -130,65 +125,54 @@ var _ = NVDescribe("GPU Device Plugin", func() {
 			}
 		})
 
-		AfterAll(func(ctx context.Context) {
-			// Delete Helm release
-			err := f.HelmClient.UninstallReleaseByName(helmReleaseName)
+		It("should create nvidia.com/gpu resource", func(ctx SpecContext) {
+			nodeList, err := clientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(nodeList.Items)).ToNot(BeZero())
+
+			// We pick one node
+			nodes, err := getNonControlPlaneNodes(ctx, clientSet)
 			Expect(err).NotTo(HaveOccurred())
 
-			for _, crd := range crds {
-				err := extClient.ApiextensionsV1().CustomResourceDefinitions().Delete(ctx, crd.Name, metav1.DeleteOptions{})
-				Expect(err).NotTo(HaveOccurred())
-			}
+			targetNodeName := nodes[0].Name
+			Expect(targetNodeName).ToNot(BeEmpty(), "No suitable worker node found")
 
-			// TODO: Add a check for a zero node capacity.
+			By("Checking the node capacity")
+			capacityChecker := map[string]k8sLabels{
+				targetNodeName: {
+					"nvidia.com/gpu": "^[1-9]$",
+				}}
+			eventuallyNonControlPlaneNodes(ctx, clientSet).Should(MatchCapacity(capacityChecker, nodes), "Node capacity does not match")
 		})
+		It("should run GPU jobs", func(ctx SpecContext) {
+			By("Creating a GPU job")
+			jobNames, err := CreateOrUpdateJobsFromFile(ctx, clientSet, testNamespace.Name, filepath.Join(projectRoot, "testdata", "job-1.yaml"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(jobNames).To(HaveLen(1))
 
-		Context("and NV Driver is installed", func() {
-			It("it should create nvidia.com/gpu resource", func(ctx context.Context) {
-				nodeList, err := f.ClientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
-				Expect(err).NotTo(HaveOccurred())
-				Expect(len(nodeList.Items)).ToNot(BeZero())
-
-				// We pick one node
-				nodes, err := common.GetNonControlPlaneNodes(ctx, f.ClientSet)
-				Expect(err).NotTo(HaveOccurred())
-
-				targetNodeName := nodes[0].Name
-				Expect(targetNodeName).ToNot(BeEmpty(), "No suitable worker node found")
-
-				By("Checking the node capacity")
-				capacityChecker := map[string]k8sLabels{
-					targetNodeName: {
-						"nvidia.com/gpu": "^[1-9]$",
-					}}
-				eventuallyNonControlPlaneNodes(ctx, f.ClientSet).Should(MatchCapacity(capacityChecker, nodes), "Node capacity does not match")
-
-				// TODO: As a workaround to installing and reinstalling client causing
-				// the required resources to not be available, we merge the two tests.
-				// })
-				// It("it should run GPU jobs", func(ctx context.Context) {
-				// 	By("Creating a GPU job")
-				job := common.GPUJob.DeepCopy()
-				job.Namespace = f.Namespace.Name
-
-				_, err = f.ClientSet.BatchV1().Jobs(f.Namespace.Name).Create(ctx, job, metav1.CreateOptions{})
-				Expect(err).NotTo(HaveOccurred())
-
-				By("Waiting for job to complete")
-				Eventually(func() error {
-					job, err := f.ClientSet.BatchV1().Jobs(f.Namespace.Name).Get(ctx, job.Name, metav1.GetOptions{})
-					if err != nil {
-						return err
-					}
-					if job.Status.Succeeded != 1 {
-						return fmt.Errorf("job %s/%s failed", job.Namespace, job.Name)
-					}
-					if job.Status.Succeeded == 1 {
-						return nil
-					}
-					return fmt.Errorf("job %s/%s not completed yet", job.Namespace, job.Name)
-				}, devicePluginEventuallyTimeout, 5*time.Second).Should(BeNil())
+			// Defer cleanup for the job
+			DeferCleanup(func(ctx SpecContext) {
+				By("Deleting the GPU job")
+				err := clientSet.BatchV1().Jobs(testNamespace.Name).Delete(ctx, jobNames[0], metav1.DeleteOptions{})
+				if err != nil {
+					GinkgoWriter.Printf("Failed to delete job %s: %v\n", jobNames[0], err)
+				}
 			})
+
+			By("Waiting for job to complete")
+			Eventually(func(g Gomega) error {
+				job, err := clientSet.BatchV1().Jobs(testNamespace.Name).Get(ctx, jobNames[0], metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				if job.Status.Failed > 0 {
+					return fmt.Errorf("job %s/%s has failed pods: %d", job.Namespace, job.Name, job.Status.Failed)
+				}
+				if job.Status.Succeeded != 1 {
+					return fmt.Errorf("job %s/%s not completed yet: %d succeeded", job.Namespace, job.Name, job.Status.Succeeded)
+				}
+				return nil
+			}).WithContext(ctx).WithPolling(5 * time.Second).WithTimeout(devicePluginEventuallyTimeout).Should(Succeed())
 		})
 	})
 })
