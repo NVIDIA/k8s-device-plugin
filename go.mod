@@ -6,7 +6,7 @@ require (
 	github.com/NVIDIA/go-gpuallocator v0.6.0
 	github.com/NVIDIA/go-nvlib v0.8.1
 	github.com/NVIDIA/go-nvml v0.13.0-1
-	github.com/NVIDIA/nvidia-container-toolkit v1.18.1-0.20251121085546-d2b964a78210
+	github.com/NVIDIA/nvidia-container-toolkit v1.18.1
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/google/renameio v1.0.1
 	github.com/google/uuid v1.6.0

@@ -20,7 +20,7 @@ github.com/NVIDIA/go-nvlib/pkg/pciids
 ## explicit; go 1.20
 github.com/NVIDIA/go-nvml/pkg/dl
 github.com/NVIDIA/go-nvml/pkg/nvml
-# github.com/NVIDIA/nvidia-container-toolkit v1.18.1-0.20251121085546-d2b964a78210
+# github.com/NVIDIA/nvidia-container-toolkit v1.18.1
 ## explicit; go 1.25.0
 github.com/NVIDIA/nvidia-container-toolkit/internal/config/image
 github.com/NVIDIA/nvidia-container-toolkit/internal/discover
