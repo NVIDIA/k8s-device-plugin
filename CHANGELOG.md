@@ -1,5 +1,12 @@
 ## Changelog
 
+### v0.18.1
+- Allow CDI feature flags to be set
+- Pass driver root to nvinfo.New in device plugin main
+- Bump NVIDIA Container Toolkit to v1.18.1
+- Bump distroless base image to v3.2.1-dev
+- Bump github.com/opencontainers/selinux from 1.12.0 to 1.13.1 (#1506)
+
 ### v0.18.0
 - Rename getHealthCheckXids and clarify documentation
 - Add support for explicitly enabling XIDs in health checks
