@@ -337,7 +337,23 @@ func (r *nvmlResourceManager) handleEventWaitError(
 	}
 }
 
-// CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
+// checkHealth orchestrates GPU health monitoring by coordinating NVML
+// initialization, device registration, and event monitoring. This function
+// acts as the main entry point and delegates specific responsibilities to
+// focused methods on nvmlHealthProvider.
+//
+// The orchestration flow:
+//  1. Initialize stats tracking and XID filtering
+//  2. Initialize NVML and create event set
+//  3. Build device placement maps (for MIG support)
+//  4. Create nvmlHealthProvider with configuration
+//  5. Register device events
+//  6. Start context-based shutdown coordination
+//  7. Start periodic stats reporting
+//  8. Run event monitoring loop
+//
+// All robustness features are preserved: stats tracking, granular error
+// handling, context-based shutdown, and non-blocking device reporting.
 func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
 	// Initialize stats tracking
 	stats := &healthCheckStats{
