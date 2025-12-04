@@ -146,6 +146,126 @@ type nvmlHealthProvider struct {
 	stats *healthCheckStats
 }
 
+// runEventMonitor runs the main event monitoring loop with context-based
+// shutdown coordination and granular error handling. This method preserves
+// all robustness features from the original implementation while being
+// testable independently.
+func (p *nvmlHealthProvider) runEventMonitor(
+	ctx context.Context,
+	eventSet nvml.EventSet,
+	handleError func(nvml.Return, Devices, chan<- *Device) bool,
+) error {
+	// Event receive channel with buffer
+	eventChan := make(chan eventResult, 10)
+
+	// Start goroutine to receive NVML events
+	go func() {
+		defer close(eventChan)
+		for {
+			// Check if we should stop
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			// Wait for NVML event with timeout
+			e, ret := eventSet.Wait(5000)
+
+			// Try to send event result, but respect context cancellation
+			select {
+			case <-ctx.Done():
+				return
+			case eventChan <- eventResult{event: e, ret: ret}:
+			}
+		}
+	}()
+
+	// Main event processing loop
+	for {
+		select {
+		case <-ctx.Done():
+			klog.V(2).Info("Health check stopped cleanly")
+			return nil
+
+		case result, ok := <-eventChan:
+			if !ok {
+				// Event channel closed, exit
+				return nil
+			}
+
+			// Handle timeout - just continue
+			if result.ret == nvml.ERROR_TIMEOUT {
+				continue
+			}
+
+			// Handle NVML errors with granular error handling
+			if result.ret != nvml.SUCCESS {
+				p.stats.recordError()
+				shouldContinue := handleError(result.ret, p.devices, p.unhealthy)
+				if !shouldContinue {
+					return fmt.Errorf("fatal NVML error: %v", result.ret)
+				}
+				continue
+			}
+
+			e := result.event
+
+			// Filter non-critical events
+			if e.EventType != nvml.EventTypeXidCriticalError {
+				klog.Infof("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
+				continue
+			}
+
+			// Check if this XID is disabled
+			if p.xidsDisabled.IsDisabled(e.EventData) {
+				klog.Infof("Skipping event %+v", e)
+				continue
+			}
+
+			klog.Infof("Processing event %+v", e)
+
+			// Record event stats
+			p.stats.recordEvent(e.EventData)
+
+			// Get device UUID from event
+			eventUUID, ret := e.Device.GetUUID()
+			if ret != nvml.SUCCESS {
+				// If we cannot reliably determine the device UUID, we mark all devices as unhealthy.
+				klog.Infof("Failed to determine uuid for event %v: %v; Marking all devices as unhealthy.", e, ret)
+				p.stats.recordError()
+				for _, d := range p.devices {
+					p.stats.recordUnhealthy()
+					sendUnhealthyDevice(p.unhealthy, d)
+				}
+				continue
+			}
+
+			// Find the device that matches this event
+			d, exists := p.parentToDeviceMap[eventUUID]
+			if !exists {
+				klog.Infof("Ignoring event for unexpected device: %v", eventUUID)
+				continue
+			}
+
+			// For MIG devices, verify the GI/CI matches
+			if d.IsMigDevice() && e.GpuInstanceId != 0xFFFFFFFF && e.ComputeInstanceId != 0xFFFFFFFF {
+				gi := p.deviceIDToGiMap[d.ID]
+				ci := p.deviceIDToCiMap[d.ID]
+				if gi != e.GpuInstanceId || ci != e.ComputeInstanceId {
+					continue
+				}
+				klog.Infof("Event for mig device %v (gi=%v, ci=%v)", d.ID, gi, ci)
+			}
+
+			klog.Infof("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
+			p.stats.recordUnhealthy()
+			d.MarkUnhealthy(fmt.Sprintf("XID-%d", e.EventData))
+			sendUnhealthyDevice(p.unhealthy, d)
+		}
+	}
+}
+
 // registerDeviceEvents registers NVML event handlers for all devices in the
 // provider. Devices that fail registration are sent to the unhealthy channel.
 // This method is separated for testability and clarity.
@@ -312,115 +432,8 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		}
 	}()
 
-	// Event receive channel with small buffer
-	eventChan := make(chan eventResult, 10)
-
-	// Start goroutine to receive NVML events
-	go func() {
-		defer close(eventChan)
-		for {
-			// Check if we should stop
-			select {
-			case <-ctx.Done():
-				return
-			default:
-			}
-
-			// Wait for NVML event with timeout
-			e, ret := eventSet.Wait(5000)
-
-			// Try to send event result, but respect context cancellation
-			select {
-			case <-ctx.Done():
-				return
-			case eventChan <- eventResult{event: e, ret: ret}:
-			}
-		}
-	}()
-
-	// Main event processing loop
-	for {
-		select {
-		case <-ctx.Done():
-			klog.V(2).Info("Health check stopped cleanly")
-			return nil
-
-		case result, ok := <-eventChan:
-			if !ok {
-				// Event channel closed, exit
-				return nil
-			}
-
-			// Handle timeout - just continue
-			if result.ret == nvml.ERROR_TIMEOUT {
-				continue
-			}
-
-			// Handle NVML errors with granular error handling
-			if result.ret != nvml.SUCCESS {
-				stats.recordError()
-				shouldContinue := r.handleEventWaitError(result.ret, devices, unhealthy)
-				if !shouldContinue {
-					return fmt.Errorf("fatal NVML error: %v", result.ret)
-				}
-				continue
-			}
-
-			e := result.event
-
-			// Filter non-critical events
-			if e.EventType != nvml.EventTypeXidCriticalError {
-				klog.Infof("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
-				continue
-			}
-
-			// Check if this XID is disabled
-			if provider.xidsDisabled.IsDisabled(e.EventData) {
-				klog.Infof("Skipping event %+v", e)
-				continue
-			}
-
-			klog.Infof("Processing event %+v", e)
-
-			// Record event stats
-			stats.recordEvent(e.EventData)
-
-			// Get device UUID from event
-			eventUUID, ret := e.Device.GetUUID()
-			if ret != nvml.SUCCESS {
-				// If we cannot reliably determine the device UUID, we mark all devices as unhealthy.
-				klog.Infof("Failed to determine uuid for event %v: %v; Marking all devices as unhealthy.", e, ret)
-				stats.recordError()
-				for _, d := range devices {
-					stats.recordUnhealthy()
-					sendUnhealthyDevice(unhealthy, d)
-				}
-				continue
-			}
-
-			// Find the device that matches this event
-			d, exists := provider.parentToDeviceMap[eventUUID]
-			if !exists {
-				klog.Infof("Ignoring event for unexpected device: %v", eventUUID)
-				continue
-			}
-
-			// For MIG devices, verify the GI/CI matches
-			if d.IsMigDevice() && e.GpuInstanceId != 0xFFFFFFFF && e.ComputeInstanceId != 0xFFFFFFFF {
-				gi := provider.deviceIDToGiMap[d.ID]
-				ci := provider.deviceIDToCiMap[d.ID]
-				if gi != e.GpuInstanceId || ci != e.ComputeInstanceId {
-					continue
-				}
-				klog.Infof("Event for mig device %v (gi=%v, ci=%v)", d.ID, gi, ci)
-			}
-
-			klog.Infof("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
-			stats.recordUnhealthy()
-			d.MarkUnhealthy(fmt.Sprintf("XID-%d", e.EventData))
-			sendUnhealthyDevice(unhealthy, d)
-		}
-	}
+	// Run event monitor with error handler
+	return provider.runEventMonitor(ctx, eventSet, r.handleEventWaitError)
 }
 
 const allXIDs = 0
