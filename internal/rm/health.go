@@ -146,6 +146,38 @@ type nvmlHealthProvider struct {
 	stats *healthCheckStats
 }
 
+// registerDeviceEvents registers NVML event handlers for all devices in the
+// provider. Devices that fail registration are sent to the unhealthy channel.
+// This method is separated for testability and clarity.
+func (p *nvmlHealthProvider) registerDeviceEvents(eventSet nvml.EventSet) {
+	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
+
+	for uuid, d := range p.parentToDeviceMap {
+		gpu, ret := p.nvmllib.DeviceGetHandleByUUID(uuid)
+		if ret != nvml.SUCCESS {
+			klog.Infof("unable to get device handle from UUID: %v; marking it as unhealthy", ret)
+			sendUnhealthyDevice(p.unhealthy, d)
+			continue
+		}
+
+		supportedEvents, ret := gpu.GetSupportedEventTypes()
+		if ret != nvml.SUCCESS {
+			klog.Infof("unable to determine the supported events for %v: %v; marking it as unhealthy", d.ID, ret)
+			sendUnhealthyDevice(p.unhealthy, d)
+			continue
+		}
+
+		ret = gpu.RegisterEvents(eventMask&supportedEvents, eventSet)
+		if ret == nvml.ERROR_NOT_SUPPORTED {
+			klog.Warningf("Device %v is too old to support healthchecking.", d.ID)
+		}
+		if ret != nvml.SUCCESS {
+			klog.Infof("Marking device %v as unhealthy: %v", d.ID, ret)
+			sendUnhealthyDevice(p.unhealthy, d)
+		}
+	}
+}
+
 // handleEventWaitError categorizes NVML errors and determines the
 // appropriate action. Returns true if health checking should continue,
 // false if it should terminate.
@@ -224,11 +256,11 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		_ = eventSet.Free()
 	}()
 
+	// Build device placement maps for MIG support
 	parentToDeviceMap := make(map[string]*Device)
 	deviceIDToGiMap := make(map[string]uint32)
 	deviceIDToCiMap := make(map[string]uint32)
 
-	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
 	for _, d := range devices {
 		uuid, gi, ci, err := r.getDevicePlacement(d)
 		if err != nil {
@@ -239,30 +271,22 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		deviceIDToGiMap[d.ID] = gi
 		deviceIDToCiMap[d.ID] = ci
 		parentToDeviceMap[uuid] = d
-
-		gpu, ret := r.nvml.DeviceGetHandleByUUID(uuid)
-		if ret != nvml.SUCCESS {
-			klog.Infof("unable to get device handle from UUID: %v; marking it as unhealthy", ret)
-			sendUnhealthyDevice(unhealthy, d)
-			continue
-		}
-
-		supportedEvents, ret := gpu.GetSupportedEventTypes()
-		if ret != nvml.SUCCESS {
-			klog.Infof("unable to determine the supported events for %v: %v; marking it as unhealthy", d.ID, ret)
-			sendUnhealthyDevice(unhealthy, d)
-			continue
-		}
-
-		ret = gpu.RegisterEvents(eventMask&supportedEvents, eventSet)
-		if ret == nvml.ERROR_NOT_SUPPORTED {
-			klog.Warningf("Device %v is too old to support healthchecking.", d.ID)
-		}
-		if ret != nvml.SUCCESS {
-			klog.Infof("Marking device %v as unhealthy: %v", d.ID, ret)
-			sendUnhealthyDevice(unhealthy, d)
-		}
 	}
+
+	// Create health provider with device maps
+	provider := &nvmlHealthProvider{
+		nvmllib:           r.nvml,
+		devices:           devices,
+		parentToDeviceMap: parentToDeviceMap,
+		deviceIDToGiMap:   deviceIDToGiMap,
+		deviceIDToCiMap:   deviceIDToCiMap,
+		xidsDisabled:      xids,
+		unhealthy:         unhealthy,
+		stats:             stats,
+	}
+
+	// Register device events
+	provider.registerDeviceEvents(eventSet)
 
 	// Create context for coordinating shutdown
 	ctx, cancel := context.WithCancel(context.Background())
@@ -351,7 +375,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 			}
 
 			// Check if this XID is disabled
-			if xids.IsDisabled(e.EventData) {
+			if provider.xidsDisabled.IsDisabled(e.EventData) {
 				klog.Infof("Skipping event %+v", e)
 				continue
 			}
@@ -375,7 +399,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 			}
 
 			// Find the device that matches this event
-			d, exists := parentToDeviceMap[eventUUID]
+			d, exists := provider.parentToDeviceMap[eventUUID]
 			if !exists {
 				klog.Infof("Ignoring event for unexpected device: %v", eventUUID)
 				continue
@@ -383,8 +407,8 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 
 			// For MIG devices, verify the GI/CI matches
 			if d.IsMigDevice() && e.GpuInstanceId != 0xFFFFFFFF && e.ComputeInstanceId != 0xFFFFFFFF {
-				gi := deviceIDToGiMap[d.ID]
-				ci := deviceIDToCiMap[d.ID]
+				gi := provider.deviceIDToGiMap[d.ID]
+				ci := provider.deviceIDToCiMap[d.ID]
 				if gi != e.GpuInstanceId || ci != e.ComputeInstanceId {
 					continue
 				}
