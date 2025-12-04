@@ -123,6 +123,29 @@ func (s *healthCheckStats) report() {
 	}
 }
 
+// nvmlHealthProvider encapsulates the state and logic for NVML-based GPU
+// health monitoring. This struct groups related data and provides focused
+// methods for device registration and event monitoring.
+type nvmlHealthProvider struct {
+	// Configuration
+	nvmllib nvml.Interface
+	devices Devices
+
+	// Device placement maps (for MIG support)
+	parentToDeviceMap map[string]*Device
+	deviceIDToGiMap   map[string]uint32
+	deviceIDToCiMap   map[string]uint32
+
+	// XID filtering
+	xidsDisabled disabledXIDs
+
+	// Communication
+	unhealthy chan<- *Device
+
+	// Observability
+	stats *healthCheckStats
+}
+
 // handleEventWaitError categorizes NVML errors and determines the
 // appropriate action. Returns true if health checking should continue,
 // false if it should terminate.
