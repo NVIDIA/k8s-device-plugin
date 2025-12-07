@@ -79,11 +79,10 @@ type Flags struct {
 // Multiple calls to Set() do not queue, meaning that only calls to Get() made
 // *before* a call to Set() will be notified.
 type SyncableConfig struct {
-	cond        *sync.Cond
-	mutex       sync.Mutex
-	current     string
-	lastRead    string
-	initialized bool
+	cond     *sync.Cond
+	mutex    sync.Mutex
+	current  string
+	lastRead *string
 }
 
 // NewSyncableConfig creates a new SyncableConfig
@@ -107,12 +106,12 @@ func (m *SyncableConfig) Set(value string) {
 func (m *SyncableConfig) Get() string {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	if m.initialized && m.lastRead == m.current {
+	if m.lastRead != nil && *m.lastRead == m.current {
 		m.cond.Wait()
 	}
-	m.initialized = true
-	m.lastRead = m.current
-	return m.lastRead
+	val := m.current
+	m.lastRead = &val
+	return *m.lastRead
 }
 
 func main() {
