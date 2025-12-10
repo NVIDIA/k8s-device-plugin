@@ -207,7 +207,10 @@ type gfd struct {
 }
 
 func newGFDRunner(cfg *Config, nvmllib nvml.Interface, vgpul vgpu.Interface, config *spec.Config) (*gfd, error) {
-	devicelib := device.New(nvmllib)
+	devicelib := device.New(nvmllib,
+		// TODO: Do we want to expose this as a config option?
+		device.WithIgnoreVisitDevicesErrors(true),
+	)
 	infolib := nvinfo.New(
 		nvinfo.WithNvmlLib(nvmllib),
 		nvinfo.WithDeviceLib(devicelib),
