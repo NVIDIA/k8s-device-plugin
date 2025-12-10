@@ -180,44 +180,13 @@ func start(c *cli.Context, cfg *Config) error {
 		klog.Infof("\nRunning with config:\n%v", string(configJSON))
 
 		nvmllib := nvml.New()
-		devicelib := device.New(nvmllib)
-		infolib := nvinfo.New(
-			nvinfo.WithNvmlLib(nvmllib),
-			nvinfo.WithDeviceLib(devicelib),
-		)
-
-		manager, err := resource.NewManager(infolib, nvmllib, devicelib, config)
-		if err != nil {
-			return fmt.Errorf("failed to create resource manager: %w", err)
-
-		}
 		vgpul := vgpu.NewVGPULib(vgpu.NewNvidiaPCILib())
 
-		var clientSets flags.ClientSets
-		if config.Flags.UseNodeFeatureAPI != nil && *config.Flags.UseNodeFeatureAPI {
-			cs, err := cfg.kubeClientConfig.NewClientSets()
-			if err != nil {
-				return fmt.Errorf("failed to create clientsets: %w", err)
-			}
-			clientSets = cs
-		}
-
-		labelOutputer, err := lm.NewOutputer(
-			config,
-			cfg.nodeConfig,
-			clientSets,
-		)
+		d, err := newGFDRunner(cfg, nvmllib, vgpul, config)
 		if err != nil {
-			return fmt.Errorf("failed to create label outputer: %w", err)
+			return err
 		}
-
 		klog.Info("Start running")
-		d := &gfd{
-			manager:       manager,
-			vgpu:          vgpul,
-			config:        config,
-			labelOutputer: labelOutputer,
-		}
 		restart, err := d.run(sigs)
 		if err != nil {
 			return err
@@ -235,6 +204,45 @@ type gfd struct {
 	config  *spec.Config
 
 	labelOutputer lm.Outputer
+}
+
+func newGFDRunner(cfg *Config, nvmllib nvml.Interface, vgpul vgpu.Interface, config *spec.Config) (*gfd, error) {
+	devicelib := device.New(nvmllib)
+	infolib := nvinfo.New(
+		nvinfo.WithNvmlLib(nvmllib),
+		nvinfo.WithDeviceLib(devicelib),
+	)
+
+	manager, err := resource.NewManager(infolib, nvmllib, devicelib, config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create resource manager: %w", err)
+
+	}
+
+	var clientSets flags.ClientSets
+	if config.Flags.UseNodeFeatureAPI != nil && *config.Flags.UseNodeFeatureAPI {
+		cs, err := cfg.kubeClientConfig.NewClientSets()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create clientsets: %w", err)
+		}
+		clientSets = cs
+	}
+
+	labelOutputer, err := lm.NewOutputer(
+		config,
+		cfg.nodeConfig,
+		clientSets,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create label outputer: %w", err)
+	}
+	d := &gfd{
+		manager:       manager,
+		vgpu:          vgpul,
+		config:        config,
+		labelOutputer: labelOutputer,
+	}
+	return d, nil
 }
 
 func (d *gfd) run(sigs chan os.Signal) (bool, error) {
