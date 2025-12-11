@@ -17,6 +17,7 @@
 package rm
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -36,7 +37,8 @@ type resourceManager struct {
 	devices  Devices
 }
 
-// ResourceManager provides an interface for listing a set of Devices and checking health on them
+// ResourceManager provides an interface for listing a set of Devices
+// and managing their health.
 //
 //go:generate moq -rm -fmt=goimports -stub -out rm_mock.go . ResourceManager
 type ResourceManager interface {
@@ -44,8 +46,12 @@ type ResourceManager interface {
 	Devices() Devices
 	GetDevicePaths([]string) []string
 	GetPreferredAllocation(available, required []string, size int) ([]string, error)
-	CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error
 	ValidateRequest(AnnotatedIDs) error
+
+	// HealthProvider returns a HealthProvider for monitoring device
+	// health. The context is used for the lifecycle of the health
+	// monitoring goroutines.
+	HealthProvider(ctx context.Context) HealthProvider
 }
 
 // Resource gets the resource name associated with the ResourceManager

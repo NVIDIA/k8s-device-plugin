@@ -17,6 +17,7 @@
 package rm
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
@@ -90,9 +91,20 @@ func (r *nvmlResourceManager) GetDevicePaths(ids []string) []string {
 	return append(paths, r.Devices().Subset(ids).GetPaths()...)
 }
 
-// CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
-func (r *nvmlResourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
-	return r.checkHealth(stop, r.devices, unhealthy)
+// HealthProvider returns a HealthProvider for NVML device health
+// monitoring. Returns a no-op provider if health checks are disabled.
+func (r *nvmlResourceManager) HealthProvider(ctx context.Context) HealthProvider {
+	xids := getDisabledHealthCheckXids()
+	if xids.IsAllDisabled() {
+		klog.Info("Health checks disabled via DP_DISABLE_HEALTHCHECKS")
+		return &noopHealthProvider{}
+	}
+	p, err := newNVMLHealthProvider(ctx, r.nvml, r.config, r.devices)
+	if err != nil {
+		klog.Errorf("Failed to create NVML health provider: %v", err)
+		return &noopHealthProvider{}
+	}
+	return p
 }
 
 // getPreferredAllocation runs an allocation algorithm over the inputs.
