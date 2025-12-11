@@ -38,10 +38,11 @@ type Interface interface {
 }
 
 type devicelib struct {
-	nvmllib        nvml.Interface
-	skippedDevices map[string]struct{}
-	verifySymbols  *bool
-	migProfiles    []MigProfile
+	nvmllib           nvml.Interface
+	ignoreVisitErrors bool
+	skippedDevices    map[string]struct{}
+	verifySymbols     *bool
+	migProfiles       []MigProfile
 }
 
 var _ Interface = &devicelib{}
@@ -65,6 +66,16 @@ func New(nvmllib nvml.Interface, opts ...Option) Interface {
 		)(d)
 	}
 	return d
+}
+
+// WithIgnoreVisitDevicesErrors allows errors raised when visiting devices to be
+// ignored.
+// This is useful where a single device is unhealthy, but the expectation is
+// that one continues on error.
+func WithIgnoreVisitDevicesErrors(ignoreVisitErrors bool) Option {
+	return func(d *devicelib) {
+		d.ignoreVisitErrors = ignoreVisitErrors
+	}
 }
 
 // WithVerifySymbols provides an option to toggle whether to verify select symbols exist in dynamic libraries before calling them.
