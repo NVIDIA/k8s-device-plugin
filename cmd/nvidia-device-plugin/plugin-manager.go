@@ -28,6 +28,7 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 	"github.com/NVIDIA/k8s-device-plugin/internal/plugin"
+	"github.com/NVIDIA/k8s-device-plugin/internal/utils"
 )
 
 // GetPlugins returns a set of plugins for the specified configuration.
@@ -54,7 +55,7 @@ func GetPlugins(ctx context.Context, infolib info.Interface, nvmllib nvml.Interf
 		cdi.WithNvidiaCTKPath(*config.Flags.Plugin.NvidiaCTKPath),
 		cdi.WithDeviceIDStrategy(*config.Flags.Plugin.DeviceIDStrategy),
 		cdi.WithVendor("k8s.device-plugin.nvidia.com"),
-		cdi.WithGdrcopyEnabled(*config.Flags.GDRCopyEnabled),
+		cdi.WithGdrcopyEnabled(*config.Flags.GDRCopyEnabled || utils.IsGdrdrvLoaded()),
 		cdi.WithGdsEnabled(*config.Flags.GDSEnabled),
 		cdi.WithMofedEnabled(*config.Flags.MOFEDEnabled),
 		cdi.WithImexChannels(imexChannels),
