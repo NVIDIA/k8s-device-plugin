@@ -74,3 +74,11 @@ func (r *tegraResourceManager) GetDevicePaths(ids []string) []string {
 func (r *tegraResourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
 	return nil
 }
+
+// CheckDeviceHealth is not implemented for the tegraResourceManager.
+// Tegra devices don't support the same health checking mechanisms as
+// NVML-based devices.
+func (r *tegraResourceManager) CheckDeviceHealth(d *Device) (bool, error) {
+	// Always return healthy for Tegra devices (no health checking)
+	return true, nil
+}

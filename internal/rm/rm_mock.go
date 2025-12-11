@@ -47,6 +47,9 @@ type ResourceManagerMock struct {
 	// CheckHealthFunc mocks the CheckHealth method.
 	CheckHealthFunc func(stop <-chan interface{}, unhealthy chan<- *Device) error
 
+	// CheckDeviceHealthFunc mocks the CheckDeviceHealth method.
+	CheckDeviceHealthFunc func(d *Device) (bool, error)
+
 	// DevicesFunc mocks the Devices method.
 	DevicesFunc func() Devices
 
@@ -70,6 +73,11 @@ type ResourceManagerMock struct {
 			Stop <-chan interface{}
 			// Unhealthy is the unhealthy argument value.
 			Unhealthy chan<- *Device
+		}
+		// CheckDeviceHealth holds details about calls to the CheckDeviceHealth method.
+		CheckDeviceHealth []struct {
+			// D is the d argument value.
+			D *Device
 		}
 		// Devices holds details about calls to the Devices method.
 		Devices []struct {
@@ -98,6 +106,7 @@ type ResourceManagerMock struct {
 		}
 	}
 	lockCheckHealth            sync.RWMutex
+	lockCheckDeviceHealth      sync.RWMutex
 	lockDevices                sync.RWMutex
 	lockGetDevicePaths         sync.RWMutex
 	lockGetPreferredAllocation sync.RWMutex
@@ -141,6 +150,42 @@ func (mock *ResourceManagerMock) CheckHealthCalls() []struct {
 	mock.lockCheckHealth.RLock()
 	calls = mock.calls.CheckHealth
 	mock.lockCheckHealth.RUnlock()
+	return calls
+}
+
+// CheckDeviceHealth calls CheckDeviceHealthFunc.
+func (mock *ResourceManagerMock) CheckDeviceHealth(d *Device) (bool, error) {
+	callInfo := struct {
+		D *Device
+	}{
+		D: d,
+	}
+	mock.lockCheckDeviceHealth.Lock()
+	mock.calls.CheckDeviceHealth = append(mock.calls.CheckDeviceHealth, callInfo)
+	mock.lockCheckDeviceHealth.Unlock()
+	if mock.CheckDeviceHealthFunc == nil {
+		var (
+			bOut   bool
+			errOut error
+		)
+		return bOut, errOut
+	}
+	return mock.CheckDeviceHealthFunc(d)
+}
+
+// CheckDeviceHealthCalls gets all the calls that were made to
+// CheckDeviceHealth. Check the length with:
+//
+//	len(mockedResourceManager.CheckDeviceHealthCalls())
+func (mock *ResourceManagerMock) CheckDeviceHealthCalls() []struct {
+	D *Device
+} {
+	var calls []struct {
+		D *Device
+	}
+	mock.lockCheckDeviceHealth.RLock()
+	calls = mock.calls.CheckDeviceHealth
+	mock.lockCheckDeviceHealth.RUnlock()
 	return calls
 }
 
