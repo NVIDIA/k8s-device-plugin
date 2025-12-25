@@ -220,6 +220,9 @@ spec:
             mountPath: /mps
           - name: cdi-root
             mountPath: /var/run/cdi
+          - name: proc-modules
+            mountPath: /host/proc/modules
+            readOnly: true
         {{- if $options.hasConfigMap }}
           - name: available-configs
             mountPath: /available-configs
@@ -252,6 +255,10 @@ spec:
           hostPath:
             path: /var/run/cdi
             type: DirectoryOrCreate
+        - name: proc-modules
+          hostPath:
+            path: /proc/modules
+            type: File
       {{- if $options.hasConfigMap }}
         - name: available-configs
           configMap:

@@ -33,6 +33,7 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
 	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
+	"github.com/NVIDIA/k8s-device-plugin/internal/utils"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
@@ -352,13 +353,13 @@ func (plugin *nvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 	if plugin.config.Flags.Plugin.PassDeviceSpecs != nil && *plugin.config.Flags.Plugin.PassDeviceSpecs {
 		response.Devices = append(response.Devices, plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDevRoot, requestIds)...)
 	}
-	if plugin.config.Flags.GDRCopyEnabled != nil && *plugin.config.Flags.GDRCopyEnabled {
+	if (plugin.config.Flags.GDRCopyEnabled != nil && *plugin.config.Flags.GDRCopyEnabled) || utils.IsGdrdrvLoaded() {
 		response.Envs["NVIDIA_GDRCOPY"] = "enabled"
 	}
-	if plugin.config.Flags.GDSEnabled != nil && *plugin.config.Flags.GDSEnabled {
+	if (plugin.config.Flags.GDSEnabled != nil && *plugin.config.Flags.GDSEnabled) || utils.IsGdsDriverLoaded() {
 		response.Envs["NVIDIA_GDS"] = "enabled"
 	}
-	if plugin.config.Flags.MOFEDEnabled != nil && *plugin.config.Flags.MOFEDEnabled {
+	if (plugin.config.Flags.MOFEDEnabled != nil && *plugin.config.Flags.MOFEDEnabled) || utils.IsMofedDriverLoaded() {
 		response.Envs["NVIDIA_MOFED"] = "enabled"
 	}
 	return response, nil
