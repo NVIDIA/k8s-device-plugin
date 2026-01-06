@@ -70,6 +70,12 @@ func main() {
 			EnvVars: []string{"FAIL_ON_INIT_ERROR"},
 		},
 		&cli.StringFlag{
+			Name:    "resource-name-prefix",
+			Value:   "nvidia.com",
+			Usage:   "the prefix to use for resource names (e.g., 'nvidia.com' for nvidia.com/gpu)",
+			EnvVars: []string{"RESOURCE_NAME_PREFIX"},
+		},
+		&cli.StringFlag{
 			Name:    "driver-root",
 			Aliases: []string{"nvidia-driver-root"},
 			Value:   "/",
@@ -226,6 +232,17 @@ func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 
 	if err := spec.AssertChannelIDsValid(config.Imex.ChannelIDs); err != nil {
 		return fmt.Errorf("invalid IMEX channel IDs: %w", err)
+	}
+
+	// Validate resource name prefix format
+	if config.Flags.ResourceNamePrefix != nil && *config.Flags.ResourceNamePrefix != "" {
+		prefix := *config.Flags.ResourceNamePrefix
+		if prefix == "nvidia.com" {
+			// This is the default, no special validation needed
+			return nil
+		}
+		klog.Warningf("Using custom resource name prefix: %s (default is nvidia.com)", prefix)
+		klog.Warning("All pods requesting GPU resources must be updated to use the new resource name format")
 	}
 
 	return nil

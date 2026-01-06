@@ -97,13 +97,23 @@ func (r *resourceManager) ValidateRequest(ids AnnotatedIDs) error {
 
 // AddDefaultResourcesToConfig adds default resource matching rules to config.Resources
 func AddDefaultResourcesToConfig(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) error {
-	_ = config.Resources.AddGPUResource("*", "gpu")
+	klog.Infof("DEBUG: AddDefaultResourcesToConfig called, config.Resources pointer: %p", &config.Resources)
+	prefix := config.GetResourceNamePrefix()
+	gpuResourceName := prefix + "/gpu"
+	klog.Infof("Adding default GPU resource: pattern='*', name='%s'", gpuResourceName)
+	err := config.Resources.AddGPUResource("*", gpuResourceName)
+	if err != nil {
+		return fmt.Errorf("error adding GPU resource: %w", err)
+	}
+	klog.Infof("Successfully added GPU resource. Total GPUs in config: %d", len(config.Resources.GPUs))
 	if config.Flags.MigStrategy == nil {
+		klog.Infof("MigStrategy is nil, returning early")
 		return nil
 	}
+	klog.Infof("MigStrategy is: %s", *config.Flags.MigStrategy)
 	switch *config.Flags.MigStrategy {
 	case spec.MigStrategySingle:
-		return config.Resources.AddMIGResource("*", "gpu")
+		return config.Resources.AddMIGResource("*", gpuResourceName)
 	case spec.MigStrategyMixed:
 		hasNVML, reason := infolib.HasNvml()
 		if !hasNVML {
@@ -132,7 +142,8 @@ func AddDefaultResourcesToConfig(infolib info.Interface, nvmllib nvml.Interface,
 				return nil
 			}
 			resourceName := strings.ReplaceAll("mig-"+p.String(), "+", ".")
-			return config.Resources.AddMIGResource(p.String(), resourceName)
+			migResourceName := prefix + "/" + resourceName
+			return config.Resources.AddMIGResource(p.String(), migResourceName)
 		})
 	}
 	return nil

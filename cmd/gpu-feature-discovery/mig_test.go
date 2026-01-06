@@ -352,3 +352,74 @@ func TestMigStrategyMixed(t *testing.T) {
 	require.Contains(t, labels, "nvidia.com/mig-3g.20gb.count", "Missing label")
 	require.Contains(t, labels, "nvidia.com/mig-1g.5gb.count", "Missing label")
 }
+
+func TestMigStrategySingleWithCustomPrefix(t *testing.T) {
+	// create VGPU mock library with empty vgpu devices
+	vgpuMock := NewTestVGPUMock()
+	devices := []resource.Device{
+		rt.NewMigEnabledDevice(
+			rt.NewMigDevice(3, 0, 20),
+			rt.NewMigDevice(3, 0, 20),
+		),
+	}
+	nvmlMock := rt.NewManagerMockWithDevices(devices...)
+
+	conf := &spec.Config{
+		Flags: spec.Flags{
+			CommandLineFlags: spec.CommandLineFlags{
+				MigStrategy:       ptr("single"),
+				ResourceNamePrefix: ptr("custom.domain"),
+				FailOnInitError:   ptr(true),
+				GFD: &spec.GFDCommandLineFlags{
+					Oneshot:         ptr(true),
+					OutputFile:      ptr("./gfd-test-mig-single-custom"),
+					SleepInterval:   ptr(spec.Duration(time.Second)),
+					NoTimestamp:     ptr(false),
+					MachineTypeFile: ptr(testMachineTypeFile),
+				},
+			},
+		},
+	}
+
+	setupMachineFile(t)
+	defer removeMachineFile(t)
+
+	labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+	require.NoError(t, err)
+
+	d := gfd{
+		manager:       nvmlMock,
+		vgpu:          vgpuMock,
+		config:        conf,
+		labelOutputer: labelOutputer,
+	}
+	restart, err := d.run(nil)
+	require.NoError(t, err, "Error from run function")
+	require.False(t, restart)
+
+	outFile, err := os.Open(*conf.Flags.GFD.OutputFile)
+	require.NoError(t, err, "Opening output file")
+
+	defer func() {
+		err = outFile.Close()
+		require.NoError(t, err, "Closing output file")
+		err = os.Remove(*conf.Flags.GFD.OutputFile)
+		require.NoError(t, err, "Removing output file")
+	}()
+
+	output, err := io.ReadAll(outFile)
+	require.NoError(t, err, "Reading output file")
+
+	labels, err := buildLabelMapFromOutput(output)
+	require.NoError(t, err, "Building map of labels from output file")
+
+	// Verify custom prefix is used in labels
+	require.Equal(t, labels["custom.domain/mig.strategy"], "single", "Incorrect label")
+	require.Equal(t, labels["custom.domain/gpu.count"], "2", "Incorrect label")
+	require.Equal(t, labels["custom.domain/gpu.product"], "MOCKMODEL-MIG-3g.20gb", "Incorrect label")
+	require.Equal(t, labels["custom.domain/gpu.memory"], "20", "Incorrect label")
+
+	// Verify default nvidia.com labels are NOT present
+	require.NotContains(t, labels, "nvidia.com/mig.strategy", "Default prefix should not be present")
+	require.NotContains(t, labels, "nvidia.com/gpu.count", "Default prefix should not be present")
+}

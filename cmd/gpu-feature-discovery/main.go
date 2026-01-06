@@ -61,6 +61,12 @@ func main() {
 			Usage:   "fail the plugin if an error is encountered during initialization, otherwise block indefinitely",
 			EnvVars: []string{"GFD_FAIL_ON_INIT_ERROR", "FAIL_ON_INIT_ERROR"},
 		},
+		&cli.StringFlag{
+			Name:    "resource-name-prefix",
+			Value:   "nvidia.com",
+			Usage:   "the prefix to use for resource names (e.g., 'nvidia.com' for nvidia.com/gpu)",
+			EnvVars: []string{"GFD_RESOURCE_NAME_PREFIX", "RESOURCE_NAME_PREFIX"},
+		},
 		&cli.BoolFlag{
 			Name:    "oneshot",
 			Value:   false,
@@ -138,6 +144,16 @@ func validateFlags(config *spec.Config) error {
 	default:
 		return fmt.Errorf("invalid --device-discovery-strategy option %v", *config.Flags.DeviceDiscoveryStrategy)
 	}
+
+	// Validate resource name prefix format
+	if config.Flags.ResourceNamePrefix != nil && *config.Flags.ResourceNamePrefix != "" {
+		prefix := *config.Flags.ResourceNamePrefix
+		if prefix != "nvidia.com" {
+			klog.Warningf("Using custom resource name prefix: %s (default is nvidia.com)", prefix)
+			klog.Warning("All pods requesting GPU resources must be updated to use the new resource name format")
+		}
+	}
+
 	return nil
 }
 

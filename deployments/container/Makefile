@@ -16,6 +16,10 @@ BUILD_MULTI_ARCH_IMAGES ?= no
 DOCKER ?= docker
 MKDIR    ?= mkdir
 
+# Control whether to check for updates to base images during build
+# Set to 'false' or empty string to skip checking and use local images only
+DOCKER_PULL ?= false
+
 ##### Global variables #####
 include $(CURDIR)/versions.mk
 
@@ -43,8 +47,9 @@ IMAGE_TARGETS := $(patsubst %,image-%,$(DISTRIBUTIONS))
 BUILD_TARGETS := $(patsubst %,build-%,$(DISTRIBUTIONS))
 PUSH_TARGETS := $(patsubst %,push-%,$(DISTRIBUTIONS))
 TEST_TARGETS := $(patsubst %,test-%, $(DISTRIBUTIONS))
+APPLICATION_TARGETS := $(patsubst %,application-%,$(DISTRIBUTIONS))
 
-.PHONY: $(DISTRIBUTIONS) $(PUSH_TARGETS) $(BUILD_TARGETS) $(TEST_TARGETS) $(BUILD_TARGETS)
+.PHONY: $(DISTRIBUTIONS) $(PUSH_TARGETS) $(BUILD_TARGETS) $(TEST_TARGETS) $(BUILD_TARGETS) $(APPLICATION_TARGETS) application push-application
 
 ifneq ($(BUILD_MULTI_ARCH_IMAGES),true)
 include $(CURDIR)/deployments/container/native-only.mk
@@ -66,10 +71,35 @@ endif
 
 DOCKERFILE = $(CURDIR)/deployments/container/Dockerfile
 
+# Conditionally add --pull flag based on DOCKER_PULL variable
+ifeq ($(DOCKER_PULL),true)
+DOCKER_PULL_FLAG = --pull
+else
+DOCKER_PULL_FLAG =
+endif
+
 # Use a generic build target to build the relevant images
 $(IMAGE_TARGETS): image-%:
-		$(DOCKER) build --pull \
+		$(DOCKER) build $(DOCKER_PULL_FLAG) \
 		--provenance=false --sbom=false \
+		$(DOCKER_BUILD_OPTIONS) \
+		$(DOCKER_BUILD_PLATFORM_OPTIONS) \
+		--tag $(IMAGE) \
+		--build-arg VERSION="$(VERSION)" \
+		--build-arg GIT_COMMIT="$(GIT_COMMIT)" \
+		--build-arg GOPROXY="$(GOPROXY)" \
+		$(if $(LABEL_IMAGE_SOURCE),--label "org.opencontainers.image.source=$(LABEL_IMAGE_SOURCE)",) \
+		-f $(DOCKERFILE) \
+		$(CURDIR)
+
+# Build only the application stage (final runtime image)
+# This is useful for building production-ready images without development tools
+.PHONY: application
+application: $(APPLICATION_TARGETS)
+$(APPLICATION_TARGETS): application-%:
+		$(DOCKER) build $(DOCKER_PULL_FLAG) \
+		--provenance=false --sbom=false \
+		--target application \
 		$(DOCKER_BUILD_OPTIONS) \
 		$(DOCKER_BUILD_PLATFORM_OPTIONS) \
 		--tag $(IMAGE) \
@@ -87,6 +117,13 @@ $(DEFAULT_PUSH_TARGET): build-$(DEFAULT_PUSH_TARGET)
 
 REGCTL ?= regctl
 $(PUSH_TARGETS): push-%:
+	$(REGCTL) \
+	        image copy \
+	        $(IMAGE) $(OUT_IMAGE)
+
+# Push the application stage image
+.PHONY: push-application
+push-application: application
 	$(REGCTL) \
 	        image copy \
 	        $(IMAGE) $(OUT_IMAGE)

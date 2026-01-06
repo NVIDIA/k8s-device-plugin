@@ -60,7 +60,7 @@ func NewDeviceLabeler(manager resource.Manager, config *spec.Config) (Labeler, e
 		return nil, fmt.Errorf("failed to construct version labeler: %v", err)
 	}
 
-	migCapabilityLabeler, err := newMigCapabilityLabeler(manager)
+	migCapabilityLabeler, err := newMigCapabilityLabeler(config, manager)
 	if err != nil {
 		return nil, fmt.Errorf("error creating mig capability labeler: %v", err)
 	}
@@ -144,7 +144,7 @@ func newVersionLabeler(manager resource.Manager) (Labeler, error) {
 
 // newMigCapabilityLabeler creates a new MIG capability labeler using the provided NVML library.
 // If any GPU on the node is mig-capable the label is set to true.
-func newMigCapabilityLabeler(manager resource.Manager) (Labeler, error) {
+func newMigCapabilityLabeler(config *spec.Config, manager resource.Manager) (Labeler, error) {
 	isMigCapable := false
 
 	devices, err := manager.GetDevices()
@@ -167,16 +167,22 @@ func newMigCapabilityLabeler(manager resource.Manager) (Labeler, error) {
 		}
 	}
 
+	prefix := config.GetResourceNamePrefix()
 	labels := Labels{
-		"nvidia.com/mig.capable": strconv.FormatBool(isMigCapable),
+		prefix + "/mig.capable": strconv.FormatBool(isMigCapable),
 	}
 	return labels, nil
 }
 
 func newSharingLabeler(manager resource.Manager, config *spec.Config) (Labeler, error) {
+	prefix := spec.DefaultResourceNamePrefix
+	if config != nil {
+		prefix = config.GetResourceNamePrefix()
+	}
+
 	if config == nil || config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
 		labels := Labels{
-			"nvidia.com/mps.capable": "false",
+			prefix + "/mps.capable": "false",
 		}
 		return labels, nil
 	}
@@ -187,7 +193,7 @@ func newSharingLabeler(manager resource.Manager, config *spec.Config) (Labeler, 
 	}
 
 	labels := Labels{
-		"nvidia.com/mps.capable": strconv.FormatBool(capable),
+		prefix + "/mps.capable": strconv.FormatBool(capable),
 	}
 	return labels, nil
 }

@@ -39,6 +39,16 @@ type Config struct {
 	Imex      Imex      `json:"imex,omitempty"      yaml:"imex,omitempty"`
 }
 
+// GetResourceNamePrefix returns the configured resource name prefix.
+// If not set, it returns the default prefix.
+func (c *Config) GetResourceNamePrefix() string {
+	if c.Flags.ResourceNamePrefix != nil && *c.Flags.ResourceNamePrefix != "" {
+		return *c.Flags.ResourceNamePrefix
+	}
+	return DefaultResourceNamePrefix
+}
+
+
 // NewConfig builds out a Config struct from a config file (or command line flags).
 // The data stored in the config will be populated in order of precedence from
 // (1) command line, (2) environment variable, (3) config file.

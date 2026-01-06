@@ -103,7 +103,7 @@ func newMigLabeler(manager resource.Manager, config *spec.Config) (Labeler, erro
 	}
 
 	labelers := Merge(
-		migStrategyLabeler(*config.Flags.MigStrategy),
+		migStrategyLabeler(config, *config.Flags.MigStrategy),
 		labeler,
 	)
 
@@ -157,7 +157,7 @@ func newGPULabelers(manager resource.Manager, config *spec.Config) (Labeler, err
 	// These do not include sharing information.
 	for name, migEnabledDevice := range migEnabledDevices {
 		// We generate a resource label with no sharing modifications
-		l, err := NewGPUResourceLabelerWithoutSharing(migEnabledDevice, counts[name])
+		l, err := NewGPUResourceLabelerWithoutSharing(config, migEnabledDevice, counts[name])
 		if err != nil {
 			return nil, fmt.Errorf("failed to construct labeler: %v", err)
 		}
@@ -196,7 +196,7 @@ func newMigStrategySingleLabeler(manager resource.Manager, config *spec.Config) 
 	}
 	// If any migEnabled=true device is empty, we return the set of mig-strategy-invalid labels.
 	if hasEmpty {
-		return newInvalidMigStrategyLabeler(migEnabledDevices[0], "at least one MIG device is enabled but empty")
+		return newInvalidMigStrategyLabeler(config, migEnabledDevices[0], "at least one MIG device is enabled but empty")
 	}
 
 	migDisabledDevices, err := deviceInfo.GetDevicesWithMigDisabled()
@@ -205,7 +205,7 @@ func newMigStrategySingleLabeler(manager resource.Manager, config *spec.Config) 
 	}
 	// If we have a mix of mig-enabled and mig-disabled device we return the set of mig-strategy-invalid labels
 	if len(migDisabledDevices) != 0 {
-		return newInvalidMigStrategyLabeler(migEnabledDevices[0], "devices with MIG enabled and disable detected")
+		return newInvalidMigStrategyLabeler(config, migEnabledDevices[0], "devices with MIG enabled and disable detected")
 	}
 
 	migs, err := deviceInfo.GetAllMigDevices()
@@ -225,7 +225,7 @@ func newMigStrategySingleLabeler(manager resource.Manager, config *spec.Config) 
 		// For the first occurrence we update the device reference and the resource name
 		if !exists {
 			resource.device = mig
-			resource.name = fullGPUResourceName
+			resource.name = spec.ResourceName(config.GetResourceNamePrefix() + "/gpu")
 		}
 		// We increase the count
 		resource.count++
@@ -235,13 +235,13 @@ func newMigStrategySingleLabeler(manager resource.Manager, config *spec.Config) 
 
 	// Multiple resources mean that we have more than one MIG profile defined. Return the set of mig-strategy-invalid labels.
 	if len(resources) != 1 {
-		return newInvalidMigStrategyLabeler(migEnabledDevices[0], "more than one MIG device type present on node")
+		return newInvalidMigStrategyLabeler(config, migEnabledDevices[0], "more than one MIG device type present on node")
 	}
 
 	return newMIGDeviceLabelers(resources, config)
 }
 
-func newInvalidMigStrategyLabeler(device resource.Device, reason string) (Labeler, error) {
+func newInvalidMigStrategyLabeler(config *spec.Config, device resource.Device, reason string) (Labeler, error) {
 	klog.Warningf("Invalid configuration detected for mig-strategy=single: %v", reason)
 
 	model, err := device.GetName()
@@ -249,8 +249,9 @@ func newInvalidMigStrategyLabeler(device resource.Device, reason string) (Labele
 		return nil, fmt.Errorf("failed to get device model: %v", err)
 	}
 
+	prefix := config.GetResourceNamePrefix()
 	rl := resourceLabeler{
-		resourceName: "nvidia.com/gpu",
+		resourceName: spec.ResourceName(prefix + "/gpu"),
 	}
 
 	labels := rl.productLabel(model, "MIG", "INVALID")
@@ -285,7 +286,7 @@ func newMigStrategyMixedLabeler(manager resource.Manager, config *spec.Config) (
 		// For the first occurrence we update the device reference and the resource name
 		if !exists {
 			resource.device = mig
-			resource.name = spec.ResourceName("nvidia.com/mig-" + name)
+			resource.name = spec.ResourceName(config.GetResourceNamePrefix() + "/mig-" + name)
 		}
 		// We increase the count
 		resource.count++

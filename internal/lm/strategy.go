@@ -16,13 +16,16 @@
 
 package lm
 
+import spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+
 // migStrategyLabeler creates a labler for setting the mig strategy label
-func migStrategyLabeler(strategy string) Labeler {
+func migStrategyLabeler(config *spec.Config, strategy string) Labeler {
 	if strategy == MigStrategyNone {
 		return empty{}
 	}
 
+	prefix := config.GetResourceNamePrefix()
 	return Labels{
-		"nvidia.com/mig.strategy": strategy,
+		prefix + "/mig.strategy": strategy,
 	}
 }

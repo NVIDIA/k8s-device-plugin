@@ -10,3 +10,10 @@ bin
 *.out
 *.log
 ginkgo.json
+docs/custom-resource-name-tasks.md
+docs/custom-resource-name-prefix.md
+docs/custom-resource-name-prefix_zh.md
+CLAUDE.md
+custom-nvidia-device-plugin.yaml
+build-application.sh
+push-application.sh

@@ -20,7 +20,7 @@ FROM base AS devel
 WORKDIR /work
 COPY * .
 
-ARG GOPROXY="https://proxy.golang.org,direct"
+ARG GOPROXY="https://goproxy.cn,direct"
 ENV GOPROXY=$GOPROXY
 
 RUN make install-tools

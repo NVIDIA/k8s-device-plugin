@@ -19,6 +19,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 
@@ -46,7 +47,8 @@ type Resources struct {
 // NewResourceName builds a resource name from the standard prefix and a name.
 // An error is returned if the format is incorrect.
 func NewResourceName(n string) (ResourceName, error) {
-	if !strings.HasPrefix(n, ResourceNamePrefix+"/") {
+	// Only add default prefix if the name doesn't already contain a '/' (i.e., no custom prefix)
+	if !strings.Contains(n, "/") {
 		n = ResourceNamePrefix + "/" + n
 	}
 
@@ -73,6 +75,8 @@ func NewResource(pattern, name string) (*Resource, error) {
 		Pattern: ResourcePattern(pattern),
 		Name:    resourceName,
 	}
+	// Log to stderr (visible in k8s logs)
+	fmt.Fprintf(os.Stderr, "[INFO] Created resource: pattern=%s, name=%s\n", pattern, resourceName)
 	return r, nil
 }
 

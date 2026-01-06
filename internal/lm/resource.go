@@ -27,12 +27,43 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 )
 
-const fullGPUResourceName = "nvidia.com/gpu"
-
 // NewGPUResourceLabelerWithoutSharing creates a resource labeler for the specified device that does not apply sharing labels.
-func NewGPUResourceLabelerWithoutSharing(device resource.Device, count int) (Labeler, error) {
-	// NOTE: We use a nil config to signal that sharing is disabled.
-	return NewGPUResourceLabeler(nil, device, count)
+func NewGPUResourceLabelerWithoutSharing(config *spec.Config, device resource.Device, count int) (Labeler, error) {
+	if count == 0 {
+		return empty{}, nil
+	}
+
+	model, err := device.GetName()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get device model: %v", err)
+	}
+
+	totalMemoryMiB, err := device.GetTotalMemoryMiB()
+	if err != nil {
+		klog.Warningf("Ignoring error getting memory info for device: %v", err)
+	}
+
+	// Get the resource name from config, but pass nil config to newResourceLabeler to disable sharing
+	resourceName := spec.ResourceName(config.GetResourceNamePrefix() + "/gpu")
+	resourceLabeler := newResourceLabeler(resourceName, nil)
+
+	architectureLabels, err := newArchitectureLabels(resourceLabeler, device)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create architecture labels: %v", err)
+	}
+
+	memoryLabeler := (Labeler)(&empty{})
+	if totalMemoryMiB != 0 {
+		memoryLabeler = resourceLabeler.single("memory", totalMemoryMiB)
+	}
+
+	labelers := Merge(
+		resourceLabeler.baseLabeler(count, model),
+		memoryLabeler,
+		architectureLabels,
+	)
+
+	return labelers, nil
 }
 
 // NewGPUResourceLabeler creates a resource labeler for the specified full GPU device with the specified count
@@ -51,7 +82,9 @@ func NewGPUResourceLabeler(config *spec.Config, device resource.Device, count in
 		klog.Warningf("Ignoring error getting memory info for device: %v", err)
 	}
 
-	resourceLabeler := newResourceLabeler(fullGPUResourceName, config)
+	// Get the resource name from config
+	resourceName := spec.ResourceName(config.GetResourceNamePrefix() + "/gpu")
+	resourceLabeler := newResourceLabeler(resourceName, config)
 
 	architectureLabels, err := newArchitectureLabels(resourceLabeler, device)
 	if err != nil {
