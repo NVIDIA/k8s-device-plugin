@@ -17,3 +17,4 @@ CLAUDE.md
 custom-nvidia-device-plugin.yaml
 build-application.sh
 push-application.sh
+docs/nvidia-device-plugin-driver-interaction.md
