@@ -82,7 +82,7 @@ type SyncableConfig struct {
 	cond     *sync.Cond
 	mutex    sync.Mutex
 	current  string
-	lastRead string
+	lastRead *string
 }
 
 // NewSyncableConfig creates a new SyncableConfig
@@ -106,11 +106,12 @@ func (m *SyncableConfig) Set(value string) {
 func (m *SyncableConfig) Get() string {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	if m.lastRead == m.current {
+	if m.lastRead != nil && *m.lastRead == m.current {
 		m.cond.Wait()
 	}
-	m.lastRead = m.current
-	return m.lastRead
+	val := m.current
+	m.lastRead = &val
+	return *m.lastRead
 }
 
 func main() {
