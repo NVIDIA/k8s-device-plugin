@@ -46,6 +46,14 @@ const (
 	deviceListEnvVar                          = "NVIDIA_VISIBLE_DEVICES"
 	deviceListAsVolumeMountsHostPath          = "/dev/null"
 	deviceListAsVolumeMountsContainerPathRoot = "/var/run/nvidia-container-devices"
+
+	// healthChannelBufferSize defines the buffer capacity for the health
+	// channel. This is sized to handle bursts of unhealthy device reports
+	// without blocking the health check goroutine. With 8 GPUs and
+	// potential for multiple events per GPU (XID errors, ECC errors, etc.),
+	// a buffer of 64 provides ample headroom while using a power-of-2 size
+	// for cache-friendly alignment.
+	healthChannelBufferSize = 64
 )
 
 // nvidiaDevicePlugin implements the Kubernetes device plugin API
@@ -63,6 +71,10 @@ type nvidiaDevicePlugin struct {
 	server *grpc.Server
 	health chan *rm.Device
 	stop   chan interface{}
+
+	// deviceListUpdate is used to trigger ListAndWatch to send updated device
+	// list to kubelet (e.g., when devices recover from unhealthy state)
+	deviceListUpdate chan struct{}
 
 	imexChannels imex.Channels
 
@@ -108,15 +120,20 @@ func getPluginSocketPath(resource spec.ResourceName) string {
 
 func (plugin *nvidiaDevicePlugin) initialize() {
 	plugin.server = grpc.NewServer([]grpc.ServerOption{}...)
-	plugin.health = make(chan *rm.Device)
+	plugin.health = make(chan *rm.Device, healthChannelBufferSize)
 	plugin.stop = make(chan interface{})
+	plugin.deviceListUpdate = make(chan struct{}, 1)
 }
 
 func (plugin *nvidiaDevicePlugin) cleanup() {
 	close(plugin.stop)
+	if plugin.deviceListUpdate != nil {
+		close(plugin.deviceListUpdate)
+	}
 	plugin.server = nil
 	plugin.health = nil
 	plugin.stop = nil
+	plugin.deviceListUpdate = nil
 }
 
 // Devices returns the full set of devices associated with the plugin.
@@ -155,6 +172,9 @@ func (plugin *nvidiaDevicePlugin) Start(kubeletSocket string) error {
 			klog.Errorf("Failed to start health check: %v; continuing with health checks disabled", err)
 		}
 	}()
+
+	// Start recovery worker to detect when unhealthy devices become healthy
+	go plugin.runRecoveryWorker()
 
 	return nil
 }
@@ -263,7 +283,9 @@ func (plugin *nvidiaDevicePlugin) GetDevicePluginOptions(context.Context, *plugi
 	return options, nil
 }
 
-// ListAndWatch lists devices and update that list according to the health status
+// ListAndWatch lists devices and update that list according to the health
+// status. This now supports device recovery: when devices that were marked
+// unhealthy recover, they are automatically re-advertised to kubelet.
 func (plugin *nvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
 	if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
 		return err
@@ -274,9 +296,17 @@ func (plugin *nvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.D
 		case <-plugin.stop:
 			return nil
 		case d := <-plugin.health:
-			// FIXME: there is no way to recover from the Unhealthy state.
+			// Device marked unhealthy by health check
 			d.Health = pluginapi.Unhealthy
-			klog.Infof("'%s' device marked unhealthy: %s", plugin.rm.Resource(), d.ID)
+			klog.Infof("'%s' device marked unhealthy: %s (reason: %s)",
+				plugin.rm.Resource(), d.ID, d.UnhealthyReason)
+			if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
+				return nil
+			}
+		case <-plugin.deviceListUpdate:
+			// Device recovery or other device list change
+			klog.Infof("'%s' device list updated, notifying kubelet",
+				plugin.rm.Resource())
 			if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
 				return nil
 			}
@@ -509,6 +539,80 @@ func (plugin *nvidiaDevicePlugin) updateResponseForDeviceMounts(response *plugin
 			ContainerPath: filepath.Join(deviceListAsVolumeMountsContainerPathRoot, "imex", channel.ID),
 		}
 		response.Mounts = append(response.Mounts, mount)
+	}
+}
+
+// runRecoveryWorker periodically checks if unhealthy devices have recovered
+// and notifies kubelet when they do.
+func (plugin *nvidiaDevicePlugin) runRecoveryWorker() {
+	const recoveryInterval = 30 * time.Second
+
+	ticker := time.NewTicker(recoveryInterval)
+	defer ticker.Stop()
+
+	klog.V(2).Infof("Recovery worker started for '%s' (interval=%v)",
+		plugin.rm.Resource(), recoveryInterval)
+
+	for {
+		select {
+		case <-plugin.stop:
+			klog.V(2).Info("Recovery worker stopped")
+			return
+		case <-ticker.C:
+			plugin.checkForRecoveredDevices()
+		}
+	}
+}
+
+// checkForRecoveredDevices checks all unhealthy devices to see if they have
+// recovered. If any have recovered, triggers a device list update to
+// kubelet.
+func (plugin *nvidiaDevicePlugin) checkForRecoveredDevices() {
+	recoveredDevices := []*rm.Device{}
+
+	for _, d := range plugin.rm.Devices() {
+		if !d.IsUnhealthy() {
+			continue
+		}
+
+		// Increment recovery attempts
+		d.RecoveryAttempts++
+
+		// Check if device has recovered
+		healthy, err := plugin.rm.CheckDeviceHealth(d)
+		if err != nil {
+			klog.V(4).Infof("Device %s recovery check failed (attempt %d): %v",
+				d.ID, d.RecoveryAttempts, err)
+			continue
+		}
+
+		if healthy {
+			klog.Infof("Device %s has RECOVERED! Was unhealthy for %v (reason: %s)",
+				d.ID, d.UnhealthyDuration(), d.UnhealthyReason)
+			d.MarkHealthy()
+			recoveredDevices = append(recoveredDevices, d)
+		} else {
+			klog.V(3).Infof("Device %s still unhealthy (attempt %d, duration %v)",
+				d.ID, d.RecoveryAttempts, d.UnhealthyDuration())
+		}
+	}
+
+	// If any devices recovered, notify ListAndWatch
+	if len(recoveredDevices) > 0 {
+		klog.Infof("Total recovered devices: %d", len(recoveredDevices))
+		plugin.triggerDeviceListUpdate()
+	}
+}
+
+// triggerDeviceListUpdate sends a signal to ListAndWatch to send an updated
+// device list to kubelet. Uses a buffered channel with non-blocking send to
+// avoid blocking the recovery worker.
+func (plugin *nvidiaDevicePlugin) triggerDeviceListUpdate() {
+	select {
+	case plugin.deviceListUpdate <- struct{}{}:
+		klog.V(3).Info("Device list update triggered")
+	default:
+		klog.V(4).Info("Device list update already pending, skipping")
 	}
 }
 

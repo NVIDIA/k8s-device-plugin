@@ -95,6 +95,48 @@ func (r *nvmlResourceManager) CheckHealth(stop <-chan interface{}, unhealthy cha
 	return r.checkHealth(stop, r.devices, unhealthy)
 }
 
+// CheckDeviceHealth performs a simple health check on a single device by
+// verifying it can be accessed via NVML and responds to basic queries.
+// This is used for recovery detection - if a previously unhealthy device
+// passes this check, it's considered recovered. We intentionally keep this
+// simple and don't try to classify XIDs as recoverable vs permanent - that's
+// controlled via DP_DISABLE_HEALTHCHECKS / DP_ENABLE_HEALTHCHECKS env vars.
+func (r *nvmlResourceManager) CheckDeviceHealth(d *Device) (bool, error) {
+	// Initialize NVML for this health check
+	ret := r.nvml.Init()
+	if ret != nvml.SUCCESS {
+		return false, fmt.Errorf("NVML init failed: %v", ret)
+	}
+	defer func() {
+		_ = r.nvml.Shutdown()
+	}()
+
+	uuid := d.GetUUID()
+
+	// For MIG devices, extract parent UUID
+	if d.IsMigDevice() {
+		parentUUID, _, _, err := r.getMigDeviceParts(d)
+		if err != nil {
+			return false, fmt.Errorf("cannot determine MIG device parts: %w", err)
+		}
+		uuid = parentUUID
+	}
+
+	// Get device handle
+	gpu, ret := r.nvml.DeviceGetHandleByUUID(uuid)
+	if ret != nvml.SUCCESS {
+		return false, fmt.Errorf("cannot get device handle: %v", ret)
+	}
+
+	// Perform basic health check - if device responds, consider it healthy
+	_, ret = gpu.GetName()
+	if ret != nvml.SUCCESS {
+		return false, fmt.Errorf("device not responsive (GetName failed): %v", ret)
+	}
+
+	return true, nil
+}
+
 // getPreferredAllocation runs an allocation algorithm over the inputs.
 // The algorithm chosen is based both on the incoming set of available devices and various config settings.
 func (r *nvmlResourceManager) getPreferredAllocation(available, required []string, size int) ([]string, error) {

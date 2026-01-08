@@ -18,7 +18,9 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
@@ -253,4 +255,97 @@ func TestCDIAllocateResponse(t *testing.T) {
 
 func ptr[T any](x T) *T {
 	return &x
+}
+
+func TestTriggerDeviceListUpdate_Phase2(t *testing.T) {
+	plugin := &nvidiaDevicePlugin{
+		deviceListUpdate: make(chan struct{}, 1),
+	}
+
+	// First trigger should send signal
+	plugin.triggerDeviceListUpdate()
+	select {
+	case <-plugin.deviceListUpdate:
+		t.Log("✓ Device list update signal sent")
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("Signal not sent")
+	}
+
+	// Second trigger with pending signal should not block
+	plugin.triggerDeviceListUpdate()
+	plugin.triggerDeviceListUpdate() // Should not block
+	t.Log("✓ triggerDeviceListUpdate doesn't block when signal pending")
+}
+
+func TestCheckForRecoveredDevices_Phase2(t *testing.T) {
+	// Create persistent device map
+	devices := rm.Devices{
+		"GPU-0": &rm.Device{
+			Device: pluginapi.Device{
+				ID:     "GPU-0",
+				Health: pluginapi.Unhealthy,
+			},
+			UnhealthyReason: "XID-79",
+		},
+		"GPU-1": &rm.Device{
+			Device: pluginapi.Device{
+				ID:     "GPU-1",
+				Health: pluginapi.Unhealthy,
+			},
+			UnhealthyReason: "XID-48",
+		},
+		"GPU-2": &rm.Device{
+			Device: pluginapi.Device{
+				ID:     "GPU-2",
+				Health: pluginapi.Healthy,
+			},
+		},
+	}
+
+	// Create mock resource manager with persistent devices
+	mockRM := &rm.ResourceManagerMock{
+		DevicesFunc: func() rm.Devices {
+			return devices
+		},
+		CheckDeviceHealthFunc: func(d *rm.Device) (bool, error) {
+			// GPU-0 recovers, GPU-1 stays unhealthy
+			if d.ID == "GPU-0" {
+				return true, nil
+			}
+			return false, fmt.Errorf("still unhealthy")
+		},
+	}
+
+	plugin := &nvidiaDevicePlugin{
+		rm:               mockRM,
+		deviceListUpdate: make(chan struct{}, 1),
+	}
+
+	plugin.checkForRecoveredDevices()
+
+	// Verify GPU-0 recovered
+	gpu0 := devices["GPU-0"]
+	require.Equal(t, pluginapi.Healthy, gpu0.Health, "GPU-0 should be healthy")
+	require.Equal(t, "", gpu0.UnhealthyReason)
+	t.Logf("✓ GPU-0 recovered: Health=%s, Reason=%s", gpu0.Health, gpu0.UnhealthyReason)
+
+	// Verify GPU-1 still unhealthy
+	gpu1 := devices["GPU-1"]
+	require.Equal(t, pluginapi.Unhealthy, gpu1.Health, "GPU-1 should still be unhealthy")
+	require.Equal(t, 1, gpu1.RecoveryAttempts, "GPU-1 recovery attempts should increment")
+	t.Logf("✓ GPU-1 still unhealthy: attempts=%d", gpu1.RecoveryAttempts)
+
+	// Verify GPU-2 unchanged
+	gpu2 := devices["GPU-2"]
+	require.Equal(t, pluginapi.Healthy, gpu2.Health)
+	require.Equal(t, 0, gpu2.RecoveryAttempts, "Healthy device shouldn't be probed")
+	t.Log("✓ GPU-2 unchanged (was already healthy)")
+
+	// Verify deviceListUpdate was triggered
+	select {
+	case <-plugin.deviceListUpdate:
+		t.Log("✓ Device list update triggered for recovery")
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("Device list update not triggered")
+	}
 }
