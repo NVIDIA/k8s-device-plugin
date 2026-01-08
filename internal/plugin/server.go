@@ -61,8 +61,9 @@ type nvidiaDevicePlugin struct {
 
 	socket string
 	server *grpc.Server
-	health chan *rm.Device
-	stop   chan interface{}
+
+	// Health monitoring
+	healthProvider rm.HealthProvider
 
 	imexChannels imex.Channels
 
@@ -90,11 +91,11 @@ func (o *options) devicePluginForResource(ctx context.Context, resourceManager r
 		mps: mpsOptions,
 
 		socket: getPluginSocketPath(resourceManager.Resource()),
-		// These will be reinitialized every
-		// time the plugin server is restarted.
+
+		healthProvider: resourceManager.HealthProvider(ctx),
+		// server will be reinitialized every time the plugin server is
+		// restarted.
 		server: nil,
-		health: nil,
-		stop:   nil,
 	}
 	return &plugin, nil
 }
@@ -108,15 +109,10 @@ func getPluginSocketPath(resource spec.ResourceName) string {
 
 func (plugin *nvidiaDevicePlugin) initialize() {
 	plugin.server = grpc.NewServer([]grpc.ServerOption{}...)
-	plugin.health = make(chan *rm.Device)
-	plugin.stop = make(chan interface{})
 }
 
 func (plugin *nvidiaDevicePlugin) cleanup() {
-	close(plugin.stop)
 	plugin.server = nil
-	plugin.health = nil
-	plugin.stop = nil
 }
 
 // Devices returns the full set of devices associated with the plugin.
@@ -148,13 +144,10 @@ func (plugin *nvidiaDevicePlugin) Start(kubeletSocket string) error {
 	}
 	klog.Infof("Registered device plugin for '%s' with Kubelet", plugin.rm.Resource())
 
-	go func() {
-		// TODO: add MPS health check
-		err := plugin.rm.CheckHealth(plugin.stop, plugin.health)
-		if err != nil {
-			klog.Errorf("Failed to start health check: %v; continuing with health checks disabled", err)
-		}
-	}()
+	// TODO: add MPS health check
+	if err := plugin.healthProvider.Start(plugin.ctx); err != nil {
+		klog.Errorf("Failed to start health provider: %v; continuing with health checks disabled", err)
+	}
 
 	return nil
 }
@@ -164,6 +157,10 @@ func (plugin *nvidiaDevicePlugin) Stop() error {
 	if plugin == nil || plugin.server == nil {
 		return nil
 	}
+
+	// Stop health monitoring
+	plugin.healthProvider.Stop()
+
 	klog.Infof("Stopping to serve '%s' on %s", plugin.rm.Resource(), plugin.socket)
 	plugin.server.Stop()
 	if err := os.Remove(plugin.socket); err != nil && !os.IsNotExist(err) {
@@ -271,11 +268,11 @@ func (plugin *nvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.D
 
 	for {
 		select {
-		case <-plugin.stop:
+		case <-plugin.ctx.Done():
 			return nil
-		case d := <-plugin.health:
-			// FIXME: there is no way to recover from the Unhealthy state.
-			d.Health = pluginapi.Unhealthy
+		case d := <-plugin.healthProvider.Health():
+			// Device became unhealthy
+			// Device.Health already set to Unhealthy by health provider
 			klog.Infof("'%s' device marked unhealthy: %s", plugin.rm.Resource(), d.ID)
 			if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
 				return nil
