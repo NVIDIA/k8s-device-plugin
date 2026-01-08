@@ -22,6 +22,8 @@ import (
 )
 
 // Interface allows us to get a list of vGPU specific PCI devices
+//
+//go:generate moq -rm -fmt=goimports -out vgpu_mock.go . Interface
 type Interface interface {
 	Devices() ([]*Device, error)
 }

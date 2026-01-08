@@ -50,11 +50,6 @@ func NewDeviceLabeler(manager resource.Manager, config *spec.Config) (Labeler, e
 		return empty{}, nil
 	}
 
-	machineTypeLabeler, err := newMachineTypeLabeler(*config.Flags.GFD.MachineTypeFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to construct machine type labeler: %v", err)
-	}
-
 	versionLabeler, err := newVersionLabeler(manager)
 	if err != nil {
 		return nil, fmt.Errorf("failed to construct version labeler: %v", err)
@@ -86,7 +81,6 @@ func NewDeviceLabeler(manager resource.Manager, config *spec.Config) (Labeler, e
 	}
 
 	l := Merge(
-		machineTypeLabeler,
 		versionLabeler,
 		migCapabilityLabeler,
 		sharingLabeler,
