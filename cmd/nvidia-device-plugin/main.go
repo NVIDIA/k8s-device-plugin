@@ -103,16 +103,19 @@ func main() {
 		},
 		&cli.BoolFlag{
 			Name:    "gdrcopy-enabled",
+			Value:   true,
 			Usage:   "ensure that containers that request NVIDIA GPU resources are started with GDRCopy support",
 			EnvVars: []string{"GDRCOPY_ENABLED"},
 		},
 		&cli.BoolFlag{
 			Name:    "gds-enabled",
+			Value:   true,
 			Usage:   "ensure that containers that request NVIDIA GPU resources are started with GPUDirect Storage support",
 			EnvVars: []string{"GDS_ENABLED"},
 		},
 		&cli.BoolFlag{
 			Name:    "mofed-enabled",
+			Value:   true,
 			Usage:   "ensure that containers that request NVIDIA GPU resources are started with MOFED support",
 			EnvVars: []string{"MOFED_ENABLED"},
 		},
