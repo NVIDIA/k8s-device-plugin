@@ -336,6 +336,16 @@ func (plugin *nvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 		plugin.updateResponseForMPS(response)
 	}
 
+	if plugin.config.Flags.GDRCopyEnabled != nil && *plugin.config.Flags.GDRCopyEnabled {
+		response.Envs["NVIDIA_GDRCOPY"] = "enabled"
+	}
+	if plugin.config.Flags.GDSEnabled != nil && *plugin.config.Flags.GDSEnabled {
+		response.Envs["NVIDIA_GDS"] = "enabled"
+	}
+	if plugin.config.Flags.MOFEDEnabled != nil && *plugin.config.Flags.MOFEDEnabled {
+		response.Envs["NVIDIA_MOFED"] = "enabled"
+	}
+
 	// The following modifications are only made if at least one non-CDI device
 	// list strategy is selected.
 	if plugin.deviceListStrategies.AllCDIEnabled() {
@@ -351,15 +361,6 @@ func (plugin *nvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 	}
 	if plugin.config.Flags.Plugin.PassDeviceSpecs != nil && *plugin.config.Flags.Plugin.PassDeviceSpecs {
 		response.Devices = append(response.Devices, plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDevRoot, requestIds)...)
-	}
-	if plugin.config.Flags.GDRCopyEnabled != nil && *plugin.config.Flags.GDRCopyEnabled {
-		response.Envs["NVIDIA_GDRCOPY"] = "enabled"
-	}
-	if plugin.config.Flags.GDSEnabled != nil && *plugin.config.Flags.GDSEnabled {
-		response.Envs["NVIDIA_GDS"] = "enabled"
-	}
-	if plugin.config.Flags.MOFEDEnabled != nil && *plugin.config.Flags.MOFEDEnabled {
-		response.Envs["NVIDIA_MOFED"] = "enabled"
 	}
 	return response, nil
 }
