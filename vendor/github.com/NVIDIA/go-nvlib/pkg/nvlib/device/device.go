@@ -464,29 +464,35 @@ func (d *devicelib) VisitDevices(visit func(int, Device) error) error {
 	}
 
 	for i := 0; i < count; i++ {
-		device, ret := d.nvmllib.DeviceGetHandleByIndex(i)
-		if ret != nvml.SUCCESS {
-			return fmt.Errorf("error getting device handle for index '%v': %v", i, ret)
-		}
-		dev, err := d.newDevice(device)
+		err := d.visitDevice(i, visit)
 		if err != nil {
-			return fmt.Errorf("error creating new device wrapper: %v", err)
-		}
-
-		isSkipped, err := dev.isSkipped()
-		if err != nil {
-			return fmt.Errorf("error checking whether device is skipped: %v", err)
-		}
-		if isSkipped {
-			continue
-		}
-
-		err = visit(i, dev)
-		if err != nil {
-			return fmt.Errorf("error visiting device: %v", err)
+			if d.ignoreVisitErrors {
+				continue
+			}
+			return fmt.Errorf("error visiting device '%d': %w", i, err)
 		}
 	}
 	return nil
+}
+
+func (d *devicelib) visitDevice(i int, visit func(int, Device) error) error {
+	device, ret := d.nvmllib.DeviceGetHandleByIndex(i)
+	if ret != nvml.SUCCESS {
+		return fmt.Errorf("error getting device handle: %v", ret)
+	}
+	dev, err := d.newDevice(device)
+	if err != nil {
+		return fmt.Errorf("error creating new device wrapper: %v", err)
+	}
+
+	isSkipped, err := dev.isSkipped()
+	if err != nil {
+		return fmt.Errorf("error checking whether device is skipped: %v", err)
+	}
+	if isSkipped {
+		return nil
+	}
+	return visit(i, dev)
 }
 
 // VisitMigDevices walks a top-level device and invokes a callback function for each MIG device configured on it.
