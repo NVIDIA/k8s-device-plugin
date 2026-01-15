@@ -26,6 +26,8 @@ import (
 	"github.com/NVIDIA/go-nvml/pkg/nvml/mock"
 	"github.com/NVIDIA/go-nvml/pkg/nvml/mock/dgxa100"
 	"github.com/stretchr/testify/require"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 func TestNewHealthCheckXIDs(t *testing.T) {
@@ -270,7 +272,19 @@ func TestCheckHealth(t *testing.T) {
 		return es, nvml.SUCCESS
 	}
 
+	// Initialize config to avoid nil pointer dereference if NVML Init() fails.
+	// The FailOnInitError flag controls whether init failures are fatal.
+	failOnInitError := false
 	r := &nvmlResourceManager{
+		resourceManager: resourceManager{
+			config: &spec.Config{
+				Flags: spec.Flags{
+					CommandLineFlags: spec.CommandLineFlags{
+						FailOnInitError: &failOnInitError,
+					},
+				},
+			},
+		},
 		nvml: server,
 	}
 

@@ -51,6 +51,9 @@ const (
 
 	// nvmlInvalidInstanceID represents an invalid/unset value for MIG GPU and
 	// Compute instance IDs. Used as a sentinel value for non-MIG devices.
+	// The value 0xFFFFFFFF matches the "invalid instance ID" sentinel defined
+	// by the NVML C API (see nvml.h). The Go bindings do not currently expose
+	// a dedicated constant for this, so we centralize the literal here.
 	nvmlInvalidInstanceID uint32 = 0xFFFFFFFF
 )
 
