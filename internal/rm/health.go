@@ -86,13 +86,12 @@ func sendUnhealthyDevice(unhealthy chan<- *Device, d *Device) {
 	case unhealthy <- d:
 		klog.V(2).Infof("Device %s sent to unhealthy channel after wait", d.ID)
 	case <-time.After(unhealthySendTimeout):
-		// Timeout - ListAndWatch is likely stalled
+		// Timeout - ListAndWatch is likely stalled. The device was already
+		// marked unhealthy with the real reason (e.g., XID error) before
+		// this function was called, so we only log the communication failure.
 		klog.Errorf("Timeout after %v sending device %s to unhealthy channel. "+
-			"ListAndWatch may be stalled. Device state updated directly but "+
-			"kubelet may not be notified.", unhealthySendTimeout, d.ID)
-		// Mark unhealthy directly as last resort - kubelet won't see this
-		// until ListAndWatch resumes, but at least internal state is correct
-		d.MarkUnhealthy("channel-timeout")
+			"ListAndWatch may be stalled. Device state may not be visible to "+
+			"kubelet until ListAndWatch resumes.", unhealthySendTimeout, d.ID)
 	}
 }
 
@@ -192,7 +191,9 @@ func (p *nvmlHealthProvider) runEventMonitor(
 	eventSet nvml.EventSet,
 	handleError func(nvml.Return, Devices, chan<- *Device) bool,
 ) error {
-	// Event receive channel with buffer
+	// Event receive channel with buffer. Size 10 absorbs short bursts of
+	// NVML events without blocking the eventSet.Wait goroutine, while
+	// keeping memory usage negligible for typical workloads.
 	eventChan := make(chan eventResult, 10)
 
 	// Start goroutine to receive NVML events
