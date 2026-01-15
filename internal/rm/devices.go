@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"k8s.io/klog/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
@@ -35,6 +37,11 @@ type Device struct {
 	// Replicas stores the total number of times this device is replicated.
 	// If this is 0 or 1 then the device is not shared.
 	Replicas int
+
+	// Health tracking fields (protected by healthMu)
+	healthMu          sync.RWMutex
+	lastUnhealthyTime time.Time // When device became unhealthy
+	unhealthyReason   string    // Human-readable reason (e.g., "XID-79")
 }
 
 // deviceInfo defines the information the required to construct a Device
@@ -237,6 +244,54 @@ func (d *Device) IsMigDevice() bool {
 // GetUUID returns the UUID for the device from the annotated ID.
 func (d *Device) GetUUID() string {
 	return AnnotatedID(d.ID).GetID()
+}
+
+// MarkUnhealthy marks the device as unhealthy and records the reason and
+// timestamp. This should be called when a health check detects a device
+// failure (e.g., XID error). Once marked unhealthy, devices remain in this
+// state until external intervention (e.g., node drain, GPU reset, reboot).
+// This method is thread-safe.
+func (d *Device) MarkUnhealthy(reason string) {
+	d.healthMu.Lock()
+	defer d.healthMu.Unlock()
+	d.Health = pluginapi.Unhealthy
+	d.lastUnhealthyTime = time.Now()
+	d.unhealthyReason = reason
+}
+
+// IsUnhealthy returns true if the device is currently marked as unhealthy.
+// This method is thread-safe.
+func (d *Device) IsUnhealthy() bool {
+	d.healthMu.RLock()
+	defer d.healthMu.RUnlock()
+	return d.Health == pluginapi.Unhealthy
+}
+
+// GetUnhealthyReason returns the reason the device was marked unhealthy.
+// This method is thread-safe.
+func (d *Device) GetUnhealthyReason() string {
+	d.healthMu.RLock()
+	defer d.healthMu.RUnlock()
+	return d.unhealthyReason
+}
+
+// GetLastUnhealthyTime returns when the device was marked unhealthy.
+// This method is thread-safe.
+func (d *Device) GetLastUnhealthyTime() time.Time {
+	d.healthMu.RLock()
+	defer d.healthMu.RUnlock()
+	return d.lastUnhealthyTime
+}
+
+// UnhealthyDuration returns how long the device has been unhealthy. Returns
+// zero duration if the device is healthy. This method is thread-safe.
+func (d *Device) UnhealthyDuration() time.Duration {
+	d.healthMu.RLock()
+	defer d.healthMu.RUnlock()
+	if d.Health != pluginapi.Unhealthy {
+		return 0
+	}
+	return time.Since(d.lastUnhealthyTime)
 }
 
 // NewAnnotatedID creates a new AnnotatedID from an ID and a replica number.

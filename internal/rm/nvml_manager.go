@@ -17,6 +17,7 @@
 package rm
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
@@ -90,9 +91,11 @@ func (r *nvmlResourceManager) GetDevicePaths(ids []string) []string {
 	return append(paths, r.Devices().Subset(ids).GetPaths()...)
 }
 
-// CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
-func (r *nvmlResourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
-	return r.checkHealth(stop, r.devices, unhealthy)
+// CheckHealth performs health checks on a set of devices, writing to the
+// 'unhealthy' channel with any unhealthy devices. The ctx parameter enables
+// graceful shutdown with proper context cancellation propagation.
+func (r *nvmlResourceManager) CheckHealth(ctx context.Context, stop <-chan interface{}, unhealthy chan<- *Device) error {
+	return r.checkHealth(ctx, stop, r.devices, unhealthy)
 }
 
 // getPreferredAllocation runs an allocation algorithm over the inputs.
