@@ -46,6 +46,16 @@ const (
 	deviceListEnvVar                          = "NVIDIA_VISIBLE_DEVICES"
 	deviceListAsVolumeMountsHostPath          = "/dev/null"
 	deviceListAsVolumeMountsContainerPathRoot = "/var/run/nvidia-container-devices"
+
+	// healthChannelBufferSize defines the buffer capacity for the health
+	// channel. This is sized to handle bursts of unhealthy device reports
+	// without blocking the health check goroutine. The value of 64 is
+	// chosen assuming a single device plugin instance runs per node with
+	// up to 8 GPUs per node and multiple in-flight events per GPU (XID
+	// errors, ECC errors, etc.), while keeping a power-of-2 size for
+	// cache-friendly alignment. Operators running nodes with significantly
+	// more GPUs should review this assumption.
+	healthChannelBufferSize = 64
 )
 
 // nvidiaDevicePlugin implements the Kubernetes device plugin API
@@ -108,7 +118,7 @@ func getPluginSocketPath(resource spec.ResourceName) string {
 
 func (plugin *nvidiaDevicePlugin) initialize() {
 	plugin.server = grpc.NewServer([]grpc.ServerOption{}...)
-	plugin.health = make(chan *rm.Device)
+	plugin.health = make(chan *rm.Device, healthChannelBufferSize)
 	plugin.stop = make(chan interface{})
 }
 
@@ -150,7 +160,7 @@ func (plugin *nvidiaDevicePlugin) Start(kubeletSocket string) error {
 
 	go func() {
 		// TODO: add MPS health check
-		err := plugin.rm.CheckHealth(plugin.stop, plugin.health)
+		err := plugin.rm.CheckHealth(plugin.ctx, plugin.stop, plugin.health)
 		if err != nil {
 			klog.Errorf("Failed to start health check: %v; continuing with health checks disabled", err)
 		}
@@ -263,7 +273,8 @@ func (plugin *nvidiaDevicePlugin) GetDevicePluginOptions(context.Context, *plugi
 	return options, nil
 }
 
-// ListAndWatch lists devices and update that list according to the health status
+// ListAndWatch lists devices and update that list according to the health
+// status.
 func (plugin *nvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
 	if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
 		return err
@@ -274,9 +285,9 @@ func (plugin *nvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.D
 		case <-plugin.stop:
 			return nil
 		case d := <-plugin.health:
-			// FIXME: there is no way to recover from the Unhealthy state.
 			d.Health = pluginapi.Unhealthy
-			klog.Infof("'%s' device marked unhealthy: %s", plugin.rm.Resource(), d.ID)
+			klog.Infof("'%s' device marked unhealthy: %s (reason: %s)",
+				plugin.rm.Resource(), d.ID, d.GetUnhealthyReason())
 			if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
 				return nil
 			}
