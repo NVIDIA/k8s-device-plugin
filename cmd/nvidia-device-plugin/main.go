@@ -41,9 +41,10 @@ import (
 )
 
 type options struct {
-	flags         []cli.Flag
-	configFile    string
-	kubeletSocket string
+	flags           []cli.Flag
+	configFile      string
+	kubeletSocket   string
+	cdiFeatureFlags cli.StringSlice
 }
 
 func main() {
@@ -116,19 +117,6 @@ func main() {
 			EnvVars: []string{"MOFED_ENABLED"},
 		},
 		&cli.StringFlag{
-			Name:        "kubelet-socket",
-			Value:       pluginapi.KubeletSocket,
-			Usage:       "specify the socket for communicating with the kubelet; if this is empty, no connection with the kubelet is attempted",
-			Destination: &o.kubeletSocket,
-			EnvVars:     []string{"KUBELET_SOCKET"},
-		},
-		&cli.StringFlag{
-			Name:        "config-file",
-			Usage:       "the path to a config file as an alternative to command line options or environment variables",
-			Destination: &o.configFile,
-			EnvVars:     []string{"CONFIG_FILE"},
-		},
-		&cli.StringFlag{
 			Name:    "cdi-annotation-prefix",
 			Value:   spec.DefaultCDIAnnotationPrefix,
 			Usage:   "the prefix to use for CDI container annotation keys",
@@ -169,10 +157,25 @@ func main() {
 			Usage:   "The specified IMEX channels are required",
 			EnvVars: []string{"IMEX_REQUIRED"},
 		},
+		// The following CLI flags do not have equivalents in the config file.
+		&cli.StringFlag{
+			Name:        "kubelet-socket",
+			Value:       pluginapi.KubeletSocket,
+			Usage:       "specify the socket for communicating with the kubelet; if this is empty, no connection with the kubelet is attempted",
+			Destination: &o.kubeletSocket,
+			EnvVars:     []string{"KUBELET_SOCKET"},
+		},
+		&cli.StringFlag{
+			Name:        "config-file",
+			Usage:       "the path to a config file as an alternative to command line options or environment variables",
+			Destination: &o.configFile,
+			EnvVars:     []string{"CONFIG_FILE"},
+		},
 		&cli.StringSliceFlag{
-			Name:    "cdi-feature-flags",
-			Usage:   "A set of feature flags to be passed to the CDI spec generation logic",
-			EnvVars: []string{"CDI_FEATURE_FLAGS"},
+			Name:        "cdi-feature-flags",
+			Usage:       "A set of feature flags to be passed to the CDI spec generation logic",
+			EnvVars:     []string{"CDI_FEATURE_FLAGS"},
+			Destination: &o.cdiFeatureFlags,
 		},
 	}
 	o.flags = c.Flags
@@ -364,7 +367,7 @@ func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) 
 
 	// Get the set of plugins.
 	klog.Info("Retrieving plugins.")
-	plugins, err := GetPlugins(c.Context, infolib, nvmllib, devicelib, config)
+	plugins, err := GetPlugins(c.Context, infolib, nvmllib, devicelib, config, o)
 	if err != nil {
 		return nil, false, fmt.Errorf("error getting plugins: %v", err)
 	}
