@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.25.5 AS base
+FROM golang:1.26rc2 AS base
 
 # The devel image is used for local development.
 FROM base AS devel
