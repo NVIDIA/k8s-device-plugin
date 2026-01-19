@@ -17,6 +17,7 @@
 package rm
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -36,7 +37,8 @@ type resourceManager struct {
 	devices  Devices
 }
 
-// ResourceManager provides an interface for listing a set of Devices and checking health on them
+// ResourceManager provides an interface for listing a set of Devices and
+// checking health on them
 //
 //go:generate moq -rm -fmt=goimports -stub -out rm_mock.go . ResourceManager
 type ResourceManager interface {
@@ -44,7 +46,10 @@ type ResourceManager interface {
 	Devices() Devices
 	GetDevicePaths([]string) []string
 	GetPreferredAllocation(available, required []string, size int) ([]string, error)
-	CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error
+	// CheckHealth monitors device health and reports unhealthy devices.
+	// The ctx parameter enables graceful shutdown with proper cancellation.
+	// The stop channel provides backward-compatible shutdown signaling.
+	CheckHealth(ctx context.Context, stop <-chan interface{}, unhealthy chan<- *Device) error
 	ValidateRequest(AnnotatedIDs) error
 }
 

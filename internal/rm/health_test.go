@@ -17,11 +17,17 @@
 package rm
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
+	"github.com/NVIDIA/go-nvml/pkg/nvml/mock"
+	"github.com/NVIDIA/go-nvml/pkg/nvml/mock/dgxa100"
 	"github.com/stretchr/testify/require"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 func TestNewHealthCheckXIDs(t *testing.T) {
@@ -220,4 +226,98 @@ func TestGetDisabledHealthCheckXids(t *testing.T) {
 			require.Equal(t, tc.expectedDisabled, disabled)
 		})
 	}
+}
+
+func TestCheckHealth(t *testing.T) {
+	stop := make(chan any)
+	unhealthy := make(chan *Device)
+
+	server := dgxa100.New()
+
+	deviceMock, ok := server.Devices[0].(*dgxa100.Device)
+	require.True(t, ok, "expected first device to be *dgxa100.Device")
+	deviceMock.GetSupportedEventTypesFunc = func() (uint64, nvml.Return) {
+		return nvml.EventTypeXidCriticalError, nvml.SUCCESS
+	}
+	deviceMock.RegisterEventsFunc = func(v uint64, eventSet nvml.EventSet) nvml.Return {
+		return nvml.SUCCESS
+	}
+
+	var count int
+	eventData := []nvml.EventData{
+		{
+			// XID 48 will trigger unhealthy (not in hardcoded ignore list)
+			EventData: 48,
+			EventType: nvml.EventTypeXidCriticalError,
+			Device:    server.Devices[0],
+		},
+	}
+
+	server.EventSetCreateFunc = func() (nvml.EventSet, nvml.Return) {
+		es := &mock.EventSet{
+			WaitFunc: func(v uint32) (nvml.EventData, nvml.Return) {
+				if count >= len(eventData) {
+					// After all events delivered, return timeout to let
+					// the stop signal be processed
+					return nvml.EventData{}, nvml.ERROR_TIMEOUT
+				}
+				ed := eventData[count]
+				count++
+				return ed, nvml.SUCCESS
+			},
+			FreeFunc: func() nvml.Return {
+				return nvml.SUCCESS
+			},
+		}
+		return es, nvml.SUCCESS
+	}
+
+	// Initialize config to avoid nil pointer dereference if NVML Init() fails.
+	// The FailOnInitError flag controls whether init failures are fatal.
+	failOnInitError := false
+	r := &nvmlResourceManager{
+		resourceManager: resourceManager{
+			config: &spec.Config{
+				Flags: spec.Flags{
+					CommandLineFlags: spec.CommandLineFlags{
+						FailOnInitError: &failOnInitError,
+					},
+				},
+			},
+		},
+		nvml: server,
+	}
+
+	var unhealthyDevices []*Device
+	collectorDone := make(chan struct{})
+
+	go func() {
+		defer close(collectorDone)
+		for d := range unhealthy {
+			unhealthyDevices = append(unhealthyDevices, d)
+			// Signal stop after receiving the unhealthy device
+			close(stop)
+		}
+	}()
+
+	var expectedDevices []*Device
+
+	devices := make(Devices)
+	for i, d := range server.Devices {
+		device, err := BuildDevice(newNvmlGPUDevice(i, d))
+		require.NoError(t, err)
+		devices[device.GetUUID()] = device
+		expectedDevices = append(expectedDevices, device)
+		// Only expect a single unhealthy event for the first device.
+		break
+	}
+
+	err := r.checkHealth(context.Background(), stop, devices, unhealthy)
+	require.NoError(t, err)
+
+	// Close the unhealthy channel and wait for the collector to finish
+	close(unhealthy)
+	<-collectorDone
+
+	require.EqualValues(t, expectedDevices, unhealthyDevices)
 }
