@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
+	"github.com/NVIDIA/go-nvml/pkg/nvml/mock/dgxa100"
 	"github.com/stretchr/testify/require"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
@@ -418,6 +420,87 @@ func TestFailOnNVMLInitError(t *testing.T) {
 			require.False(t, restart)
 		})
 	}
+}
+
+// TODO: This should be extended to a more representative test.
+func TestGFDLabellers(t *testing.T) {
+	vgpul := &vgpu.InterfaceMock{
+		DevicesFunc: func() ([]*vgpu.Device, error) {
+			return nil, nil
+		},
+	}
+
+	nvmllib := dgxa100.New()
+
+	for _, d := range nvmllib.Devices {
+		// TODO: This is not implemented in the mock.
+		(d.(*dgxa100.Device)).GetGpuFabricInfoFunc = func() (nvml.GpuFabricInfo, nvml.Return) {
+			return nvml.GpuFabricInfo{}, nvml.ERROR_NOT_SUPPORTED
+		}
+	}
+
+	// Force one of the devices to have errors when enumerating the device.
+	workingDevices := nvmllib.DeviceGetHandleByIndexFunc
+	nvmllib.DeviceGetHandleByIndexFunc = func(n int) (nvml.Device, nvml.Return) {
+		if n == 0 {
+			return nil, nvml.ERROR_INVALID_ARGUMENT
+		}
+		return workingDevices(n)
+	}
+
+	cfg := &Config{}
+	config := &spec.Config{
+		Flags: spec.Flags{
+			CommandLineFlags: spec.CommandLineFlags{
+				DeviceDiscoveryStrategy: ptr("nvml"),
+				FailOnInitError:         ptr(true),
+				MigStrategy:             ptr("none"),
+				GFD: &spec.GFDCommandLineFlags{
+					MachineTypeFile: ptr(""),
+					OutputFile:      ptr(""),
+				},
+			},
+		},
+	}
+	d, err := newGFDRunner(cfg, nvmllib, vgpul, config)
+	require.NoError(t, err)
+
+	loopLabelers, err := lm.NewLabelers(d.manager, d.vgpu, d.config)
+	require.NoError(t, err)
+
+	labels, err := loopLabelers.Labels()
+	require.NoError(t, err)
+
+	expectedLabels := map[string]string{
+		"nvidia.com/cuda.driver-version.full":     "550.54.15",
+		"nvidia.com/cuda.driver-version.major":    "550",
+		"nvidia.com/cuda.driver-version.minor":    "54",
+		"nvidia.com/cuda.driver-version.revision": "15",
+		"nvidia.com/cuda.driver.major":            "550",
+		"nvidia.com/cuda.driver.minor":            "54",
+		"nvidia.com/cuda.driver.rev":              "15",
+		"nvidia.com/cuda.runtime-version.full":    "12.4",
+		"nvidia.com/cuda.runtime-version.major":   "12",
+		"nvidia.com/cuda.runtime-version.minor":   "4",
+		"nvidia.com/cuda.runtime.major":           "12",
+		"nvidia.com/cuda.runtime.minor":           "4",
+		"nvidia.com/gpu.compute.major":            "8",
+		"nvidia.com/gpu.compute.minor":            "0",
+		"nvidia.com/gpu.count":                    "7",
+		"nvidia.com/gpu.family":                   "ampere",
+		"nvidia.com/gpu.machine":                  "unknown",
+		"nvidia.com/gpu.memory":                   "40960",
+		"nvidia.com/gpu.mode":                     "unknown",
+		"nvidia.com/gpu.product":                  "Mock-NVIDIA-A100-SXM4-40GB",
+		"nvidia.com/gpu.replicas":                 "1",
+		"nvidia.com/gpu.sharing-strategy":         "none",
+		"nvidia.com/mig.capable":                  "true",
+		"nvidia.com/mps.capable":                  "false",
+		"nvidia.com/vgpu.present":                 "false",
+	}
+
+	require.EqualValues(t, expectedLabels, (map[string]string)(labels))
+
 }
 
 func buildLabelMapFromOutput(output []byte) (map[string]string, error) {
