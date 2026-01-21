@@ -4,6 +4,7 @@
 package rm
 
 import (
+	"context"
 	"sync"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
@@ -19,9 +20,6 @@ var _ ResourceManager = &ResourceManagerMock{}
 //
 //		// make and configure a mocked ResourceManager
 //		mockedResourceManager := &ResourceManagerMock{
-//			CheckHealthFunc: func(stop <-chan interface{}, unhealthy chan<- *Device) error {
-//				panic("mock out the CheckHealth method")
-//			},
 //			DevicesFunc: func() Devices {
 //				panic("mock out the Devices method")
 //			},
@@ -30,6 +28,9 @@ var _ ResourceManager = &ResourceManagerMock{}
 //			},
 //			GetPreferredAllocationFunc: func(available []string, required []string, size int) ([]string, error) {
 //				panic("mock out the GetPreferredAllocation method")
+//			},
+//			HealthProviderFunc: func(ctx context.Context) HealthProvider {
+//				panic("mock out the HealthProvider method")
 //			},
 //			ResourceFunc: func() spec.ResourceName {
 //				panic("mock out the Resource method")
@@ -44,9 +45,6 @@ var _ ResourceManager = &ResourceManagerMock{}
 //
 //	}
 type ResourceManagerMock struct {
-	// CheckHealthFunc mocks the CheckHealth method.
-	CheckHealthFunc func(stop <-chan interface{}, unhealthy chan<- *Device) error
-
 	// DevicesFunc mocks the Devices method.
 	DevicesFunc func() Devices
 
@@ -56,6 +54,9 @@ type ResourceManagerMock struct {
 	// GetPreferredAllocationFunc mocks the GetPreferredAllocation method.
 	GetPreferredAllocationFunc func(available []string, required []string, size int) ([]string, error)
 
+	// HealthProviderFunc mocks the HealthProvider method.
+	HealthProviderFunc func(ctx context.Context) HealthProvider
+
 	// ResourceFunc mocks the Resource method.
 	ResourceFunc func() spec.ResourceName
 
@@ -64,13 +65,6 @@ type ResourceManagerMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// CheckHealth holds details about calls to the CheckHealth method.
-		CheckHealth []struct {
-			// Stop is the stop argument value.
-			Stop <-chan interface{}
-			// Unhealthy is the unhealthy argument value.
-			Unhealthy chan<- *Device
-		}
 		// Devices holds details about calls to the Devices method.
 		Devices []struct {
 		}
@@ -88,6 +82,11 @@ type ResourceManagerMock struct {
 			// Size is the size argument value.
 			Size int
 		}
+	// HealthProvider holds details about calls to the HealthProvider method.
+	HealthProvider []struct {
+		// Ctx is the ctx argument value.
+		Ctx context.Context
+	}
 		// Resource holds details about calls to the Resource method.
 		Resource []struct {
 		}
@@ -97,51 +96,12 @@ type ResourceManagerMock struct {
 			AnnotatedIDs AnnotatedIDs
 		}
 	}
-	lockCheckHealth            sync.RWMutex
 	lockDevices                sync.RWMutex
 	lockGetDevicePaths         sync.RWMutex
 	lockGetPreferredAllocation sync.RWMutex
+	lockHealthProvider         sync.RWMutex
 	lockResource               sync.RWMutex
 	lockValidateRequest        sync.RWMutex
-}
-
-// CheckHealth calls CheckHealthFunc.
-func (mock *ResourceManagerMock) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
-	callInfo := struct {
-		Stop      <-chan interface{}
-		Unhealthy chan<- *Device
-	}{
-		Stop:      stop,
-		Unhealthy: unhealthy,
-	}
-	mock.lockCheckHealth.Lock()
-	mock.calls.CheckHealth = append(mock.calls.CheckHealth, callInfo)
-	mock.lockCheckHealth.Unlock()
-	if mock.CheckHealthFunc == nil {
-		var (
-			errOut error
-		)
-		return errOut
-	}
-	return mock.CheckHealthFunc(stop, unhealthy)
-}
-
-// CheckHealthCalls gets all the calls that were made to CheckHealth.
-// Check the length with:
-//
-//	len(mockedResourceManager.CheckHealthCalls())
-func (mock *ResourceManagerMock) CheckHealthCalls() []struct {
-	Stop      <-chan interface{}
-	Unhealthy chan<- *Device
-} {
-	var calls []struct {
-		Stop      <-chan interface{}
-		Unhealthy chan<- *Device
-	}
-	mock.lockCheckHealth.RLock()
-	calls = mock.calls.CheckHealth
-	mock.lockCheckHealth.RUnlock()
-	return calls
 }
 
 // Devices calls DevicesFunc.
@@ -250,6 +210,41 @@ func (mock *ResourceManagerMock) GetPreferredAllocationCalls() []struct {
 	mock.lockGetPreferredAllocation.RLock()
 	calls = mock.calls.GetPreferredAllocation
 	mock.lockGetPreferredAllocation.RUnlock()
+	return calls
+}
+
+// HealthProvider calls HealthProviderFunc.
+func (mock *ResourceManagerMock) HealthProvider(ctx context.Context) HealthProvider {
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockHealthProvider.Lock()
+	mock.calls.HealthProvider = append(mock.calls.HealthProvider, callInfo)
+	mock.lockHealthProvider.Unlock()
+	if mock.HealthProviderFunc == nil {
+		var (
+			healthProviderOut HealthProvider
+		)
+		return healthProviderOut
+	}
+	return mock.HealthProviderFunc(ctx)
+}
+
+// HealthProviderCalls gets all the calls that were made to HealthProvider.
+// Check the length with:
+//
+//	len(mockedResourceManager.HealthProviderCalls())
+func (mock *ResourceManagerMock) HealthProviderCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockHealthProvider.RLock()
+	calls = mock.calls.HealthProvider
+	mock.lockHealthProvider.RUnlock()
 	return calls
 }
 
