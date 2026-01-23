@@ -17,7 +17,7 @@ MODULE := github.com/NVIDIA/$(DRIVER_NAME)
 
 REGISTRY ?= nvcr.io/nvidia
 
-VERSION ?= v0.18.1
+VERSION ?= v0.18.2
 
 GOLANG_VERSION := $(shell ./hack/golang-version.sh)
 

@@ -1,5 +1,12 @@
 ## Changelog
 
+### v0.18.2
+- Ensure that cdi.FeatureFlags are passed to CDI library
+- Fix race condition in config-manager when label is unset
+- Fix nested container use cases by ensuring that IPC sockets are not mounted readonly
+- Bump NVIDIA Container Toolkit to v1.18.2
+- Bump distroless base image to v3.2.2-dev
+
 ### v0.18.1
 - Allow CDI feature flags to be set
 - Pass driver root to nvinfo.New in device plugin main
