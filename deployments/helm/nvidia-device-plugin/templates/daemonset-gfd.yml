@@ -145,6 +145,10 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
         {{- if typeIs "string" .Values.migStrategy }}
           - name: MIG_STRATEGY
             value: {{ .Values.migStrategy }}

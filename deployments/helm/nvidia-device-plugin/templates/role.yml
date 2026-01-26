@@ -15,5 +15,8 @@ rules:
   - apiGroups: ["nfd.k8s-sigs.io"]
     resources: ["nodefeatures"]
     verbs: ["get", "list", "watch", "create", "update"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get"]
   {{- end }}
 {{- end }}

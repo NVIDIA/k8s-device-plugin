@@ -24,6 +24,7 @@ import (
 type NodeConfig struct {
 	Name      string
 	Namespace string
+	PodName   string
 }
 
 func (n *NodeConfig) Flags() []cli.Flag {
@@ -40,6 +41,12 @@ func (n *NodeConfig) Flags() []cli.Flag {
 			Usage:       "The name of the node to be worked on.",
 			Destination: &n.Name,
 			EnvVars:     []string{"NODE_NAME"},
+		},
+		&cli.StringFlag{
+			Name:        "pod-name",
+			Usage:       "The name of the pod for setting owner references on created resources.",
+			Destination: &n.PodName,
+			EnvVars:     []string{"POD_NAME"},
 		},
 	}
 	return flags
