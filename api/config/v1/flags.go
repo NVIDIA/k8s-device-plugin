@@ -39,7 +39,9 @@ func updateFromCLIFlag[T any](pflag **T, c *cli.Context, flagName string) {
 		case **bool:
 			*flag = ptr(c.Bool(flagName))
 		case **Duration:
-			*flag = ptr(Duration(c.Duration(flagName)))
+			if gf, ok := c.Generic(flagName).(*DurationValue); ok && gf.Value != nil {
+				*flag = gf.Value
+			}
 		case **deviceListStrategyFlag:
 			*flag = ptr((deviceListStrategyFlag)(c.StringSlice(flagName)))
 		default:
