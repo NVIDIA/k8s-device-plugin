@@ -19,6 +19,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -101,6 +102,20 @@ func TestUnmarshalFlags(t *testing.T) {
 				CommandLineFlags{
 					GFD: &GFDCommandLineFlags{
 						SleepInterval: ptr(Duration(5 * time.Second)),
+					},
+				},
+			},
+		},
+		{
+			input: `{
+				"gfd": {
+					"sleepInterval": "infinite"
+				}
+			}`,
+			output: Flags{
+				CommandLineFlags{
+					GFD: &GFDCommandLineFlags{
+						SleepInterval: ptr(Duration(math.MaxInt64)),
 					},
 				},
 			},

@@ -19,6 +19,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"time"
 )
 
@@ -41,6 +42,10 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 		*d = Duration(time.Duration(value))
 		return nil
 	case string:
+		if value == "infinite" {
+			*d = Duration(math.MaxInt64)
+			return nil
+		}
 		tmp, err := time.ParseDuration(value)
 		if err != nil {
 			return err

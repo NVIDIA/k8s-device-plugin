@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -76,7 +77,7 @@ func main() {
 		&cli.DurationFlag{
 			Name:    "sleep-interval",
 			Value:   60 * time.Second,
-			Usage:   "Time to sleep between labeling",
+			Usage:   "Time to sleep between labeling. Use 'infinite' to sleep indefinitely after the first labeling (useful for running as a Kubernetes pod that should not exit)",
 			EnvVars: []string{"GFD_SLEEP_INTERVAL"},
 		},
 		&cli.StringFlag{
@@ -237,12 +238,19 @@ type gfd struct {
 	labelOutputer lm.Outputer
 }
 
+func isSleepIntervalInfinite(interval *spec.Duration) bool {
+	return interval != nil && time.Duration(*interval) == math.MaxInt64
+}
+
 func (d *gfd) run(sigs chan os.Signal) (bool, error) {
 	defer func() {
 		if d.config.Flags.UseNodeFeatureAPI != nil && *d.config.Flags.UseNodeFeatureAPI {
 			return
 		}
 		if d.config.Flags.GFD.Oneshot != nil && *d.config.Flags.GFD.Oneshot {
+			return
+		}
+		if isSleepIntervalInfinite(d.config.Flags.GFD.SleepInterval) {
 			return
 		}
 		if d.config.Flags.GFD.OutputFile != nil && *d.config.Flags.GFD.OutputFile == "" {
@@ -284,8 +292,13 @@ rerun:
 		return false, nil
 	}
 
-	klog.Info("Sleeping for ", *d.config.Flags.GFD.SleepInterval)
-	rerunTimeout := time.After(time.Duration(*d.config.Flags.GFD.SleepInterval))
+	var rerunTimeout <-chan time.Time
+	if isSleepIntervalInfinite(d.config.Flags.GFD.SleepInterval) {
+		klog.Info("Sleep interval is infinite, sleeping indefinitely")
+	} else {
+		klog.Info("Sleeping for ", *d.config.Flags.GFD.SleepInterval)
+		rerunTimeout = time.After(time.Duration(*d.config.Flags.GFD.SleepInterval))
+	}
 
 	for {
 		select {
