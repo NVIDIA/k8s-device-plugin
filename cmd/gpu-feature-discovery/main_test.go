@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -145,6 +146,79 @@ func TestRunOneshot(t *testing.T) {
 
 	err = checkResult(result, cfg.Path("tests/expected-output-vgpu.txt"), true)
 	require.NoError(t, err, "Checking result for vgpu labels")
+}
+
+func TestRunInfiniteSleep(t *testing.T) {
+	sigs := watch.Signals(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	nvmlMock := NewTestNvmlMock()
+	vgpuMock := NewTestVGPUMock()
+	conf := &spec.Config{
+		Flags: spec.Flags{
+			CommandLineFlags: spec.CommandLineFlags{
+				MigStrategy:     ptr("none"),
+				FailOnInitError: ptr(true),
+				GFD: &spec.GFDCommandLineFlags{
+					Oneshot:         ptr(false),
+					OutputFile:      ptr("./gfd-test-infinite-sleep"),
+					SleepInterval:   ptr(spec.Duration(math.MaxInt64)),
+					NoTimestamp:     ptr(false),
+					MachineTypeFile: ptr(testMachineTypeFile),
+				},
+			},
+		},
+	}
+
+	setupMachineFile(t)
+	defer removeMachineFile(t)
+
+	defer func() {
+		os.Remove(*conf.Flags.GFD.OutputFile)
+	}()
+
+	var runRestart bool
+	var runError error
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+		require.NoError(t, err)
+
+		d := gfd{
+			manager:       nvmlMock,
+			vgpu:          vgpuMock,
+			config:        conf,
+			labelOutputer: labelOutputer,
+		}
+		runRestart, runError = d.run(sigs)
+	}()
+
+	// Wait for the output file to be created (labeling complete)
+	outFile, err := waitForFile(*conf.Flags.GFD.OutputFile, 5, time.Second)
+	require.NoError(t, err, "Opening output file")
+
+	result, err := io.ReadAll(outFile)
+	require.NoError(t, err, "Reading output file")
+	outFile.Close()
+
+	// Verify labels were written
+	err = checkResult(result, cfg.Path("tests/expected-output.txt"), false)
+	require.NoError(t, err, "Checking result")
+
+	// Send SIGTERM to trigger graceful shutdown
+	sigs <- syscall.SIGTERM
+
+	// Wait for run to complete
+	select {
+	case <-done:
+		// Success
+	case <-time.After(5 * time.Second):
+		t.Fatal("Timeout waiting for run to complete after SIGTERM")
+	}
+
+	require.NoError(t, runError, "Error from run function")
+	require.False(t, runRestart, "Expected no restart after SIGTERM")
 }
 
 func TestRunWithNoTimestamp(t *testing.T) {
