@@ -82,6 +82,10 @@ func (o *options) devicePluginForResource(ctx context.Context, resourceManager r
 		return nil, err
 	}
 
+	// Initialize health context at construction time to eliminate race condition
+	// where ListAndWatch() might access healthCtx before initialize() completes.
+	healthCtx, healthCancel := context.WithCancel(ctx)
+
 	plugin := nvidiaDevicePlugin{
 		ctx:                  ctx,
 		rm:                   resourceManager,
@@ -100,6 +104,10 @@ func (o *options) devicePluginForResource(ctx context.Context, resourceManager r
 		// time the plugin server is restarted.
 		server: nil,
 		health: nil,
+
+		// Health context initialized at construction to prevent race conditions
+		healthCtx:    healthCtx,
+		healthCancel: healthCancel,
 	}
 	return &plugin, nil
 }
