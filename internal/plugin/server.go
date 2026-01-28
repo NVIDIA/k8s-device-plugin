@@ -305,7 +305,11 @@ func (plugin *nvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.D
 		select {
 		case <-healthCtx.Done():
 			return nil
-		case d := <-health:
+		case d, ok := <-health:
+			if !ok {
+				// Health channel closed, health checks stopped
+				return nil
+			}
 			// FIXME: there is no way to recover from the Unhealthy state.
 			d.Health = pluginapi.Unhealthy
 			klog.Infof("'%s' device marked unhealthy: %s", plugin.rm.Resource(), d.ID)

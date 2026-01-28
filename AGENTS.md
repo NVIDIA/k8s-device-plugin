@@ -39,13 +39,14 @@
   - Lines: 120-129
   - Changes: Close channel before niling to prevent panics
   - Addresses: Devil's advocate blocker - channel never closed
-  - Commit: (pending)
+  - Commit: 795807362
 
-- [TODO] **Task 5**: Handle closed channel in `ListAndWatch()`
+- [DONE] **Task 5**: Handle closed channel in `ListAndWatch()`
   - File: `internal/plugin/server.go`
   - Lines: 287-298
   - Changes: Add `ok` check when receiving from health channel
   - Addresses: Graceful handling of channel closure
+  - Commit: (pending)
 
 ### Phase 4: Error Handling Improvements
 
