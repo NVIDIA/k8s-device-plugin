@@ -17,6 +17,7 @@
 package rm
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -44,7 +45,7 @@ type ResourceManager interface {
 	Devices() Devices
 	GetDevicePaths([]string) []string
 	GetPreferredAllocation(available, required []string, size int) ([]string, error)
-	CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error
+	CheckHealth(ctx context.Context, unhealthy chan<- *Device) error
 	ValidateRequest(AnnotatedIDs) error
 }
 
