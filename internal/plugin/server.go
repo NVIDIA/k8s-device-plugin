@@ -122,7 +122,7 @@ func getPluginSocketPath(resource spec.ResourceName) string {
 func (plugin *nvidiaDevicePlugin) initialize() {
 	plugin.server = grpc.NewServer([]grpc.ServerOption{}...)
 	plugin.health = make(chan *rm.Device)
-	plugin.healthCtx, plugin.healthCancel = context.WithCancel(plugin.ctx)
+	// healthCtx and healthCancel already initialized at construction time
 }
 
 func (plugin *nvidiaDevicePlugin) cleanup() {
