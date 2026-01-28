@@ -133,12 +133,12 @@ func (plugin *nvidiaDevicePlugin) cleanup() {
 		plugin.healthCtx, plugin.healthCancel = context.WithCancel(plugin.ctx)
 	}
 	plugin.healthWg.Wait()
-	
+
 	// Close health channel before niling to prevent panics in ListAndWatch()
 	if plugin.health != nil {
 		close(plugin.health)
 	}
-	
+
 	plugin.server = nil
 	plugin.health = nil
 	// Do not nil healthCtx or healthCancel - they are needed for restart
@@ -179,7 +179,12 @@ func (plugin *nvidiaDevicePlugin) Start(kubeletSocket string) error {
 		defer plugin.healthWg.Done()
 		// TODO: add MPS health check
 		err := plugin.rm.CheckHealth(plugin.healthCtx, plugin.health)
-		if err != nil && !errors.Is(err, context.Canceled) {
+		switch {
+		case err == nil:
+			klog.Infof("Health check completed successfully for '%s'", plugin.rm.Resource())
+		case errors.Is(err, context.Canceled):
+			klog.V(4).Infof("Health check canceled for '%s' (plugin shutdown)", plugin.rm.Resource())
+		default:
 			klog.Errorf("Failed to start health check: %v; continuing with health checks disabled", err)
 		}
 	}()
