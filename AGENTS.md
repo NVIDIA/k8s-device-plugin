@@ -30,15 +30,16 @@
   - Lines: 120-129
   - Changes: Recreate `healthCtx` and `healthCancel` after cancelling for restart support
   - Addresses: Elezar's concern #2 (line 128 - why nil these fields), fixes plugin restart
-  - Commit: (pending)
+  - Commit: cc2a0a77c
 
 ### Phase 3: Health Channel Lifecycle
 
-- [TODO] **Task 4**: Close health channel properly in `cleanup()`
+- [DONE] **Task 4**: Close health channel properly in `cleanup()`
   - File: `internal/plugin/server.go`
   - Lines: 120-129
   - Changes: Close channel before niling to prevent panics
   - Addresses: Devil's advocate blocker - channel never closed
+  - Commit: (pending)
 
 - [TODO] **Task 5**: Handle closed channel in `ListAndWatch()`
   - File: `internal/plugin/server.go`

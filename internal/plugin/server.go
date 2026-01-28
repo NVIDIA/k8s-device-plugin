@@ -133,6 +133,12 @@ func (plugin *nvidiaDevicePlugin) cleanup() {
 		plugin.healthCtx, plugin.healthCancel = context.WithCancel(plugin.ctx)
 	}
 	plugin.healthWg.Wait()
+	
+	// Close health channel before niling to prevent panics in ListAndWatch()
+	if plugin.health != nil {
+		close(plugin.health)
+	}
+	
 	plugin.server = nil
 	plugin.health = nil
 	// Do not nil healthCtx or healthCancel - they are needed for restart
