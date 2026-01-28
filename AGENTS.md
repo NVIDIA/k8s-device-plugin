@@ -21,15 +21,16 @@
   - Lines: 114-118
   - Changes: Remove `context.WithCancel()` call (already done in constructor)
   - Addresses: Cleanup redundant initialization
-  - Commit: (pending)
+  - Commit: d055f1e0c
 
 ### Phase 2: Restart-Safe Cleanup
 
-- [TODO] **Task 3**: Modify `cleanup()` to recreate context after cancellation
+- [DONE] **Task 3**: Modify `cleanup()` to recreate context after cancellation
   - File: `internal/plugin/server.go`
   - Lines: 120-129
   - Changes: Recreate `healthCtx` and `healthCancel` after cancelling for restart support
   - Addresses: Elezar's concern #2 (line 128 - why nil these fields), fixes plugin restart
+  - Commit: (pending)
 
 ### Phase 3: Health Channel Lifecycle
 

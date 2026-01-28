@@ -128,12 +128,15 @@ func (plugin *nvidiaDevicePlugin) initialize() {
 func (plugin *nvidiaDevicePlugin) cleanup() {
 	if plugin.healthCancel != nil {
 		plugin.healthCancel()
+		// Recreate context for potential plugin restart. The same plugin instance
+		// may be restarted via Start() after Stop(), so we need a fresh context.
+		plugin.healthCtx, plugin.healthCancel = context.WithCancel(plugin.ctx)
 	}
 	plugin.healthWg.Wait()
 	plugin.server = nil
 	plugin.health = nil
-	plugin.healthCtx = nil
-	plugin.healthCancel = nil
+	// Do not nil healthCtx or healthCancel - they are needed for restart
+	// and are recreated above if they were cancelled
 }
 
 // Devices returns the full set of devices associated with the plugin.
