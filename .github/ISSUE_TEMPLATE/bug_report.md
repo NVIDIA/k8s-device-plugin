@@ -1,15 +1,14 @@
 ---
-name: Device Plugin Bug report
+name: Bug report
 about: Create a report to help us improve
-title: ''
-labels: ''
+title: '[Bug]: '
+labels: ["bug", "needs-triage"]
 
 ---
 
-_The template below is mostly useful for bug reports and support questions. Feel free to remove anything which doesn't apply to you and add more information where it makes sense._
+_The template below is mostly useful for bug reports. Feel free to remove anything which doesn't apply to you and add more information where it makes sense._
 
-_**Important Note:  NVIDIA AI Enterprise customers can get support from NVIDIA Enterprise support. Please open a case [here](https://enterprise-support.nvidia.com/s/create-case)**._
-
+_**Important Note: NVIDIA AI Enterprise customers can get support from NVIDIA Enterprise support. Please open a case [here](https://enterprise-support.nvidia.com/s/create-case)**._
 
 ### 1. Quick Debug Information
 * OS/Version(e.g. RHEL8.6, Ubuntu22.04):
@@ -35,4 +34,3 @@ Additional information that might help better understand your environment and re
  - [ ] Any relevant kernel output lines from `dmesg`
  - [ ] NVIDIA packages version from `dpkg -l '*nvidia*'` _or_ `rpm -qa '*nvidia*'`
  - [ ] NVIDIA container library version from `nvidia-container-cli -V`
-
