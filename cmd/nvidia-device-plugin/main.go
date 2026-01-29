@@ -70,6 +70,12 @@ func main() {
 			Usage:   "fail the plugin if an error is encountered during initialization, otherwise block indefinitely",
 			EnvVars: []string{"FAIL_ON_INIT_ERROR"},
 		},
+		&cli.BoolFlag{
+			Name:    "require-gpu-request",
+			Value:   false,
+			Usage:   "require explicit nvidia.com/gpu requests; fail startup if GPUs would otherwise be exposed implicitly",
+			EnvVars: []string{"REQUIRE_GPU_REQUEST"},
+		},
 		&cli.StringFlag{
 			Name:    "driver-root",
 			Aliases: []string{"nvidia-driver-root"},
@@ -334,6 +340,16 @@ func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) 
 	if err != nil {
 		return nil, false, fmt.Errorf("unable to load config: %v", err)
 	}
+	if c.Bool("require-gpu-request") {
+		deviceListStrategies, err := spec.NewDeviceListStrategies(*config.Flags.Plugin.DeviceListStrategy)
+		if err != nil {
+			return nil, false, fmt.Errorf("invalid device-list-strategy: %v", err)
+		}
+		if deviceListStrategies.UsesEnvvar() || deviceListStrategies.UsesVolumeMounts() {
+			return nil, false, fmt.Errorf("require-gpu-request is enabled, but the selected device-list-strategy allows implicit GPU exposure")
+		}
+	}
+
 	spec.DisableResourceNamingInConfig(config)
 
 	driverRoot := root(*config.Flags.Plugin.ContainerDriverRoot)
