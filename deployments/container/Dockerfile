@@ -40,7 +40,7 @@ ARG VERSION="N/A"
 ARG GIT_COMMIT="unknown"
 RUN make PREFIX=/artifacts cmds
 
-FROM nvcr.io/nvidia/distroless/go:v3.2.2-dev AS application
+FROM nvcr.io/nvidia/distroless/go:v4.0.1-dev AS application
 
 USER 0:0
 SHELL ["/busybox/sh", "-c"]
