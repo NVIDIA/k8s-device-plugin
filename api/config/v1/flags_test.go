@@ -19,6 +19,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -101,6 +102,20 @@ func TestUnmarshalFlags(t *testing.T) {
 				CommandLineFlags{
 					GFD: &GFDCommandLineFlags{
 						SleepInterval: ptr(Duration(5 * time.Second)),
+					},
+				},
+			},
+		},
+		{
+			input: `{
+				"gfd": {
+					"sleepInterval": "infinite"
+				}
+			}`,
+			output: Flags{
+				CommandLineFlags{
+					GFD: &GFDCommandLineFlags{
+						SleepInterval: ptr(Duration(math.MaxInt64)),
 					},
 				},
 			},
@@ -213,6 +228,31 @@ func TestMarshalFlags(t *testing.T) {
 					"noTimestamp": null,
 					"outputFile": null,
 					"sleepInterval": "5ns",
+					"machineTypeFile": null
+				}
+			}`,
+		},
+		{
+			input: Flags{
+				CommandLineFlags{
+					GFD: &GFDCommandLineFlags{
+						SleepInterval: ptr(Duration(math.MaxInt64)),
+					},
+				},
+			},
+			output: `{
+				"migStrategy": null,
+				"failOnInitError": null,
+				"gdrcopyEnabled": null,
+				"gdsEnabled": null,
+				"mofedEnabled": null,
+				"useNodeFeatureAPI": null,
+				"deviceDiscoveryStrategy": null,
+				"gfd": {
+					"oneshot": null,
+					"noTimestamp": null,
+					"outputFile": null,
+					"sleepInterval": "infinite",
 					"machineTypeFile": null
 				}
 			}`,

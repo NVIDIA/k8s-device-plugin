@@ -73,10 +73,10 @@ func main() {
 			Usage:   "Do not add the timestamp to the labels",
 			EnvVars: []string{"GFD_NO_TIMESTAMP"},
 		},
-		&cli.DurationFlag{
+		&cli.GenericFlag{
 			Name:    "sleep-interval",
-			Value:   60 * time.Second,
-			Usage:   "Time to sleep between labeling",
+			Value:   spec.NewDurationValue(60 * time.Second),
+			Usage:   "Time to sleep between labeling. Use 'infinite' to sleep indefinitely after the first labeling",
 			EnvVars: []string{"GFD_SLEEP_INTERVAL"},
 		},
 		&cli.StringFlag{
@@ -245,6 +245,9 @@ func (d *gfd) run(sigs chan os.Signal) (bool, error) {
 		if d.config.Flags.GFD.Oneshot != nil && *d.config.Flags.GFD.Oneshot {
 			return
 		}
+		if d.config.Flags.GFD.SleepInterval.IsInfinite() {
+			return
+		}
 		if d.config.Flags.GFD.OutputFile != nil && *d.config.Flags.GFD.OutputFile == "" {
 			return
 		}
@@ -284,8 +287,13 @@ rerun:
 		return false, nil
 	}
 
-	klog.Info("Sleeping for ", *d.config.Flags.GFD.SleepInterval)
-	rerunTimeout := time.After(time.Duration(*d.config.Flags.GFD.SleepInterval))
+	var rerunTimeout <-chan time.Time
+	if d.config.Flags.GFD.SleepInterval.IsInfinite() {
+		klog.Info("Sleep interval is infinite, sleeping indefinitely")
+	} else {
+		klog.Info("Sleeping for ", *d.config.Flags.GFD.SleepInterval)
+		rerunTimeout = time.After(time.Duration(*d.config.Flags.GFD.SleepInterval))
+	}
 
 	for {
 		select {
