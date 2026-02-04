@@ -143,7 +143,7 @@ Check if migStrategy (from all possible configurations) is "none"
   {{- if ne .Values.migStrategy "none" -}}
     {{- $result = false -}}
   {{- end -}}
-{{- else if eq (include "nvidia-device-plugin.hasConfigMap" .) "true" -}}
+{{- else if and (eq (include "nvidia-device-plugin.hasConfigMap" .) "true") (eq (include "nvidia-device-plugin.hasEmbeddedConfigMap" .) "false") -}}
     {{- $result = false -}}
 {{- else -}}
   {{- range $name, $contents := $.Values.config.map -}}
@@ -165,7 +165,7 @@ Check if volume-mounts is included in the set of device-list-strategies
 {{- $result := false -}}
 {{- if .Values.deviceListStrategy -}}
   {{- $result = ( contains "volume-mounts" .Values.deviceListStrategy ) -}}
-{{- else if eq (include "nvidia-device-plugin.hasConfigMap" .) "true" -}}
+{{- else if and (eq (include "nvidia-device-plugin.hasConfigMap" .) "true") (eq (include "nvidia-device-plugin.hasEmbeddedConfigMap" .) "false") -}}
     {{- $result = true -}}
 {{- else -}}
   {{- range $name, $contents := $.Values.config.map -}}
