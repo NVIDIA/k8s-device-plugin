@@ -4,6 +4,7 @@
 package rm
 
 import (
+	"context"
 	"sync"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
@@ -19,7 +20,7 @@ var _ ResourceManager = &ResourceManagerMock{}
 //
 //		// make and configure a mocked ResourceManager
 //		mockedResourceManager := &ResourceManagerMock{
-//			CheckHealthFunc: func(stop <-chan interface{}, unhealthy chan<- *Device) error {
+//			CheckHealthFunc: func(ctx context.Context, unhealthy chan<- *Device) error {
 //				panic("mock out the CheckHealth method")
 //			},
 //			DevicesFunc: func() Devices {
@@ -45,7 +46,7 @@ var _ ResourceManager = &ResourceManagerMock{}
 //	}
 type ResourceManagerMock struct {
 	// CheckHealthFunc mocks the CheckHealth method.
-	CheckHealthFunc func(stop <-chan interface{}, unhealthy chan<- *Device) error
+	CheckHealthFunc func(ctx context.Context, unhealthy chan<- *Device) error
 
 	// DevicesFunc mocks the Devices method.
 	DevicesFunc func() Devices
@@ -66,8 +67,8 @@ type ResourceManagerMock struct {
 	calls struct {
 		// CheckHealth holds details about calls to the CheckHealth method.
 		CheckHealth []struct {
-			// Stop is the stop argument value.
-			Stop <-chan interface{}
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 			// Unhealthy is the unhealthy argument value.
 			Unhealthy chan<- *Device
 		}
@@ -106,12 +107,12 @@ type ResourceManagerMock struct {
 }
 
 // CheckHealth calls CheckHealthFunc.
-func (mock *ResourceManagerMock) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
+func (mock *ResourceManagerMock) CheckHealth(ctx context.Context, unhealthy chan<- *Device) error {
 	callInfo := struct {
-		Stop      <-chan interface{}
+		Ctx       context.Context
 		Unhealthy chan<- *Device
 	}{
-		Stop:      stop,
+		Ctx:       ctx,
 		Unhealthy: unhealthy,
 	}
 	mock.lockCheckHealth.Lock()
@@ -123,7 +124,7 @@ func (mock *ResourceManagerMock) CheckHealth(stop <-chan interface{}, unhealthy 
 		)
 		return errOut
 	}
-	return mock.CheckHealthFunc(stop, unhealthy)
+	return mock.CheckHealthFunc(ctx, unhealthy)
 }
 
 // CheckHealthCalls gets all the calls that were made to CheckHealth.
@@ -131,11 +132,11 @@ func (mock *ResourceManagerMock) CheckHealth(stop <-chan interface{}, unhealthy 
 //
 //	len(mockedResourceManager.CheckHealthCalls())
 func (mock *ResourceManagerMock) CheckHealthCalls() []struct {
-	Stop      <-chan interface{}
+	Ctx       context.Context
 	Unhealthy chan<- *Device
 } {
 	var calls []struct {
-		Stop      <-chan interface{}
+		Ctx       context.Context
 		Unhealthy chan<- *Device
 	}
 	mock.lockCheckHealth.RLock()
