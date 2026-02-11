@@ -17,12 +17,12 @@ require (
 	github.com/urfave/cli/v2 v2.27.7
 	golang.org/x/mod v0.32.0
 	google.golang.org/grpc v1.78.0
-	k8s.io/api v0.35.0
-	k8s.io/apimachinery v0.35.0
-	k8s.io/client-go v0.35.0
+	k8s.io/api v0.35.1
+	k8s.io/apimachinery v0.35.1
+	k8s.io/client-go v0.35.1
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/kubelet v0.35.0
-	k8s.io/mount-utils v0.35.0
+	k8s.io/kubelet v0.35.1
+	k8s.io/mount-utils v0.35.1
 	sigs.k8s.io/node-feature-discovery v0.18.3
 	sigs.k8s.io/node-feature-discovery/api/nfd v0.18.3
 	sigs.k8s.io/yaml v1.6.0
