@@ -79,6 +79,7 @@ type PluginCommandLineFlags struct {
 	CDIAnnotationPrefix *string                 `json:"cdiAnnotationPrefix" yaml:"cdiAnnotationPrefix"`
 	NvidiaCTKPath       *string                 `json:"nvidiaCTKPath"       yaml:"nvidiaCTKPath"`
 	ContainerDriverRoot *string                 `json:"containerDriverRoot" yaml:"containerDriverRoot"`
+	AllocationPolicy    *string                 `json:"allocationPolicy"   yaml:"allocationPolicy"`
 }
 
 // deviceListStrategyFlag is a custom type for parsing the deviceListStrategy flag.
@@ -157,6 +158,8 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.Plugin.NvidiaCTKPath, c, n)
 			case "container-driver-root":
 				updateFromCLIFlag(&f.Plugin.ContainerDriverRoot, c, n)
+			case "allocation-policy":
+				updateFromCLIFlag(&f.Plugin.AllocationPolicy, c, n)
 			}
 			// GFD specific flags
 			if f.GFD == nil {
