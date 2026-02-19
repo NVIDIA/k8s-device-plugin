@@ -28,7 +28,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      {{- include "nvidia-device-plugin.selectorLabels" . | nindent 6 }}
+      {{- include "nvidia-device-plugin-gpu-feature-discovery.selectorLabels" . | nindent 6 }}
   {{- with .Values.updateStrategy }}
   updateStrategy:
     {{- toYaml . | nindent 4 }}
@@ -36,7 +36,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "nvidia-device-plugin.templateLabels" . | nindent 8 }}
+        {{- include "nvidia-device-plugin-gpu-feature-discovery.templateLabels" . | nindent 8 }}
       annotations:
         {{- include "nvidia-device-plugin.podAnnotations" (dict "local" . "root" .) | nindent 8 }}
     spec:
