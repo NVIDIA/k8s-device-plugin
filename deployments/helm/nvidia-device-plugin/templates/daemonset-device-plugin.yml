@@ -63,7 +63,7 @@ spec:
         command: ["config-manager"]
         env:
         - name: ONESHOT
-          value: "true"
+          value: {{ .Values.configManager.init.oneshot | quote }}
         - name: KUBECONFIG
           value: ""
         - name: NODE_NAME
@@ -71,21 +71,21 @@ spec:
             fieldRef:
               fieldPath: "spec.nodeName"
         - name: NODE_LABEL
-          value: "nvidia.com/device-plugin.config"
+          value: {{ .Values.configManager.init.nodeLabel | quote }}
         - name: CONFIG_FILE_SRCDIR
-          value: "/available-configs"
+          value: {{ .Values.configManager.init.configFileSrcDir | quote }}
         - name: CONFIG_FILE_DST
-          value: "/config/config.yaml"
+          value: {{ .Values.configManager.init.configFileDst | quote }}
         - name: DEFAULT_CONFIG
           value: {{ .Values.config.default }}
         - name: FALLBACK_STRATEGIES
           value: {{ join "," .Values.config.fallbackStrategies }}
         - name: SEND_SIGNAL
-          value: "false"
+          value: {{ .Values.configManager.init.sendSignal | quote }}
         - name: SIGNAL
-          value: ""
+          value: {{ .Values.configManager.init.signal | quote }}
         - name: PROCESS_TO_SIGNAL
-          value: ""
+          value: {{ .Values.configManager.init.processToSignal | quote }}
         volumeMounts:
           - name: available-configs
             mountPath: /available-configs
@@ -99,7 +99,7 @@ spec:
         command: ["config-manager"]
         env:
         - name: ONESHOT
-          value: "false"
+          value: {{ .Values.configManager.sidecar.oneshot | quote }}
         - name: KUBECONFIG
           value: ""
         - name: NODE_NAME
@@ -107,19 +107,19 @@ spec:
             fieldRef:
               fieldPath: "spec.nodeName"
         - name: NODE_LABEL
-          value: "nvidia.com/device-plugin.config"
+          value: {{ .Values.configManager.init.nodeLabel | quote }}
         - name: CONFIG_FILE_SRCDIR
-          value: "/available-configs"
+          value: {{ .Values.configManager.init.configFileSrcDir | quote }}
         - name: CONFIG_FILE_DST
-          value: "/config/config.yaml"
+          value: {{ .Values.configManager.init.configFileDst | quote }}
         - name: DEFAULT_CONFIG
           value: {{ .Values.config.default }}
         - name: FALLBACK_STRATEGIES
           value: {{ join "," .Values.config.fallbackStrategies }}
         - name: SEND_SIGNAL
-          value: "true"
+          value: {{ .Values.configManager.sidecar.sendSignal | quote }}
         - name: SIGNAL
-          value: "1" # SIGHUP
+          value: {{ .Values.configManager.sidecar.signal | quote }}
         - name: PROCESS_TO_SIGNAL
           value: "nvidia-device-plugin"
         volumeMounts:
@@ -187,20 +187,20 @@ spec:
         {{- end }}
         {{- if $options.hasConfigMap }}
           - name: CONFIG_FILE
-            value: /config/config.yaml
+            value: {{ .Values.env.configFile | quote }}
         {{- end }}
         {{- if $options.addMigMonitorDevices }}
           - name: NVIDIA_MIG_MONITOR_DEVICES
-            value: all
+            value: {{ .Values.env.nvidia.migMonitorDevices | quote }}
         {{- end }}
         {{- if typeIs "string" .Values.deviceDiscoveryStrategy }}
           - name: DEVICE_DISCOVERY_STRATEGY
             value: {{ .Values.deviceDiscoveryStrategy }}
         {{- end }}
           - name: NVIDIA_VISIBLE_DEVICES
-            value: all
+            value: {{ .Values.env.nvidia.visibleDevices | quote }}
           - name: NVIDIA_DRIVER_CAPABILITIES
-            value: compute,utility
+            value: {{ .Values.env.nvidia.driverCapabilities | quote }}
         securityContext:
           {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
         volumeMounts:
