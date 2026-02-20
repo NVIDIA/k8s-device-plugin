@@ -21,45 +21,27 @@ import (
 
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/symlinks"
+	"github.com/NVIDIA/nvidia-container-toolkit/pkg/lookup"
+	"github.com/NVIDIA/nvidia-container-toolkit/pkg/lookup/symlinks"
 )
 
-type tegraOptions struct {
-	logger             logger.Interface
-	csvFiles           []string
-	driverRoot         string
-	devRoot            string
-	hookCreator        discover.HookCreator
-	ldconfigPath       string
-	librarySearchPaths []string
-	ignorePatterns     ignoreMountSpecPatterns
-
-	// The following can be overridden for testing
-	symlinkLocator      lookup.Locator
-	symlinkChainLocator lookup.Locator
-	// TODO: This should be replaced by a regular mock
-	resolveSymlink func(string) (string, error)
-}
-
-// Option defines a functional option for configuring a Tegra discoverer.
-type Option func(*tegraOptions)
-
-// New creates a new tegra discoverer using the supplied options.
+// New creates a new tegra discoverer using the supplied functional options.
 func New(opts ...Option) (discover.Discover, error) {
-	o := &tegraOptions{}
+	o := &options{
+		logger:     &logger.NullLogger{},
+		mountSpecs: mountSpecPathsByTypers{},
+	}
 	for _, opt := range opts {
 		opt(o)
 	}
-
-	if o.devRoot == "" {
-		o.devRoot = o.driverRoot
+	if o.driver == nil {
+		return nil, fmt.Errorf("a driver must be specified")
 	}
 
 	if o.symlinkLocator == nil {
 		o.symlinkLocator = lookup.NewSymlinkLocator(
 			lookup.WithLogger(o.logger),
-			lookup.WithRoot(o.driverRoot),
+			lookup.WithRoot(o.driver.Root),
 			lookup.WithSearchPaths(append(o.librarySearchPaths, "/")...),
 		)
 	}
@@ -67,7 +49,7 @@ func New(opts ...Option) (discover.Discover, error) {
 	if o.symlinkChainLocator == nil {
 		o.symlinkChainLocator = lookup.NewSymlinkChainLocator(
 			lookup.WithLogger(o.logger),
-			lookup.WithRoot(o.driverRoot),
+			lookup.WithRoot(o.driver.Root),
 		)
 	}
 
@@ -75,15 +57,7 @@ func New(opts ...Option) (discover.Discover, error) {
 		o.resolveSymlink = symlinks.Resolve
 	}
 
-	csvDiscoverer, err := o.newDiscovererFromCSVFiles()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create CSV discoverer: %v", err)
-	}
-
-	ldcacheUpdateHook, err := discover.NewLDCacheUpdateHook(o.logger, csvDiscoverer, o.hookCreator, o.ldconfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create ldcach update hook discoverer: %v", err)
-	}
+	mountSpecDiscoverer := o.newDiscovererFromMountSpecs(o.mountSpecs.MountSpecPathsByType())
 
 	tegraSystemMounts := discover.NewMounts(
 		o.logger,
@@ -95,68 +69,9 @@ func New(opts ...Option) (discover.Discover, error) {
 	)
 
 	d := discover.Merge(
-		csvDiscoverer,
-		// The ldcacheUpdateHook is added last to ensure that the created symlinks are included
-		ldcacheUpdateHook,
+		mountSpecDiscoverer,
 		tegraSystemMounts,
 	)
 
 	return d, nil
-}
-
-// WithLogger sets the logger for the discoverer.
-func WithLogger(logger logger.Interface) Option {
-	return func(o *tegraOptions) {
-		o.logger = logger
-	}
-}
-
-// WithDriverRoot sets the driver root for the discoverer.
-func WithDriverRoot(driverRoot string) Option {
-	return func(o *tegraOptions) {
-		o.driverRoot = driverRoot
-	}
-}
-
-// WithDevRoot sets the /dev root.
-// If this is unset, the driver root is assumed.
-func WithDevRoot(devRoot string) Option {
-	return func(o *tegraOptions) {
-		o.devRoot = devRoot
-	}
-}
-
-// WithCSVFiles sets the CSV files for the discoverer.
-func WithCSVFiles(csvFiles []string) Option {
-	return func(o *tegraOptions) {
-		o.csvFiles = csvFiles
-	}
-}
-
-// WithHookCreator sets the hook creator for the discoverer.
-func WithHookCreator(hookCreator discover.HookCreator) Option {
-	return func(o *tegraOptions) {
-		o.hookCreator = hookCreator
-	}
-}
-
-// WithLdconfigPath sets the path to the ldconfig program
-func WithLdconfigPath(ldconfigPath string) Option {
-	return func(o *tegraOptions) {
-		o.ldconfigPath = ldconfigPath
-	}
-}
-
-// WithLibrarySearchPaths sets the library search paths for the discoverer.
-func WithLibrarySearchPaths(librarySearchPaths ...string) Option {
-	return func(o *tegraOptions) {
-		o.librarySearchPaths = librarySearchPaths
-	}
-}
-
-// WithIngorePatterns sets patterns to ignore in the CSV files
-func WithIngorePatterns(ignorePatterns ...string) Option {
-	return func(o *tegraOptions) {
-		o.ignorePatterns = ignoreMountSpecPatterns(ignorePatterns)
-	}
 }

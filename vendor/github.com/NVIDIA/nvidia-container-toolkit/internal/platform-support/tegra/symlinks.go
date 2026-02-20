@@ -21,7 +21,7 @@ import (
 
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup"
+	"github.com/NVIDIA/nvidia-container-toolkit/pkg/lookup"
 )
 
 type symlinkHook struct {
@@ -36,7 +36,7 @@ type symlinkHook struct {
 }
 
 // createCSVSymlinkHooks creates a discoverer for a hook that creates required symlinks in the container
-func (o tegraOptions) createCSVSymlinkHooks(targets []string) discover.Discover {
+func (o options) createCSVSymlinkHooks(targets []string) discover.Discover {
 	return symlinkHook{
 		logger:              o.logger,
 		hookCreator:         o.hookCreator,

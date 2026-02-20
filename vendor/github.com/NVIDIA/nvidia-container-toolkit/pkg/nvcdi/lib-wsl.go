@@ -21,8 +21,6 @@ import (
 
 	"tags.cncf.io/container-device-interface/pkg/cdi"
 	"tags.cncf.io/container-device-interface/specs-go"
-
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/edits"
 )
 
 type wsllib nvcdilib
@@ -35,8 +33,8 @@ func (l *wsllib) DeviceSpecGenerators(...string) (DeviceSpecGenerator, error) {
 
 // GetDeviceSpecs returns the CDI device specs for a single all device.
 func (l *wsllib) GetDeviceSpecs() ([]specs.Device, error) {
-	device := newDXGDeviceDiscoverer(l.logger, l.devRoot)
-	deviceEdits, err := edits.FromDiscoverer(device)
+	device := l.newDXGDeviceDiscoverer()
+	deviceEdits, err := l.editsFactory.FromDiscoverer(device)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create container edits for DXG device: %v", err)
 	}
@@ -51,10 +49,10 @@ func (l *wsllib) GetDeviceSpecs() ([]specs.Device, error) {
 
 // GetCommonEdits generates a CDI specification that can be used for ANY devices
 func (l *wsllib) GetCommonEdits() (*cdi.ContainerEdits, error) {
-	driver, err := newWSLDriverDiscoverer(l.logger, l.driverRoot, l.hookCreator, l.ldconfigPath)
+	driver, err := l.newWSLDriverDiscoverer()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create discoverer for WSL driver: %v", err)
 	}
 
-	return edits.FromDiscoverer(driver)
+	return l.editsFactory.FromDiscoverer(driver)
 }

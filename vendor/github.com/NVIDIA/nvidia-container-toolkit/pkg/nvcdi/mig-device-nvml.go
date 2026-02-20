@@ -24,7 +24,6 @@ import (
 	"tags.cncf.io/container-device-interface/pkg/cdi"
 	"tags.cncf.io/container-device-interface/specs-go"
 
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/edits"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/platform-support/dgpu"
 )
 
@@ -125,7 +124,7 @@ func (l *migDeviceSpecGenerator) getDeviceEdits() (*cdi.ContainerEdits, error) {
 		return nil, err
 	}
 	deviceNodes, err := dgpu.NewForMigDevice(device, migDevice,
-		dgpu.WithDevRoot(l.devRoot),
+		dgpu.WithDriver(l.driver),
 		dgpu.WithLogger(l.logger),
 		dgpu.WithHookCreator(l.hookCreator),
 		dgpu.WithNvsandboxuitilsLib(l.nvsandboxutilslib),
@@ -134,7 +133,7 @@ func (l *migDeviceSpecGenerator) getDeviceEdits() (*cdi.ContainerEdits, error) {
 		return nil, fmt.Errorf("failed to create device discoverer: %v", err)
 	}
 
-	editsForDevice, err := edits.FromDiscoverer(deviceNodes)
+	editsForDevice, err := l.editsFactory.FromDiscoverer(deviceNodes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create container edits for Compute Instance: %v", err)
 	}
