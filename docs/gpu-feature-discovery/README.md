@@ -251,7 +251,7 @@ is partitioned into 7 equal sized MIG devices (56 total).
 ### MIG 'mixed' strategy
 
 With this strategy, a separate set of labels for each MIG device type is
-generated. The name of each MIG device type is defines as follows:
+generated. The name of each MIG device type is defined as follows:
 
 ```
 MIG_TYPE=mig-<slice_count>g.<memory_size>.gb
@@ -320,7 +320,7 @@ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
   --set devicePlugin.enabled=false
 ```
 
-**Note:** You only need the to pass the `--devel` flag to `helm search repo`
+**Note:** You only need to pass the `--devel` flag to `helm search repo`
 and the `--version` flag to `helm upgrade -i` if this is a pre-release
 version (e.g. `<version>-rc.1`). Full releases will be listed without this.
 
