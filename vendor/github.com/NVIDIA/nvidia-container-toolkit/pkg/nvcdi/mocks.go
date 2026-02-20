@@ -1,5 +1,6 @@
 /**
-# Copyright 2024 NVIDIA CORPORATION
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,23 +15,9 @@
 # limitations under the License.
 **/
 
-package lookup
+package nvcdi
 
-import "fmt"
+import "github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 
-// A null locator always returns an empty response.
-type null struct {
-}
-
-// Locate always returns empty for a null locator.
-func (l *null) Locate(string) ([]string, error) {
-	return nil, nil
-}
-
-// A notFound locator always returns an ErrNotFound error.
-type notFound struct {
-}
-
-func (l *notFound) Locate(s string) ([]string, error) {
-	return nil, fmt.Errorf("%s: %w", s, ErrNotFound)
-}
+//go:generate moq -rm -fmt=goimports -stub -out info-interface_mock.go . infoInterface
+type infoInterface info.Interface
