@@ -25,6 +25,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	cdiapi "tags.cncf.io/container-device-interface/pkg/cdi"
@@ -62,7 +63,12 @@ type nvidiaDevicePlugin struct {
 	socket string
 	server *grpc.Server
 	health chan *rm.Device
-	stop   chan interface{}
+
+	// healthCtx and healthCancel control the health check goroutine lifecycle.
+	// healthWg is used to wait for the health check goroutine to complete during cleanup.
+	healthCtx    context.Context
+	healthCancel context.CancelFunc
+	healthWg     sync.WaitGroup
 
 	imexChannels imex.Channels
 
@@ -75,6 +81,10 @@ func (o *options) devicePluginForResource(ctx context.Context, resourceManager r
 	if err != nil {
 		return nil, err
 	}
+
+	// Initialize health context at construction time to eliminate race condition
+	// where ListAndWatch() might access healthCtx before initialize() completes.
+	healthCtx, healthCancel := context.WithCancel(ctx)
 
 	plugin := nvidiaDevicePlugin{
 		ctx:                  ctx,
@@ -94,7 +104,10 @@ func (o *options) devicePluginForResource(ctx context.Context, resourceManager r
 		// time the plugin server is restarted.
 		server: nil,
 		health: nil,
-		stop:   nil,
+
+		// Health context initialized at construction to prevent race conditions
+		healthCtx:    healthCtx,
+		healthCancel: healthCancel,
 	}
 	return &plugin, nil
 }
@@ -109,14 +122,27 @@ func getPluginSocketPath(resource spec.ResourceName) string {
 func (plugin *nvidiaDevicePlugin) initialize() {
 	plugin.server = grpc.NewServer([]grpc.ServerOption{}...)
 	plugin.health = make(chan *rm.Device)
-	plugin.stop = make(chan interface{})
+	// healthCtx and healthCancel already initialized at construction time
 }
 
 func (plugin *nvidiaDevicePlugin) cleanup() {
-	close(plugin.stop)
+	if plugin.healthCancel != nil {
+		plugin.healthCancel()
+		// Recreate context for potential plugin restart. The same plugin instance
+		// may be restarted via Start() after Stop(), so we need a fresh context.
+		plugin.healthCtx, plugin.healthCancel = context.WithCancel(plugin.ctx)
+	}
+	plugin.healthWg.Wait()
+
+	// Close health channel before niling to prevent panics in ListAndWatch()
+	if plugin.health != nil {
+		close(plugin.health)
+	}
+
 	plugin.server = nil
 	plugin.health = nil
-	plugin.stop = nil
+	// Do not nil healthCtx or healthCancel - they are needed for restart
+	// and are recreated above if they were cancelled
 }
 
 // Devices returns the full set of devices associated with the plugin.
@@ -148,10 +174,17 @@ func (plugin *nvidiaDevicePlugin) Start(kubeletSocket string) error {
 	}
 	klog.Infof("Registered device plugin for '%s' with Kubelet", plugin.rm.Resource())
 
+	plugin.healthWg.Add(1)
 	go func() {
+		defer plugin.healthWg.Done()
 		// TODO: add MPS health check
-		err := plugin.rm.CheckHealth(plugin.stop, plugin.health)
-		if err != nil {
+		err := plugin.rm.CheckHealth(plugin.healthCtx, plugin.health)
+		switch {
+		case err == nil:
+			klog.Infof("Health check completed successfully for '%s'", plugin.rm.Resource())
+		case errors.Is(err, context.Canceled):
+			klog.V(4).Infof("Health check canceled for '%s' (plugin shutdown)", plugin.rm.Resource())
+		default:
 			klog.Errorf("Failed to start health check: %v; continuing with health checks disabled", err)
 		}
 	}()
@@ -265,15 +298,23 @@ func (plugin *nvidiaDevicePlugin) GetDevicePluginOptions(context.Context, *plugi
 
 // ListAndWatch lists devices and update that list according to the health status
 func (plugin *nvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
+	// Capture references at start to avoid race with cleanup() which may nil these fields.
+	healthCtx := plugin.healthCtx
+	health := plugin.health
+
 	if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
 		return err
 	}
 
 	for {
 		select {
-		case <-plugin.stop:
+		case <-healthCtx.Done():
 			return nil
-		case d := <-plugin.health:
+		case d, ok := <-health:
+			if !ok {
+				// Health channel closed, health checks stopped
+				return nil
+			}
 			// FIXME: there is no way to recover from the Unhealthy state.
 			d.Health = pluginapi.Unhealthy
 			klog.Infof("'%s' device marked unhealthy: %s", plugin.rm.Resource(), d.ID)
@@ -368,7 +409,7 @@ func (plugin *nvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 // updateResponseForMPS ensures that the ContainerAllocate response contains the information required to use MPS.
 // This includes per-resource pipe and log directories as well as a global daemon-specific shm
 // and assumes that an MPS control daemon has already been started.
-func (plugin nvidiaDevicePlugin) updateResponseForMPS(response *pluginapi.ContainerAllocateResponse) {
+func (plugin *nvidiaDevicePlugin) updateResponseForMPS(response *pluginapi.ContainerAllocateResponse) {
 	plugin.mps.updateReponse(response)
 }
 
