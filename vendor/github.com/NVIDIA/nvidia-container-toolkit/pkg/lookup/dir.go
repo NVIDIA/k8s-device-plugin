@@ -14,30 +14,33 @@
 # limitations under the License.
 */
 
-package oci
+package lookup
 
 import (
 	"fmt"
 	"os"
-	"syscall"
 )
 
-type syscallExec struct{}
-
-var _ Runtime = (*syscallExec)(nil)
-
-func (r syscallExec) Exec(args []string) error {
-	//nolint:gosec // TODO: Can we harden this so that there is less risk of command injection
-	err := syscall.Exec(args[0], args, os.Environ())
-	if err != nil {
-		return fmt.Errorf("could not exec '%v': %v", args[0], err)
-	}
-
-	// syscall.Exec is not expected to return. This is an error state regardless of whether
-	// err is nil or not.
-	return fmt.Errorf("unexpected return from exec '%v'", args[0])
+// NewDirectoryLocator creates a Locator that can be used to find directories at the specified root.
+func NewDirectoryLocator(opts ...Option) Locator {
+	return NewFactory(
+		append(
+			opts,
+			WithFilter(assertDirectory),
+		)...,
+	).NewFileLocator()
 }
 
-func (r syscallExec) String() string {
-	return "exec"
+// assertDirectory checks wither the specified path is a directory.
+func assertDirectory(filename string) error {
+	info, err := os.Stat(filename)
+	if err != nil {
+		return fmt.Errorf("error getting info for %v: %v", filename, err)
+	}
+
+	if !info.IsDir() {
+		return fmt.Errorf("specified path '%v' is not a directory", filename)
+	}
+
+	return nil
 }

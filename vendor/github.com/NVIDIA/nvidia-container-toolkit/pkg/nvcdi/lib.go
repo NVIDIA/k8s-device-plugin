@@ -24,10 +24,10 @@ import (
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/edits"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/root"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/nvsandboxutils"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/platform-support/tegra/csv"
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
 )
 
@@ -45,8 +45,7 @@ type nvcdilib struct {
 	configSearchPaths  []string
 	librarySearchPaths []string
 
-	csvFiles          []string
-	csvIgnorePatterns []string
+	csv csvOptions
 
 	vendor string
 	class  string
@@ -61,11 +60,15 @@ type nvcdilib struct {
 	disabledHooks []discover.HookName
 	enabledHooks  []discover.HookName
 	hookCreator   discover.HookCreator
+
+	editsFactory edits.Factory
 }
 
 // New creates a new nvcdi library
 func New(opts ...Option) (Interface, error) {
-	l := &nvcdilib{}
+	l := &nvcdilib{
+		featureFlags: make(map[FeatureFlag]bool),
+	}
 	for _, opt := range opts {
 		opt(l)
 	}
@@ -74,6 +77,12 @@ func New(opts ...Option) (Interface, error) {
 	}
 	if l.logger == nil {
 		l.logger = logger.New()
+	}
+	if l.editsFactory == nil {
+		l.editsFactory = edits.NewFactory(
+			edits.WithLogger(l.logger),
+			edits.WithNoAdditionalGIDsForDeviceNodes(l.featureFlags[FeatureNoAdditionalGIDsForDeviceNodes]),
+		)
 	}
 	if len(l.deviceNamers) == 0 {
 		indexNamer, _ := NewDeviceNamer(DeviceNameStrategyIndex)
@@ -115,10 +124,7 @@ func New(opts ...Option) (Interface, error) {
 	var factory deviceSpecGeneratorFactory
 	switch l.resolveMode() {
 	case ModeCSV:
-		if len(l.csvFiles) == 0 {
-			l.csvFiles = csv.DefaultFileList()
-		}
-		factory = (*csvlib)(l)
+		factory = l.asCSVLib()
 	case ModeManagement:
 		if l.vendor == "" {
 			l.vendor = "management.nvidia.com"
@@ -130,7 +136,7 @@ func New(opts ...Option) (Interface, error) {
 		factory = (*nvmllib)(l)
 	case ModeWsl:
 		factory = (*wsllib)(l)
-	case ModeGdrcopy, ModeGds, ModeMofed:
+	case ModeGdrcopy, ModeGds, ModeMofed, ModeNvswitch:
 		if l.class == "" {
 			l.class = string(l.mode)
 		}
@@ -149,6 +155,7 @@ func New(opts ...Option) (Interface, error) {
 		discover.WithNVIDIACDIHookPath(l.nvidiaCDIHookPath),
 		discover.WithDisabledHooks(l.disabledHooks...),
 		discover.WithEnabledHooks(l.enabledHooks...),
+		discover.WithLdconfigPath(l.ldconfigPath),
 	)
 
 	w := wrapper{
@@ -274,6 +281,7 @@ func (l *nvcdilib) getDriver(additionalOptions ...root.Option) *root.Driver {
 	options := []root.Option{
 		root.WithLogger(l.logger),
 		root.WithDriverRoot(l.driverRoot),
+		root.WithDevRoot(l.devRoot),
 		root.WithLibrarySearchPaths(l.librarySearchPaths...),
 		root.WithConfigSearchPaths(l.configSearchPaths...),
 	}
