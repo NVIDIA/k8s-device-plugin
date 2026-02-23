@@ -102,6 +102,7 @@ runtimeClassName: null
 
 devicePlugin:
   enabled: true
+  nodeSelector: {}
 
 gfd:
   enabled: false

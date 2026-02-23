@@ -18,6 +18,7 @@
 {{- $useServiceAccount := $options.hasConfigMap }}
 {{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}
 {{- $daemonsetName := printf "%s" (include "nvidia-device-plugin.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- $devicePluginNodeSelector := merge .Values.devicePlugin.nodeSelector .Values.nodeSelector }}
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -259,7 +260,7 @@ spec:
         - name: config
           emptyDir: {}
       {{- end }}
-      {{- with .Values.nodeSelector }}
+      {{- with $devicePluginNodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
