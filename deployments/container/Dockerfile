@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.25.6 AS base
+FROM golang:1.26.0 AS base
 
 # The devel image is used for local development.
 FROM base AS devel
@@ -40,7 +40,7 @@ ARG VERSION="N/A"
 ARG GIT_COMMIT="unknown"
 RUN make PREFIX=/artifacts cmds
 
-FROM nvcr.io/nvidia/distroless/go:v4.0.1-dev AS application
+FROM nvcr.io/nvidia/distroless/go:v4.0.2-dev AS application
 
 USER 0:0
 SHELL ["/busybox/sh", "-c"]
