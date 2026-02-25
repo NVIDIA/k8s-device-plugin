@@ -8,7 +8,7 @@ cyphar.com/go-pathrs/procfs
 ## explicit; go 1.20
 github.com/NVIDIA/go-gpuallocator/gpuallocator
 github.com/NVIDIA/go-gpuallocator/internal/links
-# github.com/NVIDIA/go-nvlib v0.9.0
+# github.com/NVIDIA/go-nvlib v0.9.1-0.20251202135446-d0f42ba016dd
 ## explicit; go 1.20
 github.com/NVIDIA/go-nvlib/pkg/nvlib/device
 github.com/NVIDIA/go-nvlib/pkg/nvlib/info
@@ -16,13 +16,14 @@ github.com/NVIDIA/go-nvlib/pkg/nvpci
 github.com/NVIDIA/go-nvlib/pkg/nvpci/bytes
 github.com/NVIDIA/go-nvlib/pkg/nvpci/mmio
 github.com/NVIDIA/go-nvlib/pkg/pciids
-# github.com/NVIDIA/go-nvml v0.13.0-1
+# github.com/NVIDIA/go-nvml v0.13.0-1.0.20260212130905-92cf8c963449
 ## explicit; go 1.20
 github.com/NVIDIA/go-nvml/pkg/dl
 github.com/NVIDIA/go-nvml/pkg/nvml
-# github.com/NVIDIA/nvidia-container-toolkit v1.18.2
+# github.com/NVIDIA/nvidia-container-toolkit v1.19.0-rc.4
 ## explicit; go 1.25.0
 github.com/NVIDIA/nvidia-container-toolkit/internal/config/image
+github.com/NVIDIA/nvidia-container-toolkit/internal/devices
 github.com/NVIDIA/nvidia-container-toolkit/internal/discover
 github.com/NVIDIA/nvidia-container-toolkit/internal/dxcore
 github.com/NVIDIA/nvidia-container-toolkit/internal/edits
@@ -30,15 +31,14 @@ github.com/NVIDIA/nvidia-container-toolkit/internal/info/drm
 github.com/NVIDIA/nvidia-container-toolkit/internal/info/proc
 github.com/NVIDIA/nvidia-container-toolkit/internal/ldcache
 github.com/NVIDIA/nvidia-container-toolkit/internal/logger
-github.com/NVIDIA/nvidia-container-toolkit/internal/lookup
 github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/root
-github.com/NVIDIA/nvidia-container-toolkit/internal/lookup/symlinks
 github.com/NVIDIA/nvidia-container-toolkit/internal/nvcaps
 github.com/NVIDIA/nvidia-container-toolkit/internal/nvsandboxutils
-github.com/NVIDIA/nvidia-container-toolkit/internal/oci
 github.com/NVIDIA/nvidia-container-toolkit/internal/platform-support/dgpu
 github.com/NVIDIA/nvidia-container-toolkit/internal/platform-support/tegra
 github.com/NVIDIA/nvidia-container-toolkit/internal/platform-support/tegra/csv
+github.com/NVIDIA/nvidia-container-toolkit/pkg/lookup
+github.com/NVIDIA/nvidia-container-toolkit/pkg/lookup/symlinks
 github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi
 github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/spec
 github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform
@@ -47,7 +47,7 @@ github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform/root
 # github.com/cpuguy83/go-md2man/v2 v2.0.7
 ## explicit; go 1.12
 github.com/cpuguy83/go-md2man/v2/md2man
-# github.com/cyphar/filepath-securejoin v0.6.0
+# github.com/cyphar/filepath-securejoin v0.6.1
 ## explicit; go 1.18
 github.com/cyphar/filepath-securejoin/internal/consts
 github.com/cyphar/filepath-securejoin/pathrs-lite
@@ -133,6 +133,12 @@ github.com/modern-go/reflect2
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
+# github.com/opencontainers/cgroups v0.0.6
+## explicit; go 1.23.0
+github.com/opencontainers/cgroups/devices/config
+# github.com/opencontainers/runc v1.4.0
+## explicit; go 1.24.0
+github.com/opencontainers/runc/libcontainer/devices
 # github.com/opencontainers/runtime-spec v1.3.0
 ## explicit
 github.com/opencontainers/runtime-spec/specs-go
@@ -198,7 +204,7 @@ golang.org/x/net/trace
 ## explicit; go 1.24.0
 golang.org/x/oauth2
 golang.org/x/oauth2/internal
-# golang.org/x/sys v0.39.0
+# golang.org/x/sys v0.41.0
 ## explicit; go 1.24.0
 golang.org/x/sys/plan9
 golang.org/x/sys/unix

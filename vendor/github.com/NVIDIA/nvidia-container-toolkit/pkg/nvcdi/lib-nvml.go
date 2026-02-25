@@ -26,7 +26,6 @@ import (
 	"tags.cncf.io/container-device-interface/pkg/cdi"
 	"tags.cncf.io/container-device-interface/specs-go"
 
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/edits"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/nvsandboxutils"
 )
 
@@ -41,7 +40,7 @@ func (l *nvmllib) GetCommonEdits() (*cdi.ContainerEdits, error) {
 		return nil, fmt.Errorf("failed to create discoverer for common entities: %v", err)
 	}
 
-	return edits.FromDiscoverer(common)
+	return l.editsFactory.FromDiscoverer(common)
 }
 
 // DeviceSpecGenerators returns the CDI device spec generators for NVML devices
@@ -67,7 +66,7 @@ func (l *nvmllib) getDeviceSpecGeneratorsForIDs(ids ...string) (DeviceSpecGenera
 	var identifiers []device.Identifier
 	for _, id := range ids {
 		if id == "none" {
-			return DeviceSpecGenerators{}, nil
+			return emptyDeviceSpecGenerator("none"), nil
 		}
 		if id == "all" {
 			return l.getDeviceSpecGeneratorsForAllDevices()
@@ -259,4 +258,18 @@ func (d *deviceSpecGeneratorsWithAndShutdown) GetDeviceSpecs() ([]specs.Device, 
 	defer d.tryShutdown()
 
 	return d.DeviceSpecGenerator.GetDeviceSpecs()
+}
+
+type emptyDeviceSpecGenerator string
+
+func (d emptyDeviceSpecGenerator) GetDeviceSpecs() ([]specs.Device, error) {
+	// Since the CDI specification does not allow devices to have no edits, we
+	// add a dummy envvar to the container edits for an "empty" device.
+	noneDevice := specs.Device{
+		Name: string(d),
+		ContainerEdits: specs.ContainerEdits{
+			Env: []string{"NVCT_EMPTY_DEVICE="},
+		},
+	}
+	return []specs.Device{noneDevice}, nil
 }

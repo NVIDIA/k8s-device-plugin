@@ -26,7 +26,6 @@ import (
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/edits"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/platform-support/dgpu"
 )
 
@@ -37,7 +36,8 @@ type fullGPUDeviceSpecGenerator struct {
 	uuid  string
 	index int
 
-	featureFlags map[FeatureFlag]bool
+	featureFlags          map[FeatureFlag]bool
+	additionalDiscoverers []discover.Discover
 }
 
 var _ DeviceSpecGenerator = (*fullGPUDeviceSpecGenerator)(nil)
@@ -91,7 +91,7 @@ func (l *fullGPUDeviceSpecGenerator) GetDeviceSpecs() ([]specs.Device, error) {
 
 	annotations, err := l.getDeviceAnnotations()
 	if err != nil {
-		l.logger.Warning("Ignoring error getting device annotations for device(s) %v: %v", names, err)
+		l.logger.Warningf("Ignoring error getting device annotations for device(s) %v: %v", names, err)
 		annotations = nil
 	}
 	var deviceSpecs []specs.Device
@@ -145,8 +145,7 @@ func (l *fullGPUDeviceSpecGenerator) getDeviceEdits() (*cdi.ContainerEdits, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to create device discoverer: %v", err)
 	}
-
-	editsForDevice, err := edits.FromDiscoverer(deviceDiscoverer)
+	editsForDevice, err := l.editsFactory.FromDiscoverer(deviceDiscoverer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create container edits for device: %v", err)
 	}
@@ -161,7 +160,7 @@ func (l *fullGPUDeviceSpecGenerator) getNames() ([]string, error) {
 // newFullGPUDiscoverer creates a discoverer for the full GPU defined by the specified device.
 func (l *fullGPUDeviceSpecGenerator) newFullGPUDiscoverer(d device.Device) (discover.Discover, error) {
 	deviceNodes, err := dgpu.NewForDevice(d,
-		dgpu.WithDevRoot(l.devRoot),
+		dgpu.WithDriver(l.driver),
 		dgpu.WithLogger(l.logger),
 		dgpu.WithHookCreator(l.hookCreator),
 		dgpu.WithNvsandboxuitilsLib(l.nvsandboxutilslib),
@@ -170,16 +169,21 @@ func (l *fullGPUDeviceSpecGenerator) newFullGPUDiscoverer(d device.Device) (disc
 		return nil, fmt.Errorf("failed to create device discoverer: %v", err)
 	}
 
-	deviceFolderPermissionHooks := newDeviceFolderPermissionHookDiscoverer(
-		l.logger,
-		l.devRoot,
-		l.hookCreator,
+	deviceFolderPermissionHooks := (*nvcdilib)(l.nvmllib).newDeviceFolderPermissionHookDiscoverer(
 		deviceNodes,
 	)
 
-	dd := discover.Merge(
+	var discoverers []discover.Discover
+
+	discoverers = append(discoverers,
 		deviceNodes,
 		deviceFolderPermissionHooks,
+	)
+
+	discoverers = append(discoverers, l.additionalDiscoverers...)
+
+	dd := discover.Merge(
+		discoverers...,
 	)
 
 	return dd, nil

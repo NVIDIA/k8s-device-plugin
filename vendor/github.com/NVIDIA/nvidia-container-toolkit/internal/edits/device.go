@@ -17,13 +17,20 @@
 package edits
 
 import (
+	"io/fs"
+	"os"
+
 	"tags.cncf.io/container-device-interface/pkg/cdi"
 	"tags.cncf.io/container-device-interface/specs-go"
 
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/devices"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
 )
 
-type device discover.Device
+type device struct {
+	discover.Device
+	noAdditionalGIDs bool
+}
 
 // toEdits converts a discovered device to CDI Container Edits.
 func (d device) toEdits() (*cdi.ContainerEdits, error) {
@@ -34,7 +41,8 @@ func (d device) toEdits() (*cdi.ContainerEdits, error) {
 
 	e := cdi.ContainerEdits{
 		ContainerEdits: &specs.ContainerEdits{
-			DeviceNodes: []*specs.DeviceNode{deviceNode},
+			DeviceNodes:    []*specs.DeviceNode{deviceNode},
+			AdditionalGIDs: d.getAdditionalGIDs(deviceNode),
 		},
 	}
 	return &e, nil
@@ -43,19 +51,98 @@ func (d device) toEdits() (*cdi.ContainerEdits, error) {
 // toSpec converts a discovered Device to a CDI Spec Device. Note
 // that missing info is filled in when edits are applied by querying the Device node.
 func (d device) toSpec() (*specs.DeviceNode, error) {
+	s := d.fromPathOrDefault()
 	// The HostPath field was added in the v0.5.0 CDI specification.
 	// The cdi package uses strict unmarshalling when loading specs from file causing failures for
 	// unexpected fields.
 	// Since the behaviour for HostPath == "" and HostPath == Path are equivalent, we clear HostPath
 	// if it is equal to Path to ensure compatibility with the widest range of specs.
-	hostPath := d.HostPath
-	if hostPath == d.Path {
-		hostPath = ""
-	}
-	s := specs.DeviceNode{
-		HostPath: hostPath,
-		Path:     d.Path,
+	if s.HostPath == d.Path {
+		s.HostPath = ""
 	}
 
-	return &s, nil
+	return s, nil
+}
+
+// fromPathOrDefault attempts to return the returns the information about the
+// CDI device from the specified host path.
+// If this fails a minimal device is returned so that this information can be
+// queried by the container runtime such as containerd.
+func (d device) fromPathOrDefault() *specs.DeviceNode {
+	path := d.HostPath
+	if path == "" {
+		path = d.Path
+	}
+	dn, err := devices.DeviceFromPath(path, "rwm")
+	if err != nil {
+		return &specs.DeviceNode{
+			HostPath: d.HostPath,
+			Path:     d.Path,
+		}
+	}
+
+	// We construct a CDI spec DeviceNode with the information retrieved.
+	// Note that in addition to the fields that we specify here the following
+	// are not taken from the extracted information:
+	//
+	// * dn.Rule.Allow: This has no equivalent in the CDI spec and is used for
+	//					specifying cgroup rules in a container.
+	// * dn.Rule.Type:  This could be translated to the DeviceNode.Type, but is
+	//					not done. In the toolkit we only consider char devices
+	//					(Type = 'c') and these are the default for device nodes
+	//					in OCI compliant runtimes.
+	// * dn.UID:		This is ignored so as to allow the UID of the container
+	//					user to be applied when making modifications to the OCI
+	//					runtime specification. Note that for most NVIDIA devices
+	//					this would be 0 and as such the target UID pointer will
+	//					remain `nil`.
+	//					See: https://github.com/cncf-tags/container-device-interface/blob/e2632194760242fc74a30c3803107f9c1ba5718b/pkg/cdi/container-edits.go#L96-L100
+	return &specs.DeviceNode{
+		HostPath:    d.HostPath,
+		Path:        d.Path,
+		Major:       dn.Major,
+		Minor:       dn.Minor,
+		FileMode:    ptrIfNonZero(dn.FileMode),
+		Permissions: string(dn.Permissions),
+		GID:         ptrIfNonZero(dn.Gid),
+	}
+}
+
+func ptrIfNonZero[T uint32 | os.FileMode](id T) *T {
+	var zero T
+	if id == zero {
+		return nil
+	}
+	return &id
+}
+
+// getAdditionalGIDs returns the group id of the device if the device is not world read/writable.
+// If the information cannot be extracted or an error occurs, 0 is returned.
+func (d *device) getAdditionalGIDs(dn *specs.DeviceNode) []uint32 {
+	if d.noAdditionalGIDs {
+		return nil
+	}
+	// Handle the underdefined cases where we do not have enough information to
+	// extract the GID for the device OR whether the additional GID is required.
+	if dn == nil || dn.GID == nil || *dn.GID == 0 {
+		return nil
+	}
+	if dn.FileMode == nil {
+		return nil
+	}
+	if dn.FileMode.Type()&os.ModeCharDevice == 0 {
+		return nil
+	}
+	if permission := dn.FileMode.Perm(); isWorldReadable(permission) && isWorldWriteable(permission) {
+		return nil
+	}
+	return []uint32{*dn.GID}
+}
+
+func isWorldReadable(m fs.FileMode) bool {
+	return m&04 != 0
+}
+
+func isWorldWriteable(m fs.FileMode) bool {
+	return m&02 != 0
 }
