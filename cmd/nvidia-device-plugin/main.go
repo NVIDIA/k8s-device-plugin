@@ -145,6 +145,12 @@ func main() {
 			EnvVars: []string{"MPS_ROOT"},
 		},
 		&cli.StringFlag{
+			Name:    "allocation-policy",
+			Value:   spec.AllocationPolicyDistributed,
+			Usage:   "the allocation policy for replicated and MIG resources:\n\t\t[distributed | packed]",
+			EnvVars: []string{"ALLOCATION_POLICY"},
+		},
+		&cli.StringFlag{
 			Name:    "device-discovery-strategy",
 			Value:   "auto",
 			Usage:   "the strategy to use to discover devices: 'auto', 'nvml', or 'tegra'",
@@ -203,6 +209,15 @@ func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 
 	if *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyUUID && *config.Flags.Plugin.DeviceIDStrategy != spec.DeviceIDStrategyIndex {
 		return fmt.Errorf("invalid --device-id-strategy option: %v", *config.Flags.Plugin.DeviceIDStrategy)
+	}
+
+	if config.Flags.Plugin.AllocationPolicy != nil {
+		switch *config.Flags.Plugin.AllocationPolicy {
+		case spec.AllocationPolicyDistributed:
+		case spec.AllocationPolicyPacked:
+		default:
+			return fmt.Errorf("invalid --allocation-policy option: %v", *config.Flags.Plugin.AllocationPolicy)
+		}
 	}
 
 	if config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {

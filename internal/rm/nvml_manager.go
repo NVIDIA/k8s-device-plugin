@@ -104,7 +104,10 @@ func (r *nvmlResourceManager) getPreferredAllocation(available, required []strin
 		return r.alignedAlloc(available, required, size)
 	}
 
-	// Otherwise, distribute them evenly across all replicated GPUs
+	// Otherwise, apply the configured allocation policy for replicated/MIG resources.
+	if r.config.Flags.Plugin != nil && r.config.Flags.Plugin.AllocationPolicy != nil && *r.config.Flags.Plugin.AllocationPolicy == spec.AllocationPolicyPacked {
+		return r.packedAlloc(available, required, size)
+	}
 	return r.distributedAlloc(available, required, size)
 }
 

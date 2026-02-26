@@ -21,25 +21,26 @@ import (
 	"sort"
 )
 
-// distributedAlloc returns a list of devices such that any replicated
-// devices are distributed across all replicated GPUs equally. It takes into
-// account already allocated replicas to ensure a proper balance across them.
-func (r *resourceManager) distributedAlloc(available, required []string, size int) ([]string, error) {
-	// Get the set of candidate devices as the difference between available and required.
+// replicaCount tracks the total and available replica counts for a physical GPU.
+type replicaCount struct {
+	total, available int
+}
+
+// prepareCandidates filters candidates from available devices (excluding required),
+// validates there are enough, and builds a per-GPU replica count map.
+func (r *resourceManager) prepareCandidates(available, required []string, size int) ([]string, map[string]*replicaCount, int, error) {
 	candidates := r.devices.Subset(available).Difference(r.devices.Subset(required)).GetIDs()
 	needed := size - len(required)
 
 	if len(candidates) < needed {
-		return nil, fmt.Errorf("not enough available devices to satisfy allocation")
+		return nil, nil, 0, fmt.Errorf("not enough available devices to satisfy allocation")
 	}
 
-	// For each candidate device, build a mapping of (stripped) device ID to
-	// total / available replicas for that device.
-	replicas := make(map[string]*struct{ total, available int })
+	replicas := make(map[string]*replicaCount)
 	for _, c := range candidates {
 		id := AnnotatedID(c).GetID()
 		if _, exists := replicas[id]; !exists {
-			replicas[id] = &struct{ total, available int }{}
+			replicas[id] = &replicaCount{}
 		}
 		replicas[id].available++
 	}
@@ -51,13 +52,20 @@ func (r *resourceManager) distributedAlloc(available, required []string, size in
 		replicas[id].total++
 	}
 
-	// Grab the set of 'needed' devices one-by-one from the candidates list.
-	// Before selecting each candidate, first sort the candidate list using the
-	// replicas map above. After sorting, the first element in the list will
-	// contain the device with the least difference between total and available
-	// replications (based on what's already been allocated). Add this device
-	// to the list of devices to allocate, remove it from the candidate list,
-	// down its available count in the replicas map, and repeat.
+	return candidates, replicas, needed, nil
+}
+
+// distributedAlloc returns a list of devices such that any replicated
+// devices are distributed across all replicated GPUs equally. It takes into
+// account already allocated replicas to ensure a proper balance across them.
+func (r *resourceManager) distributedAlloc(available, required []string, size int) ([]string, error) {
+	candidates, replicas, needed, err := r.prepareCandidates(available, required, size)
+	if err != nil {
+		return nil, err
+	}
+
+	// Select devices one-by-one, preferring GPUs with the fewest allocated
+	// replicas to spread workload evenly across physical GPUs.
 	var devices []string
 	for i := 0; i < needed; i++ {
 		sort.Slice(candidates, func(i, j int) bool {
@@ -73,8 +81,35 @@ func (r *resourceManager) distributedAlloc(available, required []string, size in
 		candidates = candidates[1:]
 	}
 
-	// Add the set of required devices to this list and return it.
-	devices = append(required, devices...)
+	return append(required, devices...), nil
+}
 
-	return devices, nil
+// packedAlloc returns a list of devices such that any replicated devices are
+// packed onto as few physical GPUs as possible. It preferentially allocates
+// replicas from GPUs that already have the most allocated replicas, which
+// helps consolidate workloads and free up entire GPUs for other uses.
+func (r *resourceManager) packedAlloc(available, required []string, size int) ([]string, error) {
+	candidates, replicas, needed, err := r.prepareCandidates(available, required, size)
+	if err != nil {
+		return nil, err
+	}
+
+	// Select devices one-by-one, preferring GPUs with the most allocated
+	// replicas to consolidate onto fewer physical GPUs.
+	var devices []string
+	for i := 0; i < needed; i++ {
+		sort.Slice(candidates, func(i, j int) bool {
+			iid := AnnotatedID(candidates[i]).GetID()
+			jid := AnnotatedID(candidates[j]).GetID()
+			idiff := replicas[iid].total - replicas[iid].available
+			jdiff := replicas[jid].total - replicas[jid].available
+			return idiff > jdiff
+		})
+		id := AnnotatedID(candidates[0]).GetID()
+		replicas[id].available--
+		devices = append(devices, candidates[0])
+		candidates = candidates[1:]
+	}
+
+	return append(required, devices...), nil
 }
