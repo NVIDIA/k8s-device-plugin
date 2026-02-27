@@ -129,6 +129,10 @@ spec:
             mountPath: /config
         securityContext:
           {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
+        {{- with .Values.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
       {{- end }}
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
