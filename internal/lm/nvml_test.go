@@ -103,7 +103,7 @@ func TestSharingLabeler(t *testing.T) {
 			description: "config with timeslicing replicas",
 			config: &spec.Config{
 				Sharing: spec.Sharing{
-					TimeSlicing: spec.ReplicatedResources{
+					TimeSlicing: &spec.ReplicatedResources{
 						Resources: []spec.ReplicatedResource{
 							{
 								Replicas: 2,
