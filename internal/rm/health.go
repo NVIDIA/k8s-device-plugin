@@ -21,6 +21,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"k8s.io/klog/v2"
@@ -38,9 +40,16 @@ const (
 	// Note that this also allows individual XIDs to be selected when ALL XIDs
 	// are disabled.
 	envEnableHealthChecks = "DP_ENABLE_HEALTHCHECKS"
+
+	// polledHealthCheckInterval defines how frequently the polled health checks
+	// run. These checks cover conditions not detectable via NVML events, such as
+	// remapped rows, retired pages pending status, and GPU temperature.
+	polledHealthCheckInterval = 30 * time.Second
 )
 
-// CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
+// CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices.
+// It combines event-based monitoring (XID errors, ECC errors) with periodic polled checks
+// (remapped rows, retired pages, temperature).
 func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
 	xids := getDisabledHealthCheckXids()
 	if xids.IsAllDisabled() {
@@ -72,6 +81,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 	}()
 
 	parentToDeviceMap := make(map[string]*Device)
+	parentToDevicesMap := make(map[string][]*Device)
 	deviceIDToGiMap := make(map[string]uint32)
 	deviceIDToCiMap := make(map[string]uint32)
 
@@ -86,6 +96,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		deviceIDToGiMap[d.ID] = gi
 		deviceIDToCiMap[d.ID] = ci
 		parentToDeviceMap[uuid] = d
+		parentToDevicesMap[uuid] = append(parentToDevicesMap[uuid], d)
 
 		gpu, ret := r.nvml.DeviceGetHandleByUUID(uuid)
 		if ret != nvml.SUCCESS {
@@ -111,9 +122,20 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		}
 	}
 
+	// Launch polled health checks (remapped rows, retired pages, temperature)
+	// in parallel with the event-based health check loop.
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		r.polledHealthChecks(stop, parentToDevicesMap, unhealthy)
+	}()
+
+	// Run event-based health check loop.
 	for {
 		select {
 		case <-stop:
+			wg.Wait()
 			return nil
 		default:
 		}
@@ -130,8 +152,36 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 			continue
 		}
 
+		// Handle double-bit (uncorrectable) ECC errors.
+		if e.EventType == nvml.EventTypeDoubleBitEccError {
+			eventUUID, ret := e.Device.GetUUID()
+			if ret != nvml.SUCCESS {
+				klog.Infof("Failed to determine uuid for DoubleBitEccError event: %v; Marking all devices as unhealthy.", ret)
+				for _, d := range devices {
+					unhealthy <- d
+				}
+				continue
+			}
+			klog.Infof("DoubleBitEccError on Device=%s; marking device(s) as unhealthy.", eventUUID)
+			for _, d := range parentToDevicesMap[eventUUID] {
+				unhealthy <- d
+			}
+			continue
+		}
+
+		// Log single-bit (correctable) ECC errors but do not mark unhealthy.
+		if e.EventType == nvml.EventTypeSingleBitEccError {
+			eventUUID, ret := e.Device.GetUUID()
+			if ret != nvml.SUCCESS {
+				klog.Warningf("Failed to determine uuid for SingleBitEccError event: %v", ret)
+			} else {
+				klog.Warningf("SingleBitEccError on Device=%s (correctable; not marking unhealthy).", eventUUID)
+			}
+			continue
+		}
+
 		if e.EventType != nvml.EventTypeXidCriticalError {
-			klog.Infof("Skipping non-nvmlEventTypeXidCriticalError event: %+v", e)
+			klog.Infof("Skipping non-critical event: %+v", e)
 			continue
 		}
 
@@ -169,6 +219,146 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		klog.Infof("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
 		unhealthy <- d
 	}
+}
+
+// polledHealthChecks runs periodic health checks that cannot be detected via
+// NVML events. These cover hardware conditions such as remapped memory rows,
+// pending retired pages, and GPU temperature reaching the shutdown threshold.
+func (r *nvmlResourceManager) polledHealthChecks(stop <-chan interface{}, parentToDevicesMap map[string][]*Device, unhealthy chan<- *Device) {
+	ticker := time.NewTicker(polledHealthCheckInterval)
+	defer ticker.Stop()
+
+	// Track devices already reported unhealthy to avoid duplicate reports.
+	reported := make(map[string]bool)
+
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			for uuid, devices := range parentToDevicesMap {
+				allReported := true
+				for _, d := range devices {
+					if !reported[d.ID] {
+						allReported = false
+						break
+					}
+				}
+				if allReported {
+					continue
+				}
+
+				gpu, ret := r.nvml.DeviceGetHandleByUUID(uuid)
+				if ret != nvml.SUCCESS {
+					klog.Warningf("Unable to get device handle for %v during polled health check: %v", uuid, ret)
+					continue
+				}
+
+				checks := []struct {
+					name  string
+					check func(nvml.Device) (string, bool)
+				}{
+					{"RemappedRows", r.checkRemappedRows},
+					{"RetiredPages", r.checkRetiredPages},
+					{"Temperature", r.checkTemperature},
+				}
+
+				for _, hc := range checks {
+					reason, failed := hc.check(gpu)
+					if !failed {
+						continue
+					}
+					klog.Infof("%s health check failed for %v: %s; marking device(s) as unhealthy.", hc.name, uuid, reason)
+					for _, d := range devices {
+						if !reported[d.ID] {
+							reported[d.ID] = true
+							unhealthy <- d
+						}
+					}
+					break
+				}
+			}
+		}
+	}
+}
+
+// checkRemappedRows checks whether the GPU has experienced a row remapping
+// failure or has a pending row remap that requires a GPU reset.
+// See: https://docs.nvidia.com/deploy/a100-gpu-mem-error-mgmt/index.html
+func (r *nvmlResourceManager) checkRemappedRows(gpu nvml.Device) (string, bool) {
+	_, uncRows, isPending, failureOccurred, ret := gpu.GetRemappedRows()
+	if ret == nvml.ERROR_NOT_SUPPORTED {
+		return "", false
+	}
+	if ret != nvml.SUCCESS {
+		klog.Warningf("Failed to get remapped rows: %v", ret)
+		return "", false
+	}
+
+	if failureOccurred {
+		return "row remapping failure occurred (uncorrectable memory error)", true
+	}
+	if isPending {
+		return "row remapping is pending (GPU reset required)", true
+	}
+	if uncRows > 0 {
+		klog.Warningf("GPU has %d uncorrectable remapped row(s); rows were successfully remapped", uncRows)
+	}
+	return "", false
+}
+
+// checkRetiredPages checks whether the GPU has pages pending retirement.
+// Pending page retirements indicate that the GPU requires a reboot to complete
+// the retirement of faulty memory pages.
+func (r *nvmlResourceManager) checkRetiredPages(gpu nvml.Device) (string, bool) {
+	status, ret := gpu.GetRetiredPagesPendingStatus()
+	if ret == nvml.ERROR_NOT_SUPPORTED {
+		return "", false
+	}
+	if ret != nvml.SUCCESS {
+		klog.Warningf("Failed to get retired pages pending status: %v", ret)
+		return "", false
+	}
+
+	if status == nvml.FEATURE_ENABLED {
+		return "pages are pending retirement (reboot required)", true
+	}
+	return "", false
+}
+
+// checkTemperature checks whether the GPU temperature has reached or exceeded
+// the hardware shutdown threshold. A GPU at this temperature will be shut down
+// by the hardware to prevent damage. If the temperature has reached the
+// slowdown threshold, a warning is logged but the device is not marked unhealthy.
+func (r *nvmlResourceManager) checkTemperature(gpu nvml.Device) (string, bool) {
+	shutdownTemp, ret := gpu.GetTemperatureThreshold(nvml.TEMPERATURE_THRESHOLD_SHUTDOWN)
+	if ret == nvml.ERROR_NOT_SUPPORTED {
+		return "", false
+	}
+	if ret != nvml.SUCCESS {
+		klog.Warningf("Failed to get shutdown temperature threshold: %v", ret)
+		return "", false
+	}
+
+	currentTemp, ret := gpu.GetTemperature(nvml.TEMPERATURE_GPU)
+	if ret == nvml.ERROR_NOT_SUPPORTED {
+		return "", false
+	}
+	if ret != nvml.SUCCESS {
+		klog.Warningf("Failed to get current GPU temperature: %v", ret)
+		return "", false
+	}
+
+	if currentTemp >= shutdownTemp {
+		return fmt.Sprintf("GPU temperature (%d°C) has reached shutdown threshold (%d°C)", currentTemp, shutdownTemp), true
+	}
+
+	slowdownTemp, ret := gpu.GetTemperatureThreshold(nvml.TEMPERATURE_THRESHOLD_SLOWDOWN)
+	if ret == nvml.SUCCESS && currentTemp >= slowdownTemp {
+		klog.Warningf("GPU temperature (%d°C) has reached slowdown threshold (%d°C); GPU is thermally throttling", currentTemp, slowdownTemp)
+	}
+
+	return "", false
 }
 
 const allXIDs = 0
