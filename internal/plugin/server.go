@@ -152,7 +152,10 @@ func (plugin *nvidiaDevicePlugin) Start(kubeletSocket string) error {
 		// TODO: add MPS health check
 		err := plugin.rm.CheckHealth(plugin.stop, plugin.health)
 		if err != nil {
-			klog.Errorf("Failed to start health check: %v; continuing with health checks disabled", err)
+			klog.Errorf("Failed to start health check: %v; Marking all devices as unhealthy; continuing with health checks disabled", err)
+			for _, d := range plugin.Devices() {
+				plugin.health <- d
+			}
 		}
 	}()
 
