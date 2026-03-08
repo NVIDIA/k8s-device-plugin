@@ -32,7 +32,6 @@ import (
 
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/platform-support/tegra"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/platform-support/tegra/csv"
 )
 
 const (
@@ -49,18 +48,6 @@ type csvlib nvcdilib
 type mixedcsvlib nvcdilib
 
 var _ deviceSpecGeneratorFactory = (*csvlib)(nil)
-
-// asCSVLib sets any CSV-specific defaults and casts the nvcdilib instance as a
-// *csvlib.
-func (l *nvcdilib) asCSVLib() *csvlib {
-	if len(l.csv.Files) == 0 {
-		l.csv.Files = csv.DefaultFileList()
-	}
-	if l.csv.CompatContainerRoot == "" {
-		l.csv.CompatContainerRoot = defaultOrinCompatContainerRoot
-	}
-	return (*csvlib)(l)
-}
 
 // DeviceSpecGenerators creates a set of generators for the specified set of
 // devices.
@@ -282,7 +269,7 @@ func (l *mixedcsvlib) getAllDeviceIndices() ([]string, error) {
 
 func (l *mixedcsvlib) deviceSpecGeneratorForId(id device.Identifier) (DeviceSpecGenerator, error) {
 	switch {
-	case id.IsGpuUUID(), isIntegratedGPUID(id):
+	case id.IsGpuUUID(), isOrinGPUID(id):
 		uuid := string(id)
 		device, ret := l.nvmllib.DeviceGetHandleByUUID(uuid)
 		if ret != nvml.SUCCESS {
@@ -374,13 +361,24 @@ func (l *mixedcsvlib) iGPUDeviceSpecGenerator(index int, uuid string) (DeviceSpe
 	return g, nil
 }
 
-func isIntegratedGPUID(id device.Identifier) bool {
+// isOrinGPUID returns true if the specified device identifier represents
+// an Orin iGPU uuid (as opposed to a discrete GPU).
+// Based on practical examples, the identifier for an Orin iGPU is a standard
+// hexadecimal UUID in the 8-4-4-4-12 format, whereas discrete GPU UUIDs have
+// the prefix `GPU-` or `MIG-` for full GPUs or MIG devices, respectively. Thor
+// iGPUs follow the same format as discrete GPUs.
+func isOrinGPUID(id device.Identifier) bool {
 	_, err := uuid.Parse(string(id))
 	return err == nil
 }
 
 // isIntegratedGPU checks whether the specified device is an integrated GPU.
-// As a proxy we check the PCI Bus if for thes
+// The following heuristic is followed:
+//   - If the device does not support getting PCI bus information, we fall back to
+//     checking the device name and consider Orin and Thor devices iGPUs.
+//   - If the device does support PCI bus information, we check for a specific
+//     bus ID that is associated with Thor devices.
+//
 // TODO: This should be replaced by an explicit NVML call once available.
 func isIntegratedGPU(d nvml.Device) (bool, error) {
 	pciInfo, ret := d.GetPciInfo()
@@ -395,13 +393,12 @@ func isIntegratedGPU(d nvml.Device) (bool, error) {
 		return false, fmt.Errorf("failed to get PCI info: %v", ret)
 	}
 
-	if pciInfo.Domain != 0 {
-		return false, nil
+	// On Thor-based systems, the iGPU always has the PCI bus ID '0000:01:00.0'.
+	// We explicitly handle this case.
+	if pciInfo.Domain == 0 && pciInfo.Bus == 1 && pciInfo.Device == 0 {
+		return true, nil
 	}
-	if pciInfo.Bus != 1 {
-		return false, nil
-	}
-	return pciInfo.Device == 0, nil
+	return false, nil
 }
 
 func (l *csvlib) driverDiscoverer() (discover.Discover, error) {
@@ -470,15 +467,11 @@ func (l *csvlib) getEnableCUDACompatHookOptions() (*discover.EnableCUDACompatHoo
 		_ = l.nvmllib.Shutdown()
 	}()
 
-	if !l.hasOrinDevices() {
-		hostDriverVersion, ret := l.nvmllib.SystemGetDriverVersion()
-		if ret != nvml.SUCCESS {
-			return nil, fmt.Errorf("failed to get driver version: %v", ret)
-		}
-		f := &discover.EnableCUDACompatHookOptions{
-			HostDriverVersion: hostDriverVersion,
-		}
-		return f, nil
+	var cudaCompatContainerRoot string
+	if l.hasOrinDevices() {
+		// For Orin devices we need to use a different container compat root.
+		// We allow this to be overridden by the user.
+		cudaCompatContainerRoot = l.csv.CompatContainerRoot
 	}
 
 	hostCUDAVersion, err := l.getCUDAVersionString()
@@ -488,7 +481,7 @@ func (l *csvlib) getEnableCUDACompatHookOptions() (*discover.EnableCUDACompatHoo
 
 	f := &discover.EnableCUDACompatHookOptions{
 		HostCUDAVersion:         hostCUDAVersion,
-		CUDACompatContainerRoot: l.csv.CompatContainerRoot,
+		CUDACompatContainerRoot: cudaCompatContainerRoot,
 	}
 	return f, nil
 }
