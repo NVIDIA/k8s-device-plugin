@@ -42,6 +42,9 @@ const (
 )
 
 type nvmlDeviceHealthChecker struct {
+	// nvmllib is the NVML interface used to query device handles during event
+	// monitoring. Stored here rather than accessed via nvmlResourceManager to
+	// keep the health checker decoupled and independently testable.
 	nvmllib           nvml.Interface
 	devices           Devices
 	parentToDeviceMap map[string]*Device
