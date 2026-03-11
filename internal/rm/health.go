@@ -41,7 +41,7 @@ const (
 	envEnableHealthChecks = "DP_ENABLE_HEALTHCHECKS"
 )
 
-type nvmlHealthProvider struct {
+type nvmlDeviceHealthChecker struct {
 	nvmllib           nvml.Interface
 	devices           Devices
 	parentToDeviceMap map[string]*Device
@@ -56,7 +56,7 @@ type nvmlHealthProvider struct {
 // Returns false if the context was canceled before the send completed.
 // It prefers completing the send if a receiver is immediately available,
 // even if the context is already done.
-func (h *nvmlHealthProvider) markUnhealthy(ctx context.Context, d *Device) bool {
+func (h *nvmlDeviceHealthChecker) markUnhealthy(ctx context.Context, d *Device) bool {
 	// Try a non-blocking send first so that an available receiver
 	// is served even when the context is already cancelled.
 	select {
@@ -127,7 +127,7 @@ func (r *nvmlResourceManager) checkHealth(ctx context.Context, devices Devices, 
 		parentToDeviceMap[uuid] = d
 	}
 
-	p := nvmlHealthProvider{
+	p := nvmlDeviceHealthChecker{
 		nvmllib:           r.nvml,
 		devices:           devices,
 		unhealthy:         unhealthy,
@@ -141,7 +141,7 @@ func (r *nvmlResourceManager) checkHealth(ctx context.Context, devices Devices, 
 	return p.runEventMonitor(ctx, eventSet)
 }
 
-func (h *nvmlHealthProvider) registerDeviceEvents(ctx context.Context, eventSet nvml.EventSet) {
+func (h *nvmlDeviceHealthChecker) registerDeviceEvents(ctx context.Context, eventSet nvml.EventSet) {
 	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
 	for uuid, d := range h.parentToDeviceMap {
 		gpu, ret := h.nvmllib.DeviceGetHandleByUUID(uuid)
@@ -168,7 +168,7 @@ func (h *nvmlHealthProvider) registerDeviceEvents(ctx context.Context, eventSet 
 	}
 }
 
-func (h *nvmlHealthProvider) runEventMonitor(ctx context.Context, eventSet nvml.EventSet) error {
+func (h *nvmlDeviceHealthChecker) runEventMonitor(ctx context.Context, eventSet nvml.EventSet) error {
 	for {
 		select {
 		case <-ctx.Done():
