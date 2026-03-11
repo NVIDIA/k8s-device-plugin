@@ -348,7 +348,7 @@ func TestRegisterDeviceEventsNotSupported(t *testing.T) {
 		break
 	}
 
-	p := nvmlHealthProvider{
+	p := nvmlDeviceHealthChecker{
 		nvmllib:           server,
 		devices:           devices,
 		unhealthy:         unhealthy,
@@ -398,7 +398,7 @@ func TestRunEventMonitorStopsOnCancelledContext(t *testing.T) {
 		},
 	}
 
-	p := nvmlHealthProvider{
+	p := nvmlDeviceHealthChecker{
 		nvmllib:           server,
 		devices:           devices,
 		unhealthy:         unhealthy,
