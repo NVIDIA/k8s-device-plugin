@@ -52,6 +52,28 @@ type nvmlHealthProvider struct {
 	unhealthy    chan<- *Device
 }
 
+// markUnhealthy sends a device to the unhealthy channel, respecting context cancellation.
+// Returns false if the context was canceled before the send completed.
+// It prefers completing the send if a receiver is immediately available,
+// even if the context is already done.
+func (h *nvmlHealthProvider) markUnhealthy(ctx context.Context, d *Device) bool {
+	// Try a non-blocking send first so that an available receiver
+	// is served even when the context is already cancelled.
+	select {
+	case h.unhealthy <- d:
+		return true
+	default:
+	}
+	// The channel was not ready; block until either it becomes ready
+	// or the context is cancelled.
+	select {
+	case h.unhealthy <- d:
+		return true
+	case <-ctx.Done():
+		return false
+	}
+}
+
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
 func (r *nvmlResourceManager) checkHealth(ctx context.Context, devices Devices, unhealthy chan<- *Device) error {
 	xids := getDisabledHealthCheckXids()
@@ -93,7 +115,11 @@ func (r *nvmlResourceManager) checkHealth(ctx context.Context, devices Devices, 
 		uuid, gi, ci, err := (&withDevicePlacements{r.nvml}).getDevicePlacement(d)
 		if err != nil {
 			klog.Warningf("Could not determine device placement for %v: %v; Marking it unhealthy.", d.ID, err)
-			unhealthy <- d
+			select {
+			case unhealthy <- d:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 			continue
 		}
 		deviceIDToGiMap[d.ID] = gi
@@ -110,24 +136,24 @@ func (r *nvmlResourceManager) checkHealth(ctx context.Context, devices Devices, 
 		deviceIDToCiMap:   deviceIDToCiMap,
 		xidsDisabled:      xids,
 	}
-	p.registerDeviceEvents(eventSet)
+	p.registerDeviceEvents(ctx, eventSet)
 
 	return p.runEventMonitor(ctx, eventSet)
 }
 
-func (h *nvmlHealthProvider) registerDeviceEvents(eventSet nvml.EventSet) {
+func (h *nvmlHealthProvider) registerDeviceEvents(ctx context.Context, eventSet nvml.EventSet) {
 	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
 	for uuid, d := range h.parentToDeviceMap {
 		gpu, ret := h.nvmllib.DeviceGetHandleByUUID(uuid)
 		if ret != nvml.SUCCESS {
 			klog.Infof("unable to get device handle from UUID: %v; marking it as unhealthy", ret)
-			h.unhealthy <- d
+			h.markUnhealthy(ctx, d)
 			continue
 		}
 		supportedEvents, ret := gpu.GetSupportedEventTypes()
 		if ret != nvml.SUCCESS {
 			klog.Infof("unable to determine the supported events for %v: %v; marking it as unhealthy", d.ID, ret)
-			h.unhealthy <- d
+			h.markUnhealthy(ctx, d)
 			continue
 		}
 
@@ -137,7 +163,7 @@ func (h *nvmlHealthProvider) registerDeviceEvents(eventSet nvml.EventSet) {
 			klog.Warningf("Device %v is too old to support healthchecking.", d.ID)
 		case ret != nvml.SUCCESS:
 			klog.Infof("Unable to register events for %v: %v; marking it as unhealthy", d.ID, ret)
-			h.unhealthy <- d
+			h.markUnhealthy(ctx, d)
 		}
 	}
 }
@@ -157,7 +183,9 @@ func (h *nvmlHealthProvider) runEventMonitor(ctx context.Context, eventSet nvml.
 		if ret != nvml.SUCCESS {
 			klog.Infof("Error waiting for event: %v; Marking all devices as unhealthy", ret)
 			for _, d := range h.devices {
-				h.unhealthy <- d
+				if !h.markUnhealthy(ctx, d) {
+					return ctx.Err()
+				}
 			}
 			continue
 		}
@@ -180,7 +208,9 @@ func (h *nvmlHealthProvider) runEventMonitor(ctx context.Context, eventSet nvml.
 			// If we cannot reliably determine the device UUID, we mark all devices as unhealthy.
 			klog.Infof("Failed to determine uuid for event %v: %v; Marking all devices as unhealthy.", e, ret)
 			for _, d := range h.devices {
-				h.unhealthy <- d
+				if !h.markUnhealthy(ctx, d) {
+					return ctx.Err()
+				}
 			}
 			continue
 		}
@@ -201,7 +231,7 @@ func (h *nvmlHealthProvider) runEventMonitor(ctx context.Context, eventSet nvml.
 		}
 
 		klog.Infof("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
-		h.unhealthy <- d
+		h.markUnhealthy(ctx, d)
 	}
 }
 

@@ -164,10 +164,6 @@ func (plugin *nvidiaDevicePlugin) Stop() error {
 		plugin.healthCancel()
 		plugin.healthWg.Wait()
 	}
-	if plugin.health != nil {
-		close(plugin.health)
-	}
-
 	klog.Infof("Stopping to serve '%s' on %s", plugin.rm.Resource(), plugin.socket)
 	plugin.server.Stop()
 	plugin.server = nil
@@ -279,11 +275,7 @@ func (plugin *nvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.D
 		case <-plugin.healthCtx.Done():
 			klog.V(4).Infof("Stopping health checks for '%s'", plugin.rm.Resource())
 			return nil
-		case d, ok := <-plugin.health:
-			if !ok {
-				klog.V(4).Infof("Health channel closed for '%s'", plugin.rm.Resource())
-				return nil
-			}
+		case d := <-plugin.health:
 			// FIXME: there is no way to recover from the Unhealthy state.
 			d.Health = pluginapi.Unhealthy
 			klog.Infof("'%s' device marked unhealthy: %s", plugin.rm.Resource(), d.ID)
