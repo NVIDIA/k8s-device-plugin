@@ -357,7 +357,7 @@ func TestRegisterDeviceEventsNotSupported(t *testing.T) {
 		deviceIDToCiMap:   make(map[string]uint32),
 	}
 
-	p.registerDeviceEvents(eventSet)
+	p.registerDeviceEvents(context.Background(), eventSet)
 
 	// Close the channel so we can drain it
 	close(unhealthy)
@@ -369,4 +369,46 @@ func TestRegisterDeviceEventsNotSupported(t *testing.T) {
 	}
 
 	require.Empty(t, unhealthyDevices, "Devices returning ERROR_NOT_SUPPORTED should NOT be marked as unhealthy")
+}
+
+func TestRunEventMonitorStopsOnCancelledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Unbuffered channel with no reader — sends would block without context awareness.
+	unhealthy := make(chan *Device)
+
+	server := dgxa100.New()
+	devices := make(Devices)
+	parentToDeviceMap := make(map[string]*Device)
+
+	for i, d := range server.Devices {
+		device, err := BuildDevice(newNvmlGPUDevice(i, d))
+		require.NoError(t, err)
+		devices[device.GetUUID()] = device
+		parentToDeviceMap[device.GetUUID()] = device
+		break
+	}
+
+	eventSet := &mock.EventSet{
+		WaitFunc: func(v uint32) (nvml.EventData, nvml.Return) {
+			return nvml.EventData{}, nvml.ERROR_UNKNOWN
+		},
+		FreeFunc: func() nvml.Return {
+			return nvml.SUCCESS
+		},
+	}
+
+	p := nvmlHealthProvider{
+		nvmllib:           server,
+		devices:           devices,
+		unhealthy:         unhealthy,
+		parentToDeviceMap: parentToDeviceMap,
+		deviceIDToGiMap:   make(map[string]uint32),
+		deviceIDToCiMap:   make(map[string]uint32),
+	}
+
+	cancel()
+
+	err := p.runEventMonitor(ctx, eventSet)
+	require.ErrorIs(t, err, context.Canceled)
 }
