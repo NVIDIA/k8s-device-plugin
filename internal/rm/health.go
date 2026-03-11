@@ -347,22 +347,22 @@ type withDevicePlacements struct {
 // getDevicePlacement returns the placement of the specified device.
 // For a MIG device the placement is defined by the 3-tuple <parent UUID, GI, CI>
 // For a full device the returned 3-tuple is the device's uuid and 0xFFFFFFFF for the other two elements.
-func (r *withDevicePlacements) getDevicePlacement(d *Device) (string, uint32, uint32, error) {
+func (p *withDevicePlacements) getDevicePlacement(d *Device) (string, uint32, uint32, error) {
 	if !d.IsMigDevice() {
 		return d.GetUUID(), 0xFFFFFFFF, 0xFFFFFFFF, nil
 	}
-	return r.getMigDeviceParts(d)
+	return p.getMigDeviceParts(d)
 }
 
 // getMigDeviceParts returns the parent GI and CI ids of the MIG device.
-func (r *withDevicePlacements) getMigDeviceParts(d *Device) (string, uint32, uint32, error) {
+func (p *withDevicePlacements) getMigDeviceParts(d *Device) (string, uint32, uint32, error) {
 	if !d.IsMigDevice() {
 		return "", 0, 0, fmt.Errorf("cannot get GI and CI of full device")
 	}
 
 	uuid := d.GetUUID()
 	// For older driver versions, the call to DeviceGetHandleByUUID will fail for MIG devices.
-	mig, ret := r.DeviceGetHandleByUUID(uuid)
+	mig, ret := p.DeviceGetHandleByUUID(uuid)
 	if ret == nvml.SUCCESS {
 		parentHandle, ret := mig.GetDeviceHandleFromMigDeviceHandle()
 		if ret != nvml.SUCCESS {
