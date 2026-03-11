@@ -340,6 +340,11 @@ func newHealthCheckXIDs(xids ...string) disabledXIDs {
 	return output
 }
 
+// withDevicePlacements wraps nvml.Interface to provide device placement
+// resolution (parent UUID, GPU Instance, Compute Instance) independently of
+// nvmlResourceManager. This decoupling allows placement logic to be reused
+// across different health-check providers (e.g., NVsentinel, Device-API)
+// without requiring access to the full resource manager.
 type withDevicePlacements struct {
 	nvml.Interface
 }
