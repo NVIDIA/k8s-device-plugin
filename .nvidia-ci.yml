@@ -264,11 +264,8 @@ update-nspect:
     pull_policy: always
   variables:
     GITLAB_ACCESS_TOKEN: "${CNT_GITLAB_TOKEN}"
-    # Allow for setting nspect program version manually.
-    # The default empty string value results in the key
-    # being omitted from the publishing doc (which is
-    # valid).
-    NSPECT_PROGRAM_VERSION: ""
+    # Allow for setting nspect release version manually.
+    NSPECT_RELEASE_VERSION: ""
   script:
     - |
       if [ -z "${NGC_PUBLISHING_PROJECT_PATH}" ]; then
@@ -282,7 +279,7 @@ update-nspect:
           --project-name "${PROJECT_NAME}" \
           --versions-file "${VERSIONS_FILE}" \
           --output "${PROJECT_NAME}.yaml" \
-          --nspect-program-version "${NSPECT_PROGRAM_VERSION}"
+          --nspect-release-version "${NSPECT_RELEASE_VERSION}"
     - cnt-ngc-publish merge-request --files "${PROJECT_NAME}.yaml"
   artifacts:
     paths:
@@ -299,6 +296,7 @@ ngc-image-publish:
     - job: update-nspect
   variables:
     NGC_PUBLISHING_PROJECT_PATH: "${NGC_PUBLISHING_PROD_PROJECT_PATH}"
+    NSPECT_RELEASE_VERSION: "${CI_COMMIT_TAG}"
 
 # Create a dummy MR that exercises the publishing logic
 mock-image-publish:
@@ -310,3 +308,4 @@ mock-image-publish:
     - job: update-nspect-staging
   variables:
     NGC_PUBLISHING_PROJECT_PATH: "${NGC_PUBLISHING_TEST_PROJECT_PATH}"
+    NSPECT_RELEASE_VERSION: "test"

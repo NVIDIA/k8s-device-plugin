@@ -1,5 +1,28 @@
 ## Changelog
 
+### v0.19.0
+- Add --sleep-interval=infinite support to GFD for running as a pod (#1603)
+- Fix image tag in static deployment (#1604)
+- Add ownerReference to NodeFeature CRs for garbage collection (#1597)
+- Change default value for gds, gdrcopy and mofed flags (#1550)
+- Fix healthchecking on old devices (#1562)
+- Enable NodeFeature API by default in GFD (#1504)
+- Build multiarch images on native GitHub runners (#1468)
+
+### v0.18.2
+- Ensure that cdi.FeatureFlags are passed to CDI library
+- Fix race condition in config-manager when label is unset
+- Fix nested container use cases by ensuring that IPC sockets are not mounted readonly
+- Bump NVIDIA Container Toolkit to v1.18.2
+- Bump distroless base image to v3.2.2-dev
+
+### v0.18.1
+- Allow CDI feature flags to be set
+- Pass driver root to nvinfo.New in device plugin main
+- Bump NVIDIA Container Toolkit to v1.18.1
+- Bump distroless base image to v3.2.1-dev
+- Bump github.com/opencontainers/selinux from 1.12.0 to 1.13.1 (#1506)
+
 ### v0.18.0
 - Rename getHealthCheckXids and clarify documentation
 - Add support for explicitly enabling XIDs in health checks
