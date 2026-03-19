@@ -27,6 +27,55 @@ config:
   # List of fallback strategies to attempt if no config is selected and no default is provided
   fallbackStrategies: ["named" , "single"]
 
+# Configuration Manager Environment Variables
+# Controls config-manager init and sidecar containers that handle dynamic config updates
+configManager:
+  # Init container configuration (runs once on pod startup)
+  init:
+    # Kubernetes node label to watch for device plugin configuration
+    nodeLabel: "nvidia.com/device-plugin.config"
+    # Directory containing available configuration files
+    configFileSrcDir: "/available-configs"
+    # Destination path for the active configuration file
+    configFileDst: "/config/config.yaml"
+    # Whether to send signal after config update (init container: false)
+    sendSignal: "false"
+    # Signal number to send (empty for init container)
+    signal: ""
+    # Process name to signal (empty for init container)
+    processToSignal: ""
+    # Run once and exit (init container: true)
+    oneshot: "true"
+
+  # Sidecar container configuration (runs continuously for hot-reload)
+  sidecar:
+    # Run continuously to watch for config changes
+    oneshot: "false"
+    # Send signal to main container after config update
+    sendSignal: "true"
+    # SIGHUP (1) to trigger config reload
+    signal: "1"
+    # Process name varies by DaemonSet and is set automatically in templates
+
+# Main Container Environment Variables
+# Apply to device-plugin, gpu-feature-discovery, and mps-control-daemon containers
+env:
+  # Path to the active configuration file
+  configFile: "/config/config.yaml"
+
+  # NVIDIA runtime environment variables
+  nvidia:
+    # MIG (Multi-Instance GPU) devices to monitor
+    # Options: "all" or comma-separated GPU indices
+    migMonitorDevices: "all"
+    # GPU devices visible to containers
+    # Options: "all", "none", or comma-separated GPU indices/UUIDs
+    visibleDevices: "all"
+    # NVIDIA driver capabilities to enable
+    # Common values: "compute,utility" for standard workloads
+    # Full list: compute, compat32, graphics, utility, video, display, ngx
+    driverCapabilities: "compute,utility"
+
 compatWithCPUManager: null
 migStrategy: null
 failOnInitError: null
