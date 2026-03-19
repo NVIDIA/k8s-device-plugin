@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -34,6 +35,7 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mount"
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mps"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
+	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
 
@@ -73,6 +75,12 @@ func main() {
 			Value:   spec.MigStrategyNone,
 			Usage:   "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
 			EnvVars: []string{"MIG_STRATEGY"},
+		},
+		&cli.IntFlag{
+			Name:    "log-verbosity",
+			Value:   0,
+			Usage:   "the verbosity level for klog logs",
+			EnvVars: []string{"LOG_VERBOSITY"},
 		},
 	}
 	c.Flags = config.flags
@@ -169,12 +177,17 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 		return nil, false, fmt.Errorf("unable to load config: %v", err)
 	}
 	spec.DisableResourceNamingInConfig(config)
+	err = new(klog.Level).Set(strconv.Itoa(*config.Flags.LogVerbosity))
+	if err != nil {
+		return nil, false, fmt.Errorf("invalid log verbosity level: %v", err)
+	}
 
 	nvmllib := nvml.New()
 	devicelib := device.New(nvmllib)
 	infolib := nvinfo.New(
 		nvinfo.WithNvmlLib(nvmllib),
 		nvinfo.WithDeviceLib(devicelib),
+		nvinfo.WithLogger(&logger.NvInfoAdapter{DebugV: 1}),
 	)
 
 	// Update the configuration file with default resources.

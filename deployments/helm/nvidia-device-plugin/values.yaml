@@ -37,6 +37,7 @@ gdrcopyEnabled: null
 gdsEnabled: null
 mofedEnabled: null
 deviceDiscoveryStrategy: null
+logVerbosity: null
 
 nameOverride: ""
 fullnameOverride: ""

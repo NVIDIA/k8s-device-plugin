@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -35,6 +36,7 @@ import (
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
+	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/plugin"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
@@ -159,6 +161,12 @@ func main() {
 			Name:    "imex-required",
 			Usage:   "The specified IMEX channels are required",
 			EnvVars: []string{"IMEX_REQUIRED"},
+		},
+		&cli.IntFlag{
+			Name:    "log-verbosity",
+			Value:   0,
+			Usage:   "the verbosity level for klog logs",
+			EnvVars: []string{"LOG_VERBOSITY"},
 		},
 		// The following CLI flags do not have equivalents in the config file.
 		&cli.StringFlag{
@@ -335,6 +343,10 @@ func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) 
 		return nil, false, fmt.Errorf("unable to load config: %v", err)
 	}
 	spec.DisableResourceNamingInConfig(config)
+	err = new(klog.Level).Set(strconv.Itoa(*config.Flags.LogVerbosity))
+	if err != nil {
+		return nil, false, fmt.Errorf("invalid log verbosity level: %v", err)
+	}
 
 	driverRoot := root(*config.Flags.Plugin.ContainerDriverRoot)
 	// We construct an NVML library specifying the path to libnvidia-ml.so.1
@@ -347,6 +359,7 @@ func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) 
 		nvinfo.WithRoot(string(driverRoot)),
 		nvinfo.WithNvmlLib(nvmllib),
 		nvinfo.WithDeviceLib(devicelib),
+		nvinfo.WithLogger(&logger.NvInfoAdapter{DebugV: 1}),
 	)
 
 	err = validateFlags(infolib, config)
