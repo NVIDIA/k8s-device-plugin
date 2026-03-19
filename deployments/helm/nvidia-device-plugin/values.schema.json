@@ -107,6 +107,13 @@
         }
       }
     },
+    "debug": {
+      "description": "debug enables debug logging for the standard logger in the device plugin, GFD, and the MPS control daemon. Unset leaves the components at their info level. Enabling debug also logs debug messages from other users of the shared standard logger, such as the CDI spec generation.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "deviceDiscoveryStrategy": {
       "type": [
         "string",
