@@ -55,6 +55,9 @@ mofedEnabled: null
 deviceDiscoveryStrategy: null
 # @schema type:[string, null]
 nvidiaDriverCapabilities: "compute,utility"
+# Leave unset to inherit the binary's built-in default log verbosity of 0.
+# @schema type:[string, integer, null]
+logVerbosity: null
 
 # @schema nullable
 nameOverride: ""
