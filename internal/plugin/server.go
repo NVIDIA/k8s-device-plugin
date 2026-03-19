@@ -126,6 +126,11 @@ func (plugin *nvidiaDevicePlugin) Start(kubeletSocket string) error {
 	if err != nil {
 		klog.Errorf("Could not start device plugin for '%s': %s", plugin.rm.Resource(), err)
 		plugin.healthCancel()
+		if plugin.server != nil {
+			plugin.server.Stop()
+			plugin.server = nil
+		}
+		plugin.health = nil
 		return err
 	}
 	klog.Infof("Starting to serve '%s' on %s", plugin.rm.Resource(), plugin.socket)
