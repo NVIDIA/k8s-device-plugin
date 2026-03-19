@@ -53,7 +53,7 @@ func TestDevicePluginDaemonsetTemplateRenderedDeployment(t *testing.T) {
 			description: "no options",
 			expectedContainer: v1.Container{
 				SecurityContext: &v1.SecurityContext{
-					AllowPrivilegeEscalation: ptr(false),
+					AllowPrivilegeEscalation: new(false),
 					Capabilities: &v1.Capabilities{
 						Drop: []v1.Capability{"ALL"},
 					},
@@ -67,7 +67,7 @@ func TestDevicePluginDaemonsetTemplateRenderedDeployment(t *testing.T) {
 			},
 			expectedContainer: v1.Container{
 				SecurityContext: &v1.SecurityContext{
-					Privileged: ptr(true),
+					Privileged: new(true),
 				},
 			},
 		},
@@ -718,6 +718,99 @@ func requireSchemaRejection(t *testing.T, err error, valuePath string) {
 		"schema error does not name %q: %v", valuePath, err)
 }
 
-func ptr[T any](x T) *T {
-	return &x
+// TestLogVerbosityTemplateRendered verifies the logVerbosity value is
+// propagated to the device plugin, GFD, and MPS DaemonSets, and
+// LOG_VERBOSITY is left unset when logVerbosity is not specified.
+func TestLogVerbosityTemplateRendered(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+	releaseName, logVerbosityEnvVar := "nvidia-device-plugin", "LOG_VERBOSITY"
+
+	testCases := []struct {
+		description   string
+		templateFile  string
+		containerName string
+		options       map[string]string
+		expected      *string
+	}{
+		{
+			description:   "logVerbosity unset leaves LOG_VERBOSITY unset for the plugin",
+			templateFile:  "templates/daemonset-device-plugin.yml",
+			containerName: "nvidia-device-plugin-ctr",
+		},
+		{
+			description:   "logVerbosity is propagated to the device plugin",
+			templateFile:  "templates/daemonset-device-plugin.yml",
+			containerName: "nvidia-device-plugin-ctr",
+			options:       map[string]string{"logVerbosity": "2"},
+			expected:      new("2"),
+		},
+		{
+			description:   "logVerbosity of 0 is propagated to the device plugin",
+			templateFile:  "templates/daemonset-device-plugin.yml",
+			containerName: "nvidia-device-plugin-ctr",
+			options:       map[string]string{"logVerbosity": "0"},
+			expected:      new("0"),
+		},
+		{
+			description:   "logVerbosity is propagated to GFD",
+			templateFile:  "templates/daemonset-gfd.yml",
+			containerName: "gpu-feature-discovery-ctr",
+			options:       map[string]string{"gfd.enabled": "true", "logVerbosity": "2"},
+			expected:      new("2"),
+		},
+		{
+			description:   "logVerbosity is propagated to the MPS",
+			templateFile:  "templates/daemonset-mps-control-daemon.yml",
+			containerName: "mps-control-daemon-ctr",
+			options:       map[string]string{"logVerbosity": "2"},
+			expected:      new("2"),
+		},
+	}
+
+	for i, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			options := &helm.Options{
+				SetValues:      tc.options,
+				KubectlOptions: k8s.NewKubectlOptions("", "", fmt.Sprintf("k8s-device-plugin-log-verbosity-test-%d", i)),
+				Logger:         logger.Discard,
+			}
+
+			output := helm.RenderTemplate(t, options, helmChartPath, releaseName, []string{tc.templateFile})
+
+			var daemonset appsv1.DaemonSet
+			helm.UnmarshalK8SYaml(t, output, &daemonset)
+
+			container := containerByName(t, daemonset.Spec.Template.Spec.Containers, tc.containerName)
+			value, found := envValue(container, logVerbosityEnvVar)
+			if tc.expected == nil {
+				require.Falsef(t, found, "%s should not be set, got %q", logVerbosityEnvVar, value)
+				return
+			}
+			require.Truef(t, found, "%s should be set", logVerbosityEnvVar)
+			require.Equal(t, *tc.expected, value)
+		})
+	}
+}
+
+// containerByName returns the container with the given name from the list.
+func containerByName(t *testing.T, containers []v1.Container, name string) v1.Container {
+	t.Helper()
+	for _, c := range containers {
+		if c.Name == name {
+			return c
+		}
+	}
+	t.Fatalf("container %q not found", name)
+	return v1.Container{}
+}
+
+// envValue returns the value of the named environment variable and whether it was found.
+func envValue(container v1.Container, name string) (string, bool) {
+	for _, e := range container.Env {
+		if e.Name == name {
+			return e.Value, true
+		}
+	}
+	return "", false
 }
