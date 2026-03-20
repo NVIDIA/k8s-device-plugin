@@ -15,12 +15,12 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v2 v2.27.7
-	golang.org/x/mod v0.33.0
+	golang.org/x/mod v0.34.0
 	google.golang.org/grpc v1.79.1
 	k8s.io/api v0.35.2
 	k8s.io/apimachinery v0.35.2
 	k8s.io/client-go v0.35.2
-	k8s.io/klog/v2 v2.130.1
+	k8s.io/klog/v2 v2.140.0
 	k8s.io/kubelet v0.35.2
 	k8s.io/mount-utils v0.35.2
 	sigs.k8s.io/node-feature-discovery v0.18.3
