@@ -51,7 +51,7 @@ func NewDeviceMap(infolib info.Interface, devicelib device.Interface, config *sp
 	}
 
 	if infolib.ResolvePlatform() == info.PlatformWSL {
-		b.newGPUDevice = newWslGPUDevice
+		b.newGPUDevice = newWslAllGPUsDevice
 	}
 
 	return b.build()

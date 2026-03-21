@@ -25,6 +25,30 @@ import (
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
+func TestWslDeviceMapHasSingleAllDevice(t *testing.T) {
+	// Simulate building a GPU device map with 3 GPUs on WSL.
+	// Because newWslAllGPUsDevice always returns index/UUID "all", the map
+	// should collapse to exactly one device entry per resource.
+	devices := make(DeviceMap)
+	resourceName := spec.ResourceName("nvidia.com/gpu")
+
+	for i := 0; i < 3; i++ {
+		index, info := newWslAllGPUsDevice(i, nil)
+		err := devices.setEntry(resourceName, index, info)
+		require.NoError(t, err)
+	}
+
+	gpuDevices, ok := devices[resourceName]
+	require.True(t, ok)
+	require.Len(t, gpuDevices, 1)
+
+	dev, ok := gpuDevices["all"]
+	require.True(t, ok)
+	require.Equal(t, "all", dev.ID)
+	require.Equal(t, "all", dev.Index)
+	require.Equal(t, []string{"/dev/dxg"}, dev.Paths)
+}
+
 func TestDeviceMapInsert(t *testing.T) {
 	device0 := Device{Device: pluginapi.Device{ID: "0"}}
 	device0withIndex := Device{Device: pluginapi.Device{ID: "0"}, Index: "index"}
