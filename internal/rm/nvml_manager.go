@@ -60,9 +60,10 @@ func NewNVMLResourceManagers(infolib info.Interface, nvmllib nvml.Interface, dev
 		}
 		r := &nvmlResourceManager{
 			resourceManager: resourceManager{
-				config:   config,
-				resource: resourceName,
-				devices:  devices,
+				config:     config,
+				resource:   resourceName,
+				allDevices: devices,
+				devices:    devices,
 			},
 			nvml: nvmllib,
 		}
@@ -92,7 +93,7 @@ func (r *nvmlResourceManager) GetDevicePaths(ids []string) []string {
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
 func (r *nvmlResourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
-	return r.checkHealth(stop, r.devices, unhealthy)
+	return r.checkHealth(stop, r.Devices(), unhealthy)
 }
 
 // getPreferredAllocation runs an allocation algorithm over the inputs.

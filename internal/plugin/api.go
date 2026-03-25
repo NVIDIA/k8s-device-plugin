@@ -23,4 +23,5 @@ type Interface interface {
 	Devices() rm.Devices
 	Start(string) error
 	Stop() error
+	HandleAllowedDeviceIDs([]string)
 }

@@ -17,11 +17,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"syscall"
 	"time"
 
@@ -30,6 +33,12 @@ import (
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/fsnotify/fsnotify"
 	"github.com/urfave/cli/v2"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 
@@ -397,7 +406,109 @@ func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) 
 		klog.Info("No devices found. Waiting indefinitely.")
 	}
 
+	go watchHamiNodeAnnotations(c.Context, plugins)
+
 	return plugins, false, nil
+}
+
+func watchHamiNodeAnnotations(ctx context.Context, plugins []plugin.Interface) {
+	const annotationKey = "hami.io/node-nvidia-register"
+
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
+		klog.Warningf("node-watcher: unable to build in-cluster config: %v; skipping annotation watcher", err)
+		return
+	}
+
+	cs, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		klog.Warningf("node-watcher: unable to create clientset: %v; skipping annotation watcher", err)
+		return
+	}
+
+	nodeName := os.Getenv("NODE_NAME")
+	if nodeName == "" {
+		hn, _ := os.Hostname()
+		nodeName = hn
+		klog.Warningf("node-watcher: NODE_NAME not set, falling back to hostname=%s", nodeName)
+	}
+
+	re := regexp.MustCompile(`(?:hami-core:)?GPU-[0-9a-fA-F-]+`)
+	lastAnn := ""
+
+	notifyPlugins := func(ann string) {
+		if ann == lastAnn {
+			return
+		}
+		lastAnn = ann
+
+		matches := re.FindAllString(ann, -1)
+		seen := map[string]bool{}
+		var uuids []string
+		for _, m := range matches {
+			m = strings.TrimPrefix(m, "hami-core:")
+			if !seen[m] {
+				seen[m] = true
+				uuids = append(uuids, m)
+			}
+		}
+
+		klog.Infof("node-watcher: annotation changed, extracted GPUs=%v", uuids)
+		for _, p := range plugins {
+			p.HandleAllowedDeviceIDs(uuids)
+		}
+	}
+
+	// Initial sync so plugin state is aligned before watch events arrive.
+	if node, err := cs.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{}); err == nil {
+		ann := ""
+		if node.Annotations != nil {
+			ann = node.Annotations[annotationKey]
+		}
+		notifyPlugins(ann)
+	} else {
+		klog.Warningf("node-watcher: initial get node %s failed: %v", nodeName, err)
+	}
+
+	for {
+		if err := ctx.Err(); err != nil {
+			klog.Infof("node-watcher: context cancelled, exiting: %v", err)
+			return
+		}
+
+		timeoutSeconds := int64(300)
+		w, err := cs.CoreV1().Nodes().Watch(ctx, metav1.ListOptions{
+			FieldSelector:  fields.OneTermEqualSelector("metadata.name", nodeName).String(),
+			TimeoutSeconds: &timeoutSeconds,
+		})
+		if err != nil {
+			klog.Warningf("node-watcher: failed to watch node %s: %v", nodeName, err)
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		for event := range w.ResultChan() {
+			switch event.Type {
+			case watch.Added, watch.Modified:
+				node, ok := event.Object.(*corev1.Node)
+				if !ok || node == nil {
+					continue
+				}
+				ann := ""
+				if node.Annotations != nil {
+					ann = node.Annotations[annotationKey]
+				}
+				notifyPlugins(ann)
+			case watch.Deleted:
+				notifyPlugins("")
+			case watch.Error:
+				klog.Warningf("node-watcher: received watch error event for node %s", nodeName)
+			}
+		}
+
+		w.Stop()
+		time.Sleep(1 * time.Second)
+	}
 }
 
 func stopPlugins(plugins []plugin.Interface) error {

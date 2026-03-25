@@ -63,6 +63,7 @@ type nvidiaDevicePlugin struct {
 	server *grpc.Server
 	health chan *rm.Device
 	stop   chan interface{}
+	update chan struct{}
 
 	imexChannels imex.Channels
 
@@ -110,13 +111,16 @@ func (plugin *nvidiaDevicePlugin) initialize() {
 	plugin.server = grpc.NewServer([]grpc.ServerOption{}...)
 	plugin.health = make(chan *rm.Device)
 	plugin.stop = make(chan interface{})
+	plugin.update = make(chan struct{}, 1)
 }
 
 func (plugin *nvidiaDevicePlugin) cleanup() {
 	close(plugin.stop)
+	close(plugin.update)
 	plugin.server = nil
 	plugin.health = nil
 	plugin.stop = nil
+	plugin.update = nil
 }
 
 // Devices returns the full set of devices associated with the plugin.
@@ -280,7 +284,22 @@ func (plugin *nvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.D
 			if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
 				return nil
 			}
+		case <-plugin.update:
+			if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
+				return nil
+			}
 		}
+	}
+}
+
+// HandleAllowedDeviceIDs updates the resource manager with a list of UUIDs
+// that should be excluded from plugin reporting and triggers an immediate
+// ListAndWatch update to kubelet.
+func (plugin *nvidiaDevicePlugin) HandleAllowedDeviceIDs(uuids []string) {
+	plugin.rm.HandleAllowedDeviceIDs(uuids)
+	select {
+	case plugin.update <- struct{}{}:
+	default:
 	}
 }
 

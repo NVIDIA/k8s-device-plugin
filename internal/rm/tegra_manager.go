@@ -47,9 +47,10 @@ func NewTegraResourceManagers(config *spec.Config) ([]ResourceManager, error) {
 		}
 		r := &tegraResourceManager{
 			resourceManager: resourceManager{
-				config:   config,
-				resource: resourceName,
-				devices:  devices,
+				config:     config,
+				resource:   resourceName,
+				allDevices: devices,
+				devices:    devices,
 			},
 		}
 		if len(devices) != 0 {
