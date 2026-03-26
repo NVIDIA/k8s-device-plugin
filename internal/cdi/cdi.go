@@ -56,7 +56,8 @@ type cdiHandler struct {
 	vendor           string
 	deviceIDStrategy string
 
-	deviceListStrategies spec.DeviceListStrategies
+	deviceListStrategies    spec.DeviceListStrategies
+	deviceDiscoveryStrategy string
 
 	// nvcdiFeatureFlags allows finer control over CDI spec generation.
 	nvcdiFeatureFlags []string
@@ -87,9 +88,11 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 	if !c.deviceListStrategies.AnyCDIEnabled() {
 		return &null{}, nil
 	}
+	if c.deviceDiscoveryStrategy == "" {
+		return nil, fmt.Errorf("device discovery strategy not set")
+	}
 	hasNVML, _ := infolib.HasNvml()
-	platform := infolib.ResolvePlatform()
-	if !hasNVML && platform != info.PlatformTegra {
+	if !hasNVML && c.deviceDiscoveryStrategy != "tegra" {
 		klog.Warning("No valid resources detected, creating a null CDI handler")
 		return &null{}, nil
 	}
@@ -133,7 +136,7 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 	// On Tegra (CSV mode), the default CSV files live under the driver root.
 	// Inject driver-root-aware paths explicitly so the nvcdi library does not
 	// fall back to the hardcoded absolute paths returned by csv.DefaultFileList().
-	if platform == info.PlatformTegra {
+	if c.deviceDiscoveryStrategy == "tegra" {
 		commonOptions = append(commonOptions, nvcdi.WithCSVFiles(csvFilesForRoot(c.driverRoot)))
 	}
 
