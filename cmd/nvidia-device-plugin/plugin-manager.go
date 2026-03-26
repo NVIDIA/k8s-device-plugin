@@ -104,5 +104,6 @@ func resolveStrategy(strategy string, infolib info.Interface) string {
 	case info.PlatformTegra:
 		return "tegra"
 	}
-	return strategy
+	klog.Warning("Unsupported platform detected; defaulting to nvml")
+	return "nvml"
 }
