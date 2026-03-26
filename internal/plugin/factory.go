@@ -41,7 +41,8 @@ type options struct {
 	cdiHandler cdi.Interface
 	config     *spec.Config
 
-	deviceListStrategies spec.DeviceListStrategies
+	deviceListStrategies    spec.DeviceListStrategies
+	deviceDiscoveryStrategy string
 
 	imexChannels imex.Channels
 }
@@ -66,6 +67,10 @@ func New(ctx context.Context, infolib info.Interface, nvmllib nvml.Interface, de
 		o.cdiHandler = cdi.NewNullHandler()
 	}
 
+	if o.deviceDiscoveryStrategy == "" {
+		return nil, fmt.Errorf("device discovery strategy not set")
+	}
+
 	resourceManagers, err := o.getResourceManagers()
 	if err != nil {
 		return nil, fmt.Errorf("failed to construct resource managers: %w", err)
@@ -86,7 +91,7 @@ func New(ctx context.Context, infolib info.Interface, nvmllib nvml.Interface, de
 // Each resource manager maps to a specific named extended resource and may
 // include full GPUs or MIG devices.
 func (o *options) getResourceManagers() ([]rm.ResourceManager, error) {
-	strategy := o.resolveStrategy(*o.config.Flags.DeviceDiscoveryStrategy)
+	strategy := o.deviceDiscoveryStrategy
 	switch strategy {
 	case "nvml":
 		ret := o.nvmllib.Init()
@@ -120,19 +125,4 @@ func (o *options) getResourceManagers() ([]rm.ResourceManager, error) {
 		}
 		return nil, nil
 	}
-}
-
-func (o *options) resolveStrategy(strategy string) string {
-	if strategy != "" && strategy != "auto" {
-		return strategy
-	}
-
-	platform := o.infolib.ResolvePlatform()
-	switch platform {
-	case info.PlatformNVML, info.PlatformWSL:
-		return "nvml"
-	case info.PlatformTegra:
-		return "tegra"
-	}
-	return strategy
 }
