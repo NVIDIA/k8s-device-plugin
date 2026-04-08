@@ -72,6 +72,8 @@ func BuildDevice(index string, d deviceInfo) (*Device, error) {
 		return nil, fmt.Errorf("error getting device NUMA node: %v", err)
 	}
 
+	klog.Infof("numa node of gpu %s: %v", uuid, numa)
+
 	totalMemory, err := d.GetTotalMemory()
 	if err != nil {
 		klog.Warningf("Ignoring error getting device memory: %v", err)
