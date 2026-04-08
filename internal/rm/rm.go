@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
@@ -33,7 +34,9 @@ import (
 type resourceManager struct {
 	config   *spec.Config
 	resource spec.ResourceName
-	devices  Devices
+	allDevices Devices
+	devices    Devices
+	mu         sync.RWMutex
 }
 
 // ResourceManager provides an interface for listing a set of Devices and checking health on them
@@ -42,6 +45,7 @@ type resourceManager struct {
 type ResourceManager interface {
 	Resource() spec.ResourceName
 	Devices() Devices
+	HandleAllowedDeviceIDs([]string)
 	GetDevicePaths([]string) []string
 	GetPreferredAllocation(available, required []string, size int) ([]string, error)
 	CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error
@@ -55,7 +59,40 @@ func (r *resourceManager) Resource() spec.ResourceName {
 
 // Devices gets the devices managed by the ResourceManager
 func (r *resourceManager) Devices() Devices {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	return r.devices
+}
+
+// HandleAllowedDeviceIDs updates the exposed device set by excluding the
+// supplied GPU UUIDs (from HAMI node annotation). An empty list restores all
+// discovered devices.
+func (r *resourceManager) HandleAllowedDeviceIDs(uuids []string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.allDevices == nil {
+		return
+	}
+
+	if len(uuids) == 0 {
+		r.devices = r.allDevices
+		return
+	}
+
+	excluded := make(map[string]struct{}, len(uuids))
+	for _, id := range uuids {
+		excluded[id] = struct{}{}
+	}
+
+	filtered := make(Devices)
+	for id, d := range r.allDevices {
+		if _, ok := excluded[d.GetUUID()]; ok {
+			continue
+		}
+		filtered[id] = d
+	}
+	r.devices = filtered
 }
 
 var errInvalidRequest = errors.New("invalid request")
@@ -64,9 +101,10 @@ var errInvalidRequest = errors.New("invalid request")
 // It asserts that all requested IDs are known to the resource manager and that the request is
 // valid for a specified sharing configuration.
 func (r *resourceManager) ValidateRequest(ids AnnotatedIDs) error {
+	devices := r.Devices()
 	// Assert that all requested IDs are known to the resource manager
 	for _, id := range ids {
-		if !r.devices.Contains(id) {
+		if !devices.Contains(id) {
 			return fmt.Errorf("%w: unknown device: %s", errInvalidRequest, id)
 		}
 	}

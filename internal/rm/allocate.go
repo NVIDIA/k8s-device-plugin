@@ -25,8 +25,9 @@ import (
 // devices are distributed across all replicated GPUs equally. It takes into
 // account already allocated replicas to ensure a proper balance across them.
 func (r *resourceManager) distributedAlloc(available, required []string, size int) ([]string, error) {
+	devices := r.Devices()
 	// Get the set of candidate devices as the difference between available and required.
-	candidates := r.devices.Subset(available).Difference(r.devices.Subset(required)).GetIDs()
+	candidates := devices.Subset(available).Difference(devices.Subset(required)).GetIDs()
 	needed := size - len(required)
 
 	if len(candidates) < needed {
@@ -43,7 +44,7 @@ func (r *resourceManager) distributedAlloc(available, required []string, size in
 		}
 		replicas[id].available++
 	}
-	for d := range r.devices {
+	for d := range devices {
 		id := AnnotatedID(d).GetID()
 		if _, exists := replicas[id]; !exists {
 			continue

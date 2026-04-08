@@ -50,6 +50,9 @@ type ResourceManagerMock struct {
 	// DevicesFunc mocks the Devices method.
 	DevicesFunc func() Devices
 
+	// HandleAllowedDeviceIDsFunc mocks the HandleAllowedDeviceIDs method.
+	HandleAllowedDeviceIDsFunc func(uuids []string)
+
 	// GetDevicePathsFunc mocks the GetDevicePaths method.
 	GetDevicePathsFunc func(strings []string) []string
 
@@ -79,6 +82,11 @@ type ResourceManagerMock struct {
 			// Strings is the strings argument value.
 			Strings []string
 		}
+		// HandleAllowedDeviceIDs holds details about calls to the HandleAllowedDeviceIDs method.
+		HandleAllowedDeviceIDs []struct {
+			// UUIDs is the uuids argument value.
+			UUIDs []string
+		}
 		// GetPreferredAllocation holds details about calls to the GetPreferredAllocation method.
 		GetPreferredAllocation []struct {
 			// Available is the available argument value.
@@ -100,6 +108,7 @@ type ResourceManagerMock struct {
 	lockCheckHealth            sync.RWMutex
 	lockDevices                sync.RWMutex
 	lockGetDevicePaths         sync.RWMutex
+	lockHandleAllowedDeviceIDs sync.RWMutex
 	lockGetPreferredAllocation sync.RWMutex
 	lockResource               sync.RWMutex
 	lockValidateRequest        sync.RWMutex
@@ -171,6 +180,38 @@ func (mock *ResourceManagerMock) DevicesCalls() []struct {
 	mock.lockDevices.RLock()
 	calls = mock.calls.Devices
 	mock.lockDevices.RUnlock()
+	return calls
+}
+
+// HandleAllowedDeviceIDs calls HandleAllowedDeviceIDsFunc.
+func (mock *ResourceManagerMock) HandleAllowedDeviceIDs(uuids []string) {
+	callInfo := struct {
+		UUIDs []string
+	}{
+		UUIDs: uuids,
+	}
+	mock.lockHandleAllowedDeviceIDs.Lock()
+	mock.calls.HandleAllowedDeviceIDs = append(mock.calls.HandleAllowedDeviceIDs, callInfo)
+	mock.lockHandleAllowedDeviceIDs.Unlock()
+	if mock.HandleAllowedDeviceIDsFunc == nil {
+		return
+	}
+	mock.HandleAllowedDeviceIDsFunc(uuids)
+}
+
+// HandleAllowedDeviceIDsCalls gets all the calls that were made to HandleAllowedDeviceIDs.
+// Check the length with:
+//
+//	len(mockedResourceManager.HandleAllowedDeviceIDsCalls())
+func (mock *ResourceManagerMock) HandleAllowedDeviceIDsCalls() []struct {
+	UUIDs []string
+} {
+	var calls []struct {
+		UUIDs []string
+	}
+	mock.lockHandleAllowedDeviceIDs.RLock()
+	calls = mock.calls.HandleAllowedDeviceIDs
+	mock.lockHandleAllowedDeviceIDs.RUnlock()
 	return calls
 }
 
