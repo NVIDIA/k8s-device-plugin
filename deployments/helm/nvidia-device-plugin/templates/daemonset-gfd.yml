@@ -177,11 +177,18 @@ spec:
           - name: DEVICE_DISCOVERY_STRATEGY
             value: {{ .Values.deviceDiscoveryStrategy }}
         {{- end }}
+        {{- .Values.gfd.env | toYaml | nindent 10 }}
         securityContext:
           {{- include "gpu-feature-discovery.securityContext" . | nindent 10 }}
         volumeMounts:
           - name: output-dir
             mountPath: "/etc/kubernetes/node-feature-discovery/features.d"
+        {{- if typeIs "string" .Values.nvidiaDriverRoot }}
+          # We mount the driver root at /driver-root in the container.
+          - name: driver-root
+            mountPath: /driver-root
+            readOnly: true
+        {{- end }}
           - name: host-sys
             mountPath: "/sys"
         {{- if $options.hasConfigMap }}
@@ -203,10 +210,12 @@ spec:
           hostPath:
             path: "/sys"
             type: Directory
+      {{- if typeIs "string" .Values.nvidiaDriverRoot }}
         - name: driver-root
           hostPath:
-            path: {{ clean ( join "/" ( list "/" .Values.nvidiaDriverRoot ) ) | quote }}
+            path: {{ .Values.nvidiaDriverRoot | toYaml }}
             type: Directory
+      {{- end }}
       {{- if $options.hasConfigMap }}
         - name: available-configs
           configMap:
