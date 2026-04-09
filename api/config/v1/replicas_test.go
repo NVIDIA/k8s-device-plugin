@@ -318,6 +318,17 @@ func TestUnmarshalReplicatedResource(t *testing.T) {
 		{
 			input: `{
 				"name": "valid",
+				"replicas": 1
+			}`,
+			output: ReplicatedResource{
+				Name:     NoErrorNewResourceName("valid"),
+				Devices:  ReplicatedDevices{All: true},
+				Replicas: 1,
+			},
+		},
+		{
+			input: `{
+				"name": "valid",
 				"replicas": 2
 			}`,
 			output: ReplicatedResource{
