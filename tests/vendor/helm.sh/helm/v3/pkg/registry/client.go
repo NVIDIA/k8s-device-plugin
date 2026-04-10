@@ -510,6 +510,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 	memoryStore := memory.New()
 	allowedMediaTypes := []string{
+		ocispec.MediaTypeImageIndex,
 		ocispec.MediaTypeImageManifest,
 		ConfigMediaType,
 	}
@@ -891,6 +892,7 @@ func (c *Client) Resolve(ref string) (desc ocispec.Descriptor, err error) {
 		return desc, err
 	}
 	remoteRepository.PlainHTTP = c.plainHTTP
+	remoteRepository.Client = c.authorizer
 
 	parsedReference, err := newReference(ref)
 	if err != nil {
