@@ -22,12 +22,6 @@ import (
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
-type tegraResourceManager struct {
-	resourceManager
-}
-
-var _ ResourceManager = (*tegraResourceManager)(nil)
-
 // NewTegraResourceManagers returns a set of ResourceManagers for tegra resources
 func NewTegraResourceManagers(config *spec.Config) ([]ResourceManager, error) {
 	deviceMap, err := buildTegraDeviceMap(config)
@@ -45,32 +39,13 @@ func NewTegraResourceManagers(config *spec.Config) ([]ResourceManager, error) {
 		if len(devices) == 0 {
 			continue
 		}
-		r := &tegraResourceManager{
-			resourceManager: resourceManager{
-				config:   config,
-				resource: resourceName,
-				devices:  devices,
-			},
+		r := &resourceManager{
+			config:   config,
+			resource: resourceName,
+			devices:  devices,
 		}
-		if len(devices) != 0 {
-			rms = append(rms, r)
-		}
+		rms = append(rms, r)
 	}
 
 	return rms, nil
-}
-
-// GetPreferredAllocation returns a standard allocation for the Tegra resource manager.
-func (r *tegraResourceManager) GetPreferredAllocation(available, required []string, size int) ([]string, error) {
-	return r.distributedAlloc(available, required, size)
-}
-
-// GetDevicePaths returns an empty slice for the tegraResourceManager
-func (r *tegraResourceManager) GetDevicePaths(ids []string) []string {
-	return nil
-}
-
-// CheckHealth is disabled for the tegraResourceManager
-func (r *tegraResourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
-	return nil
 }
