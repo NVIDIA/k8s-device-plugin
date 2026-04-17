@@ -18,6 +18,7 @@ package cdi
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -55,7 +56,8 @@ type cdiHandler struct {
 	vendor           string
 	deviceIDStrategy string
 
-	deviceListStrategies spec.DeviceListStrategies
+	deviceListStrategies    spec.DeviceListStrategies
+	deviceDiscoveryStrategy string
 
 	// nvcdiFeatureFlags allows finer control over CDI spec generation.
 	nvcdiFeatureFlags []string
@@ -86,8 +88,11 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 	if !c.deviceListStrategies.AnyCDIEnabled() {
 		return &null{}, nil
 	}
+	if c.deviceDiscoveryStrategy == "" {
+		return nil, fmt.Errorf("device discovery strategy not set")
+	}
 	hasNVML, _ := infolib.HasNvml()
-	if !hasNVML {
+	if !hasNVML && c.deviceDiscoveryStrategy != "tegra" {
 		klog.Warning("No valid resources detected, creating a null CDI handler")
 		return &null{}, nil
 	}
@@ -126,6 +131,13 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 		nvcdi.WithNVIDIACDIHookPath(c.nvidiaCTKPath),
 		nvcdi.WithNvmlLib(c.nvmllib),
 		nvcdi.WithVendor(c.vendor),
+	}
+
+	// On Tegra (CSV mode), the default CSV files live under the driver root.
+	// Inject driver-root-aware paths explicitly so the nvcdi library does not
+	// fall back to the hardcoded absolute paths returned by csv.DefaultFileList().
+	if c.deviceDiscoveryStrategy == "tegra" {
+		commonOptions = append(commonOptions, nvcdi.WithCSVFiles(csvFilesForRoot(c.driverRoot)))
 	}
 
 	c.cdilibs = make(map[string]nvcdi.SpecGenerator)
@@ -176,16 +188,6 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 	var emptySpecs []string
 	for class, cdilib := range cdi.cdilibs {
 		cdi.logger.Infof("Generating CDI spec for resource: %s/%s", cdi.vendor, class)
-
-		if class == "gpu" {
-			ret := cdi.nvmllib.Init()
-			if ret != nvml.SUCCESS {
-				return fmt.Errorf("failed to initialize NVML: %v", ret)
-			}
-			defer func() {
-				_ = cdi.nvmllib.Shutdown()
-			}()
-		}
 
 		spec, err := cdilib.GetSpec()
 		if err != nil {
@@ -267,4 +269,34 @@ func (cdi *cdiHandler) AdditionalDevices() []string {
 		devices = append(devices, cdi.QualifiedName(mode, "all"))
 	}
 	return devices
+}
+
+// defaultCSVMountSpecPath mirrors the constant defined in the nvidia-container-toolkit's
+// internal/platform-support/tegra/csv package.
+const defaultCSVMountSpecPath = "/etc/nvidia-container-runtime/host-files-for-container.d"
+
+var defaultCSVFileNames = []string{"devices.csv", "drivers.csv", "l4t.csv"}
+
+// csvFilesForRoot returns the Tegra CSV file paths to use for CDI spec generation.
+// It checks for the CSV directory at the driver root first, then falls back to the
+// absolute path. Returns nil if the directory is not found at either location,
+// allowing nvcdi to fall back to csv.DefaultFileList().
+func csvFilesForRoot(driverRoot string) []string {
+	roots := []string{driverRoot}
+	if driverRoot != "/" {
+		roots = append(roots, "/")
+	}
+	for _, root := range roots {
+		csvDir := filepath.Join(root, defaultCSVMountSpecPath)
+		stat, err := os.Stat(csvDir)
+		if err != nil || !stat.IsDir() {
+			continue
+		}
+		paths := make([]string, len(defaultCSVFileNames))
+		for i, f := range defaultCSVFileNames {
+			paths[i] = filepath.Join(csvDir, f)
+		}
+		return paths
+	}
+	return nil
 }

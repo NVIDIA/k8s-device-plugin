@@ -76,3 +76,11 @@ func WithImexChannels(imexChannels imex.Channels) Option {
 		m.imexChannels = imexChannels
 	}
 }
+
+// WithDeviceDiscoveryStrategy sets a pre-resolved device discovery strategy,
+// bypassing the automatic platform-based resolution.
+func WithDeviceDiscoveryStrategy(strategy string) Option {
+	return func(m *options) {
+		m.deviceDiscoveryStrategy = strategy
+	}
+}
