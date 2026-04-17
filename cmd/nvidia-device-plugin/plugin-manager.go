@@ -23,6 +23,7 @@ import (
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
+	"k8s.io/klog/v2"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
@@ -45,6 +46,9 @@ func GetPlugins(ctx context.Context, infolib info.Interface, nvmllib nvml.Interf
 		return nil, fmt.Errorf("error querying IMEX channels: %w", err)
 	}
 
+	resolvedStrategy := resolveStrategy(*config.Flags.DeviceDiscoveryStrategy, infolib)
+	klog.Infof("Using device discovery strategy: %s", resolvedStrategy)
+
 	cdiHandler, err := cdi.New(infolib, nvmllib, devicelib,
 		cdi.WithDeviceListStrategies(deviceListStrategies),
 		cdi.WithDriverRoot(string(driverRoot)),
@@ -59,6 +63,7 @@ func GetPlugins(ctx context.Context, infolib info.Interface, nvmllib nvml.Interf
 		cdi.WithMofedEnabled(*config.Flags.MOFEDEnabled),
 		cdi.WithImexChannels(imexChannels),
 		cdi.WithFeatureFlags(o.cdiFeatureFlags.Value()...),
+		cdi.WithDeviceDiscoveryStrategy(resolvedStrategy),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create cdi handler: %v", err)
@@ -70,6 +75,7 @@ func GetPlugins(ctx context.Context, infolib info.Interface, nvmllib nvml.Interf
 		plugin.WithDeviceListStrategies(deviceListStrategies),
 		plugin.WithFailOnInitError(*config.Flags.FailOnInitError),
 		plugin.WithImexChannels(imexChannels),
+		plugin.WithDeviceDiscoveryStrategy(resolvedStrategy),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create plugins: %w", err)
@@ -80,4 +86,24 @@ func GetPlugins(ctx context.Context, infolib info.Interface, nvmllib nvml.Interf
 	}
 
 	return plugins, nil
+}
+
+// resolveStrategy resolves an "auto" device discovery strategy to a concrete
+// value based on the detected platform. Non-auto values are returned unchanged.
+func resolveStrategy(strategy string, infolib info.Interface) string {
+	if strategy != "" && strategy != "auto" {
+		klog.Infof("Using requested device discovery strategy: %s", strategy)
+		return strategy
+	}
+
+	platform := infolib.ResolvePlatform()
+	klog.Infof("Detected platform: %s", platform)
+	switch platform {
+	case info.PlatformNVML, info.PlatformWSL:
+		return "nvml"
+	case info.PlatformTegra:
+		return "tegra"
+	}
+	klog.Warning("Unsupported platform detected; defaulting to nvml")
+	return "nvml"
 }

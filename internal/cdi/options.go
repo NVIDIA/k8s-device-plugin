@@ -115,3 +115,12 @@ func WithImexChannels(imexChannels imex.Channels) Option {
 		c.imexChannels = imexChannels
 	}
 }
+
+// WithDeviceDiscoveryStrategy sets a pre-resolved device discovery strategy.
+// When "tegra", the CDI handler uses CSV-based spec generation with
+// driver-root-aware file paths.
+func WithDeviceDiscoveryStrategy(strategy string) Option {
+	return func(c *cdiHandler) {
+		c.deviceDiscoveryStrategy = strategy
+	}
+}

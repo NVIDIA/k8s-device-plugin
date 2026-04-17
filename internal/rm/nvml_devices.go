@@ -49,9 +49,8 @@ func newNvmlGPUDevice(i int, gpu nvml.Device) (string, deviceInfo) {
 	return index, nvmlDevice{gpu}
 }
 
-func newWslGPUDevice(i int, gpu nvml.Device) (string, deviceInfo) {
-	index := fmt.Sprintf("%v", i)
-	return index, wslDevice{gpu}
+func newWslAllGPUsDevice(_ int, _ nvml.Device) (string, deviceInfo) {
+	return "all", wslAllGPUsDevice{}
 }
 
 func newMigDevice(i int, j int, mig nvml.Device) (string, nvmlMigDevice) {

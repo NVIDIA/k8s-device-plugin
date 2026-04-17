@@ -48,7 +48,9 @@ func NewNVMLResourceManagers(infolib info.Interface, nvmllib nvml.Interface, dev
 		}
 	}()
 
-	deviceMap, err := NewDeviceMap(infolib, devicelib, config)
+	platform := infolib.ResolvePlatform()
+
+	deviceMap, err := NewDeviceMap(devicelib, config, platform)
 	if err != nil {
 		return nil, fmt.Errorf("error building device map: %v", err)
 	}
@@ -58,15 +60,25 @@ func NewNVMLResourceManagers(infolib info.Interface, nvmllib nvml.Interface, dev
 		if len(devices) == 0 {
 			continue
 		}
-		r := &nvmlResourceManager{
-			resourceManager: resourceManager{
-				config:   config,
-				resource: resourceName,
-				devices:  devices,
-			},
-			nvml: nvmllib,
+
+		resources := resourceManager{
+			config:   config,
+			resource: resourceName,
+			devices:  devices,
 		}
-		rms = append(rms, r)
+
+		var rm ResourceManager
+		switch platform {
+		case info.PlatformWSL:
+			rm = &resources
+		default:
+			rm = &nvmlResourceManager{
+				resourceManager: resources,
+				nvml:            nvmllib,
+			}
+		}
+
+		rms = append(rms, rm)
 	}
 
 	return rms, nil
@@ -87,7 +99,7 @@ func (r *nvmlResourceManager) GetDevicePaths(ids []string) []string {
 		"/dev/nvidia-modeset",
 	}
 
-	return append(paths, r.Devices().Subset(ids).GetPaths()...)
+	return append(paths, r.resourceManager.GetDevicePaths(ids)...)
 }
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
