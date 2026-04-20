@@ -1,5 +1,10 @@
 ## Changelog
 
+### v0.19.1
+- Default to `nvml` strategy when platform cannot be detected.
+- Fix CDI spec generation on Tegra-based systems.
+- Fix cdi-* device list strategies on WSL based systems.
+
 ### v0.19.0
 - Add --sleep-interval=infinite support to GFD for running as a pod (#1603)
 - Fix image tag in static deployment (#1604)
