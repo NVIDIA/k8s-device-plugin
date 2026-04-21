@@ -48,6 +48,23 @@ type ResourceManager interface {
 	ValidateRequest(AnnotatedIDs) error
 }
 
+var _ ResourceManager = (*resourceManager)(nil)
+
+// CheckHealth is disabled on the base resourceManager.
+func (r *resourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
+	return nil
+}
+
+// GetDevicePaths returns the paths for the devices associated with the resource manager.
+func (r *resourceManager) GetDevicePaths(ids []string) []string {
+	return r.Devices().Subset(ids).GetPaths()
+}
+
+// GetPreferredAllocation runs an allocation algorithm over the inputs.
+func (r *resourceManager) GetPreferredAllocation(available, required []string, size int) ([]string, error) {
+	return r.distributedAlloc(available, required, size)
+}
+
 // Resource gets the resource name associated with the ResourceManager
 func (r *resourceManager) Resource() spec.ResourceName {
 	return r.resource
