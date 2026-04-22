@@ -42,6 +42,13 @@ nameOverride: ""
 fullnameOverride: ""
 namespaceOverride: ""
 selectorLabelsOverride: {}
+componentSelectorLabels:
+  # enabled controls whether DaemonSet selectors include app.kubernetes.io/component
+  # to avoid overlap between device-plugin, gpu-feature-discovery, and mps-control-daemon.
+  # NOTE: This is disabled by default for upgrade compatibility because DaemonSet
+  # selectors are immutable and enabling this on an existing release requires
+  # DaemonSet recreation.
+  enabled: false
 
 allowDefaultNamespace: false
 

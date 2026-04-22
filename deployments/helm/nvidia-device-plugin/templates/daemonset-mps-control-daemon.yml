@@ -27,6 +27,9 @@ spec:
   selector:
     matchLabels:
       {{- include "nvidia-device-plugin.selectorLabels" . | nindent 6 }}
+      {{- with (include "nvidia-device-plugin.componentLabel" (dict "root" . "component" "mps-control-daemon") | trim) }}
+      {{- . | nindent 6 }}
+      {{- end }}
   {{- with .Values.updateStrategy }}
   updateStrategy:
     {{- toYaml . | nindent 4 }}
@@ -35,6 +38,9 @@ spec:
     metadata:
       labels:
         {{- include "nvidia-device-plugin.templateLabels" . | nindent 8 }}
+        {{- with (include "nvidia-device-plugin.componentLabel" (dict "root" . "component" "mps-control-daemon") | trim) }}
+        {{- . | nindent 8 }}
+        {{- end }}
       annotations:
         {{- include "nvidia-device-plugin.podAnnotations" (dict "local" . "root" .) | nindent 8 }}
     spec:
