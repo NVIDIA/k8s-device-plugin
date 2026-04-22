@@ -25,6 +25,7 @@ import (
 	"k8s.io/klog/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 
+	flg "github.com/NVIDIA/k8s-device-plugin/internal/flags"
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
@@ -33,6 +34,7 @@ type deviceMapBuilder struct {
 	migStrategy         *string
 	resources           *spec.Resources
 	replicatedResources *spec.ReplicatedResources
+	deviceFilter        *flg.DeviceFilter
 
 	newGPUDevice func(i int, gpu nvml.Device) (string, deviceInfo)
 }
@@ -52,6 +54,7 @@ func NewDeviceMap(devicelib device.Interface, config *spec.Config, platform info
 		migStrategy:         config.Flags.MigStrategy,
 		resources:           &config.Resources,
 		replicatedResources: config.Sharing.ReplicatedResources(),
+		deviceFilter:        config.Flags.DeviceFilter,
 		newGPUDevice:        newGPUDevice,
 	}
 
@@ -64,6 +67,17 @@ func (b *deviceMapBuilder) build() (DeviceMap, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error building device map from config.resources: %v", err)
 	}
+
+	// Apply device filter before creating replicas
+	if b.deviceFilter != nil && b.deviceFilter.Enabled != nil && *b.deviceFilter.Enabled {
+		for resourceName, devs := range devices {
+			devices[resourceName] = devs.FilterByIDOrIndex(
+				b.deviceFilter.GetSelectDevicesList(),
+				b.deviceFilter.GetExcludeDevicesList(),
+			)
+		}
+	}
+
 	devices, err = updateDeviceMapWithReplicas(b.replicatedResources, devices)
 	if err != nil {
 		return nil, fmt.Errorf("error updating device map with replicas from replicatedResources config: %v", err)

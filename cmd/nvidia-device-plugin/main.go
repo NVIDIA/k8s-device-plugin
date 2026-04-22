@@ -34,6 +34,7 @@ import (
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/flags"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
 	"github.com/NVIDIA/k8s-device-plugin/internal/plugin"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
@@ -181,6 +182,9 @@ func main() {
 			Destination: &o.cdiFeatureFlags,
 		},
 	}
+
+	c.Flags = append(c.Flags, (&flags.DeviceFilter{}).Flags()...)
+
 	o.flags = c.Flags
 
 	err := c.Run(os.Args)

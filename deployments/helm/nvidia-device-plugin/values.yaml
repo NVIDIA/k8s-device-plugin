@@ -177,3 +177,14 @@ cdi:
   # featureFlags allows CDI feature flags to be specified for CDI specification generation.
   # This is specified as a comma-separated list of strings.
   featureFlags: null
+
+# deviceFilter allows selecting or/and excluding a subset of devices (per-node) to use for the device-plugin-daemon and mps-control-daemon
+# NOTE: Only use this configiguration for applying a same filter to all nodes!
+# For more granular filter for some specific nodes, use per-node configuration with a node label instead,
+# see: https://github.com/NVIDIA/k8s-device-plugin?tab=readme-ov-file#updating-per-node-configuration-with-a-node-label
+deviceFilter:
+  enabled: false
+  # Comma separated list of devices
+  # Accept formats: Index ("0,1,3,7"), ID ("GPU-XXX,GPU-YYY"), or even mixed of both ("0,GPU-XXX,GPU-YYY,6" - but not recommended)
+  selectDevices: ""
+  excludeDevices: ""
