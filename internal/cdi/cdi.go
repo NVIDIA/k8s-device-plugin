@@ -17,6 +17,7 @@
 package cdi
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -194,12 +195,20 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 			return fmt.Errorf("failed to get CDI spec: %v", err)
 		}
 
+		if class == "gpu" {
+			jsonData, _ := json.MarshalIndent(spec.Raw().Devices, "", "    ")
+			cdi.logger.Infof("DEBUGTEST cdispec devices before transform: %v", string(jsonData))
+		}
 		// TODO: Once the NewDriverTransformer is merged in container-toolkit we can instantiate it directly.
 		transformer := cdi.getRootTransformer()
 		if err := transformer.Transform(spec.Raw()); err != nil {
 			return fmt.Errorf("failed to transform driver root in CDI spec: %v", err)
 		}
 
+		if class == "gpu" {
+			jsonData, _ := json.MarshalIndent(spec.Raw().Devices, "", "    ")
+			cdi.logger.Infof("DEBUGTEST cdispec devices after transform: %v", string(jsonData))
+		}
 		specName, err := cdiapi.GenerateNameForSpec(spec.Raw())
 		if err != nil {
 			return fmt.Errorf("failed to generate spec name: %v", err)
