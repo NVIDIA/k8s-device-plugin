@@ -453,6 +453,12 @@ func findPidToSignal(f *Flags) (int, error) {
 		if err != nil {
 			return -1, fmt.Errorf("error getting cmdline: %v", err)
 		}
+		// Skip processes with an empty cmdline (e.g. kernel threads or
+		// processes that exited between AllProcs() and CmdLine()) to
+		// avoid an index-out-of-range panic on cmdline[0].
+		if len(cmdline) == 0 {
+			continue
+		}
 		if cmdline[0] == f.ProcessToSignal {
 			return p.PID, nil
 		}
