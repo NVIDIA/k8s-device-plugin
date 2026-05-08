@@ -12,7 +12,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.35.2
 	k8s.io/apimachinery v0.35.2
 	k8s.io/client-go v0.35.2
-	k8s.io/klog/v2 v2.130.1
+	k8s.io/klog/v2 v2.140.0
 	sigs.k8s.io/node-feature-discovery v0.18.3
 	sigs.k8s.io/node-feature-discovery/api/nfd v0.18.3
 	sigs.k8s.io/yaml v1.6.0
@@ -20,7 +20,7 @@ require (
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
-	filippo.io/edwards25519 v1.1.0 // indirect
+	filippo.io/edwards25519 v1.1.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/BurntSushi/toml v1.5.0 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
