@@ -43,9 +43,7 @@ spec:
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}
       {{- end }}
-      {{- if .Values.runtimeClassName }}
-      runtimeClassName: {{ .Values.runtimeClassName }}
-      {{- end }}
+      runtimeClassName: {{ .Values.runtimeClassName | default nil }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
