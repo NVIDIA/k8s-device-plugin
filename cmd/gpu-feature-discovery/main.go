@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/flags"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
 	"github.com/NVIDIA/k8s-device-plugin/internal/lm"
+	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 	"github.com/NVIDIA/k8s-device-plugin/internal/vgpu"
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
@@ -116,6 +118,12 @@ func main() {
 			Usage:   "the path where the NVIDIA driver root is mounted in the container",
 			EnvVars: []string{"DRIVER_ROOT_CTR_PATH", "CONTAINER_DRIVER_ROOT"},
 		},
+		&cli.IntFlag{
+			Name:    "log-verbosity",
+			Value:   0,
+			Usage:   "the verbosity level for klog logs",
+			EnvVars: []string{"LOG_VERBOSITY"},
+		},
 	}
 
 	config.flags = append(config.flags, config.kubeClientConfig.Flags()...)
@@ -171,6 +179,10 @@ func start(c *cli.Context, cfg *Config) error {
 			return fmt.Errorf("unable to load config: %v", err)
 		}
 		spec.DisableResourceNamingInConfig(config)
+		err = new(klog.Level).Set(strconv.Itoa(*config.Flags.LogVerbosity))
+		if err != nil {
+			return fmt.Errorf("invalid log verbosity level: %v", err)
+		}
 
 		// Print the config to the output.
 		configJSON, err := json.MarshalIndent(config, "", "  ")
@@ -184,12 +196,12 @@ func start(c *cli.Context, cfg *Config) error {
 		infolib := nvinfo.New(
 			nvinfo.WithNvmlLib(nvmllib),
 			nvinfo.WithDeviceLib(devicelib),
+			nvinfo.WithLogger(&logger.NvInfoAdapter{DebugV: 1}),
 		)
 
 		manager, err := resource.NewManager(infolib, nvmllib, devicelib, config)
 		if err != nil {
 			return fmt.Errorf("failed to create resource manager: %w", err)
-
 		}
 		vgpul := vgpu.NewVGPULib(vgpu.NewNvidiaPCILib())
 

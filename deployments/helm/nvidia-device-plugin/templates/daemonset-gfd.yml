@@ -181,6 +181,10 @@ spec:
           - name: DEVICE_DISCOVERY_STRATEGY
             value: {{ .Values.deviceDiscoveryStrategy }}
         {{- end }}
+        {{- if or (typeIs "string" .Values.logVerbosity) (typeIs "int64" .Values.logVerbosity) (typeIs "float64" .Values.logVerbosity) }}
+          - name: LOG_VERBOSITY
+            value: {{ .Values.logVerbosity | quote }}
+        {{- end }}
         securityContext:
           {{- include "gpu-feature-discovery.securityContext" . | nindent 10 }}
         volumeMounts:

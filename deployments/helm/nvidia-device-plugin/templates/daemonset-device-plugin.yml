@@ -201,6 +201,10 @@ spec:
           - name: DEVICE_DISCOVERY_STRATEGY
             value: {{ .Values.deviceDiscoveryStrategy }}
         {{- end }}
+        {{- if or (typeIs "string" .Values.logVerbosity) (typeIs "int64" .Values.logVerbosity) (typeIs "float64" .Values.logVerbosity) }}
+          - name: LOG_VERBOSITY
+            value: {{ .Values.logVerbosity | quote }}
+        {{- end }}
           - name: NVIDIA_VISIBLE_DEVICES
             value: all
           - name: NVIDIA_DRIVER_CAPABILITIES
