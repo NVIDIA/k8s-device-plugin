@@ -22,18 +22,18 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
 	oci "github.com/opencontainers/runtime-spec/specs-go"
-	"tags.cncf.io/container-device-interface/internal/multierror"
 	cdi "tags.cncf.io/container-device-interface/specs-go"
 )
 
 // Option is an option to change some aspect of default CDI behavior.
-type Option func(*Cache) error
+type Option func(*Cache)
 
 // Cache stores CDI Specs loaded from Spec directories.
 type Cache struct {
@@ -54,16 +54,27 @@ type Cache struct {
 // is detected. This option can be used to disable this behavior when a
 // manually refreshed mode is preferable.
 func WithAutoRefresh(autoRefresh bool) Option {
-	return func(c *Cache) error {
+	return func(c *Cache) {
 		c.autoRefresh = autoRefresh
-		return nil
 	}
 }
 
 // NewCache creates a new CDI Cache. The cache is populated from a set
 // of CDI Spec directories. These can be specified using a WithSpecDirs
 // option. The default set of directories is exposed in DefaultSpecDirs.
+//
+// Note:
+//
+//	The error returned by this function is always nil and it is only
+//	returned to maintain API compatibility with consumers.
 func NewCache(options ...Option) (*Cache, error) {
+	return newCache(options...), nil
+}
+
+// newCache creates a CDI cache with the supplied options.
+// This function allows testing without handling the nil error returned by the
+// NewCache function.
+func newCache(options ...Option) *Cache {
 	c := &Cache{
 		autoRefresh: true,
 		watch:       &watch{},
@@ -73,7 +84,8 @@ func NewCache(options ...Option) (*Cache, error) {
 	c.Lock()
 	defer c.Unlock()
 
-	return c, c.configure(options...)
+	c.configure(options...)
+	return c
 }
 
 // Configure applies options to the Cache. Updates and refreshes the
@@ -86,18 +98,16 @@ func (c *Cache) Configure(options ...Option) error {
 	c.Lock()
 	defer c.Unlock()
 
-	return c.configure(options...)
+	c.configure(options...)
+
+	return nil
 }
 
 // Configure the Cache. Start/stop CDI Spec directory watch, refresh
 // the Cache if necessary.
-func (c *Cache) configure(options ...Option) error {
-	var err error
-
+func (c *Cache) configure(options ...Option) {
 	for _, o := range options {
-		if err = o(c); err != nil {
-			return fmt.Errorf("failed to apply cache options: %w", err)
-		}
+		o(c)
 	}
 
 	c.dirErrors = make(map[string]error)
@@ -107,9 +117,7 @@ func (c *Cache) configure(options ...Option) error {
 		c.watch.setup(c.specDirs, c.dirErrors)
 		c.watch.start(&c.Mutex, c.refresh, c.dirErrors)
 	}
-	c.refresh()
-
-	return nil
+	_ = c.refresh() // we record but ignore errors
 }
 
 // Refresh rescans the CDI Spec directories and refreshes the Cache.
@@ -125,11 +133,11 @@ func (c *Cache) Refresh() error {
 	}
 
 	// collect and return cached errors, much like refresh() does it
-	var result error
-	for _, errors := range c.errors {
-		result = multierror.Append(result, errors...)
+	errs := []error{}
+	for _, specErrs := range c.errors {
+		errs = append(errs, errors.Join(specErrs...))
 	}
-	return result
+	return errors.Join(errs...)
 }
 
 // Refresh the Cache by rescanning CDI Spec directories and files.
@@ -139,12 +147,10 @@ func (c *Cache) refresh() error {
 		devices    = map[string]*Device{}
 		conflicts  = map[string]struct{}{}
 		specErrors = map[string][]error{}
-		result     []error
 	)
 
 	// collect errors per spec file path and once globally
 	collectError := func(err error, paths ...string) {
-		result = append(result, err)
 		for _, path := range paths {
 			specErrors[path] = append(specErrors[path], err)
 		}
@@ -197,7 +203,11 @@ func (c *Cache) refresh() error {
 	c.devices = devices
 	c.errors = specErrors
 
-	return multierror.New(result...)
+	errs := []error{}
+	for _, specErrs := range specErrors {
+		errs = append(errs, errors.Join(specErrs...))
+	}
+	return errors.Join(errs...)
 }
 
 // RefreshIfRequired triggers a refresh if necessary.
@@ -213,7 +223,8 @@ func (c *Cache) refreshIfRequired(force bool) (bool, error) {
 
 // InjectDevices injects the given qualified devices to an OCI Spec. It
 // returns any unresolvable devices and an error if injection fails for
-// any of the devices.
+// any of the devices. Might trigger a cache refresh, in which case any
+// errors encountered can be obtained using GetErrors().
 func (c *Cache) InjectDevices(ociSpec *oci.Spec, devices ...string) ([]string, error) {
 	var unresolved []string
 
@@ -224,7 +235,7 @@ func (c *Cache) InjectDevices(ociSpec *oci.Spec, devices ...string) ([]string, e
 	c.Lock()
 	defer c.Unlock()
 
-	c.refreshIfRequired(false)
+	_, _ = c.refreshIfRequired(false) // we record but ignore errors
 
 	edits := &ContainerEdits{}
 	specs := map[*Spec]struct{}{}
@@ -326,24 +337,27 @@ func (c *Cache) RemoveSpec(name string) error {
 	return err
 }
 
-// GetDevice returns the cached device for the given qualified name.
+// GetDevice returns the cached device for the given qualified name. Might trigger
+// a cache refresh, in which case any errors encountered can be obtained using
+// GetErrors().
 func (c *Cache) GetDevice(device string) *Device {
 	c.Lock()
 	defer c.Unlock()
 
-	c.refreshIfRequired(false)
+	_, _ = c.refreshIfRequired(false) // we record but ignore errors
 
 	return c.devices[device]
 }
 
-// ListDevices lists all cached devices by qualified name.
+// ListDevices lists all cached devices by qualified name. Might trigger a cache
+// refresh, in which case any errors encountered can be obtained using GetErrors().
 func (c *Cache) ListDevices() []string {
 	var devices []string
 
 	c.Lock()
 	defer c.Unlock()
 
-	c.refreshIfRequired(false)
+	_, _ = c.refreshIfRequired(false) // we record but ignore errors
 
 	for name := range c.devices {
 		devices = append(devices, name)
@@ -353,14 +367,15 @@ func (c *Cache) ListDevices() []string {
 	return devices
 }
 
-// ListVendors lists all vendors known to the cache.
+// ListVendors lists all vendors known to the cache. Might trigger a cache refresh,
+// in which case any errors encountered can be obtained using GetErrors().
 func (c *Cache) ListVendors() []string {
 	var vendors []string
 
 	c.Lock()
 	defer c.Unlock()
 
-	c.refreshIfRequired(false)
+	_, _ = c.refreshIfRequired(false) // we record but ignore errors
 
 	for vendor := range c.specs {
 		vendors = append(vendors, vendor)
@@ -370,7 +385,8 @@ func (c *Cache) ListVendors() []string {
 	return vendors
 }
 
-// ListClasses lists all device classes known to the cache.
+// ListClasses lists all device classes known to the cache. Might trigger a cache
+// refresh, in which case any errors encountered can be obtained using GetErrors().
 func (c *Cache) ListClasses() []string {
 	var (
 		cmap    = map[string]struct{}{}
@@ -380,7 +396,7 @@ func (c *Cache) ListClasses() []string {
 	c.Lock()
 	defer c.Unlock()
 
-	c.refreshIfRequired(false)
+	_, _ = c.refreshIfRequired(false) // we record but ignore errors
 
 	for _, specs := range c.specs {
 		for _, spec := range specs {
@@ -395,12 +411,13 @@ func (c *Cache) ListClasses() []string {
 	return classes
 }
 
-// GetVendorSpecs returns all specs for the given vendor.
+// GetVendorSpecs returns all specs for the given vendor. Might trigger a cache
+// refresh, in which case any errors encountered can be obtained using GetErrors().
 func (c *Cache) GetVendorSpecs(vendor string) []*Spec {
 	c.Lock()
 	defer c.Unlock()
 
-	c.refreshIfRequired(false)
+	_, _ = c.refreshIfRequired(false) // we record but ignore errors
 
 	return c.specs[vendor]
 }
@@ -503,7 +520,7 @@ func (w *watch) stop() {
 		return
 	}
 
-	w.watcher.Close()
+	_ = w.watcher.Close()
 	w.tracked = nil
 }
 
@@ -513,6 +530,13 @@ func (w *watch) watch(fsw *fsnotify.Watcher, m *sync.Mutex, refresh func() error
 	if watch == nil {
 		return
 	}
+
+	eventMask := fsnotify.Rename | fsnotify.Remove | fsnotify.Write
+	// On macOS, we also need to watch for Create events.
+	if runtime.GOOS == "darwin" {
+		eventMask |= fsnotify.Create
+	}
+
 	for {
 		select {
 		case event, ok := <-watch.Events:
@@ -520,10 +544,10 @@ func (w *watch) watch(fsw *fsnotify.Watcher, m *sync.Mutex, refresh func() error
 				return
 			}
 
-			if (event.Op & (fsnotify.Rename | fsnotify.Remove | fsnotify.Write)) == 0 {
+			if (event.Op & eventMask) == 0 {
 				continue
 			}
-			if event.Op == fsnotify.Write {
+			if event.Op == fsnotify.Write || event.Op == fsnotify.Create {
 				if ext := filepath.Ext(event.Name); ext != ".json" && ext != ".yaml" {
 					continue
 				}
@@ -535,7 +559,7 @@ func (w *watch) watch(fsw *fsnotify.Watcher, m *sync.Mutex, refresh func() error
 			} else {
 				w.update(dirErrors)
 			}
-			refresh()
+			_ = refresh()
 			m.Unlock()
 
 		case _, ok := <-watch.Errors:
@@ -554,6 +578,14 @@ func (w *watch) update(dirErrors map[string]error, removed ...string) bool {
 		err    error
 		update bool
 	)
+
+	// If we failed to create an fsnotify.Watcher we have a nil watcher here
+	// (but with autoRefresh left on). One known case when this can happen is
+	// if we have too many open files. In that case we always return true and
+	// force a refresh.
+	if w.watcher == nil {
+		return true
+	}
 
 	for dir, ok = range w.tracked {
 		if ok {

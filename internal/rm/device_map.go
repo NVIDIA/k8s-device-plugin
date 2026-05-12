@@ -20,7 +20,10 @@ import (
 	"fmt"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
+	"k8s.io/klog/v2"
+	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
@@ -30,19 +33,28 @@ type deviceMapBuilder struct {
 	migStrategy         *string
 	resources           *spec.Resources
 	replicatedResources *spec.ReplicatedResources
+
+	newGPUDevice func(i int, gpu nvml.Device) (string, deviceInfo)
 }
 
 // DeviceMap stores a set of devices per resource name.
 type DeviceMap map[spec.ResourceName]Devices
 
 // NewDeviceMap creates a device map for the specified NVML library and config.
-func NewDeviceMap(nvmllib nvml.Interface, config *spec.Config) (DeviceMap, error) {
+func NewDeviceMap(devicelib device.Interface, config *spec.Config, platform info.Platform) (DeviceMap, error) {
+	newGPUDevice := newNvmlGPUDevice
+	if platform == info.PlatformWSL {
+		newGPUDevice = newWslAllGPUsDevice
+	}
+
 	b := deviceMapBuilder{
-		Interface:           device.New(device.WithNvml(nvmllib)),
+		Interface:           devicelib,
 		migStrategy:         config.Flags.MigStrategy,
 		resources:           &config.Resources,
 		replicatedResources: config.Sharing.ReplicatedResources(),
+		newGPUDevice:        newGPUDevice,
 	}
+
 	return b.build()
 }
 
@@ -112,7 +124,7 @@ func (b *deviceMapBuilder) buildGPUDeviceMap() (DeviceMap, error) {
 		}
 		for _, resource := range b.resources.GPUs {
 			if resource.Pattern.Matches(name) {
-				index, info := newGPUDevice(i, gpu)
+				index, info := b.newGPUDevice(i, gpu)
 				return devices.setEntry(resource.Name, index, info)
 			}
 		}
@@ -155,9 +167,11 @@ func (b *deviceMapBuilder) assertAllMigDevicesAreValid(uniform bool) error {
 		if err != nil {
 			return err
 		}
-		if len(migDevices) == 0 {
-			i := 0
-			return fmt.Errorf("device %v has an invalid MIG configuration", i)
+		if uniform && len(migDevices) == 0 {
+			return fmt.Errorf("device %v has no MIG devices configured", i)
+		}
+		if !uniform && len(migDevices) == 0 {
+			klog.Warningf("device %v has no MIG devices configured", i)
 		}
 		return nil
 	})
@@ -312,8 +326,19 @@ func updateDeviceMapWithReplicas(replicatedResources *spec.ReplicatedResources, 
 		for _, id := range ids {
 			for i := 0; i < r.Replicas; i++ {
 				annotatedID := string(NewAnnotatedID(id, i))
-				replicatedDevice := *(oDevices[r.Name][id])
-				replicatedDevice.ID = annotatedID
+				original := oDevices[r.Name][id]
+				replicatedDevice := Device{
+					Device: pluginapi.Device{
+						ID:       annotatedID,
+						Health:   original.Health,
+						Topology: original.Topology,
+					},
+					Paths:             original.Paths,
+					Index:             original.Index,
+					TotalMemory:       original.TotalMemory,
+					ComputeCapability: original.ComputeCapability,
+					Replicas:          r.Replicas,
+				}
 				devices.insert(name, &replicatedDevice)
 			}
 		}

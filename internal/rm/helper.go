@@ -16,17 +16,17 @@
 
 package rm
 
-// int8Slice wraps an []int8 with more functions.
-type int8Slice []int8
+// uint8Slice wraps an []uint8 with more functions.
+type uint8Slice []uint8
 
-// String turns a nil terminated int8Slice into a string
-func (s int8Slice) String() string {
+// String turns a nil terminated uint8Slice into a string
+func (s uint8Slice) String() string {
 	var b []byte
 	for _, c := range s {
 		if c == 0 {
 			break
 		}
-		b = append(b, byte(c))
+		b = append(b, c)
 	}
 	return string(b)
 }

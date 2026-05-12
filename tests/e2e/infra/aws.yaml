@@ -1,0 +1,26 @@
+apiVersion: holodeck.nvidia.com/v1alpha1
+kind: Environment
+metadata:
+  name: HOLODECK_NAME
+  description: "end-to-end test infrastructure"
+spec:
+  provider: aws
+  auth:
+    keyName: cnt-ci
+    privateKey: HOLODECK_PRIVATE_KEY
+  instance:
+    type: g4dn.xlarge
+    region: us-west-1
+    image:
+      architecture: amd64
+  containerRuntime:
+    install: true
+    name: containerd
+  nvidiaDriver:
+    install: true
+  nvidiaContainerToolkit:
+    install: true
+    enableCDI: true
+  kubernetes:
+    install: true
+    installer: kubeadm

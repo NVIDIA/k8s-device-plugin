@@ -58,8 +58,8 @@ func (d *cudaDevice) GetDeviceHandleFromMigDeviceHandle() (Device, error) {
 	return nil, fmt.Errorf("GetDeviceHandleFromMigDeviceHandle is unsupported for CUDA devices")
 }
 
-// GetTotalMemoryMB returns the total memory for a device
-func (d *cudaDevice) GetTotalMemoryMB() (uint64, error) {
+// GetTotalMemoryMiB returns the total memory for a device in mebibytes (2^20 bytes)
+func (d *cudaDevice) GetTotalMemoryMiB() (uint64, error) {
 	total, r := cuda.Device(*d).TotalMem()
 	if r != cuda.SUCCESS {
 		return 0, fmt.Errorf("failed to get memory info for device: %v", r)
@@ -95,4 +95,16 @@ func (d *cudaDevice) IsMigCapable() (bool, error) {
 // IsMigEnabled always returns false for CUDA devices
 func (d *cudaDevice) IsMigEnabled() (bool, error) {
 	return false, nil
+}
+
+func (d *cudaDevice) GetPCIClass() (uint32, error) {
+	return 0, nil
+}
+
+func (d *cudaDevice) IsFabricAttached() (bool, error) {
+	return false, nil
+}
+
+func (d *cudaDevice) GetFabricIDs() (string, string, error) {
+	return "", "", fmt.Errorf("GetFabricIDs is not supported for CUDA devices")
 }

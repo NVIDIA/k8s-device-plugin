@@ -17,37 +17,83 @@
 package nvcdi
 
 import (
-	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
-	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/spec"
 	"tags.cncf.io/container-device-interface/pkg/cdi"
 	"tags.cncf.io/container-device-interface/specs-go"
-)
 
-const (
-	// ModeAuto configures the CDI spec generator to automatically detect the system configuration
-	ModeAuto = "auto"
-	// ModeNvml configures the CDI spec generator to use the NVML library.
-	ModeNvml = "nvml"
-	// ModeWsl configures the CDI spec generator to generate a WSL spec.
-	ModeWsl = "wsl"
-	// ModeManagement configures the CDI spec generator to generate a management spec.
-	ModeManagement = "management"
-	// ModeGds configures the CDI spec generator to generate a GDS spec.
-	ModeGds = "gds"
-	// ModeMofed configures the CDI spec generator to generate a MOFED spec.
-	ModeMofed = "mofed"
-	// ModeCSV configures the CDI spec generator to generate a spec based on the contents of CSV
-	// mountspec files.
-	ModeCSV = "csv"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
+	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/spec"
 )
 
 // Interface defines the API for the nvcdi package
 type Interface interface {
-	GetSpec() (spec.Interface, error)
+	SpecGenerator
 	GetCommonEdits() (*cdi.ContainerEdits, error)
+	GetDeviceSpecsByID(...string) ([]specs.Device, error)
+	// Deprecated: GetAllDeviceSpecs is deprecated. Use GetDeviceSpecsByID("all") instead.
 	GetAllDeviceSpecs() ([]specs.Device, error)
-	GetGPUDeviceEdits(device.Device) (*cdi.ContainerEdits, error)
-	GetGPUDeviceSpecs(int, device.Device) (*specs.Device, error)
-	GetMIGDeviceEdits(device.Device, device.MigDevice) (*cdi.ContainerEdits, error)
-	GetMIGDeviceSpecs(int, device.Device, int, device.MigDevice) (*specs.Device, error)
 }
+
+// A SpecGenerator is used to generate a complete CDI spec for a collected set
+// of devices.
+type SpecGenerator interface {
+	GetSpec(...string) (spec.Interface, error)
+}
+
+// A DeviceSpecGenerator is used to generate the specs for one or more devices.
+type DeviceSpecGenerator interface {
+	GetDeviceSpecs() ([]specs.Device, error)
+}
+
+// A HookName represents one of the predefined NVIDIA CDI hooks.
+type HookName = discover.HookName
+
+const (
+	// AllHooks is a special hook name that allows all hooks to be matched.
+	AllHooks = discover.AllHooks
+
+	// A CreateSymlinksHook is used to create symlinks in the container.
+	CreateSymlinksHook = discover.CreateSymlinksHook
+	// DisableDeviceNodeModificationHook refers to the hook used to ensure that
+	// device nodes are not created by libnvidia-ml.so or nvidia-smi in a
+	// container.
+	// Added in v1.17.8
+	DisableDeviceNodeModificationHook = discover.DisableDeviceNodeModificationHook
+	// An EnableCudaCompatHook is used to enabled CUDA Forward Compatibility.
+	// Added in v1.17.5
+	EnableCudaCompatHook = discover.EnableCudaCompatHook
+	// An UpdateLDCacheHook is used to update the ldcache in the container.
+	UpdateLDCacheHook = discover.UpdateLDCacheHook
+
+	// Deprecated: Use CreateSymlinksHook instead.
+	HookCreateSymlinks = CreateSymlinksHook
+	// Deprecated: Use EnableCudaCompatHook instead.
+	HookEnableCudaCompat = EnableCudaCompatHook
+	// Deprecated: Use UpdateLDCacheHook instead.
+	HookUpdateLDCache = UpdateLDCacheHook
+)
+
+// A FeatureFlag refers to a specific feature that can be toggled in the CDI api.
+// All features are off by default.
+type FeatureFlag string
+
+const (
+	// FeatureEnableExplicitDriverLibraries enables the inclusion of a list of
+	// explicit driver libraries.
+	FeatureEnableExplicitDriverLibraries = FeatureFlag("enable-explicit-driver-libraries")
+
+	// FeatureDisableNvsandboxUtils disables the use of nvsandboxutils when
+	// querying devices.
+	FeatureDisableNvsandboxUtils = FeatureFlag("disable-nvsandboxutils")
+
+	// FeatureEnableCoherentAnnotations enables the addition of annotations
+	// coherent or non-coherent devices.
+	FeatureEnableCoherentAnnotations = FeatureFlag("enable-coherent-annotations")
+
+	// FeatureDisableMultipleCSVDevices disables the handling of multiple devices
+	// in CSV mode.
+	FeatureDisableMultipleCSVDevices = FeatureFlag("disable-multiple-csv-devices")
+
+	// FeatureNoAdditionalGIDsForDeviceNodes disables the injection of additional GIDs
+	// for a device node when the node is not readable and writable by the user.
+	FeatureNoAdditionalGIDsForDeviceNodes = FeatureFlag("no-additional-gids-for-device-nodes")
+)

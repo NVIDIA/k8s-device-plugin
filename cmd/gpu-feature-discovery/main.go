@@ -13,29 +13,42 @@ import (
 	"github.com/urfave/cli/v2"
 	"k8s.io/klog/v2"
 
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	nvinfo "github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
+
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/flags"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
 	"github.com/NVIDIA/k8s-device-plugin/internal/lm"
-	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 	"github.com/NVIDIA/k8s-device-plugin/internal/vgpu"
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
 )
 
-var nodeFeatureAPI bool
+// Config represents a collection of config options for GFD.
+type Config struct {
+	configFile string
+
+	kubeClientConfig flags.KubeClientConfig
+	nodeConfig       flags.NodeConfig
+
+	// flags stores the CLI flags for later processing.
+	flags []cli.Flag
+}
 
 func main() {
-	var configFile string
+	config := &Config{}
 
 	c := cli.NewApp()
 	c.Name = "GPU Feature Discovery"
 	c.Usage = "generate labels for NVIDIA devices"
 	c.Version = info.GetVersionString()
 	c.Action = func(ctx *cli.Context) error {
-		return start(ctx, c.Flags)
+		return start(ctx, config)
 	}
 
-	c.Flags = []cli.Flag{
+	config.flags = []cli.Flag{
 		&cli.StringFlag{
 			Name:    "mig-strategy",
 			Value:   spec.MigStrategyNone,
@@ -60,10 +73,10 @@ func main() {
 			Usage:   "Do not add the timestamp to the labels",
 			EnvVars: []string{"GFD_NO_TIMESTAMP"},
 		},
-		&cli.DurationFlag{
+		&cli.GenericFlag{
 			Name:    "sleep-interval",
-			Value:   60 * time.Second,
-			Usage:   "Time to sleep between labeling",
+			Value:   spec.NewDurationValue(60 * time.Second),
+			Usage:   "Time to sleep between labeling. Use 'infinite' to sleep indefinitely after the first labeling",
 			EnvVars: []string{"GFD_SLEEP_INTERVAL"},
 		},
 		&cli.StringFlag{
@@ -81,17 +94,34 @@ func main() {
 		&cli.StringFlag{
 			Name:        "config-file",
 			Usage:       "the path to a config file as an alternative to command line options or environment variables",
-			Destination: &configFile,
+			Destination: &config.configFile,
 			EnvVars:     []string{"GFD_CONFIG_FILE", "CONFIG_FILE"},
 		},
 		&cli.BoolFlag{
-			Name:        "use-node-feature-api",
-			Value:       false,
-			Destination: &nodeFeatureAPI,
-			Usage:       "Use NFD NodeFeature API to publish labels",
-			EnvVars:     []string{"GFD_USE_NODE_FEATURE_API"},
+			Name:    "use-node-feature-api",
+			Value:   true,
+			Usage:   "Use NFD NodeFeature API to publish labels",
+			EnvVars: []string{"GFD_USE_NODE_FEATURE_API", "USE_NODE_FEATURE_API"},
+		},
+		&cli.StringFlag{
+			Name:    "device-discovery-strategy",
+			Value:   "auto",
+			Usage:   "the strategy to use to discover devices: 'auto', 'nvml', 'tegra' or 'vfio'",
+			EnvVars: []string{"DEVICE_DISCOVERY_STRATEGY"},
+		},
+		&cli.StringFlag{
+			Name:    "driver-root-ctr-path",
+			Aliases: []string{"container-driver-root"},
+			Value:   spec.DefaultContainerDriverRoot,
+			Usage:   "the path where the NVIDIA driver root is mounted in the container",
+			EnvVars: []string{"DRIVER_ROOT_CTR_PATH", "CONTAINER_DRIVER_ROOT"},
 		},
 	}
+
+	config.flags = append(config.flags, config.kubeClientConfig.Flags()...)
+	config.flags = append(config.flags, config.nodeConfig.Flags()...)
+
+	c.Flags = config.flags
 
 	if err := c.Run(os.Args); err != nil {
 		klog.Error(err)
@@ -100,11 +130,20 @@ func main() {
 }
 
 func validateFlags(config *spec.Config) error {
+	switch *config.Flags.DeviceDiscoveryStrategy {
+	case "auto":
+	case "nvml":
+	case "tegra":
+	case "vfio":
+	default:
+		return fmt.Errorf("invalid --device-discovery-strategy option %v", *config.Flags.DeviceDiscoveryStrategy)
+	}
 	return nil
 }
 
-func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
-	config, err := spec.NewConfig(c, flags)
+// loadConfig loads the config from the spec file.
+func (cfg *Config) loadConfig(c *cli.Context) (*spec.Config, error) {
+	config, err := spec.NewConfig(c, cfg.flags)
 	if err != nil {
 		return nil, fmt.Errorf("unable to finalize config: %v", err)
 	}
@@ -112,11 +151,11 @@ func loadConfig(c *cli.Context, flags []cli.Flag) (*spec.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to validate flags: %v", err)
 	}
-	config.Flags.Plugin = nil
+
 	return config, nil
 }
 
-func start(c *cli.Context, flags []cli.Flag) error {
+func start(c *cli.Context, cfg *Config) error {
 	defer func() {
 		klog.Info("Exiting")
 	}()
@@ -127,11 +166,11 @@ func start(c *cli.Context, flags []cli.Flag) error {
 	for {
 		// Load the configuration file
 		klog.Info("Loading configuration.")
-		config, err := loadConfig(c, flags)
+		config, err := cfg.loadConfig(c)
 		if err != nil {
 			return fmt.Errorf("unable to load config: %v", err)
 		}
-		spec.DisableResourceNamingInConfig(logger.ToKlog, config)
+		spec.DisableResourceNamingInConfig(config)
 
 		// Print the config to the output.
 		configJSON, err := json.MarshalIndent(config, "", "  ")
@@ -140,11 +179,46 @@ func start(c *cli.Context, flags []cli.Flag) error {
 		}
 		klog.Infof("\nRunning with config:\n%v", string(configJSON))
 
-		manager := resource.NewManager(config)
+		nvmllib := nvml.New()
+		devicelib := device.New(nvmllib)
+		infolib := nvinfo.New(
+			nvinfo.WithNvmlLib(nvmllib),
+			nvinfo.WithDeviceLib(devicelib),
+		)
+
+		manager, err := resource.NewManager(infolib, nvmllib, devicelib, config)
+		if err != nil {
+			return fmt.Errorf("failed to create resource manager: %w", err)
+
+		}
 		vgpul := vgpu.NewVGPULib(vgpu.NewNvidiaPCILib())
 
+		var clientSets flags.ClientSets
+		if config.Flags.UseNodeFeatureAPI != nil && *config.Flags.UseNodeFeatureAPI {
+			cs, err := cfg.kubeClientConfig.NewClientSets()
+			if err != nil {
+				return fmt.Errorf("failed to create clientsets: %w", err)
+			}
+			clientSets = cs
+		}
+
+		labelOutputer, err := lm.NewOutputer(
+			config,
+			cfg.nodeConfig,
+			clientSets,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create label outputer: %w", err)
+		}
+
 		klog.Info("Start running")
-		restart, err := run(manager, vgpul, config, sigs)
+		d := &gfd{
+			manager:       manager,
+			vgpu:          vgpul,
+			config:        config,
+			labelOutputer: labelOutputer,
+		}
+		restart, err := d.run(sigs)
 		if err != nil {
 			return err
 		}
@@ -155,19 +229,37 @@ func start(c *cli.Context, flags []cli.Flag) error {
 	}
 }
 
-func run(manager resource.Manager, vgpu vgpu.Interface, config *spec.Config, sigs chan os.Signal) (bool, error) {
+type gfd struct {
+	manager resource.Manager
+	vgpu    vgpu.Interface
+	config  *spec.Config
+
+	labelOutputer lm.Outputer
+}
+
+func (d *gfd) run(sigs chan os.Signal) (bool, error) {
 	defer func() {
-		if !nodeFeatureAPI && !*config.Flags.GFD.Oneshot && *config.Flags.GFD.OutputFile != "" {
-			err := removeOutputFile(*config.Flags.GFD.OutputFile)
-			if err != nil {
-				klog.Warningf("Error removing output file: %v", err)
-			}
+		if d.config.Flags.UseNodeFeatureAPI != nil && *d.config.Flags.UseNodeFeatureAPI {
+			return
+		}
+		if d.config.Flags.GFD.Oneshot != nil && *d.config.Flags.GFD.Oneshot {
+			return
+		}
+		if d.config.Flags.GFD.SleepInterval.IsInfinite() {
+			return
+		}
+		if d.config.Flags.GFD.OutputFile != nil && *d.config.Flags.GFD.OutputFile == "" {
+			return
+		}
+		err := removeOutputFile(*d.config.Flags.GFD.OutputFile)
+		if err != nil {
+			klog.Warningf("Error removing output file: %v", err)
 		}
 	}()
 
-	timestampLabeler := lm.NewTimestampLabeler(config)
+	timestampLabeler := lm.NewTimestampLabeler(d.config)
 rerun:
-	loopLabelers, err := lm.NewLabelers(manager, vgpu, config)
+	loopLabelers, err := lm.NewLabelers(d.manager, d.vgpu, d.config)
 	if err != nil {
 		return false, err
 	}
@@ -187,17 +279,21 @@ rerun:
 	}
 
 	klog.Info("Creating Labels")
-	err = labels.Output(*config.Flags.GFD.OutputFile, nodeFeatureAPI)
-	if err != nil {
+	if err := d.labelOutputer.Output(labels); err != nil {
 		return false, err
 	}
 
-	if *config.Flags.GFD.Oneshot {
+	if *d.config.Flags.GFD.Oneshot {
 		return false, nil
 	}
 
-	klog.Info("Sleeping for ", *config.Flags.GFD.SleepInterval)
-	rerunTimeout := time.After(time.Duration(*config.Flags.GFD.SleepInterval))
+	var rerunTimeout <-chan time.Time
+	if d.config.Flags.GFD.SleepInterval.IsInfinite() {
+		klog.Info("Sleep interval is infinite, sleeping indefinitely")
+	} else {
+		klog.Info("Sleeping for ", *d.config.Flags.GFD.SleepInterval)
+		rerunTimeout = time.After(time.Duration(*d.config.Flags.GFD.SleepInterval))
+	}
 
 	for {
 		select {

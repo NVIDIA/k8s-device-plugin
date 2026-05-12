@@ -150,12 +150,12 @@ func (mounter *Mounter) MountSensitive(source string, target string, fstype stri
 		mklinkSource = mklinkSource + "\\"
 	}
 
-	output, err := exec.Command("cmd", "/c", "mklink", "/D", target, mklinkSource).CombinedOutput()
+	err := os.Symlink(mklinkSource, target)
 	if err != nil {
-		klog.Errorf("mklink failed: %v, source(%q) target(%q) output: %q", err, mklinkSource, target, string(output))
+		klog.Errorf("symlink failed: %v, source(%q) target(%q)", err, mklinkSource, target)
 		return err
 	}
-	klog.V(2).Infof("mklink source(%q) on target(%q) successfully, output: %q", mklinkSource, target, string(output))
+	klog.V(2).Infof("symlink source(%q) on target(%q) successfully", mklinkSource, target)
 
 	return nil
 }
@@ -164,7 +164,7 @@ func (mounter *Mounter) MountSensitive(source string, target string, fstype stri
 // return (output, error)
 func newSMBMapping(username, password, remotepath string) (string, error) {
 	if username == "" || password == "" || remotepath == "" {
-		return "", fmt.Errorf("invalid parameter(username: %s, password: %s, remoteapth: %s)", username, sensitiveOptionsRemoved, remotepath)
+		return "", fmt.Errorf("invalid parameter(username: %s, password: %s, remotepath: %s)", username, sensitiveOptionsRemoved, remotepath)
 	}
 
 	// use PowerShell Environment Variables to store user input string to prevent command line injection
@@ -193,8 +193,8 @@ func isSMBMappingExist(remotepath string) bool {
 // check whether remotepath is valid
 // return (true, nil) if remotepath is valid
 func isValidPath(remotepath string) (bool, error) {
-	cmd := exec.Command("powershell", "/c", `Test-Path $Env:remoteapth`)
-	cmd.Env = append(os.Environ(), fmt.Sprintf("remoteapth=%s", remotepath))
+	cmd := exec.Command("powershell", "/c", `Test-Path $Env:remotepath`)
+	cmd.Env = append(os.Environ(), fmt.Sprintf("remotepath=%s", remotepath))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return false, fmt.Errorf("returned output: %s, error: %v", string(output), err)
@@ -219,8 +219,9 @@ func removeSMBMapping(remotepath string) (string, error) {
 func (mounter *Mounter) Unmount(target string) error {
 	klog.V(4).Infof("Unmount target (%q)", target)
 	target = NormalizeWindowsPath(target)
-	if output, err := exec.Command("cmd", "/c", "rmdir", target).CombinedOutput(); err != nil {
-		klog.Errorf("rmdir failed: %v, output: %q", err, string(output))
+
+	if err := os.Remove(target); err != nil {
+		klog.Errorf("removing directory %s failed: %v", target, err)
 		return err
 	}
 	return nil
@@ -239,6 +240,10 @@ func (mounter *Mounter) IsLikelyNotMountPoint(file string) (bool, error) {
 	}
 
 	if stat.Mode()&os.ModeSymlink != 0 {
+		return false, err
+	}
+	// go1.23 behavior change: https://github.com/golang/go/issues/63703#issuecomment-2535941458
+	if stat.Mode()&os.ModeIrregular != 0 {
 		return false, err
 	}
 	return true, nil
@@ -327,31 +332,4 @@ func ListVolumesOnDisk(diskID string) (volumeIDs []string, err error) {
 
 	volumeIds := strings.Split(strings.TrimSpace(string(output)), "\r\n")
 	return volumeIds, nil
-}
-
-// getAllParentLinks walks all symbolic links and return all the parent targets recursively
-func getAllParentLinks(path string) ([]string, error) {
-	const maxIter = 255
-	links := []string{}
-	for {
-		links = append(links, path)
-		if len(links) > maxIter {
-			return links, fmt.Errorf("unexpected length of parent links: %v", links)
-		}
-
-		fi, err := os.Lstat(path)
-		if err != nil {
-			return links, fmt.Errorf("Lstat: %v", err)
-		}
-		if fi.Mode()&os.ModeSymlink == 0 {
-			break
-		}
-
-		path, err = os.Readlink(path)
-		if err != nil {
-			return links, fmt.Errorf("Readlink error: %v", err)
-		}
-	}
-
-	return links, nil
 }

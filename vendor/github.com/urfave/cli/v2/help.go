@@ -54,7 +54,7 @@ var helpCommand = &Command{
 			cCtx = cCtx.parentContext
 		}
 
-		// Case 4. $ app hello foo
+		// Case 4. $ app help foo
 		// foo is the command for which help needs to be shown
 		if argsPresent {
 			return ShowCommandHelp(cCtx, firstArg)
@@ -69,7 +69,7 @@ var helpCommand = &Command{
 		}
 
 		// Case 3, 5
-		if (len(cCtx.Command.Subcommands) == 1 && !cCtx.Command.HideHelp) ||
+		if (len(cCtx.Command.Subcommands) == 1 && !cCtx.Command.HideHelp && !cCtx.Command.HideHelpCommand) ||
 			(len(cCtx.Command.Subcommands) == 0 && cCtx.Command.HideHelp) {
 			templ := cCtx.Command.CustomHelpTemplate
 			if templ == "" {
@@ -150,7 +150,7 @@ func printCommandSuggestions(commands []*Command, writer io.Writer) {
 		if command.Hidden {
 			continue
 		}
-		if strings.HasSuffix(os.Getenv("SHELL"), "zsh") {
+		if strings.HasSuffix(os.Getenv("0"), "zsh") {
 			for _, name := range command.Names() {
 				_, _ = fmt.Fprintf(writer, "%s:%s\n", name, command.Usage)
 			}
@@ -248,7 +248,6 @@ func ShowCommandHelpAndExit(c *Context, command string, code int) {
 
 // ShowCommandHelp prints help for the given command
 func ShowCommandHelp(ctx *Context, command string) error {
-
 	commands := ctx.App.Commands
 	if ctx.Command.Subcommands != nil {
 		commands = ctx.Command.Subcommands
@@ -278,7 +277,7 @@ func ShowCommandHelp(ctx *Context, command string) error {
 
 	if ctx.App.CommandNotFound == nil {
 		errMsg := fmt.Sprintf("No help topic for '%v'", command)
-		if ctx.App.Suggest {
+		if ctx.App.Suggest && SuggestCommand != nil {
 			if suggestion := SuggestCommand(ctx.Command.Subcommands, command); suggestion != "" {
 				errMsg += ". " + suggestion
 			}
@@ -337,7 +336,6 @@ func ShowCommandCompletions(ctx *Context, command string) {
 			DefaultCompleteWithFlags(c)(ctx)
 		}
 	}
-
 }
 
 // printHelpCustom is the default implementation of HelpPrinterCustom.
@@ -345,7 +343,6 @@ func ShowCommandCompletions(ctx *Context, command string) {
 // The customFuncs map will be combined with a default template.FuncMap to
 // allow using arbitrary functions in template rendering.
 func printHelpCustom(out io.Writer, templ string, data interface{}, customFuncs map[string]interface{}) {
-
 	const maxLineLength = 10000
 
 	funcMap := template.FuncMap{
@@ -376,17 +373,26 @@ func printHelpCustom(out io.Writer, templ string, data interface{}, customFuncs 
 
 	w := tabwriter.NewWriter(out, 1, 8, 2, ' ', 0)
 	t := template.Must(template.New("help").Funcs(funcMap).Parse(templ))
-	t.New("helpNameTemplate").Parse(helpNameTemplate)
-	t.New("usageTemplate").Parse(usageTemplate)
-	t.New("descriptionTemplate").Parse(descriptionTemplate)
-	t.New("visibleCommandTemplate").Parse(visibleCommandTemplate)
-	t.New("copyrightTemplate").Parse(copyrightTemplate)
-	t.New("versionTemplate").Parse(versionTemplate)
-	t.New("visibleFlagCategoryTemplate").Parse(visibleFlagCategoryTemplate)
-	t.New("visibleFlagTemplate").Parse(visibleFlagTemplate)
-	t.New("visibleGlobalFlagCategoryTemplate").Parse(strings.Replace(visibleFlagCategoryTemplate, "OPTIONS", "GLOBAL OPTIONS", -1))
-	t.New("authorsTemplate").Parse(authorsTemplate)
-	t.New("visibleCommandCategoryTemplate").Parse(visibleCommandCategoryTemplate)
+	templates := map[string]string{
+		"helpNameTemplate":                  helpNameTemplate,
+		"usageTemplate":                     usageTemplate,
+		"descriptionTemplate":               descriptionTemplate,
+		"visibleCommandTemplate":            visibleCommandTemplate,
+		"copyrightTemplate":                 copyrightTemplate,
+		"versionTemplate":                   versionTemplate,
+		"visibleFlagCategoryTemplate":       visibleFlagCategoryTemplate,
+		"visibleFlagTemplate":               visibleFlagTemplate,
+		"visibleGlobalFlagCategoryTemplate": strings.Replace(visibleFlagCategoryTemplate, "OPTIONS", "GLOBAL OPTIONS", -1),
+		"authorsTemplate":                   authorsTemplate,
+		"visibleCommandCategoryTemplate":    visibleCommandCategoryTemplate,
+	}
+	for name, value := range templates {
+		if _, err := t.New(name).Parse(value); err != nil {
+			if os.Getenv("CLI_TEMPLATE_ERROR_DEBUG") != "" {
+				_, _ = fmt.Fprintf(ErrWriter, "CLI TEMPLATE ERROR: %#v\n", err)
+			}
+		}
+	}
 
 	err := t.Execute(w, data)
 	if err != nil {
@@ -415,6 +421,9 @@ func checkVersion(cCtx *Context) bool {
 }
 
 func checkHelp(cCtx *Context) bool {
+	if HelpFlag == nil {
+		return false
+	}
 	found := false
 	for _, name := range HelpFlag.Names() {
 		if cCtx.Bool(name) {
@@ -424,24 +433,6 @@ func checkHelp(cCtx *Context) bool {
 	}
 
 	return found
-}
-
-func checkCommandHelp(c *Context, name string) bool {
-	if c.Bool("h") || c.Bool("help") {
-		_ = ShowCommandHelp(c, name)
-		return true
-	}
-
-	return false
-}
-
-func checkSubcommandHelp(cCtx *Context) bool {
-	if cCtx.Bool("h") || cCtx.Bool("help") {
-		_ = ShowSubcommandHelp(cCtx)
-		return true
-	}
-
-	return false
 }
 
 func checkShellCompleteFlag(a *App, arguments []string) (bool, []string) {
@@ -454,6 +445,15 @@ func checkShellCompleteFlag(a *App, arguments []string) (bool, []string) {
 
 	if lastArg != "--generate-bash-completion" {
 		return false, arguments
+	}
+
+	for _, arg := range arguments {
+		// If arguments include "--", shell completion is disabled
+		// because after "--" only positional arguments are accepted.
+		// https://unix.stackexchange.com/a/11382
+		if arg == "--" {
+			return false, arguments
+		}
 	}
 
 	return true, arguments[:pos]
@@ -505,7 +505,6 @@ func wrap(input string, offset int, wrapAt int) string {
 				ss = append(ss, wrapped)
 			} else {
 				ss = append(ss, padding+wrapped)
-
 			}
 
 		}

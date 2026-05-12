@@ -18,15 +18,23 @@ package cdi
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 
-	nvdevice "github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi"
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
+	transformroot "github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform/root"
 	"github.com/sirupsen/logrus"
+	"k8s.io/klog/v2"
 	cdiapi "tags.cncf.io/container-device-interface/pkg/cdi"
 	cdiparser "tags.cncf.io/container-device-interface/pkg/parser"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
 )
 
 const (
@@ -35,43 +43,62 @@ const (
 
 // cdiHandler creates CDI specs for devices assocatied with the device plugin
 type cdiHandler struct {
+	infolib   info.Interface
+	nvmllib   nvml.Interface
+	devicelib device.Interface
+
 	logger           *logrus.Logger
-	nvml             nvml.Interface
-	nvdevice         nvdevice.Interface
 	driverRoot       string
+	devRoot          string
 	targetDriverRoot string
+	targetDevRoot    string
 	nvidiaCTKPath    string
 	vendor           string
 	deviceIDStrategy string
 
-	enabled      bool
-	gdsEnabled   bool
-	mofedEnabled bool
+	deviceListStrategies    spec.DeviceListStrategies
+	deviceDiscoveryStrategy string
 
-	cdilibs map[string]nvcdi.Interface
+	// nvcdiFeatureFlags allows finer control over CDI spec generation.
+	nvcdiFeatureFlags []string
+
+	gdsEnabled     bool
+	mofedEnabled   bool
+	gdrcopyEnabled bool
+
+	imexChannels imex.Channels
+
+	cdilibs         map[string]nvcdi.SpecGenerator
+	additionalModes []string
 }
 
 var _ Interface = &cdiHandler{}
 
-// newHandler constructs a new instance of the 'cdi' interface
-func newHandler(opts ...Option) (Interface, error) {
-	c := &cdiHandler{}
+// New constructs a new instance of the 'cdi' interface
+func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, opts ...Option) (Interface, error) {
+	c := &cdiHandler{
+		infolib:   infolib,
+		nvmllib:   nvmllib,
+		devicelib: devicelib,
+	}
 	for _, opt := range opts {
 		opt(c)
 	}
 
-	if !c.enabled {
+	if !c.deviceListStrategies.AnyCDIEnabled() {
+		return &null{}, nil
+	}
+	if c.deviceDiscoveryStrategy == "" {
+		return nil, fmt.Errorf("device discovery strategy not set")
+	}
+	hasNVML, _ := infolib.HasNvml()
+	if !hasNVML && c.deviceDiscoveryStrategy != "tegra" {
+		klog.Warning("No valid resources detected, creating a null CDI handler")
 		return &null{}, nil
 	}
 
 	if c.logger == nil {
 		c.logger = logrus.StandardLogger()
-	}
-	if c.nvml == nil {
-		c.nvml = nvml.New()
-	}
-	if c.nvdevice == nil {
-		c.nvdevice = nvdevice.New(nvdevice.WithNvml(c.nvml))
 	}
 	if c.deviceIDStrategy == "" {
 		c.deviceIDStrategy = "uuid"
@@ -79,8 +106,14 @@ func newHandler(opts ...Option) (Interface, error) {
 	if c.driverRoot == "" {
 		c.driverRoot = "/"
 	}
+	if c.devRoot == "" {
+		c.devRoot = c.driverRoot
+	}
 	if c.targetDriverRoot == "" {
 		c.targetDriverRoot = c.driverRoot
+	}
+	if c.targetDevRoot == "" {
+		c.targetDevRoot = c.devRoot
 	}
 
 	deviceNamer, err := nvcdi.NewDeviceNamer(c.deviceIDStrategy)
@@ -88,37 +121,58 @@ func newHandler(opts ...Option) (Interface, error) {
 		return nil, err
 	}
 
-	c.cdilibs = make(map[string]nvcdi.Interface)
+	commonOptions := []nvcdi.Option{
+		nvcdi.WithDeviceLib(c.devicelib),
+		nvcdi.WithDevRoot(c.devRoot),
+		nvcdi.WithDriverRoot(c.driverRoot),
+		nvcdi.WithFeatureFlags(c.nvcdiFeatureFlags...),
+		nvcdi.WithInfoLib(c.infolib),
+		nvcdi.WithLogger(c.logger),
+		nvcdi.WithNVIDIACDIHookPath(c.nvidiaCTKPath),
+		nvcdi.WithNvmlLib(c.nvmllib),
+		nvcdi.WithVendor(c.vendor),
+	}
+
+	// On Tegra (CSV mode), the default CSV files live under the driver root.
+	// Inject driver-root-aware paths explicitly so the nvcdi library does not
+	// fall back to the hardcoded absolute paths returned by csv.DefaultFileList().
+	if c.deviceDiscoveryStrategy == "tegra" {
+		commonOptions = append(commonOptions, nvcdi.WithCSVFiles(csvFilesForRoot(c.driverRoot)))
+	}
+
+	c.cdilibs = make(map[string]nvcdi.SpecGenerator)
 
 	c.cdilibs["gpu"], err = nvcdi.New(
-		nvcdi.WithLogger(c.logger),
-		nvcdi.WithNvmlLib(c.nvml),
-		nvcdi.WithDeviceLib(c.nvdevice),
-		nvcdi.WithNVIDIACTKPath(c.nvidiaCTKPath),
-		nvcdi.WithDriverRoot(c.driverRoot),
-		nvcdi.WithDeviceNamer(deviceNamer),
-		nvcdi.WithVendor(c.vendor),
-		nvcdi.WithClass("gpu"),
+		append(
+			commonOptions,
+			nvcdi.WithDeviceNamers(deviceNamer),
+			nvcdi.WithClass("gpu"),
+		)...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create nvcdi library: %v", err)
 	}
 
-	var additionalModes []string
-	if c.gdsEnabled {
-		additionalModes = append(additionalModes, "gds")
-	}
-	if c.mofedEnabled {
-		additionalModes = append(additionalModes, "mofed")
+	if len(c.imexChannels) > 0 {
+		c.cdilibs["imex-channel"] = c.newImexChannelSpecGenerator()
 	}
 
-	for _, mode := range additionalModes {
+	if c.gdrcopyEnabled {
+		c.additionalModes = append(c.additionalModes, "gdrcopy")
+	}
+	if c.gdsEnabled {
+		c.additionalModes = append(c.additionalModes, "gds")
+	}
+	if c.mofedEnabled {
+		c.additionalModes = append(c.additionalModes, "mofed")
+	}
+
+	for _, mode := range c.additionalModes {
 		lib, err := nvcdi.New(
-			nvcdi.WithLogger(c.logger),
-			nvcdi.WithNVIDIACTKPath(c.nvidiaCTKPath),
-			nvcdi.WithDriverRoot(c.driverRoot),
-			nvcdi.WithVendor(c.vendor),
-			nvcdi.WithMode(mode),
+			append(
+				commonOptions,
+				nvcdi.WithMode(mode),
+			)...,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create nvcdi library: %v", err)
@@ -131,26 +185,18 @@ func newHandler(opts ...Option) (Interface, error) {
 
 // CreateSpecFile creates a CDI spec file for the specified devices.
 func (cdi *cdiHandler) CreateSpecFile() error {
+	var emptySpecs []string
 	for class, cdilib := range cdi.cdilibs {
 		cdi.logger.Infof("Generating CDI spec for resource: %s/%s", cdi.vendor, class)
-
-		if class == "gpu" {
-			ret := cdi.nvml.Init()
-			if ret != nvml.SUCCESS {
-				return fmt.Errorf("failed to initialize NVML: %v", ret)
-			}
-			defer func() {
-				_ = cdi.nvml.Shutdown()
-			}()
-		}
 
 		spec, err := cdilib.GetSpec()
 		if err != nil {
 			return fmt.Errorf("failed to get CDI spec: %v", err)
 		}
 
-		err = transform.NewRootTransformer(cdi.driverRoot, cdi.targetDriverRoot).Transform(spec.Raw())
-		if err != nil {
+		// TODO: Once the NewDriverTransformer is merged in container-toolkit we can instantiate it directly.
+		transformer := cdi.getRootTransformer()
+		if err := transformer.Transform(spec.Raw()); err != nil {
 			return fmt.Errorf("failed to transform driver root in CDI spec: %v", err)
 		}
 
@@ -161,15 +207,96 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 
 		err = spec.Save(filepath.Join(cdiRoot, specName+".json"))
 		if err != nil {
+			// TODO: This is a brittle check since it relies on exact string matches.
+			// We should pull this functionality into the CDI tooling instead.
+			if strings.Contains(err.Error(), "invalid device, empty device edits") {
+				klog.ErrorS(err, "Ignoring empty CDI specs", "vendor", cdi.vendor, "class", class)
+				emptySpecs = append(emptySpecs, class)
+				continue
+			}
 			return fmt.Errorf("failed to save CDI spec: %v", err)
 		}
 	}
 
+	// Remove the classes with empty specs from the supported types.
+	for _, emptySpec := range emptySpecs {
+		delete(cdi.cdilibs, emptySpec)
+	}
+
 	return nil
+}
+
+func (cdi *cdiHandler) getRootTransformer() transform.Transformer {
+	driverRootTransformer := transformroot.New(
+		transformroot.WithRoot(cdi.driverRoot),
+		transformroot.WithTargetRoot(cdi.targetDriverRoot),
+		transformroot.WithRelativeTo("host"),
+	)
+
+	if cdi.devRoot == cdi.driverRoot || cdi.devRoot == "" {
+		return driverRootTransformer
+	}
+
+	ensureDev := func(p string) string {
+		return filepath.Join(strings.TrimSuffix(filepath.Clean(p), "/dev"), "/dev")
+	}
+
+	devRootTransformer := transformroot.New(
+		transformroot.WithRoot(ensureDev(cdi.devRoot)),
+		transformroot.WithTargetRoot(ensureDev(cdi.targetDevRoot)),
+		transformroot.WithRelativeTo("host"),
+	)
+
+	return transform.Merge(driverRootTransformer, devRootTransformer)
 }
 
 // QualifiedName constructs a CDI qualified device name for the specified resources.
 // Note: This assumes that the specified id matches the device name returned by the naming strategy.
 func (cdi *cdiHandler) QualifiedName(class string, id string) string {
 	return cdiparser.QualifiedName(cdi.vendor, class, id)
+}
+
+// AdditionalDevices returns the optional CDI devices based on the device plugin
+// configuration.
+// Here we check for requested modes as well as whether the modes have a valid
+// CDI spec associated with them.
+func (cdi *cdiHandler) AdditionalDevices() []string {
+	var devices []string
+	for _, mode := range cdi.additionalModes {
+		if cdi.cdilibs[mode] == nil {
+			continue
+		}
+		devices = append(devices, cdi.QualifiedName(mode, "all"))
+	}
+	return devices
+}
+
+// defaultCSVMountSpecPath mirrors the constant defined in the nvidia-container-toolkit's
+// internal/platform-support/tegra/csv package.
+const defaultCSVMountSpecPath = "/etc/nvidia-container-runtime/host-files-for-container.d"
+
+var defaultCSVFileNames = []string{"devices.csv", "drivers.csv", "l4t.csv"}
+
+// csvFilesForRoot returns the Tegra CSV file paths to use for CDI spec generation.
+// It checks for the CSV directory at the driver root first, then falls back to the
+// absolute path. Returns nil if the directory is not found at either location,
+// allowing nvcdi to fall back to csv.DefaultFileList().
+func csvFilesForRoot(driverRoot string) []string {
+	roots := []string{driverRoot}
+	if driverRoot != "/" {
+		roots = append(roots, "/")
+	}
+	for _, root := range roots {
+		csvDir := filepath.Join(root, defaultCSVMountSpecPath)
+		stat, err := os.Stat(csvDir)
+		if err != nil || !stat.IsDir() {
+			continue
+		}
+		paths := make([]string, len(defaultCSVFileNames))
+		for i, f := range defaultCSVFileNames {
+			paths[i] = filepath.Join(csvDir, f)
+		}
+		return paths
+	}
+	return nil
 }

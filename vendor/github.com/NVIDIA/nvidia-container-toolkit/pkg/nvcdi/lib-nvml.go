@@ -18,92 +18,258 @@ package nvcdi
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/edits"
-	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/spec"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"tags.cncf.io/container-device-interface/pkg/cdi"
 	"tags.cncf.io/container-device-interface/specs-go"
+
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/nvsandboxutils"
 )
 
 type nvmllib nvcdilib
 
-var _ Interface = (*nvmllib)(nil)
-
-// GetSpec should not be called for nvmllib
-func (l *nvmllib) GetSpec() (spec.Interface, error) {
-	return nil, fmt.Errorf("Unexpected call to nvmllib.GetSpec()")
-}
-
-// GetAllDeviceSpecs returns the device specs for all available devices.
-func (l *nvmllib) GetAllDeviceSpecs() ([]specs.Device, error) {
-	var deviceSpecs []specs.Device
-
-	if r := l.nvmllib.Init(); r != nvml.SUCCESS {
-		return nil, fmt.Errorf("failed to initialize NVML: %v", r)
-	}
-	defer func() {
-		if r := l.nvmllib.Shutdown(); r != nvml.SUCCESS {
-			l.logger.Warningf("failed to shutdown NVML: %v", r)
-		}
-	}()
-
-	gpuDeviceSpecs, err := l.getGPUDeviceSpecs()
-	if err != nil {
-		return nil, err
-	}
-	deviceSpecs = append(deviceSpecs, gpuDeviceSpecs...)
-
-	migDeviceSpecs, err := l.getMigDeviceSpecs()
-	if err != nil {
-		return nil, err
-	}
-	deviceSpecs = append(deviceSpecs, migDeviceSpecs...)
-
-	return deviceSpecs, nil
-}
+var _ deviceSpecGeneratorFactory = (*nvmllib)(nil)
 
 // GetCommonEdits generates a CDI specification that can be used for ANY devices
 func (l *nvmllib) GetCommonEdits() (*cdi.ContainerEdits, error) {
-	common, err := newCommonNVMLDiscoverer(l.logger, l.driverRoot, l.nvidiaCTKPath, l.nvmllib)
+	common, err := l.newCommonNVMLDiscoverer()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create discoverer for common entities: %v", err)
 	}
 
-	return edits.FromDiscoverer(common)
+	return l.editsFactory.FromDiscoverer(common)
 }
 
-func (l *nvmllib) getGPUDeviceSpecs() ([]specs.Device, error) {
-	var deviceSpecs []specs.Device
+// DeviceSpecGenerators returns the CDI device spec generators for NVML devices
+// with the specified IDs.
+// Supported IDs are:
+// * an index of a GPU or MIG device
+// * a UUID of a GPU or MIG device
+// * the special ID 'all'
+func (l *nvmllib) DeviceSpecGenerators(ids ...string) (DeviceSpecGenerator, error) {
+	if err := l.init(); err != nil {
+		return nil, err
+	}
+	defer l.tryShutdown()
+
+	dsgs, err := l.getDeviceSpecGeneratorsForIDs(ids...)
+	if err != nil {
+		return nil, err
+	}
+	return l.withInit(dsgs), nil
+}
+
+func (l *nvmllib) getDeviceSpecGeneratorsForIDs(ids ...string) (DeviceSpecGenerator, error) {
+	var identifiers []device.Identifier
+	for _, id := range ids {
+		if id == "none" {
+			return emptyDeviceSpecGenerator("none"), nil
+		}
+		if id == "all" {
+			return l.getDeviceSpecGeneratorsForAllDevices()
+		}
+		identifiers = append(identifiers, device.Identifier(id))
+	}
+
+	uuids, err := l.normalizeDeviceIDs(identifiers...)
+	if err != nil {
+		return nil, err
+	}
+
+	var DeviceSpecGenerators DeviceSpecGenerators
+	for _, uuid := range uuids {
+		device, ret := l.nvmllib.DeviceGetHandleByUUID(string(uuid))
+		if ret != nvml.SUCCESS {
+			return nil, fmt.Errorf("failed to get device handle from UUID: %v", ret)
+		}
+		generator, err := l.newDeviceSpecGeneratorFromNVMLDevice(string(uuid), device)
+		if err != nil {
+			return nil, err
+		}
+		DeviceSpecGenerators = append(DeviceSpecGenerators, generator)
+	}
+
+	return DeviceSpecGenerators, nil
+}
+
+func (l *nvmllib) newDeviceSpecGeneratorFromNVMLDevice(id string, nvmlDevice nvml.Device) (DeviceSpecGenerator, error) {
+	isMig, ret := nvmlDevice.IsMigDeviceHandle()
+	if ret != nvml.SUCCESS {
+		return nil, fmt.Errorf("%v", ret)
+	}
+	if isMig {
+		return l.newMIGDeviceSpecGeneratorFromNVMLDevice(id, nvmlDevice)
+	}
+
+	return l.newFullGPUDeviceSpecGeneratorFromNVMLDevice(id, nvmlDevice, l.featureFlags)
+}
+
+// getDeviceSpecGeneratorsForAllDevices returns the CDI device spec generators
+// for all NVML devices detected on the system.
+// This includes full GPUs as well as MIG devices.
+func (l *nvmllib) getDeviceSpecGeneratorsForAllDevices() (DeviceSpecGenerator, error) {
+	var DeviceSpecGenerators DeviceSpecGenerators
 	err := l.devicelib.VisitDevices(func(i int, d device.Device) error {
-		deviceSpec, err := l.GetGPUDeviceSpecs(i, d)
+		isMigEnabled, err := d.IsMigEnabled()
 		if err != nil {
 			return err
 		}
-		deviceSpecs = append(deviceSpecs, *deviceSpec)
-
+		if isMigEnabled {
+			return nil
+		}
+		fullGPU, err := l.newFullGPUDeviceSpecGeneratorFromDevice(i, d, l.featureFlags)
+		if err != nil {
+			return err
+		}
+		DeviceSpecGenerators = append(DeviceSpecGenerators, fullGPU)
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate CDI edits for GPU devices: %v", err)
+		return nil, fmt.Errorf("failed to get full GPU device editors: %w", err)
 	}
-	return deviceSpecs, err
+
+	err = l.devicelib.VisitMigDevices(func(i int, d device.Device, j int, mig device.MigDevice) error {
+		migDevice, err := l.newMIGDeviceSpecGeneratorFromDevice(i, d, j, mig)
+		if err != nil {
+			return err
+		}
+		DeviceSpecGenerators = append(DeviceSpecGenerators, migDevice)
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get MIG device editors: %w", err)
+	}
+
+	return DeviceSpecGenerators, nil
 }
 
-func (l *nvmllib) getMigDeviceSpecs() ([]specs.Device, error) {
-	var deviceSpecs []specs.Device
-	err := l.devicelib.VisitMigDevices(func(i int, d device.Device, j int, mig device.MigDevice) error {
-		deviceSpec, err := l.GetMIGDeviceSpecs(i, d, j, mig)
+// TODO: move this to go-nvlib?
+// normalizeDeviceID returns the UUIDs of the devices specified by the identifier.
+func (l *nvmllib) normalizeDeviceIDs(identifiers ...device.Identifier) ([]device.Identifier, error) {
+	var uuids []device.Identifier
+	for _, id := range identifiers {
+		uuid, err := l.normalizeDeviceID(id)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		deviceSpecs = append(deviceSpecs, *deviceSpec)
-
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate CDI edits for GPU devices: %v", err)
+		uuids = append(uuids, uuid)
 	}
-	return deviceSpecs, err
+	return uuids, nil
+}
+
+func (l *nvmllib) normalizeDeviceID(id device.Identifier) (device.Identifier, error) {
+	var err error
+
+	if id.IsUUID() {
+		return id, nil
+	}
+
+	if id.IsGpuIndex() {
+		idx, err := strconv.Atoi(string(id))
+		if err != nil {
+			return "", fmt.Errorf("failed to convert device index to an int: %w", err)
+		}
+		dev, ret := l.nvmllib.DeviceGetHandleByIndex(idx)
+		if ret != nvml.SUCCESS {
+			return "", fmt.Errorf("failed to get device handle from index: %v", ret)
+		}
+		uuid, ret := dev.GetUUID()
+		if ret != nvml.SUCCESS {
+			return "", fmt.Errorf("failed to get device UUID: %v", ret)
+		}
+		return device.Identifier(uuid), nil
+	}
+
+	if id.IsMigIndex() {
+		var gpuIdx, migIdx int
+		var parent nvml.Device
+		split := strings.SplitN(string(id), ":", 2)
+		if gpuIdx, err = strconv.Atoi(split[0]); err != nil {
+			return "", fmt.Errorf("failed to convert device index to an int: %w", err)
+		}
+		if migIdx, err = strconv.Atoi(split[1]); err != nil {
+			return "", fmt.Errorf("failed to convert device index to an int: %w", err)
+		}
+		parent, ret := l.nvmllib.DeviceGetHandleByIndex(gpuIdx)
+		if ret != nvml.SUCCESS {
+			return "", fmt.Errorf("failed to get parent device handle: %v", ret)
+		}
+		mig, ret := parent.GetMigDeviceHandleByIndex(migIdx)
+		if ret != nvml.SUCCESS {
+			return "", fmt.Errorf("failed to get MIG handle by index: %v", ret)
+		}
+		uuid, ret := mig.GetUUID()
+		if ret != nvml.SUCCESS {
+			return "", fmt.Errorf("failed to get MIG UUID: %v", ret)
+		}
+		return device.Identifier(uuid), nil
+	}
+
+	return "", fmt.Errorf("identifier is not a valid UUID or index: %q", id)
+}
+
+func (l *nvmllib) init() error {
+	if r := l.nvmllib.Init(); r != nvml.SUCCESS {
+		return fmt.Errorf("failed to initialize NVML: %w", r)
+	}
+
+	if l.nvsandboxutilslib == nil {
+		return nil
+	}
+	if r := l.nvsandboxutilslib.Init(l.driver.Root); r != nvsandboxutils.SUCCESS {
+		l.logger.Warningf("Failed to init nvsandboxutils: %v; ignoring", r)
+		l.nvsandboxutilslib = nil
+	}
+	return nil
+}
+
+func (l *nvmllib) tryShutdown() {
+	if l.nvsandboxutilslib != nil {
+		if r := l.nvsandboxutilslib.Shutdown(); r != nvsandboxutils.SUCCESS {
+			l.logger.Warningf("failed to shutdown nvsandboxutils: %v", r)
+		}
+	}
+	if r := l.nvmllib.Shutdown(); r != nvml.SUCCESS {
+		l.logger.Warningf("failed to shutdown NVML: %v", r)
+	}
+}
+
+type deviceSpecGeneratorsWithAndShutdown struct {
+	*nvmllib
+	DeviceSpecGenerator
+}
+
+func (l *nvmllib) withInit(dsg DeviceSpecGenerator) DeviceSpecGenerator {
+	return &deviceSpecGeneratorsWithAndShutdown{
+		nvmllib:             l,
+		DeviceSpecGenerator: dsg,
+	}
+}
+
+// GetDeviceSpecs ensures that the init and shutdown are called before (and
+// after) generating the required device specs.
+func (d *deviceSpecGeneratorsWithAndShutdown) GetDeviceSpecs() ([]specs.Device, error) {
+	if err := d.init(); err != nil {
+		return nil, err
+	}
+	defer d.tryShutdown()
+
+	return d.DeviceSpecGenerator.GetDeviceSpecs()
+}
+
+type emptyDeviceSpecGenerator string
+
+func (d emptyDeviceSpecGenerator) GetDeviceSpecs() ([]specs.Device, error) {
+	// Since the CDI specification does not allow devices to have no edits, we
+	// add a dummy envvar to the container edits for an "empty" device.
+	noneDevice := specs.Device{
+		Name: string(d),
+		ContainerEdits: specs.ContainerEdits{
+			Env: []string{"NVCT_EMPTY_DEVICE="},
+		},
+	}
+	return []specs.Device{noneDevice}, nil
 }

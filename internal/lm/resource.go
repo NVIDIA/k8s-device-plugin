@@ -18,7 +18,10 @@ package lm
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
+
+	"k8s.io/klog/v2"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
@@ -43,9 +46,9 @@ func NewGPUResourceLabeler(config *spec.Config, device resource.Device, count in
 		return nil, fmt.Errorf("failed to get device model: %v", err)
 	}
 
-	totalMemoryMB, err := device.GetTotalMemoryMB()
+	totalMemoryMiB, err := device.GetTotalMemoryMiB()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get memory info for device: %v", err)
+		klog.Warningf("Ignoring error getting memory info for device: %v", err)
 	}
 
 	resourceLabeler := newResourceLabeler(fullGPUResourceName, config)
@@ -56,8 +59,8 @@ func NewGPUResourceLabeler(config *spec.Config, device resource.Device, count in
 	}
 
 	memoryLabeler := (Labeler)(&empty{})
-	if totalMemoryMB != 0 {
-		memoryLabeler = resourceLabeler.single("memory", totalMemoryMB)
+	if totalMemoryMiB != 0 {
+		memoryLabeler = resourceLabeler.single("memory", totalMemoryMiB)
 	}
 
 	labelers := Merge(
@@ -105,20 +108,20 @@ func NewMIGResourceLabeler(resourceName spec.ResourceName, config *spec.Config, 
 }
 
 func newResourceLabeler(resourceName spec.ResourceName, config *spec.Config) resourceLabeler {
-	var replicatedResources *spec.ReplicatedResources
+	var sharing *spec.Sharing
 	if config != nil {
-		replicatedResources = config.Sharing.ReplicatedResources()
+		sharing = &config.Sharing
 	}
 	return resourceLabeler{
-		resourceName:        resourceName,
-		replicatedResources: replicatedResources,
+		resourceName: resourceName,
+		sharing:      sharing,
 	}
 
 }
 
 type resourceLabeler struct {
-	resourceName        spec.ResourceName
-	replicatedResources *spec.ReplicatedResources
+	resourceName spec.ResourceName
+	sharing      *spec.Sharing
 }
 
 // single creates a single label for the resource. The label key is
@@ -155,51 +158,66 @@ func (rl resourceLabeler) key(suffix string) string {
 
 // baseLabeler generates the product, count, and replicas labels for the resource
 func (rl resourceLabeler) baseLabeler(count int, parts ...string) Labeler {
-	return Merge(
-		rl.productLabel(parts...),
-		rl.countLabel(count),
-		rl.replicasLabel(),
-	)
+	replicas := rl.getReplicas()
+	strategy := spec.SharingStrategyNone
+	if rl.sharing != nil && replicas > 1 {
+		strategy = rl.sharing.SharingStrategy()
+	}
+	rawLabels := map[string]interface{}{
+		"product":          rl.getProductName(parts...),
+		"count":            count,
+		"replicas":         replicas,
+		"sharing-strategy": strategy,
+	}
+
+	labels := make(Labels)
+	for k, v := range rawLabels {
+		labels[rl.key(k)] = fmt.Sprintf("%v", v)
+	}
+	return labels
 }
 
+// Deprecated
 func (rl resourceLabeler) productLabel(parts ...string) Labels {
+	name := rl.getProductName(parts...)
+	if name == "" {
+		return make(Labels)
+	}
+	return rl.single("product", name)
+}
+
+func (rl resourceLabeler) getProductName(parts ...string) string {
 	var strippedParts []string
 	for _, p := range parts {
 		if p != "" {
-			strippedParts = append(strippedParts, strings.ReplaceAll(p, " ", "-"))
+			sanitisedPart := sanitise(p)
+			strippedParts = append(strippedParts, sanitisedPart)
 		}
 	}
 
 	if len(strippedParts) == 0 {
-		return make(Labels)
+		return ""
 	}
 
 	if rl.isShared() && !rl.isRenamed() {
 		strippedParts = append(strippedParts, "SHARED")
 	}
-
-	return rl.single("product", strings.Join(strippedParts, "-"))
+	return strings.Join(strippedParts, "-")
 }
 
-func (rl resourceLabeler) countLabel(count int) Labeler {
-	return rl.single("count", count)
-}
-
-func (rl resourceLabeler) replicasLabel() Labeler {
-	replicas := 1
+func (rl resourceLabeler) getReplicas() int {
 	if rl.sharingDisabled() {
-		replicas = 0
-	} else if r := rl.replicationInfo(); r != nil && r.Replicas > 1 {
-		replicas = r.Replicas
+		return 0
+	} else if r := rl.replicationInfo(); r != nil && r.Replicas > 0 {
+		return r.Replicas
 	}
-
-	return rl.single("replicas", replicas)
+	return 1
 }
 
 // sharingDisabled checks whether the resourceLabeler has sharing disabled
 // TODO: The nil check here is because we call NewGPUResourceLabeler with a nil config when sharing is disabled.
 func (rl resourceLabeler) sharingDisabled() bool {
-	return rl.replicatedResources == nil
+	return rl.sharing == nil
 }
 
 // isShared checks whether the resource is shared.
@@ -223,7 +241,7 @@ func (rl resourceLabeler) replicationInfo() *spec.ReplicatedResource {
 	if rl.sharingDisabled() {
 		return nil
 	}
-	for _, r := range rl.replicatedResources.Resources {
+	for _, r := range rl.sharing.ReplicatedResources().Resources {
 		if r.Name == rl.resourceName {
 			return &r
 		}
@@ -282,9 +300,25 @@ func getArchFamily(computeMajor, computeMinor int) string {
 		}
 		return "turing"
 	case 8:
-		return "ampere"
+		if computeMinor < 9 {
+			return "ampere"
+		}
+		return "ada-lovelace"
 	case 9:
 		return "hopper"
+	// The Blackwell GPU family is bifurcated into two cuda compute capabilities 10.0 and 12.0
+	case 10, 12:
+		return "blackwell"
 	}
 	return "undefined"
+}
+
+func sanitise(input string) string {
+	var sanitised string
+	re := regexp.MustCompile("[^A-Za-z0-9-_. ]")
+	input = re.ReplaceAllString(input, "")
+	// remove redundant blank spaces
+	sanitised = strings.Join(strings.Fields(input), "-")
+
+	return sanitised
 }

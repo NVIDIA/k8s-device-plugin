@@ -26,7 +26,7 @@ import (
 
 	oci "github.com/opencontainers/runtime-spec/specs-go"
 	ocigen "github.com/opencontainers/runtime-tools/generate"
-	"tags.cncf.io/container-device-interface/specs-go"
+	cdi "tags.cncf.io/container-device-interface/specs-go"
 )
 
 const (
@@ -64,7 +64,7 @@ var (
 // to all OCI Specs where at least one devices from the CDI Spec
 // is injected.
 type ContainerEdits struct {
-	*specs.ContainerEdits
+	*cdi.ContainerEdits
 }
 
 // Apply edits to the given OCI Spec. Updates the OCI Spec in place.
@@ -89,7 +89,7 @@ func (e *ContainerEdits) Apply(spec *oci.Spec) error {
 		if err != nil {
 			return err
 		}
-		dev := d.ToOCI()
+		dev := dn.toOCI()
 		if dev.UID == nil && spec.Process != nil {
 			if uid := spec.Process.User.UID; uid > 0 {
 				dev.UID = &uid
@@ -113,38 +113,79 @@ func (e *ContainerEdits) Apply(spec *oci.Spec) error {
 		}
 	}
 
+	if len(e.NetDevices) > 0 {
+		// specgen is currently missing functionality to set Linux NetDevices,
+		// so we use a locally rolled function for now.
+		for _, dev := range e.NetDevices {
+			specgenAddLinuxNetDevice(&specgen, dev.HostInterfaceName, (&LinuxNetDevice{dev}).toOCI())
+		}
+	}
+
 	if len(e.Mounts) > 0 {
 		for _, m := range e.Mounts {
 			specgen.RemoveMount(m.ContainerPath)
-			specgen.AddMount(m.ToOCI())
+			specgen.AddMount((&Mount{m}).toOCI())
 		}
 		sortMounts(&specgen)
 	}
 
 	for _, h := range e.Hooks {
+		ociHook := (&Hook{h}).toOCI()
 		switch h.HookName {
 		case PrestartHook:
-			specgen.AddPreStartHook(h.ToOCI())
+			specgen.AddPreStartHook(ociHook)
 		case PoststartHook:
-			specgen.AddPostStartHook(h.ToOCI())
+			specgen.AddPostStartHook(ociHook)
 		case PoststopHook:
-			specgen.AddPostStopHook(h.ToOCI())
+			specgen.AddPostStopHook(ociHook)
 			// TODO: Maybe runtime-tools/generate should be updated with these...
 		case CreateRuntimeHook:
 			ensureOCIHooks(spec)
-			spec.Hooks.CreateRuntime = append(spec.Hooks.CreateRuntime, h.ToOCI())
+			spec.Hooks.CreateRuntime = append(spec.Hooks.CreateRuntime, ociHook)
 		case CreateContainerHook:
 			ensureOCIHooks(spec)
-			spec.Hooks.CreateContainer = append(spec.Hooks.CreateContainer, h.ToOCI())
+			spec.Hooks.CreateContainer = append(spec.Hooks.CreateContainer, ociHook)
 		case StartContainerHook:
 			ensureOCIHooks(spec)
-			spec.Hooks.StartContainer = append(spec.Hooks.StartContainer, h.ToOCI())
+			spec.Hooks.StartContainer = append(spec.Hooks.StartContainer, ociHook)
 		default:
 			return fmt.Errorf("unknown hook name %q", h.HookName)
 		}
 	}
 
+	if e.IntelRdt != nil {
+		// The specgen is missing functionality to set all parameters so we
+		// just piggy-back on it to initialize all structs and the copy over.
+		specgen.SetLinuxIntelRdtClosID(e.IntelRdt.ClosID)
+		spec.Linux.IntelRdt = (&IntelRdt{e.IntelRdt}).toOCI()
+	}
+
+	for _, additionalGID := range e.AdditionalGIDs {
+		if additionalGID == 0 {
+			continue
+		}
+		specgen.AddProcessAdditionalGid(additionalGID)
+	}
+
 	return nil
+}
+
+func specgenAddLinuxNetDevice(specgen *ocigen.Generator, hostIf string, netDev *oci.LinuxNetDevice) {
+	if specgen == nil || netDev == nil {
+		return
+	}
+	ensureLinuxNetDevices(specgen.Config)
+	specgen.Config.Linux.NetDevices[hostIf] = *netDev
+}
+
+// Ensure OCI Spec Linux NetDevices map is not nil.
+func ensureLinuxNetDevices(spec *oci.Spec) {
+	if spec.Linux == nil {
+		spec.Linux = &oci.Linux{}
+	}
+	if spec.Linux.NetDevices == nil {
+		spec.Linux.NetDevices = map[string]oci.LinuxNetDevice{}
+	}
 }
 
 // Validate container edits.
@@ -171,6 +212,14 @@ func (e *ContainerEdits) Validate() error {
 			return err
 		}
 	}
+	if e.IntelRdt != nil {
+		if err := (&IntelRdt{e.IntelRdt}).Validate(); err != nil {
+			return err
+		}
+	}
+	if err := ValidateNetDevices(e.NetDevices); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -185,13 +234,18 @@ func (e *ContainerEdits) Append(o *ContainerEdits) *ContainerEdits {
 		e = &ContainerEdits{}
 	}
 	if e.ContainerEdits == nil {
-		e.ContainerEdits = &specs.ContainerEdits{}
+		e.ContainerEdits = &cdi.ContainerEdits{}
 	}
 
 	e.Env = append(e.Env, o.Env...)
 	e.DeviceNodes = append(e.DeviceNodes, o.DeviceNodes...)
+	e.NetDevices = append(e.NetDevices, o.NetDevices...)
 	e.Hooks = append(e.Hooks, o.Hooks...)
 	e.Mounts = append(e.Mounts, o.Mounts...)
+	if o.IntelRdt != nil {
+		e.IntelRdt = o.IntelRdt
+	}
+	e.AdditionalGIDs = append(e.AdditionalGIDs, o.AdditionalGIDs...)
 
 	return e
 }
@@ -202,7 +256,28 @@ func (e *ContainerEdits) isEmpty() bool {
 	if e == nil {
 		return false
 	}
-	return len(e.Env)+len(e.DeviceNodes)+len(e.Hooks)+len(e.Mounts) == 0
+	if len(e.Env) > 0 {
+		return false
+	}
+	if len(e.DeviceNodes) > 0 {
+		return false
+	}
+	if len(e.Hooks) > 0 {
+		return false
+	}
+	if len(e.Mounts) > 0 {
+		return false
+	}
+	if len(e.AdditionalGIDs) > 0 {
+		return false
+	}
+	if e.IntelRdt != nil {
+		return false
+	}
+	if len(e.NetDevices) > 0 {
+		return false
+	}
+	return true
 }
 
 // ValidateEnv validates the given environment variables.
@@ -215,9 +290,52 @@ func ValidateEnv(env []string) error {
 	return nil
 }
 
+// ValidateNetDevices validates the given net devices.
+func ValidateNetDevices(devices []*cdi.LinuxNetDevice) error {
+	var (
+		hostSeen = map[string]string{}
+		nameSeen = map[string]string{}
+	)
+
+	for _, dev := range devices {
+		if err := (&LinuxNetDevice{dev}).Validate(); err != nil {
+			return err
+		}
+		if other, ok := hostSeen[dev.HostInterfaceName]; ok {
+			return fmt.Errorf("invalid linux net device, duplicate HostInterfaceName %q with names %q and %q",
+				dev.HostInterfaceName, dev.Name, other)
+		}
+		hostSeen[dev.HostInterfaceName] = dev.Name
+
+		if other, ok := nameSeen[dev.Name]; ok {
+			return fmt.Errorf("invalid linux net device, duplicate Name %q with HostInterfaceName %q and %q",
+				dev.Name, dev.HostInterfaceName, other)
+		}
+		nameSeen[dev.Name] = dev.HostInterfaceName
+	}
+
+	return nil
+}
+
+// LinuxNetDevice is a CDI Spec LinuxNetDevice wrapper, used for OCI conversion and validating.
+type LinuxNetDevice struct {
+	*cdi.LinuxNetDevice
+}
+
+// Validate LinuxNetDevice.
+func (d *LinuxNetDevice) Validate() error {
+	if d.HostInterfaceName == "" {
+		return errors.New("invalid linux net device, empty HostInterfaceName")
+	}
+	if d.Name == "" {
+		return errors.New("invalid linux net device, empty Name")
+	}
+	return nil
+}
+
 // DeviceNode is a CDI Spec DeviceNode wrapper, used for validating DeviceNodes.
 type DeviceNode struct {
-	*specs.DeviceNode
+	*cdi.DeviceNode
 }
 
 // Validate a CDI Spec DeviceNode.
@@ -247,7 +365,7 @@ func (d *DeviceNode) Validate() error {
 
 // Hook is a CDI Spec Hook wrapper, used for validating hooks.
 type Hook struct {
-	*specs.Hook
+	*cdi.Hook
 }
 
 // Validate a hook.
@@ -266,7 +384,7 @@ func (h *Hook) Validate() error {
 
 // Mount is a CDI Mount wrapper, used for validating mounts.
 type Mount struct {
-	*specs.Mount
+	*cdi.Mount
 }
 
 // Validate a mount.
@@ -276,6 +394,30 @@ func (m *Mount) Validate() error {
 	}
 	if m.ContainerPath == "" {
 		return errors.New("invalid mount, empty container path")
+	}
+	return nil
+}
+
+// IntelRdt is a CDI IntelRdt wrapper.
+// This is used for validation and conversion to OCI specifications.
+type IntelRdt struct {
+	*cdi.IntelRdt
+}
+
+// ValidateIntelRdt validates the IntelRdt configuration.
+//
+// Deprecated: ValidateIntelRdt is deprecated use IntelRdt.Validate() instead.
+func ValidateIntelRdt(i *cdi.IntelRdt) error {
+	return (&IntelRdt{i}).Validate()
+}
+
+// Validate validates the IntelRdt configuration.
+func (i *IntelRdt) Validate() error {
+	// ClosID must be a valid Linux filename. Exception: "/" refers to the root CLOS.
+	switch c := i.ClosID; {
+	case c == "/":
+	case len(c) >= 4096, c == ".", c == "..", strings.ContainsAny(c, "/\n"):
+		return errors.New("invalid ClosID")
 	}
 	return nil
 }
@@ -291,7 +433,7 @@ func ensureOCIHooks(spec *oci.Spec) {
 func sortMounts(specgen *ocigen.Generator) {
 	mounts := specgen.Mounts()
 	specgen.ClearMounts()
-	sort.Sort(orderedMounts(mounts))
+	sort.Stable(orderedMounts(mounts))
 	specgen.Config.Mounts = mounts
 }
 
@@ -311,14 +453,7 @@ func (m orderedMounts) Len() int {
 // mount indexed by parameter 1 is less than that of the mount indexed by
 // parameter 2. Used in sorting.
 func (m orderedMounts) Less(i, j int) bool {
-	ip, jp := m.parts(i), m.parts(j)
-	if ip < jp {
-		return true
-	}
-	if jp < ip {
-		return false
-	}
-	return m[i].Destination < m[j].Destination
+	return m.parts(i) < m.parts(j)
 }
 
 // Swap swaps two items in an array of mounts. Used in sorting

@@ -17,12 +17,13 @@
 package rm
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"k8s.io/klog/v2"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
@@ -36,68 +37,32 @@ type resourceManager struct {
 }
 
 // ResourceManager provides an interface for listing a set of Devices and checking health on them
+//
+//go:generate moq -rm -fmt=goimports -stub -out rm_mock.go . ResourceManager
 type ResourceManager interface {
 	Resource() spec.ResourceName
 	Devices() Devices
 	GetDevicePaths([]string) []string
 	GetPreferredAllocation(available, required []string, size int) ([]string, error)
 	CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error
+	ValidateRequest(AnnotatedIDs) error
 }
 
-// NewResourceManagers returns a []ResourceManager, one for each resource in 'config'.
-func NewResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]ResourceManager, error) {
-	// logWithReason logs the output of the has* / is* checks from the info.Interface
-	logWithReason := func(f func() (bool, string), tag string) bool {
-		is, reason := f()
-		if !is {
-			tag = "non-" + tag
-		}
-		klog.Infof("Detected %v platform: %v", tag, reason)
-		return is
-	}
+var _ ResourceManager = (*resourceManager)(nil)
 
-	infolib := info.New()
+// CheckHealth is disabled on the base resourceManager.
+func (r *resourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
+	return nil
+}
 
-	hasNVML := logWithReason(infolib.HasNvml, "NVML")
-	isTegra := logWithReason(infolib.IsTegraSystem, "Tegra")
+// GetDevicePaths returns the paths for the devices associated with the resource manager.
+func (r *resourceManager) GetDevicePaths(ids []string) []string {
+	return r.Devices().Subset(ids).GetPaths()
+}
 
-	if !hasNVML && !isTegra {
-		klog.Error("Incompatible platform detected")
-		klog.Error("If this is a GPU node, did you configure the NVIDIA Container Toolkit?")
-		klog.Error("You can check the prerequisites at: https://github.com/NVIDIA/k8s-device-plugin#prerequisites")
-		klog.Error("You can learn how to set the runtime at: https://github.com/NVIDIA/k8s-device-plugin#quick-start")
-		klog.Error("If this is not a GPU node, you should set up a toleration or nodeSelector to only deploy this plugin on GPU nodes")
-		if *config.Flags.FailOnInitError {
-			return nil, fmt.Errorf("platform detection failed")
-		}
-		return nil, nil
-	}
-
-	// The NVIDIA container stack does not yet support the use of integrated AND discrete GPUs on the same node.
-	if hasNVML && isTegra {
-		klog.Warning("Disabling Tegra-based resources on NVML system")
-		isTegra = false
-	}
-
-	var resourceManagers []ResourceManager
-
-	if hasNVML {
-		nvmlManagers, err := NewNVMLResourceManagers(nvmllib, config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to construct NVML resource managers: %v", err)
-		}
-		resourceManagers = append(resourceManagers, nvmlManagers...)
-	}
-
-	if isTegra {
-		tegraManagers, err := NewTegraResourceManagers(config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to construct Tegra resource managers: %v", err)
-		}
-		resourceManagers = append(resourceManagers, tegraManagers...)
-	}
-
-	return resourceManagers, nil
+// GetPreferredAllocation runs an allocation algorithm over the inputs.
+func (r *resourceManager) GetPreferredAllocation(available, required []string, size int) ([]string, error) {
+	return r.distributedAlloc(available, required, size)
 }
 
 // Resource gets the resource name associated with the ResourceManager
@@ -105,26 +70,65 @@ func (r *resourceManager) Resource() spec.ResourceName {
 	return r.resource
 }
 
-// Resource gets the devices managed by the ResourceManager
+// Devices gets the devices managed by the ResourceManager
 func (r *resourceManager) Devices() Devices {
 	return r.devices
 }
 
+var errInvalidRequest = errors.New("invalid request")
+
+// ValidateRequest checks the requested IDs against the resource manager configuration.
+// It asserts that all requested IDs are known to the resource manager and that the request is
+// valid for a specified sharing configuration.
+func (r *resourceManager) ValidateRequest(ids AnnotatedIDs) error {
+	// Assert that all requested IDs are known to the resource manager
+	for _, id := range ids {
+		if !r.devices.Contains(id) {
+			return fmt.Errorf("%w: unknown device: %s", errInvalidRequest, id)
+		}
+	}
+
+	// If the devices being allocated are replicas, then (conditionally)
+	// error out if more than one resource is being allocated.
+	includesReplicas := ids.AnyHasAnnotations()
+	numRequestedDevices := len(ids)
+	switch r.config.Sharing.SharingStrategy() {
+	case spec.SharingStrategyTimeSlicing:
+		if includesReplicas && numRequestedDevices > 1 && r.config.Sharing.ReplicatedResources().FailRequestsGreaterThanOne {
+			return fmt.Errorf("%w: maximum request size for shared resources is 1; found %d", errInvalidRequest, numRequestedDevices)
+		}
+	case spec.SharingStrategyMPS:
+		// For MPS sharing, we explicitly ignore the FailRequestsGreaterThanOne
+		// value in the sharing settings.
+		// This setting was added to timeslicing after the initial release and
+		// is set to `false` to maintain backward compatibility with existing
+		// deployments. If we do extend MPS to allow multiple devices to be
+		// requested, the MPS API will be extended separately from the
+		// time-slicing API.
+		if includesReplicas && numRequestedDevices > 1 {
+			return fmt.Errorf("%w: maximum request size for shared resources is 1; found %d", errInvalidRequest, numRequestedDevices)
+		}
+	}
+	return nil
+}
+
 // AddDefaultResourcesToConfig adds default resource matching rules to config.Resources
-func AddDefaultResourcesToConfig(config *spec.Config) error {
+func AddDefaultResourcesToConfig(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) error {
 	_ = config.Resources.AddGPUResource("*", "gpu")
+	if config.Flags.MigStrategy == nil {
+		return nil
+	}
 	switch *config.Flags.MigStrategy {
 	case spec.MigStrategySingle:
 		return config.Resources.AddMIGResource("*", "gpu")
 	case spec.MigStrategyMixed:
-		hasNVML, reason := info.New().HasNvml()
+		hasNVML, reason := infolib.HasNvml()
 		if !hasNVML {
 			klog.Warningf("mig-strategy=%q is only supported with NVML", spec.MigStrategyMixed)
 			klog.Warningf("NVML not detected: %v", reason)
 			return nil
 		}
 
-		nvmllib := nvml.New()
 		ret := nvmllib.Init()
 		if ret != nvml.SUCCESS {
 			if *config.Flags.FailOnInitError {
@@ -139,9 +143,6 @@ func AddDefaultResourcesToConfig(config *spec.Config) error {
 			}
 		}()
 
-		devicelib := device.New(
-			device.WithNvml(nvmllib),
-		)
 		return devicelib.VisitMigProfiles(func(p device.MigProfile) error {
 			info := p.GetInfo()
 			if info.C != info.G {

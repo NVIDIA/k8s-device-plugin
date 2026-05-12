@@ -80,25 +80,27 @@ func TestMigCapabilityLabeler(t *testing.T) {
 
 func TestSharingLabeler(t *testing.T) {
 	testCases := []struct {
-		descrition     string
+		description    string
+		manager        resource.Manager
 		config         *spec.Config
 		expectedLabels map[string]string
+		expectedError  error
 	}{
 		{
-			descrition: "nil config",
+			description: "nil config",
 			expectedLabels: map[string]string{
-				"nvidia.com/sharing.mps.enabled": "false",
+				"nvidia.com/mps.capable": "false",
 			},
 		},
 		{
-			descrition: "empty config",
-			config:     &spec.Config{},
+			description: "empty config",
+			config:      &spec.Config{},
 			expectedLabels: map[string]string{
-				"nvidia.com/sharing.mps.enabled": "false",
+				"nvidia.com/mps.capable": "false",
 			},
 		},
 		{
-			descrition: "config with timeslicing replicas",
+			description: "config with timeslicing replicas",
 			config: &spec.Config{
 				Sharing: spec.Sharing{
 					TimeSlicing: spec.ReplicatedResources{
@@ -111,11 +113,11 @@ func TestSharingLabeler(t *testing.T) {
 				},
 			},
 			expectedLabels: map[string]string{
-				"nvidia.com/sharing.mps.enabled": "false",
+				"nvidia.com/mps.capable": "false",
 			},
 		},
 		{
-			descrition: "config with no mps replicas",
+			description: "config with no mps replicas",
 			config: &spec.Config{
 				Sharing: spec.Sharing{
 					MPS: &spec.ReplicatedResources{
@@ -128,11 +130,23 @@ func TestSharingLabeler(t *testing.T) {
 				},
 			},
 			expectedLabels: map[string]string{
-				"nvidia.com/sharing.mps.enabled": "false",
+				"nvidia.com/mps.capable": "false",
 			},
 		},
 		{
-			descrition: "config with mps replicas",
+			description: "config with mps replicas no-mig-devices",
+			manager: &resource.ManagerMock{
+				GetDevicesFunc: func() ([]resource.Device, error) {
+					devices := []resource.Device{
+						&resource.DeviceMock{
+							IsMigEnabledFunc: func() (bool, error) {
+								return false, nil
+							},
+						},
+					}
+					return devices, nil
+				},
+			},
 			config: &spec.Config{
 				Sharing: spec.Sharing{
 					MPS: &spec.ReplicatedResources{
@@ -145,14 +159,134 @@ func TestSharingLabeler(t *testing.T) {
 				},
 			},
 			expectedLabels: map[string]string{
-				"nvidia.com/sharing.mps.enabled": "true",
+				"nvidia.com/mps.capable": "true",
+			},
+		},
+		{
+			description: "config with mps replicas mig-devices",
+			manager: &resource.ManagerMock{
+				GetDevicesFunc: func() ([]resource.Device, error) {
+					devices := []resource.Device{
+						&resource.DeviceMock{
+							IsMigEnabledFunc: func() (bool, error) {
+								return true, nil
+							},
+						},
+					}
+					return devices, nil
+				},
+			},
+			config: &spec.Config{
+				Sharing: spec.Sharing{
+					MPS: &spec.ReplicatedResources{
+						Resources: []spec.ReplicatedResource{
+							{
+								Replicas: 2,
+							},
+						},
+					},
+				},
+			},
+			expectedError:  errMPSSharingNotSupported,
+			expectedLabels: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			labels, err := newSharingLabeler(tc.manager, tc.config)
+			require.ErrorIs(t, err, tc.expectedError)
+			if tc.expectedError != nil {
+				require.Nil(t, labels)
+			} else {
+				require.EqualValues(t, tc.expectedLabels, labels)
+			}
+		})
+	}
+}
+
+func TestGPUModeLabeler(t *testing.T) {
+	testCases := []struct {
+		description    string
+		devices        []resource.Device
+		expectedError  bool
+		expectedLabels map[string]string
+	}{
+		{
+			description: "single device with compute PCI class",
+			devices: []resource.Device{
+				rt.NewDeviceWithPCIClassMock(0x030000),
+			},
+			expectedLabels: map[string]string{
+				"nvidia.com/gpu.mode": "graphics",
+			},
+		},
+		{
+			description: "single device with graphics PCI class",
+			devices: []resource.Device{
+				rt.NewDeviceWithPCIClassMock(0x030200),
+			},
+			expectedLabels: map[string]string{
+				"nvidia.com/gpu.mode": "compute",
+			},
+		},
+		{
+			description: "single device with switch PCI class",
+			devices: []resource.Device{
+				rt.NewDeviceWithPCIClassMock(0x068000),
+			},
+			expectedLabels: map[string]string{
+				"nvidia.com/gpu.mode": "unknown",
+			},
+		},
+		{
+			description: "multiple device have same graphics PCI class",
+			devices: []resource.Device{
+				rt.NewDeviceWithPCIClassMock(0x030200),
+				rt.NewDeviceWithPCIClassMock(0x030200),
+				rt.NewDeviceWithPCIClassMock(0x030200),
+			},
+			expectedLabels: map[string]string{
+				"nvidia.com/gpu.mode": "compute",
+			},
+		},
+		{
+			description: "multiple device have same compute PCI class",
+			devices: []resource.Device{
+				rt.NewDeviceWithPCIClassMock(0x030000),
+				rt.NewDeviceWithPCIClassMock(0x030000),
+				rt.NewDeviceWithPCIClassMock(0x030000),
+			},
+			expectedLabels: map[string]string{
+				"nvidia.com/gpu.mode": "graphics",
+			},
+		},
+		{
+			description: "multiple device with some with graphics and others with compute PCI class",
+			devices: []resource.Device{
+				rt.NewDeviceWithPCIClassMock(0x030000),
+				rt.NewDeviceWithPCIClassMock(0x030200),
+				rt.NewDeviceWithPCIClassMock(0x030000),
+			},
+			expectedLabels: map[string]string{
+				"nvidia.com/gpu.mode": "unknown",
 			},
 		},
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.descrition, func(t *testing.T) {
-			require.EqualValues(t, tc.expectedLabels, newSharingLabeler(tc.config))
+		t.Run(tc.description, func(t *testing.T) {
+
+			gpuModeLabeler, _ := newGPUModeLabeler(tc.devices)
+
+			labels, err := gpuModeLabeler.Labels()
+			if tc.expectedError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			require.EqualValues(t, tc.expectedLabels, labels)
 		})
 	}
 }

@@ -18,18 +18,23 @@ package device
 
 import (
 	"fmt"
+	"strings"
 
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 )
 
-// Device defines the set of extended functions associated with a device.Device
+// Device defines the set of extended functions associated with a device.Device.
 type Device interface {
 	nvml.Device
 	GetArchitectureAsString() (string, error)
 	GetBrandAsString() (string, error)
 	GetCudaComputeCapabilityAsString() (string, error)
+	GetAddressingModeAsString() (string, error)
 	GetMigDevices() ([]MigDevice, error)
 	GetMigProfiles() ([]MigProfile, error)
+	GetPCIBusID() (string, error)
+	IsCoherent() (bool, error)
+	IsFabricAttached() (bool, error)
 	IsMigCapable() (bool, error)
 	IsMigEnabled() (bool, error)
 	VisitMigDevices(func(j int, m MigDevice) error) error
@@ -44,26 +49,26 @@ type device struct {
 
 var _ Device = &device{}
 
-// NewDevice builds a new Device from an nvml.Device
+// NewDevice builds a new Device from an nvml.Device.
 func (d *devicelib) NewDevice(dev nvml.Device) (Device, error) {
 	return d.newDevice(dev)
 }
 
-// NewDeviceByUUID builds a new Device from a UUID
+// NewDeviceByUUID builds a new Device from a UUID.
 func (d *devicelib) NewDeviceByUUID(uuid string) (Device, error) {
-	dev, ret := d.nvml.DeviceGetHandleByUUID(uuid)
+	dev, ret := d.nvmllib.DeviceGetHandleByUUID(uuid)
 	if ret != nvml.SUCCESS {
 		return nil, fmt.Errorf("error getting device handle for uuid '%v': %v", uuid, ret)
 	}
 	return d.newDevice(dev)
 }
 
-// newDevice creates a device from an nvml.Device
+// newDevice creates a device from an nvml.Device.
 func (d *devicelib) newDevice(dev nvml.Device) (*device, error) {
 	return &device{dev, d, nil}, nil
 }
 
-// GetArchitectureAsString returns the Device architecture as a string
+// GetArchitectureAsString returns the Device architecture as a string.
 func (d *device) GetArchitectureAsString() (string, error) {
 	arch, ret := d.GetArchitecture()
 	if ret != nvml.SUCCESS {
@@ -83,16 +88,18 @@ func (d *device) GetArchitectureAsString() (string, error) {
 	case nvml.DEVICE_ARCH_AMPERE:
 		return "Ampere", nil
 	case nvml.DEVICE_ARCH_ADA:
-		return "Ada", nil
+		return "Ada Lovelace", nil
 	case nvml.DEVICE_ARCH_HOPPER:
 		return "Hopper", nil
+	case nvml.DEVICE_ARCH_BLACKWELL:
+		return "Blackwell", nil
 	case nvml.DEVICE_ARCH_UNKNOWN:
 		return "Unknown", nil
 	}
 	return "", fmt.Errorf("error interpreting device architecture as string: %v", arch)
 }
 
-// GetBrandAsString returns the Device architecture as a string
+// GetBrandAsString returns the Device architecture as a string.
 func (d *device) GetBrandAsString() (string, error) {
 	brand, ret := d.GetBrand()
 	if ret != nvml.SUCCESS {
@@ -122,7 +129,7 @@ func (d *device) GetBrandAsString() (string, error) {
 	case nvml.BRAND_NVIDIA_VWS:
 		return "NvidiaVWS", nil
 	// Deprecated in favor of nvml.BRAND_NVIDIA_CLOUD_GAMING
-	//case nvml.BRAND_NVIDIA_VGAMING:
+	// case nvml.BRAND_NVIDIA_VGAMING:
 	//	return "VGaming", nil
 	case nvml.BRAND_NVIDIA_CLOUD_GAMING:
 		return "NvidiaCloudGaming", nil
@@ -140,7 +147,60 @@ func (d *device) GetBrandAsString() (string, error) {
 	return "", fmt.Errorf("error interpreting device brand as string: %v", brand)
 }
 
-// GetCudaComputeCapabilityAsString returns the Device's CUDA compute capability as a version string
+// GetAddressingModeAsString returns the Device addressing mode as a string.
+func (d *device) GetAddressingModeAsString() (string, error) {
+	if !d.lib.hasSymbol("nvmlDeviceGetAddressingMode") {
+		return "", nil
+	}
+
+	mode, ret := nvml.Device(d).GetAddressingMode()
+
+	switch ret {
+	case nvml.SUCCESS:
+		// continue
+	case nvml.ERROR_NOT_SUPPORTED:
+		// Addressing mode is not supported on the current platform.
+		return "", nil
+	default:
+		return "", fmt.Errorf("error getting device addressing mode: %v", ret)
+	}
+
+	switch nvml.DeviceAddressingModeType(mode.Value) {
+	case nvml.DEVICE_ADDRESSING_MODE_ATS:
+		return "ATS", nil
+	case nvml.DEVICE_ADDRESSING_MODE_HMM:
+		return "HMM", nil
+	case nvml.DEVICE_ADDRESSING_MODE_NONE:
+		return "None", nil
+	}
+
+	return "", fmt.Errorf("error interpreting addressing mode as string: %v", mode)
+}
+
+// GetPCIBusID returns the string representation of the bus ID.
+func (d *device) GetPCIBusID() (string, error) {
+	info, ret := d.GetPciInfo()
+	if ret != nvml.SUCCESS {
+		return "", fmt.Errorf("error getting PCI info: %w", ret)
+	}
+
+	var bytes []byte
+	for _, b := range info.BusId {
+		if byte(b) == '\x00' {
+			break
+		}
+		bytes = append(bytes, byte(b))
+	}
+	id := strings.ToLower(string(bytes))
+
+	if id != "0000" {
+		id = strings.TrimPrefix(id, "0000")
+	}
+
+	return id, nil
+}
+
+// GetCudaComputeCapabilityAsString returns the Device's CUDA compute capability as a version string.
 func (d *device) GetCudaComputeCapabilityAsString() (string, error) {
 	major, minor, ret := d.GetCudaComputeCapability()
 	if ret != nvml.SUCCESS {
@@ -149,7 +209,28 @@ func (d *device) GetCudaComputeCapabilityAsString() (string, error) {
 	return fmt.Sprintf("%d.%d", major, minor), nil
 }
 
-// IsMigCapable checks if a device is capable of having MIG paprtitions created on it
+// IsCoherent returns whether the device is capable of coherent access to system
+// memory.
+func (d *device) IsCoherent() (bool, error) {
+	if !d.lib.hasSymbol("nvmlDeviceGetAddressingMode") {
+		return false, nil
+	}
+
+	mode, ret := nvml.Device(d).GetAddressingMode()
+	if ret == nvml.ERROR_NOT_SUPPORTED {
+		return false, nil
+	}
+	if ret != nvml.SUCCESS {
+		return false, fmt.Errorf("error getting addressing mode: %v", ret)
+	}
+
+	if nvml.DeviceAddressingModeType(mode.Value) == nvml.DEVICE_ADDRESSING_MODE_ATS {
+		return true, nil
+	}
+	return false, nil
+}
+
+// IsMigCapable checks if a device is capable of having MIG paprtitions created on it.
 func (d *device) IsMigCapable() (bool, error) {
 	if !d.lib.hasSymbol("nvmlDeviceGetMigMode") {
 		return false, nil
@@ -166,7 +247,7 @@ func (d *device) IsMigCapable() (bool, error) {
 	return true, nil
 }
 
-// IsMigEnabled checks if a device has MIG mode currently enabled on it
+// IsMigEnabled checks if a device has MIG mode currently enabled on it.
 func (d *device) IsMigEnabled() (bool, error) {
 	if !d.lib.hasSymbol("nvmlDeviceGetMigMode") {
 		return false, nil
@@ -183,7 +264,54 @@ func (d *device) IsMigEnabled() (bool, error) {
 	return (mode == nvml.DEVICE_MIG_ENABLE), nil
 }
 
-// VisitMigDevices walks a top-level device and invokes a callback function for each MIG device configured on it
+// IsFabricAttached checks if a device is attached to a GPU fabric.
+func (d *device) IsFabricAttached() (bool, error) {
+	if d.lib.hasSymbol("nvmlDeviceGetGpuFabricInfo") {
+		info, ret := d.GetGpuFabricInfo()
+		if ret == nvml.ERROR_NOT_SUPPORTED {
+			return false, nil
+		}
+		if ret != nvml.SUCCESS {
+			return false, fmt.Errorf("error getting GPU Fabric Info: %v", ret)
+		}
+		if info.State != nvml.GPU_FABRIC_STATE_COMPLETED {
+			return false, nil
+		}
+		if info.ClusterUuid == [16]uint8{} {
+			return false, nil
+		}
+		if nvml.Return(info.Status) != nvml.SUCCESS {
+			return false, nil
+		}
+
+		return true, nil
+	}
+
+	if d.lib.hasSymbol("nvmlDeviceGetGpuFabricInfoV") {
+		info, ret := d.GetGpuFabricInfoV().V2()
+		if ret == nvml.ERROR_NOT_SUPPORTED {
+			return false, nil
+		}
+		if ret != nvml.SUCCESS {
+			return false, fmt.Errorf("error getting GPU Fabric Info: %v", ret)
+		}
+		if info.State != nvml.GPU_FABRIC_STATE_COMPLETED {
+			return false, nil
+		}
+		if info.ClusterUuid == [16]uint8{} {
+			return false, nil
+		}
+		if nvml.Return(info.Status) != nvml.SUCCESS {
+			return false, nil
+		}
+
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// VisitMigDevices walks a top-level device and invokes a callback function for each MIG device configured on it.
 func (d *device) VisitMigDevices(visit func(int, MigDevice) error) error {
 	capable, err := d.IsMigCapable()
 	if err != nil {
@@ -221,7 +349,7 @@ func (d *device) VisitMigDevices(visit func(int, MigDevice) error) error {
 	return nil
 }
 
-// VisitMigProfiles walks a top-level device and invokes a callback function for each unique MIG Profile that can be configured on it
+// VisitMigProfiles walks a top-level device and invokes a callback function for each unique MIG Profile that can be configured on it.
 func (d *device) VisitMigProfiles(visit func(MigProfile) error) error {
 	capable, err := d.IsMigCapable()
 	if err != nil {
@@ -283,7 +411,7 @@ func (d *device) VisitMigProfiles(visit func(MigProfile) error) error {
 	return nil
 }
 
-// GetMigDevices gets the set of MIG devices associated with a top-level device
+// GetMigDevices gets the set of MIG devices associated with a top-level device.
 func (d *device) GetMigDevices() ([]MigDevice, error) {
 	var migs []MigDevice
 	err := d.VisitMigDevices(func(j int, m MigDevice) error {
@@ -296,7 +424,7 @@ func (d *device) GetMigDevices() ([]MigDevice, error) {
 	return migs, nil
 }
 
-// GetMigProfiles gets the set of unique MIG profiles associated with a top-level device
+// GetMigProfiles gets the set of unique MIG profiles associated with a top-level device.
 func (d *device) GetMigProfiles() ([]MigProfile, error) {
 	// Return the cached list if available
 	if d.migProfiles != nil {
@@ -313,7 +441,7 @@ func (d *device) GetMigProfiles() ([]MigProfile, error) {
 		return nil, err
 	}
 
-	// And cache it before returning
+	// And cache it before returning.
 	d.migProfiles = profiles
 	return profiles, nil
 }
@@ -332,15 +460,15 @@ func (d *device) isSkipped() (bool, error) {
 	return false, nil
 }
 
-// VisitDevices visits each top-level device and invokes a callback function for it
+// VisitDevices visits each top-level device and invokes a callback function for it.
 func (d *devicelib) VisitDevices(visit func(int, Device) error) error {
-	count, ret := d.nvml.DeviceGetCount()
+	count, ret := d.nvmllib.DeviceGetCount()
 	if ret != nvml.SUCCESS {
 		return fmt.Errorf("error getting device count: %v", ret)
 	}
 
 	for i := 0; i < count; i++ {
-		device, ret := d.nvml.DeviceGetHandleByIndex(i)
+		device, ret := d.nvmllib.DeviceGetHandleByIndex(i)
 		if ret != nvml.SUCCESS {
 			return fmt.Errorf("error getting device handle for index '%v': %v", i, ret)
 		}
@@ -365,7 +493,7 @@ func (d *devicelib) VisitDevices(visit func(int, Device) error) error {
 	return nil
 }
 
-// VisitMigDevices walks a top-level device and invokes a callback function for each MIG device configured on it
+// VisitMigDevices walks a top-level device and invokes a callback function for each MIG device configured on it.
 func (d *devicelib) VisitMigDevices(visit func(int, Device, int, MigDevice) error) error {
 	err := d.VisitDevices(func(i int, dev Device) error {
 		err := dev.VisitMigDevices(func(j int, mig MigDevice) error {
@@ -386,7 +514,7 @@ func (d *devicelib) VisitMigDevices(visit func(int, Device, int, MigDevice) erro
 	return nil
 }
 
-// VisitMigProfiles walks a top-level device and invokes a callback function for each unique MIG profile found on them
+// VisitMigProfiles walks a top-level device and invokes a callback function for each unique MIG profile found on them.
 func (d *devicelib) VisitMigProfiles(visit func(MigProfile) error) error {
 	visited := make(map[string]bool)
 	err := d.VisitDevices(func(i int, dev Device) error {
@@ -414,7 +542,7 @@ func (d *devicelib) VisitMigProfiles(visit func(MigProfile) error) error {
 	return nil
 }
 
-// GetDevices gets the set of all top-level devices
+// GetDevices gets the set of all top-level devices.
 func (d *devicelib) GetDevices() ([]Device, error) {
 	var devs []Device
 	err := d.VisitDevices(func(i int, dev Device) error {
@@ -427,7 +555,7 @@ func (d *devicelib) GetDevices() ([]Device, error) {
 	return devs, nil
 }
 
-// GetMigDevices gets the set of MIG devices across all top-level devices
+// GetMigDevices gets the set of MIG devices across all top-level devices.
 func (d *devicelib) GetMigDevices() ([]MigDevice, error) {
 	var migs []MigDevice
 	err := d.VisitMigDevices(func(i int, dev Device, j int, m MigDevice) error {
@@ -440,7 +568,7 @@ func (d *devicelib) GetMigDevices() ([]MigDevice, error) {
 	return migs, nil
 }
 
-// GetMigProfiles gets the set of unique MIG profiles across all top-level devices
+// GetMigProfiles gets the set of unique MIG profiles across all top-level devices.
 func (d *devicelib) GetMigProfiles() ([]MigProfile, error) {
 	// Return the cached list if available
 	if d.migProfiles != nil {
@@ -457,7 +585,7 @@ func (d *devicelib) GetMigProfiles() ([]MigProfile, error) {
 		return nil, err
 	}
 
-	// And cache it before returning
+	// And cache it before returning.
 	d.migProfiles = profiles
 	return profiles, nil
 }
@@ -469,5 +597,5 @@ func (d *devicelib) hasSymbol(symbol string) bool {
 		return true
 	}
 
-	return d.nvml.Lookup(symbol) == nil
+	return d.nvmllib.Extensions().LookupSymbol(symbol) == nil
 }

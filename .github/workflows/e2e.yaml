@@ -1,0 +1,99 @@
+# Copyright 2025 NVIDIA CORPORATION
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: End-to-end Tests
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      golang_version:
+        required: true
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      AWS_SSH_KEY:
+        required: true
+      SLACK_BOT_TOKEN:
+        required: true
+      SLACK_CHANNEL_ID:
+        required: true
+
+jobs:
+  e2e-tests:
+    runs-on: linux-amd64-cpu4
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v6
+
+    - name: Install Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: ${{ inputs.golang_version }}
+
+    - name: Set up Holodeck
+      uses: NVIDIA/holodeck@v0.3.2
+      with:
+        aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws_ssh_key: ${{ secrets.AWS_SSH_KEY }}
+        holodeck_config: "tests/e2e/infra/aws.yaml"
+
+    - name: Run e2e tests
+      env:
+        KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        HELM_CHART: ${{ github.workspace }}/deployments/helm/nvidia-device-plugin
+        E2E_IMAGE_REPO: ghcr.io/nvidia/k8s-device-plugin
+        E2E_IMAGE_TAG: ${{ inputs.version }}
+        E2E_IMAGE_PULL_POLICY: Always
+        NVIDIA_DRIVER_ENABLED: true
+        LOG_ARTIFACTS: ${{ github.workspace }}/e2e_logs
+      run: |
+        make -f tests/e2e/Makefile test
+
+    - name: Archive test logs
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: e2e-test-logs
+        path: ./e2e_logs/
+        retention-days: 15
+
+    - name: Archive Ginkgo logs
+      uses: actions/upload-artifact@v7
+      with:
+        name: ginkgo-logs
+        path: ginkgo.json
+        retention-days: 15
+
+    - name: Send Slack alert notification
+      id: slack
+      if: false
+      uses: slackapi/slack-github-action@v3.0.2
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        SUMMARY_URL: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+      with:
+        method: chat.postMessage
+        token: ${{ secrets.SLACK_BOT_TOKEN }}
+        payload: |
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          text: ":x: On repository ${{ github.repository }} the Workflow *${{ github.workflow }}* has failed.
+
+          Details: ${{ env.SUMMARY_URL }}"

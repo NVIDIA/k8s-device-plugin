@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 )
 
 // Allocator defines the primary object for allocating and freeing the
@@ -19,7 +19,7 @@ type Allocator struct {
 	allocated DeviceSet
 }
 
-// Policy defines an interface for plugagable allocation policies to be added
+// Policy defines an interface for pluggable allocation policies to be added
 // to an Allocator.
 type Policy interface {
 	// Allocate is meant to do the heavy-lifting of implementing the actual
@@ -87,7 +87,7 @@ func (a *Allocator) Allocate(num int) []*Device {
 
 	err := a.AllocateSpecific(devices...)
 	if err != nil {
-		err = fmt.Errorf("Internal error while allocating GPUs: %v", err)
+		err = fmt.Errorf("internal error while allocating GPUs: %v", err)
 		panic(err)
 	}
 

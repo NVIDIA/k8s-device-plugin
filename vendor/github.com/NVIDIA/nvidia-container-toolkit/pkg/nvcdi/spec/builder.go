@@ -20,24 +20,26 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
-	"tags.cncf.io/container-device-interface/pkg/cdi"
 	"tags.cncf.io/container-device-interface/pkg/parser"
-	"tags.cncf.io/container-device-interface/specs-go"
+	cdi "tags.cncf.io/container-device-interface/specs-go"
+
+	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
 )
 
 type builder struct {
-	raw         *specs.Spec
+	raw         *cdi.Spec
 	version     string
 	vendor      string
 	class       string
-	deviceSpecs []specs.Device
-	edits       specs.ContainerEdits
+	deviceSpecs []cdi.Device
+	edits       cdi.ContainerEdits
 	format      string
 
 	mergedDeviceOptions []transform.MergedDeviceOption
 	noSimplify          bool
 	permissions         os.FileMode
+
+	transformOnSave transform.Transformer
 }
 
 // newBuilder creates a new spec builder with the supplied options
@@ -46,15 +48,23 @@ func newBuilder(opts ...Option) *builder {
 	for _, opt := range opts {
 		opt(s)
 	}
+
 	if s.raw != nil {
 		s.noSimplify = true
 		vendor, class := parser.ParseQualifier(s.raw.Kind)
-		s.vendor = vendor
-		s.class = class
+		if s.vendor == "" {
+			s.vendor = vendor
+		}
+		if s.class == "" {
+			s.class = class
+		}
+		if s.version == "" || s.version == DetectMinimumVersion {
+			s.version = s.raw.Version
+		}
 	}
-
-	if s.version == "" {
-		s.version = DetectMinimumVersion
+	if s.version == "" || s.version == DetectMinimumVersion {
+		s.transformOnSave = &setMinimumRequiredVersion{}
+		s.version = cdi.CurrentVersion
 	}
 	if s.vendor == "" {
 		s.vendor = "nvidia.com"
@@ -66,7 +76,7 @@ func newBuilder(opts ...Option) *builder {
 		s.format = FormatYAML
 	}
 	if s.permissions == 0 {
-		s.permissions = 0600
+		s.permissions = 0644
 	}
 	return s
 }
@@ -75,20 +85,15 @@ func newBuilder(opts ...Option) *builder {
 func (o *builder) Build() (*spec, error) {
 	raw := o.raw
 	if raw == nil {
-		raw = &specs.Spec{
+		raw = &cdi.Spec{
 			Version:        o.version,
 			Kind:           fmt.Sprintf("%s/%s", o.vendor, o.class),
 			Devices:        o.deviceSpecs,
 			ContainerEdits: o.edits,
 		}
 	}
-
-	if raw.Version == DetectMinimumVersion {
-		minVersion, err := cdi.MinimumRequiredVersion(raw)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get minimum required CDI spec version: %v", err)
-		}
-		raw.Version = minVersion
+	if raw.Version == "" {
+		raw.Version = o.version
 	}
 
 	if !o.noSimplify {
@@ -109,11 +114,11 @@ func (o *builder) Build() (*spec, error) {
 	}
 
 	s := spec{
-		Spec:        raw,
-		format:      o.format,
-		permissions: o.permissions,
+		Spec:            raw,
+		format:          o.format,
+		permissions:     o.permissions,
+		transformOnSave: o.transformOnSave,
 	}
-
 	return &s, nil
 }
 
@@ -121,14 +126,14 @@ func (o *builder) Build() (*spec, error) {
 type Option func(*builder)
 
 // WithDeviceSpecs sets the device specs for the spec builder
-func WithDeviceSpecs(deviceSpecs []specs.Device) Option {
+func WithDeviceSpecs(deviceSpecs []cdi.Device) Option {
 	return func(o *builder) {
 		o.deviceSpecs = deviceSpecs
 	}
 }
 
 // WithEdits sets the container edits for the spec builder
-func WithEdits(edits specs.ContainerEdits) Option {
+func WithEdits(edits cdi.ContainerEdits) Option {
 	return func(o *builder) {
 		o.edits = edits
 	}
@@ -170,7 +175,7 @@ func WithNoSimplify(noSimplify bool) Option {
 }
 
 // WithRawSpec sets the raw spec for the spec builder
-func WithRawSpec(raw *specs.Spec) Option {
+func WithRawSpec(raw *cdi.Spec) Option {
 	return func(o *builder) {
 		o.raw = raw
 	}

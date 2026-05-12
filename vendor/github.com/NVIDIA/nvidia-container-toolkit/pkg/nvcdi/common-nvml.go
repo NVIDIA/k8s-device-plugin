@@ -20,36 +20,19 @@ import (
 	"fmt"
 
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/lookup"
-
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
 )
 
 // newCommonNVMLDiscoverer returns a discoverer for entities that are not associated with a specific CDI device.
 // This includes driver libraries and meta devices, for example.
-func newCommonNVMLDiscoverer(logger logger.Interface, driverRoot string, nvidiaCTKPath string, nvmllib nvml.Interface) (discover.Discover, error) {
-	metaDevices := discover.NewDeviceDiscoverer(
-		logger,
-		lookup.NewCharDeviceLocator(
-			lookup.WithLogger(logger),
-			lookup.WithRoot(driverRoot),
-		),
-		driverRoot,
-		[]string{
-			"/dev/nvidia-modeset",
-			"/dev/nvidia-uvm-tools",
-			"/dev/nvidia-uvm",
-			"/dev/nvidiactl",
-		},
-	)
+func (l *nvmllib) newCommonNVMLDiscoverer() (discover.Discover, error) {
+	metaDevices := l.controlDeviceNodeDiscoverer()
 
-	graphicsMounts, err := discover.NewGraphicsMountsDiscoverer(logger, driverRoot, nvidiaCTKPath)
+	graphicsMounts, err := discover.NewGraphicsMountsDiscoverer(l.logger, l.driver, l.hookCreator)
 	if err != nil {
-		logger.Warningf("failed to create discoverer for graphics mounts: %v", err)
+		l.logger.Warningf("failed to create discoverer for graphics mounts: %v", err)
 	}
 
-	driverFiles, err := NewDriverDiscoverer(logger, driverRoot, nvidiaCTKPath, nvmllib)
+	driverFiles, err := l.NewDriverDiscoverer()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create discoverer for driver files: %v", err)
 	}
@@ -61,4 +44,17 @@ func newCommonNVMLDiscoverer(logger logger.Interface, driverRoot string, nvidiaC
 	)
 
 	return d, nil
+}
+
+func (l *nvmllib) controlDeviceNodeDiscoverer() discover.Discover {
+	return discover.NewCharDeviceDiscoverer(
+		l.logger,
+		l.driver.DevRoot,
+		[]string{
+			"/dev/nvidia-modeset",
+			"/dev/nvidia-uvm-tools",
+			"/dev/nvidia-uvm",
+			"/dev/nvidiactl",
+		},
+	)
 }

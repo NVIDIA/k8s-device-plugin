@@ -19,10 +19,10 @@ package device
 import (
 	"fmt"
 
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 )
 
-// MigDevice defines the set of extended functions associated with a MIG device
+// MigDevice defines the set of extended functions associated with a MIG device.
 type MigDevice interface {
 	nvml.Device
 	GetProfile() (MigProfile, error)
@@ -36,7 +36,7 @@ type migdevice struct {
 
 var _ MigDevice = &migdevice{}
 
-// NewMigDevice builds a new MigDevice from an nvml.Device
+// NewMigDevice builds a new MigDevice from an nvml.Device.
 func (d *devicelib) NewMigDevice(handle nvml.Device) (MigDevice, error) {
 	isMig, ret := handle.IsMigDeviceHandle()
 	if ret != nvml.SUCCESS {
@@ -48,22 +48,22 @@ func (d *devicelib) NewMigDevice(handle nvml.Device) (MigDevice, error) {
 	return &migdevice{handle, d, nil}, nil
 }
 
-// NewMigDeviceByUUID builds a new MigDevice from a UUID
+// NewMigDeviceByUUID builds a new MigDevice from a UUID.
 func (d *devicelib) NewMigDeviceByUUID(uuid string) (MigDevice, error) {
-	dev, ret := d.nvml.DeviceGetHandleByUUID(uuid)
+	dev, ret := d.nvmllib.DeviceGetHandleByUUID(uuid)
 	if ret != nvml.SUCCESS {
 		return nil, fmt.Errorf("error getting device handle for uuid '%v': %v", uuid, ret)
 	}
 	return d.NewMigDevice(dev)
 }
 
-// GetProfile returns the MIG profile associated with a MIG device
+// GetProfile returns the MIG profile associated with a MIG device.
 func (m *migdevice) GetProfile() (MigProfile, error) {
 	if m.profile != nil {
 		return m.profile, nil
 	}
 
-	parent, ret := m.Device.GetDeviceHandleFromMigDeviceHandle()
+	parent, ret := m.GetDeviceHandleFromMigDeviceHandle()
 	if ret != nvml.SUCCESS {
 		return nil, fmt.Errorf("error getting parent device handle: %v", ret)
 	}
@@ -73,17 +73,17 @@ func (m *migdevice) GetProfile() (MigProfile, error) {
 		return nil, fmt.Errorf("error getting parent memory info: %v", ret)
 	}
 
-	attributes, ret := m.Device.GetAttributes()
+	attributes, ret := m.GetAttributes()
 	if ret != nvml.SUCCESS {
 		return nil, fmt.Errorf("error getting MIG device attributes: %v", ret)
 	}
 
-	giID, ret := m.Device.GetGpuInstanceId()
+	giID, ret := m.GetGpuInstanceId()
 	if ret != nvml.SUCCESS {
 		return nil, fmt.Errorf("error getting MIG device GPU Instance ID: %v", ret)
 	}
 
-	ciID, ret := m.Device.GetComputeInstanceId()
+	ciID, ret := m.GetComputeInstanceId()
 	if ret != nvml.SUCCESS {
 		return nil, fmt.Errorf("error getting MIG device Compute Instance ID: %v", ret)
 	}

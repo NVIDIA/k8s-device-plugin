@@ -17,6 +17,7 @@
 package plugin
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -24,7 +25,88 @@ import (
 
 	v1 "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/cdi"
+	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
+	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 )
+
+func TestAllocate(t *testing.T) {
+	testCases := []struct {
+		description      string
+		request          *pluginapi.AllocateRequest
+		expectedError    error
+		expectedResponse *pluginapi.AllocateResponse
+	}{
+		{
+			description: "single device",
+			request: &pluginapi.AllocateRequest{
+				ContainerRequests: []*pluginapi.ContainerAllocateRequest{
+					{
+						DevicesIds: []string{"foo"},
+					},
+				},
+			},
+			expectedResponse: &pluginapi.AllocateResponse{
+				ContainerResponses: []*pluginapi.ContainerAllocateResponse{
+					{
+						Envs: map[string]string{
+							"NVIDIA_VISIBLE_DEVICES": "foo",
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "duplicate device IDs",
+			request: &pluginapi.AllocateRequest{
+				ContainerRequests: []*pluginapi.ContainerAllocateRequest{
+					{
+						DevicesIds: []string{"foo", "bar", "foo"},
+					},
+				},
+			},
+			expectedResponse: &pluginapi.AllocateResponse{
+				ContainerResponses: []*pluginapi.ContainerAllocateResponse{
+					{
+						Envs: map[string]string{
+							"NVIDIA_VISIBLE_DEVICES": "foo,bar",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			plugin := nvidiaDevicePlugin{
+				rm: &rm.ResourceManagerMock{
+					ValidateRequestFunc: func(annotatedIDs rm.AnnotatedIDs) error {
+						return nil
+					},
+				},
+				config: &v1.Config{
+					Flags: v1.Flags{
+						CommandLineFlags: v1.CommandLineFlags{
+							Plugin: &v1.PluginCommandLineFlags{
+								DeviceIDStrategy: ptr(v1.DeviceIDStrategyUUID),
+							},
+						},
+					},
+				},
+				cdiHandler: &cdi.InterfaceMock{
+					QualifiedNameFunc: func(c string, s string) string {
+						return "nvidia.com/" + c + "=" + s
+					},
+				},
+				deviceListStrategies: v1.DeviceListStrategies{"envvar": true},
+			}
+
+			response, err := plugin.Allocate(context.TODO(), tc.request)
+			require.EqualValues(t, tc.expectedError, err)
+			require.EqualValues(t, tc.expectedResponse, response)
+		})
+	}
+}
 
 func TestCDIAllocateResponse(t *testing.T) {
 	testCases := []struct {
@@ -32,30 +114,22 @@ func TestCDIAllocateResponse(t *testing.T) {
 		deviceIds            []string
 		deviceListStrategies []string
 		CDIPrefix            string
-		CDIEnabled           bool
+		AdditionalCDIDevices []string
 		GDSEnabled           bool
 		MOFEDEnabled         bool
+		imexChannels         []*imex.Channel
 		expectedResponse     pluginapi.ContainerAllocateResponse
 	}{
 		{
 			description:          "empty device list has empty response",
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			CDIEnabled:           true,
-		},
-		{
-			description:          "CDI disabled has empty response",
-			deviceIds:            []string{"gpu0"},
-			deviceListStrategies: []string{"cdi-annotations"},
-			CDIPrefix:            "cdi.k8s.io/",
-			CDIEnabled:           false,
 		},
 		{
 			description:          "single device is added to annotations",
 			deviceIds:            []string{"gpu0"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			CDIEnabled:           true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gpu=gpu0",
@@ -67,7 +141,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 			deviceIds:            []string{"gpu0"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "custom.cdi.k8s.io/",
-			CDIEnabled:           true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"custom.cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gpu=gpu0",
@@ -79,7 +152,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 			deviceIds:            []string{"gpu0", "gpu1"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			CDIEnabled:           true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gpu=gpu0,nvidia.com/gpu=gpu1",
@@ -91,7 +163,6 @@ func TestCDIAllocateResponse(t *testing.T) {
 			deviceIds:            []string{"gpu0", "gpu1"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "custom.cdi.k8s.io/",
-			CDIEnabled:           true,
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"custom.cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gpu=gpu0,nvidia.com/gpu=gpu1",
@@ -102,8 +173,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 			description:          "mofed devices are selected if configured",
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			CDIEnabled:           true,
-			MOFEDEnabled:         true,
+			AdditionalCDIDevices: []string{"nvidia.com/mofed=all"},
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/mofed=all",
@@ -114,8 +184,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 			description:          "gds devices are selected if configured",
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			CDIEnabled:           true,
-			GDSEnabled:           true,
+			AdditionalCDIDevices: []string{"nvidia.com/gds=all"},
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gds=all",
@@ -127,21 +196,31 @@ func TestCDIAllocateResponse(t *testing.T) {
 			deviceIds:            []string{"gpu0"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
-			CDIEnabled:           true,
-			GDSEnabled:           true,
-			MOFEDEnabled:         true,
+			AdditionalCDIDevices: []string{"nvidia.com/gds=all", "nvidia.com/mofed=all"},
 			expectedResponse: pluginapi.ContainerAllocateResponse{
 				Annotations: map[string]string{
 					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/gpu=gpu0,nvidia.com/gds=all,nvidia.com/mofed=all",
 				},
 			},
 		},
+		{
+			description:          "imex channel is included with devices",
+			deviceListStrategies: []string{"cdi-annotations"},
+			CDIPrefix:            "cdi.k8s.io/",
+			imexChannels:         []*imex.Channel{{ID: "0"}},
+			expectedResponse: pluginapi.ContainerAllocateResponse{
+				Annotations: map[string]string{
+					"cdi.k8s.io/nvidia-device-plugin_uuid": "nvidia.com/imex-channel=0",
+				},
+			},
+		},
 	}
 
-	for _, tc := range testCases {
+	for i := range testCases {
+		tc := &testCases[i]
 		t.Run(tc.description, func(t *testing.T) {
 			deviceListStrategies, _ := v1.NewDeviceListStrategies(tc.deviceListStrategies)
-			plugin := NvidiaDevicePlugin{
+			plugin := nvidiaDevicePlugin{
 				config: &v1.Config{
 					Flags: v1.Flags{
 						CommandLineFlags: v1.CommandLineFlags{
@@ -154,16 +233,24 @@ func TestCDIAllocateResponse(t *testing.T) {
 					QualifiedNameFunc: func(c string, s string) string {
 						return "nvidia.com/" + c + "=" + s
 					},
+					AdditionalDevicesFunc: func() []string {
+						return tc.AdditionalCDIDevices
+					},
 				},
-				cdiEnabled:           tc.CDIEnabled,
 				deviceListStrategies: deviceListStrategies,
 				cdiAnnotationPrefix:  tc.CDIPrefix,
+				imexChannels:         tc.imexChannels,
 			}
 
-			response, err := plugin.getAllocateResponseForCDI("uuid", tc.deviceIds)
+			response := pluginapi.ContainerAllocateResponse{}
+			err := plugin.updateResponseForCDI(&response, "uuid", tc.deviceIds...)
 
 			require.Nil(t, err)
 			require.EqualValues(t, &tc.expectedResponse, &response)
 		})
 	}
+}
+
+func ptr[T any](x T) *T {
+	return &x
 }

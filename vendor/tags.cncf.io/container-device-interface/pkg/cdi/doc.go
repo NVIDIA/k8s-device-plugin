@@ -29,17 +29,17 @@
 // the vast majority of CDI consumers need. The API should be usable both
 // by OCI runtime clients and runtime implementations.
 //
-// # CDI Registry
+// # Default CDI Cache
 //
-// The primary interface to interact with CDI devices is the Registry. It
-// is essentially a cache of all Specs and devices discovered in standard
-// CDI directories on the host. The registry has two main functionality,
-// injecting devices into an OCI Spec and refreshing the cache of CDI
-// Specs and devices.
+// There is a default CDI cache instance which is always implicitly
+// available and instantiated the first time it is referenced directly
+// or indirectly. The most frequently used cache functions are available
+// as identically named package level functions which operate on the
+// default cache instance.
 //
 // # Device Injection
 //
-// Using the Registry one can inject CDI devices into a container with code
+// Using the Cache one can inject CDI devices into a container with code
 // similar to the following snippet:
 //
 //	import (
@@ -49,13 +49,14 @@
 //	    log "github.com/sirupsen/logrus"
 //
 //	    "tags.cncf.io/container-device-interface/pkg/cdi"
-//	    oci "github.com/opencontainers/runtime-spec/specs-go"
+//	    "github.com/opencontainers/runtime-spec/specs-go"
 //	)
 //
-//	func injectCDIDevices(spec *oci.Spec, devices []string) error {
+//	func injectCDIDevices(spec *specs.Spec, devices []string) error {
 //	    log.Debug("pristine OCI Spec: %s", dumpSpec(spec))
 //
-//	    unresolved, err := cdi.GetRegistry().InjectDevices(spec, devices)
+//	    cache := cdi.GetDefaultCache()
+//	    unresolved, err := cache.InjectDevices(spec, devices)
 //	    if err != nil {
 //	        return fmt.Errorf("CDI device injection failed: %w", err)
 //	    }
@@ -92,17 +93,17 @@
 //	    log "github.com/sirupsen/logrus"
 //
 //	    "tags.cncf.io/container-device-interface/pkg/cdi"
-//	    oci "github.com/opencontainers/runtime-spec/specs-go"
+//	    "github.com/opencontainers/runtime-spec/specs-go"
 //	)
 //
-//	func injectCDIDevices(spec *oci.Spec, devices []string) error {
-//	    registry := cdi.GetRegistry()
+//	func injectCDIDevices(spec *specs.Spec, devices []string) error {
+//	    cache := cdi.GetDefaultCache()
 //
-//	    if err := registry.Refresh(); err != nil {
+//	    if err := cache.Refresh(); err != nil {
 //	        // Note:
 //	        //   It is up to the implementation to decide whether
 //	        //   to abort injection on errors. A failed Refresh()
-//	        //   does not necessarily render the registry unusable.
+//	        //   does not necessarily render the cache unusable.
 //	        //   For instance, a parse error in a Spec file for
 //	        //   vendor A does not have any effect on devices of
 //	        //   vendor B...
@@ -111,7 +112,7 @@
 //
 //	    log.Debug("pristine OCI Spec: %s", dumpSpec(spec))
 //
-//	    unresolved, err := registry.InjectDevices(spec, devices)
+//	    unresolved, err := cache.InjectDevices(spec, devices)
 //	    if err != nil {
 //	        return fmt.Errorf("CDI device injection failed: %w", err)
 //	    }
@@ -178,7 +179,7 @@
 // )
 //
 //	func generateDeviceSpecs() error {
-//	    registry := cdi.GetRegistry()
+//	    cache := specs.GetDefaultCache()
 //	    spec := &specs.Spec{
 //	        Version: specs.CurrentVersion,
 //	        Kind:    vendor+"/"+class,
@@ -196,7 +197,7 @@
 //	        return fmt.Errorf("failed to generate Spec name: %w", err)
 //	    }
 //
-//	    return registry.SpecDB().WriteSpec(spec, specName)
+//	    return cache.WriteSpec(spec, specName)
 //	}
 //
 // Similarly, generating and later cleaning up transient Spec files can be
@@ -215,7 +216,7 @@
 // )
 //
 //	func generateTransientSpec(ctr Container) error {
-//	    registry := cdi.GetRegistry()
+//	    cache := specs.GetDefaultCache()
 //	    devices := getContainerDevs(ctr, vendor, class)
 //	    spec := &specs.Spec{
 //	        Version: specs.CurrentVersion,
@@ -243,21 +244,21 @@
 //	        return fmt.Errorf("failed to generate Spec name: %w", err)
 //	    }
 //
-//	    return registry.SpecDB().WriteSpec(spec, specName)
+//	    return cache.WriteSpec(spec, specName)
 //	}
 //
 //	func removeTransientSpec(ctr Container) error {
-//	    registry := cdi.GetRegistry()
+//	    cache := specs.GetDefaultCache()
 //	    transientID := getSomeSufficientlyUniqueIDForContainer(ctr)
 //	    specName := cdi.GenerateNameForTransientSpec(vendor, class, transientID)
 //
-//	    return registry.SpecDB().RemoveSpec(specName)
+//	    return cache.RemoveSpec(specName)
 //	}
 //
 // # CDI Spec Validation
 //
 // This package performs both syntactic and semantic validation of CDI
-// Spec file data when a Spec file is loaded via the registry or using
+// Spec file data when a Spec file is loaded via the cache or using
 // the ReadSpec API function. As part of the semantic verification, the
 // Spec file is verified against the CDI Spec JSON validation schema.
 //

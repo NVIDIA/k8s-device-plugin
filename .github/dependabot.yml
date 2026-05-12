@@ -3,18 +3,107 @@
 
 version: 2
 updates:
+# main branch
   - package-ecosystem: "gomod"
     target-branch: main
-    directory: "/"
+    directories:
+    - "/"
+    - "deployments/devel"
+    - "tests"
+    open-pull-requests-limit: 15
     schedule:
-      interval: "weekly"
-      day: "sunday"
-    ignore:
-    - dependency-name: k8s.io/*
+      interval: "daily"
+    labels:
+    - dependencies
+    groups:
+      k8sio:
+        patterns:
+        - k8s.io/*
+        exclude-patterns:
+        - k8s.io/klog/*
+
+  - package-ecosystem: "docker"
+    target-branch: main
+    directories:
+    # CUDA image
+    - "/deployments/container"
+    # Golang version
+    - "/deployments/devel"
+    schedule:
+      interval: "daily"
     labels:
     - dependencies
 
   - package-ecosystem: "github-actions"
+    target-branch: main
     directory: "/"
     schedule:
       interval: "daily"
+    labels:
+    - dependencies
+
+# The release branch(es):
+  - package-ecosystem: "gomod"
+    target-branch: release-0.19
+    directories:
+    - "/"
+    # We don't update development or test dependencies on release branches
+    # - "deployments/devel"
+    # - "tests"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    labels:
+    - dependencies
+    - maintenance
+    ignore:
+    # For release branches we only consider patch updates.
+    - dependency-name: "*"
+      update-types:
+      - version-update:semver-major
+      - version-update:semver-minor
+    groups:
+      k8sio:
+        patterns:
+        - k8s.io/*
+        exclude-patterns:
+        - k8s.io/klog/*
+
+  - package-ecosystem: "docker"
+    target-branch: release-0.19
+    directories:
+    # CUDA image
+    - "/deployments/container"
+    # Golang version
+    - "/deployments/devel"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    ignore:
+    # For release branches we only apply patch updates to the golang version.
+    - dependency-name: "*golang*"
+      update-types:
+      - version-update:semver-major
+      - version-update:semver-minor
+    labels:
+    - dependencies
+    - maintenance
+
+  - package-ecosystem: "github-actions"
+    target-branch: release-0.19
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    labels:
+    - dependencies
+    - maintenance
+
+  # Github actions need to be gh-pages branches.
+  - package-ecosystem: "github-actions"
+    target-branch: gh-pages
+    directory: "/"
+    schedule:
+      interval: "daily"
+    labels:
+    - dependencies

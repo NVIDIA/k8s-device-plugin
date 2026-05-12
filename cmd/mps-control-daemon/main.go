@@ -27,10 +27,13 @@ import (
 	"github.com/urfave/cli/v2"
 	"k8s.io/klog/v2"
 
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	nvinfo "github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
+
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mount"
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mps"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
-	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
 
@@ -52,7 +55,6 @@ func main() {
 	c.Name = "NVIDIA MPS Control Daemon"
 	c.Version = info.GetVersionString()
 	c.Action = func(ctx *cli.Context) error {
-		klog.InfoS("Starting "+ctx.App.Name, "version", ctx.App.Version)
 		return start(ctx, config)
 	}
 	c.Commands = []*cli.Command{
@@ -61,21 +63,21 @@ func main() {
 
 	config.flags = []cli.Flag{
 		&cli.StringFlag{
-			Name:    "nvidia-driver-root",
-			Value:   "/",
-			Usage:   "the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')",
-			EnvVars: []string{"NVIDIA_DRIVER_ROOT"},
-		},
-		&cli.StringFlag{
 			Name:        "config-file",
 			Usage:       "the path to a config file as an alternative to command line options or environment variables",
 			Destination: &config.configFile,
 			EnvVars:     []string{"CONFIG_FILE"},
 		},
+		&cli.StringFlag{
+			Name:    "mig-strategy",
+			Value:   spec.MigStrategyNone,
+			Usage:   "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
+			EnvVars: []string{"MIG_STRATEGY"},
+		},
 	}
 	c.Flags = config.flags
 
-	klog.Infof("Starting %v %v", c.Name, c.Version)
+	klog.InfoS(c.Name, "version", c.Version)
 	err := c.Run(os.Args)
 	if err != nil {
 		klog.Error(err)
@@ -166,11 +168,18 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 	if err != nil {
 		return nil, false, fmt.Errorf("unable to load config: %v", err)
 	}
-	spec.DisableResourceNamingInConfig(logger.ToKlog, config)
+	spec.DisableResourceNamingInConfig(config)
+
+	nvmllib := nvml.New()
+	devicelib := device.New(nvmllib)
+	infolib := nvinfo.New(
+		nvinfo.WithNvmlLib(nvmllib),
+		nvinfo.WithDeviceLib(devicelib),
+	)
 
 	// Update the configuration file with default resources.
 	klog.Info("Updating config with default resource matching patterns.")
-	err = rm.AddDefaultResourcesToConfig(config)
+	err = rm.AddDefaultResourcesToConfig(infolib, nvmllib, devicelib, config)
 	if err != nil {
 		return nil, false, fmt.Errorf("unable to add default resources to config: %v", err)
 	}
@@ -185,7 +194,7 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 	// Get the set of daemons.
 	// Note that a daemon is only created for resources with at least one device.
 	klog.Info("Retrieving MPS daemons.")
-	mpsDaemons, err := mps.NewDaemons(
+	mpsDaemons, err := mps.NewDaemons(infolib, nvmllib, devicelib,
 		mps.WithConfig(config),
 	)
 	if err != nil {
@@ -194,7 +203,6 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 
 	if len(mpsDaemons) == 0 {
 		klog.Info("No devices are configured for MPS sharing; Waiting indefinitely.")
-		return nil, false, nil
 	}
 
 	// Loop through all MPS daemons and start them.
@@ -205,10 +213,19 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 			return mpsDaemons, true, nil
 		}
 	}
+	readyFile, err := os.Create("/mps/.ready")
+	if err != nil {
+		return mpsDaemons, true, fmt.Errorf("failed to create .ready file")
+	}
+	defer readyFile.Close()
+
 	return mpsDaemons, false, nil
 }
 
 func stopDaemons(mpsDaemons ...*mps.Daemon) error {
+	if err := os.Remove("/mps/.ready"); err != nil {
+		klog.Warningf("Failed to remove .ready file: %v", err)
+	}
 	klog.Info("Stopping MPS daemons.")
 	var errs error
 	for _, p := range mpsDaemons {

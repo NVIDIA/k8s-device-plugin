@@ -18,73 +18,247 @@ package nvcdi
 
 import (
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
+
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/edits"
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/nvsandboxutils"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/platform-support/tegra/csv"
+	"github.com/NVIDIA/nvidia-container-toolkit/pkg/lookup"
 	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
 )
 
-// Option is a function that configures the nvcdilib
-type Option func(*nvcdilib)
+type options struct {
+	logger logger.Interface
+	platformlibs
+	mode               Mode
+	deviceNamers       DeviceNamers
+	driverRoot         string
+	devRoot            string
+	nvidiaCDIHookPath  string
+	ldconfigPath       string
+	configSearchPaths  []string
+	librarySearchPaths []string
+
+	csv csvOptions
+
+	vendor string
+	class  string
+
+	mergedDeviceOptions []transform.MergedDeviceOption
+
+	featureFlags map[FeatureFlag]bool
+
+	disabledHooks []discover.HookName
+	enabledHooks  []discover.HookName
+
+	editsFactory edits.Factory
+}
+
+type platformlibs struct {
+	nvmllib   nvml.Interface
+	devicelib device.Interface
+	infolib   info.Interface
+
+	nvsandboxutilslib nvsandboxutils.Interface
+}
+
+// populateOptions applies the functional options and resolves the required
+// defaults.
+func populateOptions(opts ...Option) *options {
+	o := &options{
+		mode:              ModeAuto,
+		driverRoot:        "/",
+		nvidiaCDIHookPath: "/usr/bin/nvidia-cdi-hook",
+	}
+	for _, opt := range opts {
+		opt(o)
+	}
+	if o.logger == nil {
+		o.logger = logger.New()
+	}
+	if len(o.deviceNamers) == 0 {
+		indexNamer, _ := NewDeviceNamer(DeviceNameStrategyIndex)
+		o.deviceNamers = []DeviceNamer{indexNamer}
+	}
+	if o.devRoot == "" {
+		o.devRoot = o.driverRoot
+	}
+	if o.nvsandboxutilslib == nil {
+		o.nvsandboxutilslib = o.getNvsandboxUtilsLib()
+	}
+	if o.nvmllib == nil {
+		o.nvmllib = o.getNvmlLib()
+	}
+	if o.devicelib == nil {
+		o.devicelib = device.New(o.nvmllib)
+	}
+	if o.infolib == nil {
+		o.infolib = info.New(
+			info.WithRoot(o.driverRoot),
+			info.WithLogger(o.logger),
+			info.WithNvmlLib(o.nvmllib),
+			info.WithDeviceLib(o.devicelib),
+		)
+	}
+	o.mode = o.resolveMode()
+
+	if o.mode == ModeCSV && len(o.csv.Files) == 0 {
+		o.csv.Files = csv.DefaultFileList()
+	}
+
+	if o.mode == ModeCSV && o.csv.CompatContainerRoot == "" {
+		o.csv.CompatContainerRoot = defaultOrinCompatContainerRoot
+	}
+
+	if o.mode == ModeManagement {
+		// For management mode we explicitly disable the hooks that enable CUDA
+		// compatibility and disable device node modifications.
+		o.disabledHooks = append(o.disabledHooks, HookEnableCudaCompat, DisableDeviceNodeModificationHook)
+	}
+
+	if o.editsFactory == nil {
+		o.editsFactory = edits.NewFactory(
+			edits.WithLogger(o.logger),
+			edits.WithNoAdditionalGIDsForDeviceNodes(o.featureFlags[FeatureNoAdditionalGIDsForDeviceNodes]),
+		)
+	}
+
+	return o
+}
+
+func (o *options) driverLibraryLocator() lookup.Locator {
+	return lookup.NewLibraryLocator(
+		lookup.WithLogger(o.logger),
+		lookup.WithRoot(o.driverRoot),
+		lookup.WithSearchPaths(o.librarySearchPaths...),
+	)
+}
+
+func (o *options) getVendorOrDefault() string {
+	if o.vendor != "" {
+		return o.vendor
+	}
+	switch o.mode {
+	case ModeManagement:
+		return "management.nvidia.com"
+	default:
+		return "nvidia.com"
+	}
+}
+
+func (o *options) getClassOrDefault() string {
+	if o.class != "" {
+		return o.class
+	}
+	switch o.mode {
+	case ModeImex:
+		return classImexChannel
+	case ModeGdrcopy, ModeGds, ModeMofed, ModeNvswitch:
+		return string(o.mode)
+	default:
+		return "gpu"
+	}
+}
+
+// Option is a function that configures the nvcdi library options.
+type Option func(*options)
 
 // WithDeviceLib sets the device library for the library
 func WithDeviceLib(devicelib device.Interface) Option {
-	return func(l *nvcdilib) {
+	return func(l *options) {
 		l.devicelib = devicelib
 	}
 }
 
-// WithDeviceNamer sets the device namer for the library
-func WithDeviceNamer(namer DeviceNamer) Option {
-	return func(l *nvcdilib) {
-		l.deviceNamer = namer
+// WithInfoLib sets the info library for CDI spec generation.
+func WithInfoLib(infolib info.Interface) Option {
+	return func(l *options) {
+		l.infolib = infolib
+	}
+}
+
+// WithDeviceNamers sets the device namer for the library
+func WithDeviceNamers(namers ...DeviceNamer) Option {
+	return func(l *options) {
+		l.deviceNamers = namers
 	}
 }
 
 // WithDriverRoot sets the driver root for the library
 func WithDriverRoot(root string) Option {
-	return func(l *nvcdilib) {
+	return func(l *options) {
 		l.driverRoot = root
+	}
+}
+
+// WithDevRoot sets the root where /dev is located.
+func WithDevRoot(root string) Option {
+	return func(l *options) {
+		l.devRoot = root
+	}
+}
+
+func WithEditsFactory(editsFactory edits.Factory) Option {
+	return func(l *options) {
+		l.editsFactory = editsFactory
 	}
 }
 
 // WithLogger sets the logger for the library
 func WithLogger(logger logger.Interface) Option {
-	return func(l *nvcdilib) {
+	return func(l *options) {
 		l.logger = logger
 	}
 }
 
 // WithNVIDIACTKPath sets the path to the NVIDIA Container Toolkit CLI path for the library
+//
+// Deprecated: Use WithNVIDIACDIHookPath instead.
 func WithNVIDIACTKPath(path string) Option {
-	return func(l *nvcdilib) {
-		l.nvidiaCTKPath = path
+	return WithNVIDIACDIHookPath(path)
+}
+
+// WithNVIDIACDIHookPath sets the path to the NVIDIA Container Toolkit CLI path for the library
+func WithNVIDIACDIHookPath(path string) Option {
+	return func(l *options) {
+		l.nvidiaCDIHookPath = path
+	}
+}
+
+// WithLdconfigPath sets the path to the ldconfig program
+func WithLdconfigPath(path string) Option {
+	return func(l *options) {
+		l.ldconfigPath = path
 	}
 }
 
 // WithNvmlLib sets the nvml library for the library
 func WithNvmlLib(nvmllib nvml.Interface) Option {
-	return func(l *nvcdilib) {
+	return func(l *options) {
 		l.nvmllib = nvmllib
 	}
 }
 
 // WithMode sets the discovery mode for the library
-func WithMode(mode string) Option {
-	return func(l *nvcdilib) {
-		l.mode = mode
+func WithMode[m modeConstraint](mode m) Option {
+	return func(l *options) {
+		l.mode = Mode(mode)
 	}
 }
 
 // WithVendor sets the vendor for the library
 func WithVendor(vendor string) Option {
-	return func(o *nvcdilib) {
+	return func(o *options) {
 		o.vendor = vendor
 	}
 }
 
 // WithClass sets the class for the library
 func WithClass(class string) Option {
-	return func(o *nvcdilib) {
+	return func(o *options) {
 		o.class = class
 	}
 }
@@ -92,29 +266,96 @@ func WithClass(class string) Option {
 // WithMergedDeviceOptions sets the merged device options for the library
 // If these are not set, no merged device will be generated.
 func WithMergedDeviceOptions(opts ...transform.MergedDeviceOption) Option {
-	return func(o *nvcdilib) {
+	return func(o *options) {
 		o.mergedDeviceOptions = opts
 	}
 }
 
 // WithCSVFiles sets the CSV files for the library
 func WithCSVFiles(csvFiles []string) Option {
-	return func(o *nvcdilib) {
-		o.csvFiles = csvFiles
+	return func(o *options) {
+		o.csv.Files = csvFiles
 	}
 }
 
 // WithCSVIgnorePatterns sets the ignore patterns for entries in the CSV files.
 func WithCSVIgnorePatterns(csvIgnorePatterns []string) Option {
-	return func(o *nvcdilib) {
-		o.csvIgnorePatterns = csvIgnorePatterns
+	return func(o *options) {
+		o.csv.IgnorePatterns = csvIgnorePatterns
+	}
+}
+
+// WithCSVCompatContainerRoot sets the compat root to use for the container in
+// the case of nvgpu-only devices.
+func WithCSVCompatContainerRoot(csvCompatContainerRoot string) Option {
+	return func(o *options) {
+		o.csv.CompatContainerRoot = csvCompatContainerRoot
+	}
+}
+
+// WithConfigSearchPaths sets the search paths for config files.
+func WithConfigSearchPaths(paths []string) Option {
+	return func(o *options) {
+		o.configSearchPaths = paths
 	}
 }
 
 // WithLibrarySearchPaths sets the library search paths.
 // This is currently only used for CSV-mode.
 func WithLibrarySearchPaths(paths []string) Option {
-	return func(o *nvcdilib) {
+	return func(o *options) {
 		o.librarySearchPaths = paths
 	}
+}
+
+// WithDisabledHooks allows specific hooks to be disabled.
+func WithDisabledHooks[T string | HookName](hooks ...T) Option {
+	return func(o *options) {
+		for _, hook := range hooks {
+			o.disabledHooks = append(o.disabledHooks, discover.HookName(hook))
+		}
+	}
+}
+
+// WithEnabledHooks explicitly enables a specific set of hooks.
+// If a hook is explicitly enabled, this takes precedence over it being disabled.
+func WithEnabledHooks[T string | HookName](hooks ...T) Option {
+	return func(o *options) {
+		for _, hook := range hooks {
+			o.enabledHooks = append(o.enabledHooks, discover.HookName(hook))
+		}
+	}
+}
+
+// WithFeatureFlags allows the specified set of features to be toggled on.
+func WithFeatureFlags[T string | FeatureFlag](featureFlags ...T) Option {
+	return func(o *options) {
+		if o.featureFlags == nil {
+			o.featureFlags = make(map[FeatureFlag]bool)
+		}
+		for _, featureFlag := range featureFlags {
+			// The initial release of the FeatureDisableNvsandboxUtils feature
+			// flag included a typo which we handle here.
+			if string(featureFlag) == "disable-nvsandbox-utils" {
+				featureFlag = T(FeatureDisableNvsandboxUtils)
+			}
+			o.featureFlags[FeatureFlag(featureFlag)] = true
+		}
+	}
+}
+
+// WithDisabledHook allows specific hooks to be disabled.
+// This option can be specified multiple times for each hook.
+//
+// Deprecated: Use WithDisabledHooks instead
+func WithDisabledHook[T string | HookName](hook T) Option {
+	return WithDisabledHooks(hook)
+}
+
+// WithFeatureFlag allows specified features to be toggled on.
+// This option can be specified multiple times for each feature flag.
+//
+// Deprecated: Use WithFeatureFlags
+func WithFeatureFlag[T string | FeatureFlag](featureFlag T) Option {
+	return WithFeatureFlags(featureFlag)
 }

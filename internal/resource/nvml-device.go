@@ -20,7 +20,10 @@ import (
 	"fmt"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvlib/pkg/nvpci"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
+
+	"github.com/google/uuid"
 )
 
 type nvmlDevice struct {
@@ -78,11 +81,39 @@ func (d nvmlDevice) GetName() (string, error) {
 	return name, nil
 }
 
-// GetTotalMemoryMB returns the total memory on a device in MB
-func (d nvmlDevice) GetTotalMemoryMB() (uint64, error) {
-	info, ret := d.Device.GetMemoryInfo()
+// GetTotalMemoryMiB returns the total memory on a device in mebibytes (2^20 bytes)
+func (d nvmlDevice) GetTotalMemoryMiB() (uint64, error) {
+	info, ret := d.GetMemoryInfo()
 	if ret != nvml.SUCCESS {
 		return 0, ret
 	}
 	return info.Total / (1024 * 1024), nil
+}
+
+func (d nvmlDevice) GetPCIClass() (uint32, error) {
+	pciBusID, err := d.GetPCIBusID()
+	if err != nil {
+		return 0, err
+	}
+	nvDevice, err := nvpci.New().GetGPUByPciBusID(pciBusID)
+	if err != nil {
+		return 0, err
+	}
+	return nvDevice.Class, nil
+}
+
+func (d nvmlDevice) GetFabricIDs() (string, string, error) {
+	info, ret := d.GetGpuFabricInfo()
+	if ret != nvml.SUCCESS {
+		return "", "", fmt.Errorf("failed to get GPU fabric info: %w", ret)
+	}
+
+	clusterUUID, err := uuid.FromBytes(info.ClusterUuid[:])
+	if err != nil {
+		return "", "", fmt.Errorf("invalid cluster UUID: %w", err)
+	}
+
+	cliqueId := fmt.Sprintf("%d", info.CliqueId)
+
+	return clusterUUID.String(), cliqueId, nil
 }

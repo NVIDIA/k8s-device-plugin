@@ -14,10 +14,9 @@
 
 {{- if .Values.gfd.enabled }}
 ---
-{{- $hasConfigMap := (include "nvidia-device-plugin.hasConfigMap" .) | trim }}
-{{- $useServiceAccount := or ( eq $hasConfigMap "true" ) ( and .Values.gfd.enabled .Values.nfd.enableNodeFeatureApi ) }}
+{{- $options := (include "nvidia-device-plugin.options" . | fromJson) }}
+{{- $useServiceAccount := or $options.hasConfigMap .Values.gfd.enabled }}
 {{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}
-{{- $migStrategiesAreAllNone := (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) | trim }}
 {{- $daemonsetName := printf "%s-gpu-feature-discovery" (include "nvidia-device-plugin.fullname" .) | trunc 63 | trimSuffix "-" }}
 apiVersion: apps/v1
 kind: DaemonSet
@@ -51,14 +50,20 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.gfd.enableHostNetwork }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- if $useServiceAccount }}
       serviceAccountName: {{ include "nvidia-device-plugin.fullname" . }}-service-account
       {{- end }}
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
       shareProcessNamespace: true
+      {{- end }}
       initContainers:
+      {{- if $options.hasConfigMap }}
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         name: gpu-feature-discovery-init
         command: ["config-manager"]
@@ -78,9 +83,9 @@ spec:
         - name: CONFIG_FILE_DST
           value: "/config/config.yaml"
         - name: DEFAULT_CONFIG
-          value: "{{ .Values.config.default }}"
+          value: {{ .Values.config.default }}
         - name: FALLBACK_STRATEGIES
-          value: "{{ join "," .Values.config.fallbackStrategies }}"
+          value: {{ join "," .Values.config.fallbackStrategies }}
         - name: SEND_SIGNAL
           value: "false"
         - name: SIGNAL
@@ -94,7 +99,7 @@ spec:
             mountPath: /config
       {{- end }}
       containers:
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         name: gpu-feature-discovery-sidecar
         command: ["config-manager"]
@@ -114,9 +119,9 @@ spec:
         - name: CONFIG_FILE_DST
           value: "/config/config.yaml"
         - name: DEFAULT_CONFIG
-          value: "{{ .Values.config.default }}"
+          value: {{ .Values.config.default }}
         - name: FALLBACK_STRATEGIES
-          value: "{{ join "," .Values.config.fallbackStrategies }}"
+          value: {{ join "," .Values.config.fallbackStrategies }}
         - name: SEND_SIGNAL
           value: "true"
         - name: SIGNAL
@@ -139,35 +144,42 @@ spec:
           - name: NODE_NAME
             valueFrom:
               fieldRef:
-                apiVersion: v1
                 fieldPath: spec.nodeName
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
         {{- if typeIs "string" .Values.migStrategy }}
           - name: MIG_STRATEGY
-            value: "{{ .Values.migStrategy }}"
+            value: {{ .Values.migStrategy }}
         {{- end }}
         {{- if typeIs "bool" .Values.failOnInitError }}
           - name: FAIL_ON_INIT_ERROR
-            value: "{{ .Values.failOnInitError }}"
+            value: {{ .Values.failOnInitError | quote }}
         {{- end }}
         {{- if typeIs "bool" .Values.noTimestamp }}
           - name: GFD_NO_TIMESTAMP
-            value: "{{ .Values.noTimestamp}}"
+            value: {{ .Values.noTimestamp | quote }}
         {{- end }}
         {{- if or (typeIs "string" .Values.sleepInterval) (typeIs "int" .Values.sleepInterval) }}
           - name: GFD_SLEEP_INTERVAL
-            value: "{{ .Values.sleepInterval }}"
+            value: {{ .Values.sleepInterval | quote }}
         {{- end }}
-        {{- if typeIs "bool" .Values.nfd.enableNodeFeatureApi }}
-          - name: GFD_USE_NODE_FEATURE_API
-            value: "{{ .Values.nfd.enableNodeFeatureApi }}"
-        {{- end }}
-        {{- if eq $hasConfigMap "true" }}
+        {{- if $options.hasConfigMap }}
           - name: CONFIG_FILE
             value: /config/config.yaml
         {{- end }}
-        {{- if ne $migStrategiesAreAllNone "true" }}
+        {{- if $options.addMigMonitorDevices }}
           - name: NVIDIA_MIG_MONITOR_DEVICES
             value: all
+        {{- end }}
+        {{- if typeIs "string" .Values.deviceDiscoveryStrategy }}
+          - name: DEVICE_DISCOVERY_STRATEGY
+            value: {{ .Values.deviceDiscoveryStrategy }}
         {{- end }}
         securityContext:
           {{- include "gpu-feature-discovery.securityContext" . | nindent 10 }}
@@ -176,12 +188,12 @@ spec:
             mountPath: "/etc/kubernetes/node-feature-discovery/features.d"
           - name: host-sys
             mountPath: "/sys"
-        {{- if eq $hasConfigMap "true" }}
+        {{- if $options.hasConfigMap }}
           - name: available-configs
             mountPath: /available-configs
+        {{- end }}
           - name: config
             mountPath: /config
-        {{- end }}
         {{- with .Values.resources }}
         resources:
           {{- toYaml . | nindent 10 }}
@@ -190,16 +202,22 @@ spec:
         - name: output-dir
           hostPath:
             path: "/etc/kubernetes/node-feature-discovery/features.d"
+            type: DirectoryOrCreate
         - name: host-sys
           hostPath:
             path: "/sys"
-      {{- if eq $hasConfigMap "true" }}
+            type: Directory
+        - name: driver-root
+          hostPath:
+            path: {{ clean ( join "/" ( list "/" .Values.nvidiaDriverRoot ) ) | quote }}
+            type: Directory
+      {{- if $options.hasConfigMap }}
         - name: available-configs
           configMap:
-            name: "{{ $configMapName }}"
+            name: {{ $configMapName }}
+      {{- end }}
         - name: config
           emptyDir: {}
-      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

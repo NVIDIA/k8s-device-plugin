@@ -26,14 +26,23 @@ var _ Device = &DeviceMock{}
 //			GetDeviceHandleFromMigDeviceHandleFunc: func() (Device, error) {
 //				panic("mock out the GetDeviceHandleFromMigDeviceHandle method")
 //			},
+//			GetFabricIDsFunc: func() (string, string, error) {
+//				panic("mock out the GetFabricIDs method")
+//			},
 //			GetMigDevicesFunc: func() ([]Device, error) {
 //				panic("mock out the GetMigDevices method")
 //			},
 //			GetNameFunc: func() (string, error) {
 //				panic("mock out the GetName method")
 //			},
-//			GetTotalMemoryMBFunc: func() (uint64, error) {
-//				panic("mock out the GetTotalMemoryMB method")
+//			GetPCIClassFunc: func() (uint32, error) {
+//				panic("mock out the GetPCIClass method")
+//			},
+//			GetTotalMemoryMiBFunc: func() (uint64, error) {
+//				panic("mock out the GetTotalMemoryMiB method")
+//			},
+//			IsFabricAttachedFunc: func() (bool, error) {
+//				panic("mock out the IsFabricAttached method")
 //			},
 //			IsMigCapableFunc: func() (bool, error) {
 //				panic("mock out the IsMigCapable method")
@@ -57,14 +66,23 @@ type DeviceMock struct {
 	// GetDeviceHandleFromMigDeviceHandleFunc mocks the GetDeviceHandleFromMigDeviceHandle method.
 	GetDeviceHandleFromMigDeviceHandleFunc func() (Device, error)
 
+	// GetFabricIDsFunc mocks the GetFabricIDs method.
+	GetFabricIDsFunc func() (string, string, error)
+
 	// GetMigDevicesFunc mocks the GetMigDevices method.
 	GetMigDevicesFunc func() ([]Device, error)
 
 	// GetNameFunc mocks the GetName method.
 	GetNameFunc func() (string, error)
 
-	// GetTotalMemoryMBFunc mocks the GetTotalMemoryMB method.
-	GetTotalMemoryMBFunc func() (uint64, error)
+	// GetPCIClassFunc mocks the GetPCIClass method.
+	GetPCIClassFunc func() (uint32, error)
+
+	// GetTotalMemoryMiBFunc mocks the GetTotalMemoryMiB method.
+	GetTotalMemoryMiBFunc func() (uint64, error)
+
+	// IsFabricAttachedFunc mocks the IsFabricAttached method.
+	IsFabricAttachedFunc func() (bool, error)
 
 	// IsMigCapableFunc mocks the IsMigCapable method.
 	IsMigCapableFunc func() (bool, error)
@@ -83,14 +101,23 @@ type DeviceMock struct {
 		// GetDeviceHandleFromMigDeviceHandle holds details about calls to the GetDeviceHandleFromMigDeviceHandle method.
 		GetDeviceHandleFromMigDeviceHandle []struct {
 		}
+		// GetFabricIDs holds details about calls to the GetFabricIDs method.
+		GetFabricIDs []struct {
+		}
 		// GetMigDevices holds details about calls to the GetMigDevices method.
 		GetMigDevices []struct {
 		}
 		// GetName holds details about calls to the GetName method.
 		GetName []struct {
 		}
-		// GetTotalMemoryMB holds details about calls to the GetTotalMemoryMB method.
-		GetTotalMemoryMB []struct {
+		// GetPCIClass holds details about calls to the GetPCIClass method.
+		GetPCIClass []struct {
+		}
+		// GetTotalMemoryMiB holds details about calls to the GetTotalMemoryMiB method.
+		GetTotalMemoryMiB []struct {
+		}
+		// IsFabricAttached holds details about calls to the IsFabricAttached method.
+		IsFabricAttached []struct {
 		}
 		// IsMigCapable holds details about calls to the IsMigCapable method.
 		IsMigCapable []struct {
@@ -102,9 +129,12 @@ type DeviceMock struct {
 	lockGetAttributes                      sync.RWMutex
 	lockGetCudaComputeCapability           sync.RWMutex
 	lockGetDeviceHandleFromMigDeviceHandle sync.RWMutex
+	lockGetFabricIDs                       sync.RWMutex
 	lockGetMigDevices                      sync.RWMutex
 	lockGetName                            sync.RWMutex
-	lockGetTotalMemoryMB                   sync.RWMutex
+	lockGetPCIClass                        sync.RWMutex
+	lockGetTotalMemoryMiB                  sync.RWMutex
+	lockIsFabricAttached                   sync.RWMutex
 	lockIsMigCapable                       sync.RWMutex
 	lockIsMigEnabled                       sync.RWMutex
 }
@@ -190,6 +220,33 @@ func (mock *DeviceMock) GetDeviceHandleFromMigDeviceHandleCalls() []struct {
 	return calls
 }
 
+// GetFabricIDs calls GetFabricIDsFunc.
+func (mock *DeviceMock) GetFabricIDs() (string, string, error) {
+	if mock.GetFabricIDsFunc == nil {
+		panic("DeviceMock.GetFabricIDsFunc: method is nil but Device.GetFabricIDs was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockGetFabricIDs.Lock()
+	mock.calls.GetFabricIDs = append(mock.calls.GetFabricIDs, callInfo)
+	mock.lockGetFabricIDs.Unlock()
+	return mock.GetFabricIDsFunc()
+}
+
+// GetFabricIDsCalls gets all the calls that were made to GetFabricIDs.
+// Check the length with:
+//
+//	len(mockedDevice.GetFabricIDsCalls())
+func (mock *DeviceMock) GetFabricIDsCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockGetFabricIDs.RLock()
+	calls = mock.calls.GetFabricIDs
+	mock.lockGetFabricIDs.RUnlock()
+	return calls
+}
+
 // GetMigDevices calls GetMigDevicesFunc.
 func (mock *DeviceMock) GetMigDevices() ([]Device, error) {
 	if mock.GetMigDevicesFunc == nil {
@@ -244,30 +301,84 @@ func (mock *DeviceMock) GetNameCalls() []struct {
 	return calls
 }
 
-// GetTotalMemoryMB calls GetTotalMemoryMBFunc.
-func (mock *DeviceMock) GetTotalMemoryMB() (uint64, error) {
-	if mock.GetTotalMemoryMBFunc == nil {
-		panic("DeviceMock.GetTotalMemoryMBFunc: method is nil but Device.GetTotalMemoryMB was just called")
+// GetPCIClass calls GetPCIClassFunc.
+func (mock *DeviceMock) GetPCIClass() (uint32, error) {
+	if mock.GetPCIClassFunc == nil {
+		panic("DeviceMock.GetPCIClassFunc: method is nil but Device.GetPCIClass was just called")
 	}
 	callInfo := struct {
 	}{}
-	mock.lockGetTotalMemoryMB.Lock()
-	mock.calls.GetTotalMemoryMB = append(mock.calls.GetTotalMemoryMB, callInfo)
-	mock.lockGetTotalMemoryMB.Unlock()
-	return mock.GetTotalMemoryMBFunc()
+	mock.lockGetPCIClass.Lock()
+	mock.calls.GetPCIClass = append(mock.calls.GetPCIClass, callInfo)
+	mock.lockGetPCIClass.Unlock()
+	return mock.GetPCIClassFunc()
 }
 
-// GetTotalMemoryMBCalls gets all the calls that were made to GetTotalMemoryMB.
+// GetPCIClassCalls gets all the calls that were made to GetPCIClass.
 // Check the length with:
 //
-//	len(mockedDevice.GetTotalMemoryMBCalls())
-func (mock *DeviceMock) GetTotalMemoryMBCalls() []struct {
+//	len(mockedDevice.GetPCIClassCalls())
+func (mock *DeviceMock) GetPCIClassCalls() []struct {
 } {
 	var calls []struct {
 	}
-	mock.lockGetTotalMemoryMB.RLock()
-	calls = mock.calls.GetTotalMemoryMB
-	mock.lockGetTotalMemoryMB.RUnlock()
+	mock.lockGetPCIClass.RLock()
+	calls = mock.calls.GetPCIClass
+	mock.lockGetPCIClass.RUnlock()
+	return calls
+}
+
+// GetTotalMemoryMiB calls GetTotalMemoryMiBFunc.
+func (mock *DeviceMock) GetTotalMemoryMiB() (uint64, error) {
+	if mock.GetTotalMemoryMiBFunc == nil {
+		panic("DeviceMock.GetTotalMemoryMiBFunc: method is nil but Device.GetTotalMemoryMiB was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockGetTotalMemoryMiB.Lock()
+	mock.calls.GetTotalMemoryMiB = append(mock.calls.GetTotalMemoryMiB, callInfo)
+	mock.lockGetTotalMemoryMiB.Unlock()
+	return mock.GetTotalMemoryMiBFunc()
+}
+
+// GetTotalMemoryMiBCalls gets all the calls that were made to GetTotalMemoryMiB.
+// Check the length with:
+//
+//	len(mockedDevice.GetTotalMemoryMiBCalls())
+func (mock *DeviceMock) GetTotalMemoryMiBCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockGetTotalMemoryMiB.RLock()
+	calls = mock.calls.GetTotalMemoryMiB
+	mock.lockGetTotalMemoryMiB.RUnlock()
+	return calls
+}
+
+// IsFabricAttached calls IsFabricAttachedFunc.
+func (mock *DeviceMock) IsFabricAttached() (bool, error) {
+	if mock.IsFabricAttachedFunc == nil {
+		panic("DeviceMock.IsFabricAttachedFunc: method is nil but Device.IsFabricAttached was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockIsFabricAttached.Lock()
+	mock.calls.IsFabricAttached = append(mock.calls.IsFabricAttached, callInfo)
+	mock.lockIsFabricAttached.Unlock()
+	return mock.IsFabricAttachedFunc()
+}
+
+// IsFabricAttachedCalls gets all the calls that were made to IsFabricAttached.
+// Check the length with:
+//
+//	len(mockedDevice.IsFabricAttachedCalls())
+func (mock *DeviceMock) IsFabricAttachedCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockIsFabricAttached.RLock()
+	calls = mock.calls.IsFabricAttached
+	mock.lockIsFabricAttached.RUnlock()
 	return calls
 }
 

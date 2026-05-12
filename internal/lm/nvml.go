@@ -17,18 +17,25 @@
 package lm
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"k8s.io/klog/v2"
+
+	"github.com/NVIDIA/go-nvlib/pkg/nvpci"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 )
 
-// NewNVMLLabeler creates a new NVML-based labeler using the provided NVML library and config.
-func NewNVMLLabeler(manager resource.Manager, config *spec.Config) (Labeler, error) {
+var errMPSSharingNotSupported = errors.New("MPS sharing is not supported")
+
+// NewDeviceLabeler creates a new labeler for the specified resource manager.
+func NewDeviceLabeler(manager resource.Manager, config *spec.Config) (Labeler, error) {
 	if err := manager.Init(); err != nil {
-		return nil, fmt.Errorf("failed to initialize NVML: %v", err)
+		return nil, fmt.Errorf("failed to initialize resource manager: %v", err)
 	}
 	defer func() {
 		_ = manager.Shutdown()
@@ -58,17 +65,34 @@ func NewNVMLLabeler(manager resource.Manager, config *spec.Config) (Labeler, err
 		return nil, fmt.Errorf("error creating mig capability labeler: %v", err)
 	}
 
+	sharingLabeler, err := newSharingLabeler(manager, config)
+	if err != nil {
+		return nil, fmt.Errorf("error creating sharing labeler: %w", err)
+	}
+
 	resourceLabeler, err := NewResourceLabeler(manager, config)
 	if err != nil {
 		return nil, fmt.Errorf("error creating resource labeler: %v", err)
+	}
+
+	gpuModeLabeler, err := newGPUModeLabeler(devices)
+	if err != nil {
+		return nil, fmt.Errorf("error creating resource labeler: %v", err)
+	}
+
+	imexLabeler, err := newImexLabeler(config, devices)
+	if err != nil {
+		return nil, fmt.Errorf("error creating IMEX labeler: %v", err)
 	}
 
 	l := Merge(
 		machineTypeLabeler,
 		versionLabeler,
 		migCapabilityLabeler,
+		sharingLabeler,
 		resourceLabeler,
-		newSharingLabeler(config),
+		gpuModeLabeler,
+		imexLabeler,
 	)
 
 	return l, nil
@@ -99,11 +123,21 @@ func newVersionLabeler(manager resource.Manager) (Labeler, error) {
 	}
 
 	labels := Labels{
+		// Deprecated labels
 		"nvidia.com/cuda.driver.major":  driverMajor,
 		"nvidia.com/cuda.driver.minor":  driverMinor,
 		"nvidia.com/cuda.driver.rev":    driverRev,
-		"nvidia.com/cuda.runtime.major": fmt.Sprintf("%d", *cudaMajor),
-		"nvidia.com/cuda.runtime.minor": fmt.Sprintf("%d", *cudaMinor),
+		"nvidia.com/cuda.runtime.major": fmt.Sprintf("%d", cudaMajor),
+		"nvidia.com/cuda.runtime.minor": fmt.Sprintf("%d", cudaMinor),
+
+		// New labels
+		"nvidia.com/cuda.driver-version.major":    driverMajor,
+		"nvidia.com/cuda.driver-version.minor":    driverMinor,
+		"nvidia.com/cuda.driver-version.revision": driverRev,
+		"nvidia.com/cuda.driver-version.full":     driverVersion,
+		"nvidia.com/cuda.runtime-version.major":   fmt.Sprintf("%d", cudaMajor),
+		"nvidia.com/cuda.runtime-version.minor":   fmt.Sprintf("%d", cudaMinor),
+		"nvidia.com/cuda.runtime-version.full":    fmt.Sprintf("%d.%d", cudaMajor, cudaMinor),
 	}
 	return labels, nil
 }
@@ -139,13 +173,91 @@ func newMigCapabilityLabeler(manager resource.Manager) (Labeler, error) {
 	return labels, nil
 }
 
-func newSharingLabeler(config *spec.Config) Labeler {
-	var mpsEnabled bool
-	if config != nil {
-		mpsEnabled = config.Sharing.SharingStrategy() == spec.SharingStrategyMPS
+func newSharingLabeler(manager resource.Manager, config *spec.Config) (Labeler, error) {
+	if config == nil || config.Sharing.SharingStrategy() != spec.SharingStrategyMPS {
+		labels := Labels{
+			"nvidia.com/mps.capable": "false",
+		}
+		return labels, nil
 	}
 
-	return Labels{
-		"nvidia.com/sharing.mps.enabled": strconv.FormatBool(mpsEnabled),
+	capable, err := isMPSCapable(manager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check MPS-capable: %w", err)
 	}
+
+	labels := Labels{
+		"nvidia.com/mps.capable": strconv.FormatBool(capable),
+	}
+	return labels, nil
+}
+
+func isMPSCapable(manager resource.Manager) (bool, error) {
+	devices, err := manager.GetDevices()
+	if err != nil {
+		return false, fmt.Errorf("failed to get device: %w", err)
+	}
+
+	for _, d := range devices {
+		isMigEnabled, err := d.IsMigEnabled()
+		if err != nil {
+			return false, fmt.Errorf("failed to check if device is MIG-enabled: %w", err)
+		}
+		if isMigEnabled {
+			return false, fmt.Errorf("%w for mig devices", errMPSSharingNotSupported)
+		}
+	}
+	return true, nil
+}
+
+// newGPUModeLabeler creates a new labeler that reports the mode of GPUs on the node.
+// GPUs can be in Graphics or Compute mode.
+func newGPUModeLabeler(devices []resource.Device) (Labeler, error) {
+	classes, err := getDeviceClasses(devices)
+	if err != nil {
+		klog.Warningf("Failed to create GPU mode labeler: failed to get device classes: %v", err)
+		return Labels{"nvidia.com/gpu.mode": "unknown"}, nil
+	}
+	gpuMode := getModeForClasses(classes)
+	labels := Labels{
+		"nvidia.com/gpu.mode": gpuMode,
+	}
+	return labels, nil
+}
+
+func getModeForClasses(classes []uint32) string {
+	if len(classes) == 0 {
+		return "unknown"
+	}
+	for _, class := range classes {
+		if class != classes[0] {
+			klog.Infof("Not all GPU devices belong to the same class %#06x ", classes)
+			return "unknown"
+		}
+	}
+	switch classes[0] {
+	case nvpci.PCIVgaControllerClass:
+		return "graphics"
+	case nvpci.PCI3dControllerClass:
+		return "compute"
+	default:
+		return "unknown"
+	}
+}
+
+func getDeviceClasses(devices []resource.Device) ([]uint32, error) {
+	seenClasses := make(map[uint32]bool)
+	for _, d := range devices {
+		class, err := d.GetPCIClass()
+		if err != nil {
+			return nil, err
+		}
+		seenClasses[class] = true
+	}
+
+	var classes []uint32
+	for class := range seenClasses {
+		classes = append(classes, class)
+	}
+	return classes, nil
 }

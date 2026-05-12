@@ -21,15 +21,20 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/klog/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
 
 // Device wraps pluginapi.Device with extra metadata and functions.
 type Device struct {
 	pluginapi.Device
-	Paths       []string
-	Index       string
-	TotalMemory uint64
+	Paths             []string
+	Index             string
+	TotalMemory       uint64
+	ComputeCapability string
+	// Replicas stores the total number of times this device is replicated.
+	// If this is 0 or 1 then the device is not shared.
+	Replicas int
 }
 
 // deviceInfo defines the information the required to construct a Device
@@ -38,6 +43,7 @@ type deviceInfo interface {
 	GetPaths() ([]string, error)
 	GetNumaNode() (bool, int, error)
 	GetTotalMemory() (uint64, error)
+	GetComputeCapability() (string, error)
 }
 
 // Devices wraps a map[string]*Device with some functions.
@@ -68,11 +74,17 @@ func BuildDevice(index string, d deviceInfo) (*Device, error) {
 
 	totalMemory, err := d.GetTotalMemory()
 	if err != nil {
-		return nil, fmt.Errorf("error getting device memory: %w", err)
+		klog.Warningf("Ignoring error getting device memory: %v", err)
+	}
+
+	computeCapability, err := d.GetComputeCapability()
+	if err != nil {
+		return nil, fmt.Errorf("error getting device compute capability: %w", err)
 	}
 
 	dev := Device{
-		TotalMemory: totalMemory,
+		TotalMemory:       totalMemory,
+		ComputeCapability: computeCapability,
 	}
 	dev.ID = uuid
 	dev.Index = index
@@ -201,8 +213,9 @@ func (ds Devices) AlignedAllocationSupported() bool {
 	return true
 }
 
-// AlignedAllocationSupported checks whether the device supports an aligned allocation
-func (d Device) AlignedAllocationSupported() bool {
+// AlignedAllocationSupported checks whether the device supports an aligned
+// allocation
+func (d *Device) AlignedAllocationSupported() bool {
 	if d.IsMigDevice() {
 		return false
 	}
@@ -217,12 +230,12 @@ func (d Device) AlignedAllocationSupported() bool {
 }
 
 // IsMigDevice returns checks whether d is a MIG device or not.
-func (d Device) IsMigDevice() bool {
+func (d *Device) IsMigDevice() bool {
 	return strings.Contains(d.Index, ":")
 }
 
 // GetUUID returns the UUID for the device from the annotated ID.
-func (d Device) GetUUID() string {
+func (d *Device) GetUUID() string {
 	return AnnotatedID(d.ID).GetID()
 }
 

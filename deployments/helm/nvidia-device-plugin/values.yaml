@@ -33,8 +33,10 @@ failOnInitError: null
 deviceListStrategy: null
 deviceIDStrategy: null
 nvidiaDriverRoot: null
+gdrcopyEnabled: null
 gdsEnabled: null
 mofedEnabled: null
+deviceDiscoveryStrategy: null
 
 nameOverride: ""
 fullnameOverride: ""
@@ -100,6 +102,10 @@ runtimeClassName: null
 
 devicePlugin:
   enabled: true
+  # enableHostNetwork when set to true runs the pod with hostNetwork: true.
+  # This can be useful in non-overlay network environments (e.g., AWS, Azure, GCP)
+  # to avoid unnecessary IP allocation for daemon pods.
+  # enableHostNetwork: false
 
 gfd:
   enabled: false
@@ -112,11 +118,14 @@ gfd:
     # vgpu info on a host.
     # TODO: This should be optional and detected automatically.
     privileged: true
+  # enableHostNetwork when set to true runs the pod with hostNetwork: true.
+  # This can be useful in non-overlay network environments (e.g., AWS, Azure, GCP)
+  # to avoid unnecessary IP allocation for daemon pods.
+  # enableHostNetwork: false
 
 # Helm dependency
 nfd:
   nameOverride: node-feature-discovery
-  enableNodeFeatureApi: false
   master:
     serviceAccount:
       name: node-feature-discovery
@@ -139,9 +148,32 @@ nfd:
         pci:
           deviceClassWhitelist:
           - "02"
-          - "0200"
-          - "0207"
-          - "0300"
-          - "0302"
+          - "03"
           deviceLabelFields:
           - vendor
+
+mps:
+  # root specifies the location where files and folders for managing MPS will
+  # be created. This includes a daemon-specific /dev/shm and pipe and log
+  # directories.
+  # Pipe directories will be created at {{ mps.root }}/{{ .ResourceName }}
+  root: "/run/nvidia/mps"
+  # enableHostPID when set to true provides the pod access to the host's PID namespace.
+  # hostPID is needed for the MPS server to find its own PID via /proc/self
+  # If the gpu driver is running in the host PID namespace, it is highly
+  # recommended that you enable this option.
+  # NOTE: HostPID and ShareProcessNamespace cannot both be set to true
+  enableHostPID: true
+  # enableHostNetwork when set to true runs the pod with hostNetwork: true.
+  # This can be useful in non-overlay network environments (e.g., AWS, Azure, GCP)
+  # to avoid unnecessary IP allocation for daemon pods.
+  # enableHostNetwork: false
+
+
+cdi:
+  # nvidiaHookPath specifies the path to the nvidia-cdi-hook or nvidia-ctk executables on the host.
+  # This is required to ensure that the generated CDI specification refers to the correct CDI hooks.
+  nvidiaHookPath: null
+  # featureFlags allows CDI feature flags to be specified for CDI specification generation.
+  # This is specified as a comma-separated list of strings.
+  featureFlags: null

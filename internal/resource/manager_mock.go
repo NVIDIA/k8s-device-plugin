@@ -17,7 +17,7 @@ var _ Manager = &ManagerMock{}
 //
 //		// make and configure a mocked Manager
 //		mockedManager := &ManagerMock{
-//			GetCudaDriverVersionFunc: func() (*uint, *uint, error) {
+//			GetCudaDriverVersionFunc: func() (int, int, error) {
 //				panic("mock out the GetCudaDriverVersion method")
 //			},
 //			GetDevicesFunc: func() ([]Device, error) {
@@ -40,7 +40,7 @@ var _ Manager = &ManagerMock{}
 //	}
 type ManagerMock struct {
 	// GetCudaDriverVersionFunc mocks the GetCudaDriverVersion method.
-	GetCudaDriverVersionFunc func() (*uint, *uint, error)
+	GetCudaDriverVersionFunc func() (int, int, error)
 
 	// GetDevicesFunc mocks the GetDevices method.
 	GetDevicesFunc func() ([]Device, error)
@@ -80,7 +80,7 @@ type ManagerMock struct {
 }
 
 // GetCudaDriverVersion calls GetCudaDriverVersionFunc.
-func (mock *ManagerMock) GetCudaDriverVersion() (*uint, *uint, error) {
+func (mock *ManagerMock) GetCudaDriverVersion() (int, int, error) {
 	if mock.GetCudaDriverVersionFunc == nil {
 		panic("ManagerMock.GetCudaDriverVersionFunc: method is nil but Manager.GetCudaDriverVersion was just called")
 	}

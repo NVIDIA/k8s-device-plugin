@@ -1,4 +1,12 @@
 /nvidia-device-plugin
+/config-manager
+/gpu-feature-discovery
+/mps-control-daemon
 /releases
 deployments/helm/gpu-feature-discovery
-*.tgz
+cmd/gpu-feature-discovery/gfd-test-loop
+e2e_logs
+bin
+*.out
+*.log
+ginkgo.json

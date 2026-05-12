@@ -18,25 +18,28 @@ package resource
 
 // Manager defines an interface for managing devices
 //
-//go:generate moq -out manager_mock.go . Manager
+//go:generate moq -rm -out manager_mock.go . Manager
 type Manager interface {
 	Init() error
 	Shutdown() error
 	GetDevices() ([]Device, error)
 	GetDriverVersion() (string, error)
-	GetCudaDriverVersion() (*uint, *uint, error)
+	GetCudaDriverVersion() (int, int, error)
 }
 
 // Device defines an interface for a device with which labels are associated
 //
 //go:generate moq -out device_mock.go . Device
 type Device interface {
+	IsFabricAttached() (bool, error)
 	IsMigEnabled() (bool, error)
 	IsMigCapable() (bool, error)
 	GetMigDevices() ([]Device, error)
 	GetAttributes() (map[string]interface{}, error)
 	GetName() (string, error)
-	GetTotalMemoryMB() (uint64, error)
+	GetTotalMemoryMiB() (uint64, error)
 	GetDeviceHandleFromMigDeviceHandle() (Device, error)
 	GetCudaComputeCapability() (int, int, error)
+	GetPCIClass() (uint32, error)
+	GetFabricIDs() (string, string, error)
 }

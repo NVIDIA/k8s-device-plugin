@@ -29,6 +29,11 @@ if [ "${EXISTING_IMAGE_ID}" != "" ]; then
 	exit 0
 fi
 
+PREBUILT_IMAGE="$( ( docker manifest inspect ${KIND_IMAGE} > /dev/null && echo "available" ) || ( echo "not-available" ) )"
+if [ "${PREBUILT_IMAGE}" = "available" ] && [ "${KIND_IMAGE_BASE}" = "" ]; then
+    exit 0
+fi
+
 # Create a temorary directory to hold all the artifacts we need for building the image
 TMP_DIR="$(mktemp -d)"
 cleanup() {
@@ -43,5 +48,14 @@ KIND_K8S_DIR="${TMP_DIR}/kubernetes-${KIND_K8S_TAG}"
 # Checkout the version of kubernetes we want to build our kind image from
 git clone --depth 1 --branch ${KIND_K8S_TAG} ${KIND_K8S_REPO} ${KIND_K8S_DIR}
 
-# Build the kind base image
-kind build node-image --base-image "${KIND_IMAGE_BASE}" --image "${KIND_IMAGE}" "${KIND_K8S_DIR}"
+# Build the kind node image.
+# The default base image will be used unless it is specified using the
+# KIND_BASE_IMAGE environment variable.
+# This could be needed if new container runtime features are required.
+# Examples are:
+#   gcr.io/k8s-staging-kind/base:v20240213-749005b2
+#   docker.io/kindest/base:v20240202-8f1494ea
+kind build node-image \
+    ${KIND_IMAGE_BASE:+--base-image "${KIND_IMAGE_BASE}"} \
+    --image "${KIND_IMAGE}" \
+    "${KIND_K8S_DIR}"

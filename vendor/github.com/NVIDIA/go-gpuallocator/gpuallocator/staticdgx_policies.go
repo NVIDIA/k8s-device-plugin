@@ -30,7 +30,7 @@ func NewStaticDGX1Policy(gpuType GPUType) Policy {
 
 // NewStaticDGX2Policy creates a new StaticDGX2Policy.
 func NewStaticDGX2Policy() Policy {
-	return &staticDGX1VoltaPolicy{}
+	return &staticDGX2VoltaPolicy{}
 }
 
 // Allocate GPUs following the Static DGX-1 policy for Pascal GPUs.

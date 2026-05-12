@@ -72,3 +72,8 @@ func (d *tegraDevice) GetNumaNode() (bool, int, error) {
 func (d *tegraDevice) GetTotalMemory() (uint64, error) {
 	return 0, nil
 }
+
+// GetComputeCapability is unimplemented for a Tegra device.
+func (d *tegraDevice) GetComputeCapability() (string, error) {
+	return "0.0", nil
+}

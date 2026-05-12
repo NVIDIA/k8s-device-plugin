@@ -21,7 +21,8 @@ import (
 	"strings"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvlib/pkg/nvpci"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 )
 
 type nvmlMigDevice struct {
@@ -94,7 +95,7 @@ func (d nvmlMigDevice) GetCudaComputeCapability() (int, int, error) {
 // GetName returns the name of the nvmlMigDevice.
 // This is equal to the mig profile.
 func (d nvmlMigDevice) GetName() (string, error) {
-	p, err := d.MigDevice.GetProfile()
+	p, err := d.GetProfile()
 	if err != nil {
 		return "", fmt.Errorf("failed to get MIG profile: %v", err)
 	}
@@ -103,8 +104,8 @@ func (d nvmlMigDevice) GetName() (string, error) {
 	return resourceName, nil
 }
 
-// GetTotalMemoryMB returns the total memory on a device in MB
-func (d nvmlMigDevice) GetTotalMemoryMB() (uint64, error) {
+// GetTotalMemoryMiB returns the total memory on a device in mebibytes (2^20 bytes)
+func (d nvmlMigDevice) GetTotalMemoryMiB() (uint64, error) {
 	attr, err := d.GetAttributes()
 	if err != nil {
 		return 0, err
@@ -123,12 +124,29 @@ func totalMemory(attr map[string]interface{}) (uint64, error) {
 		return 0, fmt.Errorf("no 'memory' attribute available")
 	}
 
-	switch t := totalMemory.(type) {
+	switch totalMemory := totalMemory.(type) {
 	case uint64:
-		return totalMemory.(uint64), nil
+		return totalMemory, nil
 	case int:
-		return uint64(totalMemory.(int)), nil
+		if totalMemory < 0 {
+			return 0, fmt.Errorf("unexpected memory value %v", totalMemory)
+		}
+		//nolint:gosec  // Here we are sure that the value will fit in memory and be positive.
+		return uint64(totalMemory), nil
 	default:
-		return 0, fmt.Errorf("unsupported attribute type %v", t)
+		return 0, fmt.Errorf("unsupported attribute type %v", totalMemory)
 	}
+}
+
+func (d nvmlMigDevice) GetPCIClass() (uint32, error) {
+	// GPU devices that support MIG do not support switching mode between graphics and compute, so they are always in compute mode.
+	return nvpci.PCI3dControllerClass, nil
+}
+
+func (d nvmlMigDevice) IsFabricAttached() (bool, error) {
+	return false, fmt.Errorf("IsFabricAttached is not supported for MIG devices")
+}
+
+func (d nvmlMigDevice) GetFabricIDs() (string, string, error) {
+	return "", "", fmt.Errorf("GetFabricIDs is not supported for MIG devices")
 }

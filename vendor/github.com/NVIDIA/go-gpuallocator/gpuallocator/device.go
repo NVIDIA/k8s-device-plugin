@@ -7,9 +7,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/NVIDIA/go-gpuallocator/internal/links"
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
+
+	"github.com/NVIDIA/go-gpuallocator/internal/links"
 )
 
 // Device represents a GPU device as reported by NVML, including all of its
@@ -78,12 +79,10 @@ func NewDevices(opts ...Option) (DeviceList, error) {
 		opt(o)
 	}
 	if o.nvmllib == nil {
-		o.nvmllib = nvml.New()
+		o.nvmllib = nvmlNew()
 	}
 	if o.devicelib == nil {
-		o.devicelib = device.New(
-			device.WithNvml(o.nvmllib),
-		)
+		o.devicelib = device.New(o.nvmllib)
 	}
 
 	return o.build()
@@ -139,6 +138,9 @@ func (o *deviceListBuilder) build() (DeviceList, error) {
 
 // NewDevicesFrom creates a list of Devices from the specific set of GPU uuids passed in.
 func NewDevicesFrom(uuids []string) (DeviceList, error) {
+	if len(uuids) == 0 {
+		return DeviceList{}, nil
+	}
 	devices, err := NewDevices()
 	if err != nil {
 		return nil, err
@@ -147,14 +149,9 @@ func NewDevicesFrom(uuids []string) (DeviceList, error) {
 }
 
 // Filter filters out the selected devices from the list.
-// If the supplied list of uuids is nil, no filtering is performed.
 // Note that the specified uuids must exist in the list of devices.
 func (d DeviceList) Filter(uuids []string) (DeviceList, error) {
-	if uuids == nil {
-		return d, nil
-	}
-
-	filtered := []*Device{}
+	var filtered DeviceList
 	for _, uuid := range uuids {
 		for _, device := range d {
 			if device.UUID == uuid {
@@ -182,7 +179,7 @@ func (d *Device) Details() string {
 	s += fmt.Sprintf("  UUID: %v\n", d.UUID)
 	s += fmt.Sprintf("  PCI BusID: %v\n", d.PCI.BusID)
 	s += fmt.Sprintf("  SocketAffinity: %v\n", *d.CPUAffinity)
-	s += fmt.Sprintf("  Topology: \n")
+	s += "  Topology: \n"
 	for gpu, links := range d.Links {
 		s += fmt.Sprintf("    GPU %v Links:\n", gpu)
 		for _, link := range links {
@@ -253,4 +250,9 @@ func (ds DeviceSet) SortedSlice() []*Device {
 	})
 
 	return devices
+}
+
+// nvmlNew is implemented as a function here to allow for this to be replaced for testing.
+var nvmlNew = func() nvml.Interface {
+	return nvml.New()
 }

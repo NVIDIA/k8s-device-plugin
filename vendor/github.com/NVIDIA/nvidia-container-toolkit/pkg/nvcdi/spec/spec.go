@@ -24,12 +24,15 @@ import (
 
 	"tags.cncf.io/container-device-interface/pkg/cdi"
 	"tags.cncf.io/container-device-interface/specs-go"
+
+	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/transform"
 )
 
 type spec struct {
 	*specs.Spec
-	format      string
-	permissions os.FileMode
+	format          string
+	permissions     os.FileMode
+	transformOnSave transform.Transformer
 }
 
 var _ Interface = (*spec)(nil)
@@ -41,22 +44,33 @@ func New(opts ...Option) (Interface, error) {
 
 // Save writes the spec to the specified path and overwrites the file if it exists.
 func (s *spec) Save(path string) error {
+	if s.transformOnSave != nil {
+		err := s.transformOnSave.Transform(s.Raw())
+		if err != nil {
+			return fmt.Errorf("error applying transform: %w", err)
+		}
+	}
 	path, err := s.normalizePath(path)
 	if err != nil {
 		return fmt.Errorf("failed to normalize path: %w", err)
 	}
 
-	specDir := filepath.Dir(path)
-	registry := cdi.GetRegistry(
+	specDir, filename := filepath.Split(path)
+	cache, _ := cdi.NewCache(
 		cdi.WithAutoRefresh(false),
 		cdi.WithSpecDirs(specDir),
 	)
-
-	if err := registry.SpecDB().WriteSpec(s.Raw(), filepath.Base(path)); err != nil {
+	if err := cache.WriteSpec(s.Raw(), filename); err != nil {
 		return fmt.Errorf("failed to write spec: %w", err)
 	}
 
-	if err := os.Chmod(path, s.permissions); err != nil {
+	specDirAsRoot, err := os.OpenRoot(specDir)
+	if err != nil {
+		return fmt.Errorf("failed to open root: %w", err)
+	}
+	defer specDirAsRoot.Close()
+
+	if err := specDirAsRoot.Chmod(filename, s.permissions); err != nil {
 		return fmt.Errorf("failed to set permissions on spec file: %w", err)
 	}
 
@@ -65,34 +79,36 @@ func (s *spec) Save(path string) error {
 
 // WriteTo writes the spec to the specified writer.
 func (s *spec) WriteTo(w io.Writer) (int64, error) {
-	name, err := cdi.GenerateNameForSpec(s.Raw())
+	tmpFile, err := os.CreateTemp("", "nvcdi-spec-*"+s.extension())
 	if err != nil {
 		return 0, err
 	}
+	tmpDir, tmpFileName := filepath.Split(tmpFile.Name())
 
-	path, _ := s.normalizePath(name)
-	tmpFile, err := os.CreateTemp("", "*"+filepath.Base(path))
+	tmpDirRoot, err := os.OpenRoot(tmpDir)
 	if err != nil {
 		return 0, err
 	}
-	defer os.Remove(tmpFile.Name())
+	defer tmpDirRoot.Close()
+	defer func() {
+		_ = tmpDirRoot.Remove(tmpFileName)
+	}()
 
 	if err := s.Save(tmpFile.Name()); err != nil {
 		return 0, err
 	}
 
-	err = tmpFile.Close()
-	if err != nil {
+	if err := tmpFile.Close(); err != nil {
 		return 0, fmt.Errorf("failed to close temporary file: %w", err)
 	}
 
-	r, err := os.Open(tmpFile.Name())
+	savedFile, err := tmpDirRoot.Open(tmpFileName)
 	if err != nil {
 		return 0, fmt.Errorf("failed to open temporary file: %w", err)
 	}
-	defer r.Close()
+	defer savedFile.Close()
 
-	return io.Copy(w, r)
+	return savedFile.WriteTo(w)
 }
 
 // Raw returns a pointer to the raw spec.

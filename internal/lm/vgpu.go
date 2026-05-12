@@ -18,6 +18,9 @@ package lm
 
 import (
 	"fmt"
+	"strconv"
+
+	"k8s.io/klog/v2"
 
 	"github.com/NVIDIA/k8s-device-plugin/internal/vgpu"
 )
@@ -37,11 +40,11 @@ func NewVGPULabeler(vgpu vgpu.Interface) Labeler {
 func (manager vgpuLabeler) Labels() (Labels, error) {
 	devices, err := manager.lib.Devices()
 	if err != nil {
-		return nil, fmt.Errorf("unable to get vGPU devices: %v", err)
+		klog.ErrorS(err, "unable to get vGPU devices")
+		return nil, nil
 	}
-	labels := make(Labels)
-	if len(devices) > 0 {
-		labels["nvidia.com/vgpu.present"] = "true"
+	labels := Labels{
+		"nvidia.com/vgpu.present": strconv.FormatBool(len(devices) > 0),
 	}
 	for _, device := range devices {
 		info, err := device.GetInfo()

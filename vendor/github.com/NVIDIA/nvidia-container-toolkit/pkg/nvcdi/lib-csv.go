@@ -18,77 +18,505 @@ package nvcdi
 
 import (
 	"fmt"
+	"slices"
+	"strconv"
+	"strings"
 
-	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/edits"
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/platform-support/tegra"
-	"github.com/NVIDIA/nvidia-container-toolkit/pkg/nvcdi/spec"
 	"tags.cncf.io/container-device-interface/pkg/cdi"
 	"tags.cncf.io/container-device-interface/specs-go"
+
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
+	"github.com/google/uuid"
+
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/platform-support/tegra"
 )
 
-type csvlib nvcdilib
+const (
+	defaultOrinCompatContainerRoot = "/usr/local/cuda/compat_orin"
+)
 
-var _ Interface = (*csvlib)(nil)
-
-// GetSpec should not be called for wsllib
-func (l *csvlib) GetSpec() (spec.Interface, error) {
-	return nil, fmt.Errorf("Unexpected call to csvlib.GetSpec()")
+type csvOptions struct {
+	Files               []string
+	IgnorePatterns      []string
+	CompatContainerRoot string
 }
 
-// GetAllDeviceSpecs returns the device specs for all available devices.
-func (l *csvlib) GetAllDeviceSpecs() ([]specs.Device, error) {
-	d, err := tegra.New(
+type csvlib nvcdilib
+type mixedcsvlib nvcdilib
+
+var _ deviceSpecGeneratorFactory = (*csvlib)(nil)
+
+// DeviceSpecGenerators creates a set of generators for the specified set of
+// devices.
+// If NVML is not available or the disable-multiple-csv-devices feature flag is
+// enabled, a single device is assumed.
+func (l *csvlib) DeviceSpecGenerators(ids ...string) (DeviceSpecGenerator, error) {
+	if l.usePureCSVDeviceSpecGenerator() {
+		return l.purecsvDeviceSpecGenerators(ids...)
+	}
+	mixed, err := l.mixedDeviceSpecGenerators(ids...)
+	if err != nil {
+		l.logger.Warningf("Failed to create mixed CSV spec generator; falling back to pure CSV implementation: %v", err)
+		return l.purecsvDeviceSpecGenerators(ids...)
+	}
+	return mixed, nil
+}
+
+func (l *csvlib) usePureCSVDeviceSpecGenerator() bool {
+	if l.featureFlags[FeatureDisableMultipleCSVDevices] {
+		return true
+	}
+	hasNVML, _ := l.infolib.HasNvml()
+	if !hasNVML {
+		return true
+	}
+	asNvmlLib := (*nvmllib)(l)
+	err := asNvmlLib.init()
+	if err != nil {
+		return true
+	}
+	defer asNvmlLib.tryShutdown()
+
+	numDevices, ret := l.nvmllib.DeviceGetCount()
+	if ret != nvml.SUCCESS {
+		return true
+	}
+
+	return numDevices <= 1
+}
+
+func (l *csvlib) purecsvDeviceSpecGenerators(ids ...string) (DeviceSpecGenerator, error) {
+	for _, id := range ids {
+		switch id {
+		case "all":
+		case "0":
+		default:
+			return nil, fmt.Errorf("unsupported device id: %v", id)
+		}
+	}
+	g := &csvDeviceGenerator{
+		csvlib: l,
+		index:  0,
+		uuid:   "",
+	}
+	return g, nil
+}
+
+func (l *csvlib) mixedDeviceSpecGenerators(ids ...string) (DeviceSpecGenerator, error) {
+	return (*mixedcsvlib)(l).DeviceSpecGenerators(ids...)
+}
+
+// A csvDeviceGenerator generates CDI specs for a device based on a set of
+// platform-specific CSV files.
+type csvDeviceGenerator struct {
+	*csvlib
+	index int
+	uuid  string
+	mode  csvGeneratorMode
+}
+
+type csvGeneratorMode string
+
+const (
+	iGPUGeneratorMode = csvGeneratorMode("igpu")
+	dGPUGeneratorMode = csvGeneratorMode("dgpu")
+)
+
+func (l *csvDeviceGenerator) GetUUID() (string, error) {
+	return l.uuid, nil
+}
+
+// GetDeviceSpecs returns the CDI device specs for a single device.
+func (l *csvDeviceGenerator) GetDeviceSpecs() ([]specs.Device, error) {
+	deviceNodeDiscoverer, err := l.deviceNodeDiscoverer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create discoverer for device nodes from CSV files: %w", err)
+	}
+	e, err := l.editsFactory.FromDiscoverer(deviceNodeDiscoverer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create container edits for CSV files: %w", err)
+	}
+
+	names, err := l.deviceNamers.GetDeviceNames(l.index, l)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get device name: %w", err)
+	}
+	var deviceSpecs []specs.Device
+	for _, name := range names {
+		deviceSpec := specs.Device{
+			Name:           name,
+			ContainerEdits: *e.ContainerEdits,
+		}
+		deviceSpecs = append(deviceSpecs, deviceSpec)
+	}
+
+	return deviceSpecs, nil
+}
+
+// deviceNodeDiscoverer creates a discoverer for the device nodes associated
+// with the specified device.
+// The CSV mount specs are used as the source for which device nodes are
+// required with the following additions:
+//
+//   - Any regular device nodes (i.e. /dev/nvidia[0-9]+) are removed from the
+//     input set.
+//   - The device node (i.e. /dev/nvidia{{ .index }}) associated with this
+//     particular device is added to the set of device nodes to be discovered.
+func (l *csvDeviceGenerator) deviceNodeDiscoverer() (discover.Discover, error) {
+	return tegra.New(
 		tegra.WithLogger(l.logger),
-		tegra.WithDriverRoot(l.driverRoot),
-		tegra.WithNVIDIACTKPath(l.nvidiaCTKPath),
-		tegra.WithCSVFiles(l.csvFiles),
+		tegra.WithDriver(l.driver),
+		tegra.WithHookCreator(l.hookCreator),
 		tegra.WithLibrarySearchPaths(l.librarySearchPaths...),
-		tegra.WithIngorePatterns(l.csvIgnorePatterns...),
+		tegra.WithMountSpecs(l.deviceNodeMountSpecs()),
 	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create discoverer for CSV files: %v", err)
-	}
-	e, err := edits.FromDiscoverer(d)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create container edits for CSV files: %v", err)
-	}
+}
 
-	name, err := l.deviceNamer.GetDeviceName(0, uuidUnsupported{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get device name: %v", err)
+func (l *csvDeviceGenerator) deviceNodeMountSpecs() tegra.MountSpecPathsByTyper {
+	mountSpecs := tegra.Transform(
+		tegra.MountSpecsFromCSVFiles(l.logger, l.csv.Files...),
+		// We remove non-device nodes.
+		tegra.OnlyDeviceNodes(),
+	)
+	switch l.mode {
+	case dGPUGeneratorMode:
+		return tegra.Transform(
+			mountSpecs,
+			// For a dGPU we remove all regular device nodes (nvidia[0-9]+)
+			// from the list of device nodes taken from the CSV mount specs.
+			// The device nodes for the GPU are discovered for the full GPU.
+			tegra.WithoutRegularDeviceNodes(),
+			// We also ignore control device nodes since these are included in
+			// the full GPU spec generator.
+			tegra.Without(
+				tegra.DeviceNodes(
+					"/dev/nvidia-modeset",
+					"/dev/nvidia-uvm-tools",
+					"/dev/nvidia-uvm",
+					"/dev/nvidiactl",
+				),
+			),
+		)
+	case iGPUGeneratorMode:
+		return tegra.Merge(
+			tegra.Transform(
+				mountSpecs,
+				// We remove the /dev/nvidia1 device node.
+				// TODO: This assumes that the dGPU has the index 1 and remove
+				// it from the set of device nodes.
+				tegra.Without(tegra.DeviceNodes("/dev/nvidia1")),
+			),
+			// We add the display device from the iGPU.
+			tegra.DeviceNodes("/dev/nvidia2"),
+		)
+	default:
+		return mountSpecs
 	}
-
-	deviceSpec := specs.Device{
-		Name:           name,
-		ContainerEdits: *e.ContainerEdits,
-	}
-	return []specs.Device{deviceSpec}, nil
 }
 
 // GetCommonEdits generates a CDI specification that can be used for ANY devices
+// These explicitly do not include any device nodes.
 func (l *csvlib) GetCommonEdits() (*cdi.ContainerEdits, error) {
-	d := discover.None{}
-	return edits.FromDiscoverer(d)
+	driverDiscoverer, err := l.driverDiscoverer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create driver discoverer from CSV files: %w", err)
+	}
+	return l.editsFactory.FromDiscoverer(driverDiscoverer)
 }
 
-// GetGPUDeviceEdits generates a CDI specification that can be used for GPU devices
-func (l *csvlib) GetGPUDeviceEdits(device.Device) (*cdi.ContainerEdits, error) {
-	return nil, fmt.Errorf("GetGPUDeviceEdits is not supported for CSV files")
+func (l *mixedcsvlib) DeviceSpecGenerators(ids ...string) (DeviceSpecGenerator, error) {
+	asNvmlLib := (*nvmllib)(l)
+	err := asNvmlLib.init()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize nvml: %w", err)
+	}
+	defer asNvmlLib.tryShutdown()
+
+	if slices.Contains(ids, "all") {
+		ids, err = l.getAllDeviceIndices()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get device indices: %w", err)
+		}
+	}
+
+	var DeviceSpecGenerators DeviceSpecGenerators
+	for _, id := range ids {
+		generator, err := l.deviceSpecGeneratorForId(device.Identifier(id))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create device spec generator for device %q: %w", id, err)
+		}
+		DeviceSpecGenerators = append(DeviceSpecGenerators, generator)
+	}
+
+	return DeviceSpecGenerators, nil
 }
 
-// GetGPUDeviceSpecs returns the CDI device specs for the full GPU represented by 'device'.
-func (l *csvlib) GetGPUDeviceSpecs(i int, d device.Device) (*specs.Device, error) {
-	return nil, fmt.Errorf("GetGPUDeviceSpecs is not supported for CSV files")
+func (l *mixedcsvlib) getAllDeviceIndices() ([]string, error) {
+	numDevices, ret := l.nvmllib.DeviceGetCount()
+	if ret != nvml.SUCCESS {
+		return nil, fmt.Errorf("faled to get device count: %v", ret)
+	}
+
+	var allIndices []string
+	for index := range numDevices {
+		allIndices = append(allIndices, fmt.Sprintf("%d", index))
+	}
+	return allIndices, nil
 }
 
-// GetMIGDeviceEdits generates a CDI specification that can be used for MIG devices
-func (l *csvlib) GetMIGDeviceEdits(device.Device, device.MigDevice) (*cdi.ContainerEdits, error) {
-	return nil, fmt.Errorf("GetMIGDeviceEdits is not supported for CSV files")
+func (l *mixedcsvlib) deviceSpecGeneratorForId(id device.Identifier) (DeviceSpecGenerator, error) {
+	switch {
+	case id.IsGpuUUID(), isOrinGPUID(id):
+		uuid := string(id)
+		device, ret := l.nvmllib.DeviceGetHandleByUUID(uuid)
+		if ret != nvml.SUCCESS {
+			return nil, fmt.Errorf("failed to get device handle from UUID %q: %v", uuid, ret)
+		}
+		index, ret := device.GetIndex()
+		if ret != nvml.SUCCESS {
+			return nil, fmt.Errorf("failed to get device index: %v", ret)
+		}
+		return l.csvDeviceSpecGenerator(index, uuid, device)
+	case id.IsGpuIndex():
+		index, err := strconv.Atoi(string(id))
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert device index to an int: %w", err)
+		}
+		device, ret := l.nvmllib.DeviceGetHandleByIndex(index)
+		if ret != nvml.SUCCESS {
+			return nil, fmt.Errorf("failed to get device handle from index: %v", ret)
+		}
+		uuid, ret := device.GetUUID()
+		if ret != nvml.SUCCESS {
+			return nil, fmt.Errorf("failed to get UUID: %v", ret)
+		}
+		return l.csvDeviceSpecGenerator(index, uuid, device)
+	case id.IsMigUUID():
+		fallthrough
+	case id.IsMigIndex():
+		return nil, fmt.Errorf("generating a CDI spec for MIG id %q is not supported in CSV mode", id)
+	}
+	return nil, fmt.Errorf("identifier is not a valid UUID or index: %q", id)
 }
 
-// GetMIGDeviceSpecs returns the CDI device specs for the full MIG represented by 'device'.
-func (l *csvlib) GetMIGDeviceSpecs(int, device.Device, int, device.MigDevice) (*specs.Device, error) {
-	return nil, fmt.Errorf("GetMIGDeviceSpecs is not supported for CSV files")
+func (l *mixedcsvlib) csvDeviceSpecGenerator(index int, uuid string, device nvml.Device) (DeviceSpecGenerator, error) {
+	isIntegrated, err := isIntegratedGPU(device)
+	if err != nil {
+		return nil, fmt.Errorf("is-integrated check failed for device (index=%v,uuid=%v)", index, uuid)
+	}
+
+	if isIntegrated {
+		return l.iGPUDeviceSpecGenerator(index, uuid)
+	}
+
+	return l.dGPUDeviceSpecGenerator(index, uuid)
+}
+
+func (l *mixedcsvlib) dGPUDeviceSpecGenerator(index int, uuid string) (DeviceSpecGenerator, error) {
+	if index != 1 {
+		return nil, fmt.Errorf("unexpected device index for dGPU: %d", index)
+	}
+	g := &csvDeviceGenerator{
+		csvlib: (*csvlib)(l),
+		index:  index,
+		uuid:   uuid,
+		mode:   dGPUGeneratorMode,
+	}
+
+	csvDeviceNodeDiscoverer, err := g.deviceNodeDiscoverer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create discoverer for devices nodes: %w", err)
+	}
+
+	// If this is not an integrated GPU, we also create a spec generator for
+	// the full GPU.
+	dgpu := (*nvmllib)(l).withInit(&fullGPUDeviceSpecGenerator{
+		nvmllib: (*nvmllib)(l),
+		uuid:    uuid,
+		index:   index,
+		// For the CSV case, we include the control device nodes at a
+		// device level.
+		additionalDiscoverers: []discover.Discover{
+			(*nvmllib)(l).controlDeviceNodeDiscoverer(),
+			csvDeviceNodeDiscoverer,
+		},
+		featureFlags: l.featureFlags,
+	})
+	return dgpu, nil
+}
+
+func (l *mixedcsvlib) iGPUDeviceSpecGenerator(index int, uuid string) (DeviceSpecGenerator, error) {
+	if index != 0 {
+		return nil, fmt.Errorf("unexpected device index for iGPU: %d", index)
+	}
+	g := &csvDeviceGenerator{
+		csvlib: (*csvlib)(l),
+		index:  index,
+		uuid:   uuid,
+		mode:   iGPUGeneratorMode,
+	}
+	return g, nil
+}
+
+// isOrinGPUID returns true if the specified device identifier represents
+// an Orin iGPU uuid (as opposed to a discrete GPU).
+// Based on practical examples, the identifier for an Orin iGPU is a standard
+// hexadecimal UUID in the 8-4-4-4-12 format, whereas discrete GPU UUIDs have
+// the prefix `GPU-` or `MIG-` for full GPUs or MIG devices, respectively. Thor
+// iGPUs follow the same format as discrete GPUs.
+func isOrinGPUID(id device.Identifier) bool {
+	_, err := uuid.Parse(string(id))
+	return err == nil
+}
+
+// isIntegratedGPU checks whether the specified device is an integrated GPU.
+// The following heuristic is followed:
+//   - If the device does not support getting PCI bus information, we fall back to
+//     checking the device name and consider Orin and Thor devices iGPUs.
+//   - If the device does support PCI bus information, we check for a specific
+//     bus ID that is associated with Thor devices.
+//
+// TODO: This should be replaced by an explicit NVML call once available.
+func isIntegratedGPU(d nvml.Device) (bool, error) {
+	pciInfo, ret := d.GetPciInfo()
+	if ret == nvml.ERROR_NOT_SUPPORTED {
+		name, ret := d.GetName()
+		if ret != nvml.SUCCESS {
+			return false, fmt.Errorf("failed to get device name: %v", ret)
+		}
+		return info.IsIntegratedGPUName(name), nil
+	}
+	if ret != nvml.SUCCESS {
+		return false, fmt.Errorf("failed to get PCI info: %v", ret)
+	}
+
+	// On Thor-based systems, the iGPU always has the PCI bus ID '0000:01:00.0'.
+	// We explicitly handle this case.
+	if pciInfo.Domain == 0 && pciInfo.Bus == 1 && pciInfo.Device == 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (l *csvlib) driverDiscoverer() (discover.Discover, error) {
+	mountSpecs := tegra.Transform(
+		tegra.Transform(
+			tegra.MountSpecsFromCSVFiles(l.logger, l.csv.Files...),
+			tegra.WithoutDeviceNodes(),
+		),
+		tegra.IgnoreSymlinkMountSpecsByPattern(l.csv.IgnorePatterns...),
+	)
+	driverDiscoverer, err := tegra.New(
+		tegra.WithLogger(l.logger),
+		tegra.WithDriver(l.driver),
+		tegra.WithHookCreator(l.hookCreator),
+		tegra.WithLibrarySearchPaths(l.librarySearchPaths...),
+		tegra.WithMountSpecs(mountSpecs),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create discoverer from CSV files: %w", err)
+	}
+
+	cudaCompatDiscoverer := l.cudaCompatDiscoverer()
+
+	ldcacheUpdateHook, err := discover.NewLDCacheUpdateHook(l.logger, driverDiscoverer, l.hookCreator)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ldcache update hook discoverer: %w", err)
+	}
+
+	d := discover.Merge(
+		driverDiscoverer,
+		cudaCompatDiscoverer,
+		// The ldcacheUpdateHook is added last to ensure that the created symlinks are included
+		ldcacheUpdateHook,
+	)
+	return d, nil
+}
+
+// cudaCompatDiscoverer returns a discoverer for the CUDA forward compat hook
+// on Tegra-based systems.
+// If the system has NVML available, this is used to determine the driver
+// version to be passed to the hook.
+// On Orin-based systems, the compat library root in the container is also set.
+func (l *csvlib) cudaCompatDiscoverer() discover.Discover {
+	c, err := l.getEnableCUDACompatHookOptions()
+	if err != nil {
+		l.logger.Warningf("Skipping CUDA Forward Compat hook creation: %v", err)
+	}
+	if c == nil {
+		return nil
+	}
+
+	return discover.NewCUDACompatHookDiscoverer(l.logger, l.hookCreator, c)
+}
+
+func (l *csvlib) getEnableCUDACompatHookOptions() (*discover.EnableCUDACompatHookOptions, error) {
+	hasNvml, _ := l.infolib.HasNvml()
+	if !hasNvml {
+		return nil, nil
+	}
+
+	ret := l.nvmllib.Init()
+	if ret != nvml.SUCCESS {
+		return nil, fmt.Errorf("failed to initialize NVML: %v", ret)
+	}
+	defer func() {
+		_ = l.nvmllib.Shutdown()
+	}()
+
+	var cudaCompatContainerRoot string
+	if l.hasOrinDevices() {
+		// For Orin devices we need to use a different container compat root.
+		// We allow this to be overridden by the user.
+		cudaCompatContainerRoot = l.csv.CompatContainerRoot
+	}
+
+	hostCUDAVersion, err := l.getCUDAVersionString()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get host CUDA version: %v", ret)
+	}
+
+	f := &discover.EnableCUDACompatHookOptions{
+		HostCUDAVersion:         hostCUDAVersion,
+		CUDACompatContainerRoot: cudaCompatContainerRoot,
+	}
+	return f, nil
+}
+
+func (l *csvlib) hasOrinDevices() bool {
+	var names []string
+	err := l.devicelib.VisitDevices(func(i int, d device.Device) error {
+		name, ret := d.GetName()
+		if ret != nvml.SUCCESS {
+			return fmt.Errorf("device %v: %v", i, ret)
+		}
+		names = append(names, name)
+		return nil
+	})
+	if err != nil {
+		l.logger.Warningf("Failed to get device names: %v; assuming non-orin devices", err)
+		return false
+	}
+
+	for _, name := range names {
+		if strings.Contains(name, "Orin (nvgpu)") {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (l *csvlib) getCUDAVersionString() (string, error) {
+	v, ret := l.nvmllib.SystemGetCudaDriverVersion()
+	if ret != nvml.SUCCESS {
+		return "", ret
+	}
+	major := v / 1000
+	minor := v % 1000 / 10
+
+	return fmt.Sprintf("%d.%d", major, minor), nil
 }

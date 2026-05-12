@@ -19,15 +19,29 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"time"
 )
 
 // Duration wraps a time.Duration function with custom JSON marshaling/unmarshaling
 type Duration time.Duration
 
+// IsInfinite returns true if the duration represents an infinite sleep interval.
+func (d *Duration) IsInfinite() bool {
+	return d != nil && time.Duration(*d) == math.MaxInt64
+}
+
+// String returns a human-readable representation of the duration.
+func (d Duration) String() string {
+	if d.IsInfinite() {
+		return "infinite"
+	}
+	return time.Duration(d).String()
+}
+
 // MarshalJSON marshals 'Duration' to its raw bytes representation
 func (d Duration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(time.Duration(d).String())
+	return json.Marshal(d.String())
 }
 
 // UnmarshalJSON unmarshals raw bytes into a 'Duration' type.
@@ -41,13 +55,49 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 		*d = Duration(time.Duration(value))
 		return nil
 	case string:
-		tmp, err := time.ParseDuration(value)
-		if err != nil {
-			return err
-		}
-		*d = Duration(tmp)
-		return nil
+		return d.parse(value)
 	default:
 		return fmt.Errorf("invalid duration")
 	}
+}
+
+// parse parses a duration string, handling the special "infinite" value.
+func (d *Duration) parse(value string) error {
+	if value == "infinite" {
+		*d = Duration(math.MaxInt64)
+		return nil
+	}
+	parsed, err := time.ParseDuration(value)
+	if err != nil {
+		return err
+	}
+	*d = Duration(parsed)
+	return nil
+}
+
+// DurationValue implements cli.Generic for parsing duration flags with "infinite" support
+type DurationValue struct {
+	Value *Duration
+}
+
+// NewDurationValue creates a new DurationValue with the given default duration
+func NewDurationValue(d time.Duration) *DurationValue {
+	duration := Duration(d)
+	return &DurationValue{Value: &duration}
+}
+
+// Set implements cli.Generic
+func (d *DurationValue) Set(value string) error {
+	return d.Value.parse(value)
+}
+
+// String implements cli.Generic
+func (d *DurationValue) String() string {
+	if d.Value == nil {
+		return ""
+	}
+	if d.Value.IsInfinite() {
+		return "infinite"
+	}
+	return time.Duration(*d.Value).String()
 }

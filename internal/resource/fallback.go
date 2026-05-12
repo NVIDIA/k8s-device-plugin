@@ -54,7 +54,7 @@ func (m *withFallBack) GetDevices() ([]Device, error) {
 }
 
 // GetCudaDriverVersion delegates to the wrapped manager
-func (m *withFallBack) GetCudaDriverVersion() (*uint, *uint, error) {
+func (m *withFallBack) GetCudaDriverVersion() (int, int, error) {
 	return m.wraps.GetCudaDriverVersion()
 }
 

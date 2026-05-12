@@ -14,10 +14,9 @@
 
 {{- if .Values.devicePlugin.enabled }}
 ---
-{{- $hasConfigMap := (include "nvidia-device-plugin.hasConfigMap" .) | trim }}
-{{- $useServiceAccount := eq $hasConfigMap "true" }}
+{{- $options := (include "nvidia-device-plugin.options" . | fromJson) }}
+{{- $useServiceAccount := $options.hasConfigMap }}
 {{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}
-{{- $migStrategiesAreAllNone := (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) | trim }}
 {{- $daemonsetName := printf "%s" (include "nvidia-device-plugin.fullname" .) | trunc 63 | trimSuffix "-" }}
 apiVersion: apps/v1
 kind: DaemonSet
@@ -51,12 +50,16 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.devicePlugin.enableHostNetwork }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- if $useServiceAccount }}
       serviceAccountName: {{ include "nvidia-device-plugin.fullname" . }}-service-account
       {{- end }}
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
       shareProcessNamespace: true
       initContainers:
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
@@ -78,9 +81,9 @@ spec:
         - name: CONFIG_FILE_DST
           value: "/config/config.yaml"
         - name: DEFAULT_CONFIG
-          value: "{{ .Values.config.default }}"
+          value: {{ .Values.config.default }}
         - name: FALLBACK_STRATEGIES
-          value: "{{ join "," .Values.config.fallbackStrategies }}"
+          value: {{ join "," .Values.config.fallbackStrategies }}
         - name: SEND_SIGNAL
           value: "false"
         - name: SIGNAL
@@ -94,7 +97,7 @@ spec:
             mountPath: /config
       {{- end }}
       containers:
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         name: nvidia-device-plugin-sidecar
         command: ["config-manager"]
@@ -114,9 +117,9 @@ spec:
         - name: CONFIG_FILE_DST
           value: "/config/config.yaml"
         - name: DEFAULT_CONFIG
-          value: "{{ .Values.config.default }}"
+          value: {{ .Values.config.default }}
         - name: FALLBACK_STRATEGIES
-          value: "{{ join "," .Values.config.fallbackStrategies }}"
+          value: {{ join "," .Values.config.fallbackStrategies }}
         - name: SEND_SIGNAL
           value: "true"
         - name: SIGNAL
@@ -136,65 +139,92 @@ spec:
         name: nvidia-device-plugin-ctr
         command: ["nvidia-device-plugin"]
         env:
+          - name: MPS_ROOT
+            value: {{ .Values.mps.root }}
         {{- if typeIs "string" .Values.migStrategy }}
           - name: MIG_STRATEGY
-            value: "{{ .Values.migStrategy }}"
+            value: {{ .Values.migStrategy }}
         {{- end }}
         {{- if typeIs "bool" .Values.failOnInitError }}
           - name: FAIL_ON_INIT_ERROR
-            value: "{{ .Values.failOnInitError }}"
+            value: {{ .Values.failOnInitError | quote }}
         {{- end }}
         {{- if typeIs "bool" .Values.compatWithCPUManager }}
           - name: PASS_DEVICE_SPECS
-            value: "{{ .Values.compatWithCPUManager }}"
+            value: {{ .Values.compatWithCPUManager | quote }}
         {{- end }}
         {{- if typeIs "string" .Values.deviceListStrategy }}
           - name: DEVICE_LIST_STRATEGY
-            value: "{{ .Values.deviceListStrategy }}"
+            value: {{ .Values.deviceListStrategy }}
         {{- end }}
         {{- if typeIs "string" .Values.deviceIDStrategy }}
           - name: DEVICE_ID_STRATEGY
-            value: "{{ .Values.deviceIDStrategy }}"
+            value: {{ .Values.deviceIDStrategy }}
         {{- end }}
         {{- if typeIs "string" .Values.nvidiaDriverRoot }}
           - name: NVIDIA_DRIVER_ROOT
-            value: "{{ .Values.nvidiaDriverRoot }}"
+            value: {{ .Values.nvidiaDriverRoot }}
+        {{- end }}
+        {{- if typeIs "string" .Values.nvidiaDevRoot }}
+          - name: NVIDIA_DEV_ROOT
+            value: "{{ .Values.nvidiaDevRoot }}"
+        {{- end }}
+        {{- if typeIs "string" .Values.cdi.nvidiaHookPath }}
+          - name: NVIDIA_CDI_HOOK_PATH
+            value: {{ .Values.cdi.nvidiaHookPath }}
+        {{- end }}
+        {{- if typeIs "string" .Values.cdi.featureFlags }}
+          - name: CDI_FEATURE_FLAGS
+            value: {{ .Values.cdi.featureFlags }}
+        {{- end }}
+        {{- if typeIs "bool" .Values.gdrcopyEnabled }}
+          - name: GDRCOPY_ENABLED
+            value: {{ .Values.gdrcopyEnabled | quote }}
         {{- end }}
         {{- if typeIs "bool" .Values.gdsEnabled }}
           - name: GDS_ENABLED
-            value: "{{ .Values.gdsEnabled }}"
+            value: {{ .Values.gdsEnabled | quote }}
         {{- end }}
         {{- if typeIs "bool" .Values.mofedEnabled }}
           - name: MOFED_ENABLED
-            value: "{{ .Values.mofedEnabled }}"
+            value: {{ .Values.mofedEnabled | quote }}
         {{- end }}
-        {{- if eq $hasConfigMap "true" }}
+        {{- if $options.hasConfigMap }}
           - name: CONFIG_FILE
             value: /config/config.yaml
         {{- end }}
-        {{- if ne $migStrategiesAreAllNone "true" }}
+        {{- if $options.addMigMonitorDevices }}
           - name: NVIDIA_MIG_MONITOR_DEVICES
             value: all
         {{- end }}
+        {{- if typeIs "string" .Values.deviceDiscoveryStrategy }}
+          - name: DEVICE_DISCOVERY_STRATEGY
+            value: {{ .Values.deviceDiscoveryStrategy }}
+        {{- end }}
+          - name: NVIDIA_VISIBLE_DEVICES
+            value: all
+          - name: NVIDIA_DRIVER_CAPABILITIES
+            value: compute,utility
         securityContext:
           {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
         volumeMounts:
-          - name: device-plugin
+          - name: kubelet-device-plugins-dir
             mountPath: /var/lib/kubelet/device-plugins
         {{- if typeIs "string" .Values.nvidiaDriverRoot }}
           # We always mount the driver root at /driver-root in the container.
           # This is required for CDI detection to work correctly.
           - name: driver-root
             mountPath: /driver-root
+            readOnly: true
         {{- end }}
           # The MPS /dev/shm is needed to allow for MPS daemon health-checking.
           - name: mps-shm
-            mountPath: /driver-root/dev/shm
+            mountPath: /dev/shm
           - name: mps-root
-            mountPath: /driver-root/mps
+            mountPath: /mps
           - name: cdi-root
             mountPath: /var/run/cdi
-        {{- if eq $hasConfigMap "true" }}
+        {{- if $options.hasConfigMap }}
           - name: available-configs
             mountPath: /available-configs
           - name: config
@@ -205,30 +235,31 @@ spec:
           {{- toYaml . | nindent 10 }}
         {{- end }}
       volumes:
-        - name: device-plugin
+        - name: kubelet-device-plugins-dir
           hostPath:
             path: /var/lib/kubelet/device-plugins
+            type: Directory
         - name: mps-root
           hostPath:
-          # TODO: This should be /var/run/nvidia/mps
-            path: /var/lib/kubelet/device-plugins/mps
+            path: {{ .Values.mps.root }}
             type: DirectoryOrCreate
         - name: mps-shm
           hostPath:
-            path: /var/lib/kubelet/device-plugins/mps/shm
-       {{- if typeIs "string" .Values.nvidiaDriverRoot }}
+            path: {{ .Values.mps.root }}/shm
+        {{- if typeIs "string" .Values.nvidiaDriverRoot }}
         - name: driver-root
           hostPath:
             path: {{ .Values.nvidiaDriverRoot }}
+            type: Directory
         {{- end }}
         - name: cdi-root
           hostPath:
             path: /var/run/cdi
             type: DirectoryOrCreate
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
         - name: available-configs
           configMap:
-            name: "{{ $configMapName }}"
+            name: {{ $configMapName }}
         - name: config
           emptyDir: {}
       {{- end }}

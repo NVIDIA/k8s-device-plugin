@@ -30,7 +30,7 @@ CMDS := $(patsubst ./cmd/%/,%,$(sort $(dir $(wildcard ./cmd/*/))))
 CMD_TARGETS := $(patsubst %,cmd-%, $(CMDS))
 
 CHECK_TARGETS := lint
-MAKE_TARGETS := binaries build check fmt lint-internal test examples cmds coverage generate $(CHECK_TARGETS)
+MAKE_TARGETS := binaries build check fmt lint-internal test examples cmds coverage generate vendor check-modules $(CHECK_TARGETS)
 
 TARGETS := $(MAKE_TARGETS) $(EXAMPLE_TARGETS) $(CMD_TARGETS)
 
@@ -44,24 +44,35 @@ CLI_VERSION = $(VERSION)
 endif
 CLI_VERSION_PACKAGE = github.com/NVIDIA/k8s-device-plugin/internal/info
 
-GOOS ?= linux
-
 binaries: cmds
 ifneq ($(PREFIX),)
 cmd-%: COMMAND_BUILD_OPTIONS = -o $(PREFIX)/$(*)
 endif
+ifneq ($(shell uname),Darwin)
+EXTLDFLAGS = -Wl,--export-dynamic -Wl,--unresolved-symbols=ignore-in-object-files
+else
+EXTLDFLAGS = -Wl,-undefined,dynamic_lookup
+endif
+BUILDFLAGS = -ldflags "-s -w '-extldflags=$(EXTLDFLAGS)' -X $(CLI_VERSION_PACKAGE).gitCommit=$(GIT_COMMIT) -X $(CLI_VERSION_PACKAGE).version=$(CLI_VERSION)"
+build:
+	go build $(BUILDFLAGS) ./...
+
 cmds: $(CMD_TARGETS)
 $(CMD_TARGETS): cmd-%:
-	CGO_LDFLAGS_ALLOW='-Wl,--unresolved-symbols=ignore-in-object-files' GOOS=$(GOOS) \
-		go build -ldflags "-s -w -X $(CLI_VERSION_PACKAGE).gitCommit=$(GIT_COMMIT) -X $(CLI_VERSION_PACKAGE).version=$(CLI_VERSION)" $(COMMAND_BUILD_OPTIONS) $(MODULE)/cmd/$(*)
-build:
-	GOOS=$(GOOS) go build ./...
+	go build $(BUILDFLAGS) $(COMMAND_BUILD_OPTIONS) $(MODULE)/cmd/$(*)
 
 examples: $(EXAMPLE_TARGETS)
 $(EXAMPLE_TARGETS): example-%:
-	GOOS=$(GOOS) go build ./examples/$(*)
+	go build $(BUILDFLAGS) $(COMMAND_BUILD_OPTIONS) ./examples/$(*)
 
-all: check test build binary
+# We also add top-level targets for testing make targets:
+.PHONY: $(TEST_TARGETS)
+TESTS_FOLDERS := $(patsubst ./tests/%/,%,$(sort $(dir $(wildcard ./tests/*/))))
+TEST_TARGETS := $(patsubst %,test-%,$(TESTS_FOLDERS))
+$(TEST_TARGETS): test-%:
+	make -f tests/$(*)/Makefile test
+
+all: check test build binaries
 check: $(CHECK_TARGETS)
 
 # Apply go fmt to the codebase
@@ -76,6 +87,33 @@ goimports:
 lint:
 	golangci-lint run ./...
 
+
+mod-tidy:
+	@for mod in $$(find . -name go.mod); do \
+	    echo "Tidying $$mod..."; ( \
+	        cd $$(dirname $$mod) && go mod tidy \
+            ) || exit 1; \
+	done
+
+mod-verify:
+	@for mod in $$(find . -name go.mod); do \
+	    echo "Verifying $$mod..."; ( \
+	        cd $$(dirname $$mod) && go mod verify | sed 's/^/  /g' \
+	    ) || exit 1; \
+	done
+
+mod-vendor: mod-tidy
+	@for mod in $$(find . -name go.mod -not -path "./deployments/*"); do \
+	    echo "Vendoring $$mod..."; ( \
+	        cd $$(dirname $$mod) && go mod vendor \
+	    ) || exit 1; \
+	done
+
+vendor: mod-vendor
+
+check-modules: | mod-tidy mod-verify mod-vendor
+	git diff --quiet HEAD -- $$(find . -name go.mod -o -name go.sum -o -name vendor)
+
 COVERAGE_FILE := coverage.out
 test: build cmds
 	go test -coverprofile=$(COVERAGE_FILE) $(MODULE)/cmd/... $(MODULE)/internal/... $(MODULE)/api/...
@@ -86,6 +124,18 @@ coverage: test
 
 generate:
 	go generate $(MODULE)/...
+
+
+# Generate an image for containerized builds
+# Note: This image is local only
+.PHONY: .build-image
+.build-image:
+	make -f deployments/devel/Makefile .build-image
+
+ifeq ($(BUILD_DEVEL_IMAGE),yes)
+$(DOCKER_TARGETS): .build-image
+.shell: .build-image
+endif
 
 $(DOCKER_TARGETS): docker-%:
 	@echo "Running 'make $(*)' in container image $(BUILDIMAGE)"

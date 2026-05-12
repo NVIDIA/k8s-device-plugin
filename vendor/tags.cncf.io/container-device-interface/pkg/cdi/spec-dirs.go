@@ -35,8 +35,7 @@ var (
 	// While altering this variable changes the package defaults,
 	// the preferred way of overriding the default directories is
 	// to use a WithSpecDirs options. Otherwise the change is only
-	// effective if it takes place before creating the Registry or
-	// other Cache instances.
+	// effective if it takes place before creating the cache instance.
 	DefaultSpecDirs = []string{DefaultStaticDir, DefaultDynamicDir}
 	// ErrStopScan can be returned from a ScanSpecFunc to stop the scan.
 	ErrStopScan = errors.New("stop Spec scan")
@@ -44,13 +43,12 @@ var (
 
 // WithSpecDirs returns an option to override the CDI Spec directories.
 func WithSpecDirs(dirs ...string) Option {
-	return func(c *Cache) error {
+	return func(c *Cache) {
 		specDirs := make([]string, len(dirs))
 		for i, dir := range dirs {
 			specDirs[i] = filepath.Clean(dir)
 		}
 		c.specDirs = specDirs
-		return nil
 	}
 }
 

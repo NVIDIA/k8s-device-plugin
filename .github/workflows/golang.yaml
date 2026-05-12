@@ -15,42 +15,61 @@
 name: Golang
 
 on:
-  pull_request:
-    branches:
-      - main
-      - release-*
-  push:
-    branches:
-      - main
-      - release-*
+  workflow_call:
+    inputs:
+      golang_version:
+        required: true
+        type: string
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-
+    - uses: actions/checkout@v6
+      name: Checkout code
+    - name: Install Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: ${{ inputs.golang_version }}
     - name: Lint
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v9
       with:
         version: latest
         args: -v --timeout 5m
         skip-cache: true
+    - name: Check golang modules
+      run: |
+        make check-modules
+        make -C deployments/devel check-modules
   test:
-      name: Unit test
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v4
-        - name: Install Go
-          uses: actions/setup-go@v5
-          with:
-            go-version: '1.20'
-        - run: make test
-  build:
+    name: Unit test
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ inputs.golang_version }}
+      - run: make test
+  build:
+    name: Build
+    runs-on: linux-amd64-cpu4
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ inputs.golang_version }}
 
-    - name: Build
-      run: make docker-build
+      - name: Setup Go Proxy
+        id: setup-go-proxy
+        uses: nv-gha-runners/setup-artifactory-go-proxy@main
+      - env:
+          GOPROXY: ${{ steps.setup-go-proxy.outputs.goproxy-url }}
+        run: |
+          make build

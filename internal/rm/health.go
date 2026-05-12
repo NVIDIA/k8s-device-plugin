@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"k8s.io/klog/v2"
 )
 
@@ -32,16 +32,18 @@ const (
 	// disabled entirely. If set, the envvar is treated as a comma-separated list of Xids to ignore. Note that
 	// this is in addition to the Application errors that are already ignored.
 	envDisableHealthChecks = "DP_DISABLE_HEALTHCHECKS"
-	allHealthChecks        = "xids"
+	// envEnableHealthChecks defines the environment variable that is checked to
+	// determine which XIDs should be explicitly enabled. XIDs specified here
+	// override the ones specified in the `DP_DISABLE_HEALTHCHECKS`.
+	// Note that this also allows individual XIDs to be selected when ALL XIDs
+	// are disabled.
+	envEnableHealthChecks = "DP_ENABLE_HEALTHCHECKS"
 )
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
 func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
-	disableHealthChecks := strings.ToLower(os.Getenv(envDisableHealthChecks))
-	if disableHealthChecks == "all" {
-		disableHealthChecks = allHealthChecks
-	}
-	if strings.Contains(disableHealthChecks, "xids") {
+	xids := getDisabledHealthCheckXids()
+	if xids.IsAllDisabled() {
 		return nil
 	}
 
@@ -59,25 +61,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		}
 	}()
 
-	// FIXME: formalize the full list and document it.
-	// http://docs.nvidia.com/deploy/xid-errors/index.html#topic_4
-	// Application errors: the GPU should still be healthy
-	applicationErrorXids := []uint64{
-		13, // Graphics Engine Exception
-		31, // GPU memory page fault
-		43, // GPU stopped processing
-		45, // Preemptive cleanup, due to previous errors
-		68, // Video processor exception
-	}
-
-	skippedXids := make(map[uint64]bool)
-	for _, id := range applicationErrorXids {
-		skippedXids[id] = true
-	}
-
-	for _, additionalXid := range getAdditionalXids(disableHealthChecks) {
-		skippedXids[additionalXid] = true
-	}
+	klog.Infof("Ignoring the following XIDs for health checks: %v", xids)
 
 	eventSet, ret := r.nvml.EventSetCreate()
 	if ret != nvml.SUCCESS {
@@ -88,8 +72,8 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 	}()
 
 	parentToDeviceMap := make(map[string]*Device)
-	deviceIDToGiMap := make(map[string]int)
-	deviceIDToCiMap := make(map[string]int)
+	deviceIDToGiMap := make(map[string]uint32)
+	deviceIDToCiMap := make(map[string]uint32)
 
 	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
 	for _, d := range devices {
@@ -112,16 +96,16 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 
 		supportedEvents, ret := gpu.GetSupportedEventTypes()
 		if ret != nvml.SUCCESS {
-			klog.Infof("Unable to determine the supported events for %v: %v; marking it as unhealthy", d.ID, ret)
+			klog.Infof("unable to determine the supported events for %v: %v; marking it as unhealthy", d.ID, ret)
 			unhealthy <- d
 			continue
 		}
 
 		ret = gpu.RegisterEvents(eventMask&supportedEvents, eventSet)
-		if ret == nvml.ERROR_NOT_SUPPORTED {
+		switch {
+		case ret == nvml.ERROR_NOT_SUPPORTED:
 			klog.Warningf("Device %v is too old to support healthchecking.", d.ID)
-		}
-		if ret != nvml.SUCCESS {
+		case ret != nvml.SUCCESS:
 			klog.Infof("Marking device %v as unhealthy: %v", d.ID, ret)
 			unhealthy <- d
 		}
@@ -151,7 +135,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 			continue
 		}
 
-		if skippedXids[e.EventData] {
+		if xids.IsDisabled(e.EventData) {
 			klog.Infof("Skipping event %+v", e)
 			continue
 		}
@@ -176,7 +160,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		if d.IsMigDevice() && e.GpuInstanceId != 0xFFFFFFFF && e.ComputeInstanceId != 0xFFFFFFFF {
 			gi := deviceIDToGiMap[d.ID]
 			ci := deviceIDToCiMap[d.ID]
-			if !(uint32(gi) == e.GpuInstanceId && uint32(ci) == e.ComputeInstanceId) {
+			if gi != e.GpuInstanceId || ci != e.ComputeInstanceId {
 				continue
 			}
 			klog.Infof("Event for mig device %v (gi=%v, ci=%v)", d.ID, gi, ci)
@@ -187,35 +171,115 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 	}
 }
 
-// getAdditionalXids returns a list of additional Xids to skip from the specified string.
-// The input is treaded as a comma-separated string and all valid uint64 values are considered as Xid values. Invalid values
-// are ignored.
-func getAdditionalXids(input string) []uint64 {
-	if input == "" {
-		return nil
+const allXIDs = 0
+
+// disabledXIDs stores a map of explicitly disabled XIDs.
+// The special XID `allXIDs` indicates that all XIDs are disabled, but does
+// allow for specific XIDs to be enabled even if this is the case.
+type disabledXIDs map[uint64]bool
+
+// Disabled returns whether XID-based health checks are disabled.
+// These are considered if all XIDs have been disabled AND no other XIDs have
+// been explcitly enabled.
+func (h disabledXIDs) IsAllDisabled() bool {
+	if allDisabled, ok := h[allXIDs]; ok {
+		return allDisabled
+	}
+	// At this point we wither have explicitly disabled XIDs or explicitly
+	// enabled XIDs. Since ANY XID that's not specified is assumed enabled, we
+	// return here.
+	return false
+}
+
+// IsDisabled checks whether the specified XID has been explicitly disalbled.
+// An XID is considered disabled if it has been explicitly disabled, or all XIDs
+// have been disabled.
+func (h disabledXIDs) IsDisabled(xid uint64) bool {
+	// Handle the case where enabled=all.
+	if explicitAll, ok := h[allXIDs]; ok && !explicitAll {
+		return false
+	}
+	// Handle the case where the XID has been specifically enabled (or disabled)
+	if disabled, ok := h[xid]; ok {
+		return disabled
+	}
+	return h.IsAllDisabled()
+}
+
+// getDisabledHealthCheckXids returns the XIDs that should be ignored.
+// Here we combine the following (in order of precedence):
+// * A list of explicitly disabled XIDs (including all XIDs)
+// * A list of hardcoded disabled XIDs
+// * A list of explicitly enabled XIDs (including all XIDs)
+//
+// Note that if an XID is explicitly enabled, this takes precedence over it
+// having been disabled either explicitly or implicitly.
+func getDisabledHealthCheckXids() disabledXIDs {
+	disabled := newHealthCheckXIDs(
+		// TODO: We should not read the envvar here directly, but instead
+		// "upgrade" this to a top-level config option.
+		strings.Split(strings.ToLower(os.Getenv(envDisableHealthChecks)), ",")...,
+	)
+	enabled := newHealthCheckXIDs(
+		// TODO: We should not read the envvar here directly, but instead
+		// "upgrade" this to a top-level config option.
+		strings.Split(strings.ToLower(os.Getenv(envEnableHealthChecks)), ",")...,
+	)
+
+	// Add the list of hardcoded disabled (ignored) XIDs:
+	// FIXME: formalize the full list and document it.
+	// http://docs.nvidia.com/deploy/xid-errors/index.html#topic_4
+	// Application errors: the GPU should still be healthy
+	ignoredXids := []uint64{
+		13,  // Graphics Engine Exception
+		31,  // GPU memory page fault
+		43,  // GPU stopped processing
+		45,  // Preemptive cleanup, due to previous errors
+		68,  // Video processor exception
+		109, // Context Switch Timeout Error
+	}
+	for _, ignored := range ignoredXids {
+		disabled[ignored] = true
 	}
 
-	var additionalXids []uint64
-	for _, additionalXid := range strings.Split(input, ",") {
-		trimmed := strings.TrimSpace(additionalXid)
+	// Explicitly ENABLE specific XIDs,
+	for enabled := range enabled {
+		disabled[enabled] = false
+	}
+	return disabled
+}
+
+// newHealthCheckXIDs converts a list of Xids to a healthCheckXIDs map.
+// Special xid values 'all' and 'xids' return a special map that matches all
+// xids.
+// For other xids, these are converted to a uint64 values with invalid values
+// being ignored.
+func newHealthCheckXIDs(xids ...string) disabledXIDs {
+	output := make(disabledXIDs)
+	for _, xid := range xids {
+		trimmed := strings.TrimSpace(xid)
+		if trimmed == "all" || trimmed == "xids" {
+			// TODO: We should have a different type for "all" and "all-except"
+			return disabledXIDs{allXIDs: true}
+		}
 		if trimmed == "" {
 			continue
 		}
-		xid, err := strconv.ParseUint(trimmed, 10, 64)
+		id, err := strconv.ParseUint(trimmed, 10, 64)
 		if err != nil {
 			klog.Infof("Ignoring malformed Xid value %v: %v", trimmed, err)
 			continue
 		}
-		additionalXids = append(additionalXids, xid)
-	}
 
-	return additionalXids
+		output[id] = true
+	}
+	return output
 }
 
 // getDevicePlacement returns the placement of the specified device.
 // For a MIG device the placement is defined by the 3-tuple <parent UUID, GI, CI>
 // For a full device the returned 3-tuple is the device's uuid and 0xFFFFFFFF for the other two elements.
-func (r *nvmlResourceManager) getDevicePlacement(d *Device) (string, int, int, error) {
+func (r *nvmlResourceManager) getDevicePlacement(d *Device) (string, uint32, uint32, error) {
 	if !d.IsMigDevice() {
 		return d.GetUUID(), 0xFFFFFFFF, 0xFFFFFFFF, nil
 	}
@@ -223,7 +287,7 @@ func (r *nvmlResourceManager) getDevicePlacement(d *Device) (string, int, int, e
 }
 
 // getMigDeviceParts returns the parent GI and CI ids of the MIG device.
-func (r *nvmlResourceManager) getMigDeviceParts(d *Device) (string, int, int, error) {
+func (r *nvmlResourceManager) getMigDeviceParts(d *Device) (string, uint32, uint32, error) {
 	if !d.IsMigDevice() {
 		return "", 0, 0, fmt.Errorf("cannot get GI and CI of full device")
 	}
@@ -250,32 +314,42 @@ func (r *nvmlResourceManager) getMigDeviceParts(d *Device) (string, int, int, er
 		if ret != nvml.SUCCESS {
 			return "", 0, 0, fmt.Errorf("failed to get Compute Instance ID: %v", ret)
 		}
-		return parentUUID, gi, ci, nil
+		//nolint:gosec  // We know that the values returned from Get*InstanceId are within the valid uint32 range.
+		return parentUUID, uint32(gi), uint32(ci), nil
 	}
 	return parseMigDeviceUUID(uuid)
 }
 
 // parseMigDeviceUUID splits the MIG device UUID into the parent device UUID and ci and gi
-func parseMigDeviceUUID(mig string) (string, int, int, error) {
+func parseMigDeviceUUID(mig string) (string, uint32, uint32, error) {
 	tokens := strings.SplitN(mig, "-", 2)
 	if len(tokens) != 2 || tokens[0] != "MIG" {
-		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+		return "", 0, 0, fmt.Errorf("unable to parse UUID as MIG device")
 	}
 
 	tokens = strings.SplitN(tokens[1], "/", 3)
 	if len(tokens) != 3 || !strings.HasPrefix(tokens[0], "GPU-") {
-		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+		return "", 0, 0, fmt.Errorf("unable to parse UUID as MIG device")
 	}
 
-	gi, err := strconv.Atoi(tokens[1])
+	gi, err := toUint32(tokens[1])
 	if err != nil {
-		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+		return "", 0, 0, fmt.Errorf("unable to parse UUID as MIG device")
 	}
 
-	ci, err := strconv.Atoi(tokens[2])
+	ci, err := toUint32(tokens[2])
 	if err != nil {
-		return "", 0, 0, fmt.Errorf("Unable to parse UUID as MIG device")
+		return "", 0, 0, fmt.Errorf("unable to parse UUID as MIG device")
 	}
 
 	return tokens[0], gi, ci, nil
+}
+
+func toUint32(s string) (uint32, error) {
+	u, err := strconv.ParseUint(s, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	//nolint:gosec  // Since we parse s with a 32-bit size this will not overflow.
+	return uint32(u), nil
 }

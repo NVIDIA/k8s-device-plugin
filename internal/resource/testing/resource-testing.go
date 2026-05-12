@@ -47,10 +47,19 @@ func NewDeviceMock(migEnabled bool) *DeviceMock {
 			}
 			return 8, 0, nil
 		},
-		GetTotalMemoryMBFunc: func() (uint64, error) { return uint64(300), nil },
-		IsMigEnabledFunc:     func() (bool, error) { return migEnabled, nil },
-		IsMigCapableFunc:     func() (bool, error) { return migEnabled, nil },
-		GetMigDevicesFunc:    func() ([]resource.Device, error) { return nil, nil },
+		GetTotalMemoryMiBFunc: func() (uint64, error) { return uint64(300), nil },
+		IsFabricAttachedFunc:  func() (bool, error) { return false, nil },
+		IsMigEnabledFunc:      func() (bool, error) { return migEnabled, nil },
+		IsMigCapableFunc:      func() (bool, error) { return migEnabled, nil },
+		GetMigDevicesFunc:     func() ([]resource.Device, error) { return nil, nil },
+		GetPCIClassFunc:       func() (uint32, error) { return 0, nil },
+	}}
+	return &d
+}
+
+func NewDeviceWithPCIClassMock(pciClass uint32) *DeviceMock {
+	d := DeviceMock{resource.DeviceMock{
+		GetPCIClassFunc: func() (uint32, error) { return pciClass, nil },
 	}}
 	return &d
 }
@@ -115,10 +124,8 @@ func NewManagerMockWithDevices(devices ...resource.Device) *ManagerMock {
 		GetDevicesFunc: func() ([]resource.Device, error) {
 			return devices, nil
 		},
-		GetCudaDriverVersionFunc: func() (*uint, *uint, error) {
-			var major uint = 8
-			var minor uint = 0
-			return &major, &minor, nil
+		GetCudaDriverVersionFunc: func() (int, int, error) {
+			return 8, 0, nil
 		},
 	}}
 	return &manager

@@ -65,6 +65,7 @@ func DriverGetVersion() (int, Result) {
 // DeviceGet returns the device with the specified index.
 func DeviceGet(index int) (Device, Result) {
 	var device Device
+	//nolint:gosec  // Since index is internal-only, we ignore possible overflow errors here.
 	r := cuDeviceGet(&device, int32(index))
 
 	return device, r

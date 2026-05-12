@@ -16,26 +16,31 @@
 
 package rm
 
-type wslDevice nvmlDevice
+type wslAllGPUsDevice struct{}
 
-var _ deviceInfo = (*wslDevice)(nil)
+var _ deviceInfo = (*wslAllGPUsDevice)(nil)
 
-// GetUUID returns the UUID of the device
-func (d wslDevice) GetUUID() (string, error) {
-	return nvmlDevice(d).GetUUID()
+// GetUUID returns "all" to represent all GPUs accessible via /dev/dxg on WSL.
+func (d wslAllGPUsDevice) GetUUID() (string, error) {
+	return "all", nil
 }
 
-// GetPaths returns the paths for a tegra device.
-func (d wslDevice) GetPaths() ([]string, error) {
+// GetPaths returns the WSL GPU device path.
+func (d wslAllGPUsDevice) GetPaths() ([]string, error) {
 	return []string{"/dev/dxg"}, nil
 }
 
-// GetNumaNode returns the NUMA node associated with the GPU device
-func (d wslDevice) GetNumaNode() (bool, int, error) {
-	return nvmlDevice(d).GetNumaNode()
+// GetNumaNode returns no NUMA node association for WSL devices.
+func (d wslAllGPUsDevice) GetNumaNode() (bool, int, error) {
+	return false, 0, nil
 }
 
-// GetTotalMemory returns the total memory available on the device.
-func (d wslDevice) GetTotalMemory() (uint64, error) {
-	return nvmlDevice(d).GetTotalMemory()
+// GetTotalMemory returns 0 as memory info is not available for WSL devices.
+func (d wslAllGPUsDevice) GetTotalMemory() (uint64, error) {
+	return 0, nil
+}
+
+// GetComputeCapability returns an empty string as compute capability is not available for WSL devices.
+func (d wslAllGPUsDevice) GetComputeCapability() (string, error) {
+	return "", nil
 }

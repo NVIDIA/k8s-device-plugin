@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -18,6 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/flags"
+	"github.com/NVIDIA/k8s-device-plugin/internal/lm"
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 	rt "github.com/NVIDIA/k8s-device-plugin/internal/resource/testing"
 	"github.com/NVIDIA/k8s-device-plugin/internal/vgpu"
@@ -112,7 +115,16 @@ func TestRunOneshot(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
-	restart, err := run(nvmlMock, vgpuMock, conf, nil)
+	labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+	require.NoError(t, err)
+
+	d := gfd{
+		manager:       nvmlMock,
+		vgpu:          vgpuMock,
+		config:        conf,
+		labelOutputer: labelOutputer,
+	}
+	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
 	require.False(t, restart)
 
@@ -134,6 +146,79 @@ func TestRunOneshot(t *testing.T) {
 
 	err = checkResult(result, cfg.Path("tests/expected-output-vgpu.txt"), true)
 	require.NoError(t, err, "Checking result for vgpu labels")
+}
+
+func TestRunInfiniteSleep(t *testing.T) {
+	sigs := watch.Signals(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	nvmlMock := NewTestNvmlMock()
+	vgpuMock := NewTestVGPUMock()
+	conf := &spec.Config{
+		Flags: spec.Flags{
+			CommandLineFlags: spec.CommandLineFlags{
+				MigStrategy:     ptr("none"),
+				FailOnInitError: ptr(true),
+				GFD: &spec.GFDCommandLineFlags{
+					Oneshot:         ptr(false),
+					OutputFile:      ptr("./gfd-test-infinite-sleep"),
+					SleepInterval:   ptr(spec.Duration(math.MaxInt64)),
+					NoTimestamp:     ptr(false),
+					MachineTypeFile: ptr(testMachineTypeFile),
+				},
+			},
+		},
+	}
+
+	setupMachineFile(t)
+	defer removeMachineFile(t)
+
+	defer func() {
+		os.Remove(*conf.Flags.GFD.OutputFile)
+	}()
+
+	var runRestart bool
+	var runError error
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+		require.NoError(t, err)
+
+		d := gfd{
+			manager:       nvmlMock,
+			vgpu:          vgpuMock,
+			config:        conf,
+			labelOutputer: labelOutputer,
+		}
+		runRestart, runError = d.run(sigs)
+	}()
+
+	// Wait for the output file to be created (labeling complete)
+	outFile, err := waitForFile(*conf.Flags.GFD.OutputFile, 5, time.Second)
+	require.NoError(t, err, "Opening output file")
+
+	result, err := io.ReadAll(outFile)
+	require.NoError(t, err, "Reading output file")
+	outFile.Close()
+
+	// Verify labels were written
+	err = checkResult(result, cfg.Path("tests/expected-output.txt"), false)
+	require.NoError(t, err, "Checking result")
+
+	// Send SIGTERM to trigger graceful shutdown
+	sigs <- syscall.SIGTERM
+
+	// Wait for run to complete
+	select {
+	case <-done:
+		// Success
+	case <-time.After(5 * time.Second):
+		t.Fatal("Timeout waiting for run to complete after SIGTERM")
+	}
+
+	require.NoError(t, runError, "Error from run function")
+	require.False(t, runRestart, "Expected no restart after SIGTERM")
 }
 
 func TestRunWithNoTimestamp(t *testing.T) {
@@ -158,7 +243,16 @@ func TestRunWithNoTimestamp(t *testing.T) {
 	setupMachineFile(t)
 	defer removeMachineFile(t)
 
-	restart, err := run(nvmlMock, vgpuMock, conf, nil)
+	labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+	require.NoError(t, err)
+
+	d := gfd{
+		manager:       nvmlMock,
+		vgpu:          vgpuMock,
+		config:        conf,
+		labelOutputer: labelOutputer,
+	}
+	restart, err := d.run(nil)
 	require.NoError(t, err, "Error from run function")
 	require.False(t, restart)
 
@@ -192,8 +286,9 @@ func TestRunSleep(t *testing.T) {
 	conf := &spec.Config{
 		Flags: spec.Flags{
 			CommandLineFlags: spec.CommandLineFlags{
-				MigStrategy:     ptr("none"),
-				FailOnInitError: ptr(true),
+				MigStrategy:             ptr("none"),
+				FailOnInitError:         ptr(true),
+				DeviceDiscoveryStrategy: ptr("auto"),
 				GFD: &spec.GFDCommandLineFlags{
 					Oneshot:         ptr(false),
 					OutputFile:      ptr("./gfd-test-loop"),
@@ -216,13 +311,22 @@ func TestRunSleep(t *testing.T) {
 	var runRestart bool
 	var runError error
 	go func() {
-		runRestart, runError = run(nvmlMock, vgpuMock, conf, sigs)
+		labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+		require.NoError(t, err)
+
+		d := gfd{
+			manager:       nvmlMock,
+			vgpu:          vgpuMock,
+			config:        conf,
+			labelOutputer: labelOutputer,
+		}
+		runRestart, runError = d.run(sigs)
 	}()
 
-	outFileModificationTime := make([]int64, 2)
-	timestampLabels := make([]string, 2)
+	var outFileModificationTime []int64
+	var timestampLabels []string
 	// Read two iterations of the output file
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		outFile, err := waitForFile(*conf.Flags.GFD.OutputFile, 5, time.Second)
 		require.NoErrorf(t, err, "Open output file: %d", i)
 
@@ -236,13 +340,13 @@ func TestRunSleep(t *testing.T) {
 			require.NoError(t, err, "Getting output file info")
 
 			ts = outFileStat.ModTime().Unix()
-			if ts > outFileModificationTime[0] {
+			if len(outFileModificationTime) == 0 || ts > outFileModificationTime[0] {
 				break
 			}
 			// We wait for conf.SleepInterval, as the labels should be updated at least once in that period
 			time.Sleep(time.Duration(*conf.Flags.GFD.SleepInterval))
 		}
-		outFileModificationTime[i] = ts
+		outFileModificationTime = append(outFileModificationTime, ts)
 
 		output, err := io.ReadAll(outFile)
 		require.NoErrorf(t, err, "Read output file: %d", i)
@@ -259,7 +363,7 @@ func TestRunSleep(t *testing.T) {
 		require.NoErrorf(t, err, "Building map of labels from output file: %d", i)
 
 		require.Containsf(t, labels, "nvidia.com/gfd.timestamp", "Missing timestamp: %d", i)
-		timestampLabels[i] = labels["nvidia.com/gfd.timestamp"]
+		timestampLabels = append(timestampLabels, labels["nvidia.com/gfd.timestamp"])
 
 		require.Containsf(t, labels, "nvidia.com/vgpu.present", "Missing vgpu present label: %d", i)
 		require.Containsf(t, labels, "nvidia.com/vgpu.host-driver-version", "Missing vGPU host driver version label: %d", i)
@@ -370,7 +474,16 @@ func TestFailOnNVMLInitError(t *testing.T) {
 
 			nvmlMock := rt.NewManagerMockWithDevices(rt.NewFullGPU()).WithErrorOnInit(tc.errorOnInit)
 
-			restart, err := run(resource.WithConfig(nvmlMock, conf), vgpuMock, conf, nil)
+			labelOutputer, err := lm.NewOutputer(conf, flags.NodeConfig{}, flags.ClientSets{})
+			require.NoError(t, err)
+
+			d := gfd{
+				manager:       resource.WithConfig(nvmlMock, conf),
+				vgpu:          vgpuMock,
+				config:        conf,
+				labelOutputer: labelOutputer,
+			}
+			restart, err := d.run(nil)
 			if tc.expectError {
 				require.Error(t, err)
 			} else {

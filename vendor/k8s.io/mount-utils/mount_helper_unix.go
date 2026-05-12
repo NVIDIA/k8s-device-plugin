@@ -61,11 +61,17 @@ func IsCorruptedMnt(err error) bool {
 		underlyingError = err
 	}
 
-	return underlyingError == syscall.ENOTCONN || underlyingError == syscall.ESTALE || underlyingError == syscall.EIO || underlyingError == syscall.EACCES || underlyingError == syscall.EHOSTDOWN
+	return errors.Is(underlyingError, syscall.ENOTCONN) ||
+		errors.Is(underlyingError, syscall.ESTALE) ||
+		errors.Is(underlyingError, syscall.EIO) ||
+		errors.Is(underlyingError, syscall.EACCES) ||
+		errors.Is(underlyingError, syscall.EHOSTDOWN) ||
+		errors.Is(underlyingError, syscall.EWOULDBLOCK) ||
+		errors.Is(underlyingError, syscall.ENODEV)
 }
 
 // MountInfo represents a single line in /proc/<pid>/mountinfo.
-type MountInfo struct { // nolint: golint
+type MountInfo struct {
 	// Unique ID for the mount (maybe reused after umount).
 	ID int
 	// The ID of the parent mount (or of self for the root of this mount namespace's mount tree).

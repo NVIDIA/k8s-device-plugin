@@ -39,7 +39,9 @@ func updateFromCLIFlag[T any](pflag **T, c *cli.Context, flagName string) {
 		case **bool:
 			*flag = ptr(c.Bool(flagName))
 		case **Duration:
-			*flag = ptr(Duration(c.Duration(flagName)))
+			if gf, ok := c.Generic(flagName).(*DurationValue); ok && gf.Value != nil {
+				*flag = gf.Value
+			}
 		case **deviceListStrategyFlag:
 			*flag = ptr((deviceListStrategyFlag)(c.StringSlice(flagName)))
 		default:
@@ -55,13 +57,18 @@ type Flags struct {
 
 // CommandLineFlags holds the list of command line flags used to configure the device plugin and GFD.
 type CommandLineFlags struct {
-	MigStrategy      *string                 `json:"migStrategy"                yaml:"migStrategy"`
-	FailOnInitError  *bool                   `json:"failOnInitError"            yaml:"failOnInitError"`
-	NvidiaDriverRoot *string                 `json:"nvidiaDriverRoot,omitempty" yaml:"nvidiaDriverRoot,omitempty"`
-	GDSEnabled       *bool                   `json:"gdsEnabled"                 yaml:"gdsEnabled"`
-	MOFEDEnabled     *bool                   `json:"mofedEnabled"               yaml:"mofedEnabled"`
-	Plugin           *PluginCommandLineFlags `json:"plugin,omitempty"           yaml:"plugin,omitempty"`
-	GFD              *GFDCommandLineFlags    `json:"gfd,omitempty"              yaml:"gfd,omitempty"`
+	MigStrategy             *string                 `json:"migStrategy"                yaml:"migStrategy"`
+	FailOnInitError         *bool                   `json:"failOnInitError"            yaml:"failOnInitError"`
+	MpsRoot                 *string                 `json:"mpsRoot,omitempty"          yaml:"mpsRoot,omitempty"`
+	NvidiaDriverRoot        *string                 `json:"nvidiaDriverRoot,omitempty" yaml:"nvidiaDriverRoot,omitempty"`
+	NvidiaDevRoot           *string                 `json:"nvidiaDevRoot,omitempty"    yaml:"nvidiaDevRoot,omitempty"`
+	GDRCopyEnabled          *bool                   `json:"gdrcopyEnabled"             yaml:"gdrcopyEnabled"`
+	GDSEnabled              *bool                   `json:"gdsEnabled"                 yaml:"gdsEnabled"`
+	MOFEDEnabled            *bool                   `json:"mofedEnabled"               yaml:"mofedEnabled"`
+	UseNodeFeatureAPI       *bool                   `json:"useNodeFeatureAPI"          yaml:"useNodeFeatureAPI"`
+	DeviceDiscoveryStrategy *string                 `json:"deviceDiscoveryStrategy"    yaml:"deviceDiscoveryStrategy"`
+	Plugin                  *PluginCommandLineFlags `json:"plugin,omitempty"           yaml:"plugin,omitempty"`
+	GFD                     *GFDCommandLineFlags    `json:"gfd,omitempty"              yaml:"gfd,omitempty"`
 }
 
 // PluginCommandLineFlags holds the list of command line flags specific to the device plugin.
@@ -116,12 +123,22 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.MigStrategy, c, n)
 			case "fail-on-init-error":
 				updateFromCLIFlag(&f.FailOnInitError, c, n)
-			case "nvidia-driver-root":
+			case "mps-root":
+				updateFromCLIFlag(&f.MpsRoot, c, n)
+			case "driver-root", "nvidia-driver-root":
 				updateFromCLIFlag(&f.NvidiaDriverRoot, c, n)
+			case "dev-root", "nvidia-dev-root":
+				updateFromCLIFlag(&f.NvidiaDevRoot, c, n)
+			case "gdrcopy-enabled":
+				updateFromCLIFlag(&f.GDRCopyEnabled, c, n)
 			case "gds-enabled":
 				updateFromCLIFlag(&f.GDSEnabled, c, n)
 			case "mofed-enabled":
 				updateFromCLIFlag(&f.MOFEDEnabled, c, n)
+			case "use-node-feature-api":
+				updateFromCLIFlag(&f.UseNodeFeatureAPI, c, n)
+			case "device-discovery-strategy":
+				updateFromCLIFlag(&f.DeviceDiscoveryStrategy, c, n)
 			}
 			// Plugin specific flags
 			if f.Plugin == nil {
@@ -136,7 +153,7 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.Plugin.DeviceIDStrategy, c, n)
 			case "cdi-annotation-prefix":
 				updateFromCLIFlag(&f.Plugin.CDIAnnotationPrefix, c, n)
-			case "nvidia-ctk-path":
+			case "nvidia-cdi-hook-path", "nvidia-ctk-path":
 				updateFromCLIFlag(&f.Plugin.NvidiaCTKPath, c, n)
 			case "container-driver-root":
 				updateFromCLIFlag(&f.Plugin.ContainerDriverRoot, c, n)

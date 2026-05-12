@@ -13,9 +13,8 @@
 # limitations under the License.
 {{- if .Values.devicePlugin.enabled }}
 ---
-{{- $hasConfigMap := (include "nvidia-device-plugin.hasConfigMap" .) | trim }}
+{{- $options := (include "nvidia-device-plugin.options" . | fromJson) }}
 {{- $configMapName := (include "nvidia-device-plugin.configMapName" .) | trim }}
-{{- $migStrategiesAreAllNone := (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) | trim }}
 {{- $daemonsetName := printf "%s-mps-control-daemon" (include "nvidia-device-plugin.fullname" .) | trunc 63 | trimSuffix "-" }}
 apiVersion: apps/v1
 kind: DaemonSet
@@ -49,11 +48,20 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.mps.enableHostNetwork }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
       serviceAccountName: {{ include "nvidia-device-plugin.fullname" . }}-service-account
+      {{- if not .Values.mps.enableHostPID }}
       shareProcessNamespace: true
+      {{- end }}
+      {{- end }}
+      {{- if .Values.mps.enableHostPID }}
+      hostPID: true
       {{- end }}
       initContainers:
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
@@ -69,7 +77,7 @@ spec:
         resources:
           {{- toYaml . | nindent 12 }}
         {{- end }}
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         name: mps-control-daemon-init
         command: ["config-manager"]
@@ -89,9 +97,9 @@ spec:
         - name: CONFIG_FILE_DST
           value: "/config/config.yaml"
         - name: DEFAULT_CONFIG
-          value: "{{ .Values.config.default }}"
+          value: {{ .Values.config.default }}
         - name: FALLBACK_STRATEGIES
-          value: "{{ join "," .Values.config.fallbackStrategies }}"
+          value: {{ join "," .Values.config.fallbackStrategies }}
         - name: SEND_SIGNAL
           value: "false"
         - name: SIGNAL
@@ -105,7 +113,7 @@ spec:
             mountPath: /config
       {{- end }}
       containers:
-      {{- if eq $hasConfigMap "true" }}
+      {{- if $options.hasConfigMap }}
         # TODO: How do we synchronize the plugin and control-daemon on restart.
         - image: {{ include "nvidia-device-plugin.fullimage" . }}
           name: mps-control-daemon-sidecar
@@ -126,9 +134,9 @@ spec:
           - name: CONFIG_FILE_DST
             value: "/config/config.yaml"
           - name: DEFAULT_CONFIG
-            value: "{{ .Values.config.default }}"
+            value: {{ .Values.config.default }}
           - name: FALLBACK_STRATEGIES
-            value: "{{ join "," .Values.config.fallbackStrategies }}"
+            value: {{ join "," .Values.config.fallbackStrategies }}
           - name: SEND_SIGNAL
             value: "true"
           - name: SIGNAL
@@ -145,42 +153,36 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           name: mps-control-daemon-ctr
           command: [mps-control-daemon]
-          startupProbe:
-            exec:
-              command:
-              - cat
-              - /driver-root/mps/nvidia.com/gpu/.started
-            initialDelaySeconds: 1
-            periodSeconds: 1
           env:
           - name: NODE_NAME
             valueFrom:
               fieldRef:
                 apiVersion: v1
                 fieldPath: spec.nodeName
-          - name: NVIDIA_VISIBLE_DEVICES
-            value: void
         {{- if typeIs "string" .Values.migStrategy }}
           - name: MIG_STRATEGY
-            value: "{{ .Values.migStrategy }}"
+            value: {{ .Values.migStrategy }}
         {{- end }}
-        {{- if eq $hasConfigMap "true" }}
+        {{- if $options.hasConfigMap }}
           - name: CONFIG_FILE
             value: /config/config.yaml
         {{- end }}
+        {{- if $options.addMigMonitorDevices }}
+          - name: NVIDIA_MIG_MONITOR_DEVICES
+            value: all
+        {{- end }}
+          - name: NVIDIA_VISIBLE_DEVICES
+            value: all
+          - name: NVIDIA_DRIVER_CAPABILITIES
+            value: compute,utility
           securityContext:
             privileged: true
           volumeMounts:
-          {{- if typeIs "string" .Values.nvidiaDriverRoot }}
-          # We always mount the driver root at /driver-root in the container.
-          - name: driver-root
-            mountPath: /driver-root
-          {{- end }}
           - name: mps-shm
-            mountPath: /driver-root/dev/shm
+            mountPath: /dev/shm
           - name: mps-root
-            mountPath: /driver-root/mps
-          {{- if eq $hasConfigMap "true" }}
+            mountPath: /mps
+          {{- if $options.hasConfigMap }}
           - name: available-configs
             mountPath: /available-configs
           - name: config
@@ -193,27 +195,21 @@ spec:
       volumes:
       - name: mps-root
         hostPath:
-        # TODO: This should be /var/run/nvidia/mps
-          path: /var/lib/kubelet/device-plugins/mps
+          path: {{ .Values.mps.root }}
           type: DirectoryOrCreate
       - name: mps-shm
         hostPath:
-          path: /var/lib/kubelet/device-plugins/mps/shm
-      {{- if typeIs "string" .Values.nvidiaDriverRoot }}
-      - name: driver-root
-        hostPath:
-          path: {{ .Values.nvidiaDriverRoot }}
-      {{- end }}
-      {{- if eq $hasConfigMap "true" }}
+          path: {{ .Values.mps.root }}/shm
+      {{- if $options.hasConfigMap }}
       - name: available-configs
         configMap:
-          name: "{{ $configMapName }}"
+          name: {{ $configMapName }}
       - name: config
         emptyDir: {}
       {{- end }}
       nodeSelector:
         # We only deploy this pod if the following sharing label is applied.
-        nvidia.com/sharing.mps.enabled: "true"
+        nvidia.com/mps.capable: "true"
       {{- with .Values.nodeSelector }}
         {{- toYaml . | nindent 8 }}
       {{- end }}

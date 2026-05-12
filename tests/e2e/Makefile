@@ -1,4 +1,4 @@
-# Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,26 +15,38 @@
 GO_CMD ?= go
 GO_FMT ?= gofmt
 
-DRIVER_ENABLED ?= true
+# The default go tests timeout is 10 minutes which is too for this case.
+GO_TEST_TIMEOUT ?= 30m
 
-E2E_IMAGE_REPO ?= nvcr.io/nvidia/k8s-device-plugin
-E2E_IMAGE_TAG ?= v0.14.3
-E2E_IMAGE_PULL_POLICY ?= Always
+include $(CURDIR)/versions.mk
 
-HELM_CHART ?= $(CURDIR)/../../deployments/helm/nvidia-device-plugin
+NVIDIA_DRIVER_ENABLED ?= true
 
-.PHONY: e2e-test
-e2e-test:
-	@if [ -z ${KUBECONFIG} ]; then \
-		echo "[ERR] KUBECONFIG missing, must be defined"; \
-		exit 1; \
-	fi
-	$(GO_CMD) test -v . -args \
-		-kubeconfig=$(KUBECONFIG) \
-		-driver-enabled=$(DRIVER_ENABLED) \
-		-image.repo=$(E2E_IMAGE_REPO) \
-		-image.tag=$(E2E_IMAGE_TAG) \
-		-image.pull-policy=$(E2E_IMAGE_PULL_POLICY) \
-		-helm-chart=$(HELM_CHART) \
-		-ginkgo.focus="\[nvidia\]" \
-		-test.timeout=1h
+E2E_IMAGE_REPO ?= $(REGISTRY)/$(DRIVER_NAME)
+E2E_IMAGE_TAG ?= $(VERSION)
+E2E_IMAGE_PULL_POLICY ?= IfNotPresent
+HELM_CHART ?= $(CURDIR)/deployments/helm/nvidia-device-plugin
+LOG_ARTIFACTS ?= $(CURDIR)/e2e_logs
+
+# Test configuration
+GINKGO_COMMON_ARGS := -v --fail-on-pending --randomize-all --trace
+GINKGO_REPORT_ARGS := --json-report=$(LOG_ARTIFACTS)/report.json --junit-report=$(LOG_ARTIFACTS)/junit.xml
+
+.PHONY: ginkgo test clean-artifacts
+
+GINKGO_VERSION = $(shell grep -Eo "github.com/onsi/ginkgo/v2.*$$" ./tests/go.mod | sed -e 's&github.com/onsi/ginkgo/v2[[:space:]]&&g')
+ginkgo:
+	mkdir -p $(CURDIR)/bin
+	GOBIN=$(CURDIR)/bin go install github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_VERSION)
+
+# Create artifacts directory
+$(LOG_ARTIFACTS):
+	mkdir -p $(LOG_ARTIFACTS)
+
+# Clean artifacts
+clean-artifacts:
+	rm -rf $(LOG_ARTIFACTS)
+
+# Run tests
+test: ginkgo $(LOG_ARTIFACTS)
+	$(CURDIR)/bin/ginkgo $(GINKGO_COMMON_ARGS) $(GINKGO_REPORT_ARGS) $(GINKGO_ARGS) ./tests/e2e/...

@@ -22,6 +22,7 @@ import (
 	"os"
 
 	cli "github.com/urfave/cli/v2"
+	"k8s.io/klog/v2"
 
 	"sigs.k8s.io/yaml"
 )
@@ -35,6 +36,7 @@ type Config struct {
 	Flags     Flags     `json:"flags,omitempty"     yaml:"flags,omitempty"`
 	Resources Resources `json:"resources,omitempty" yaml:"resources,omitempty"`
 	Sharing   Sharing   `json:"sharing,omitempty"   yaml:"sharing,omitempty"`
+	Imex      Imex      `json:"imex,omitempty"      yaml:"imex,omitempty"`
 }
 
 // NewConfig builds out a Config struct from a config file (or command line flags).
@@ -52,30 +54,46 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 	}
 
 	config.Flags.UpdateFromCLIFlags(c, flags)
+	// TODO: This is currently not at the flags level?
+	// Does this mean that we should move UpdateFromCLIFlags to function off Config?
+	if c.IsSet("imex-channel-ids") {
+		config.Imex.ChannelIDs = c.IntSlice("imex-channel-ids")
+	}
+	if c.IsSet("imex-required") {
+		config.Imex.Required = c.Bool("imex-required")
+	}
+
+	// If nvidiaDevRoot (the path to the device nodes on the host) is not set,
+	// we default to using the driver root on the host.
+	if config.Flags.NvidiaDevRoot == nil || *config.Flags.NvidiaDevRoot == "" {
+		config.Flags.NvidiaDevRoot = config.Flags.NvidiaDriverRoot
+	}
+
+	// We explicitly set sharing.mps.failRequestsGreaterThanOne = true
+	// This can be relaxed in certain cases -- such as a single GPU -- but
+	// requires additional logic around when it's OK to combine requests and
+	// makes the semantics of a request unclear.
+	if config.Sharing.MPS != nil {
+		config.Sharing.MPS.FailRequestsGreaterThanOne = true
+	}
 
 	return config, nil
 }
 
-// logger is used to issue warning in API functions without requiring an explicit implementation.
-type logger interface {
-	Warning(...interface{})
-	Warningf(string, ...interface{})
-}
-
 // DisableResourceNamingInConfig temporarily disable the resource renaming feature of the plugin.
 // This may be reenabled in a future release.
-func DisableResourceNamingInConfig(logger logger, config *Config) {
+func DisableResourceNamingInConfig(config *Config) {
 	// Disable resource renaming through config.Resource
 	if len(config.Resources.GPUs) > 0 || len(config.Resources.MIGs) > 0 {
-		logger.Warning("Customizing the 'resources' field is not yet supported in the config. Ignoring...")
+		klog.Warning("Customizing the 'resources' field is not yet supported in the config. Ignoring...")
 	}
 	config.Resources.GPUs = nil
 	config.Resources.MIGs = nil
 
 	// Disable renaming / device selection in Sharing.TimeSlicing.Resources
-	config.Sharing.TimeSlicing.disableResoureRenaming(logger, "timeSlicing")
+	config.Sharing.TimeSlicing.disableResoureRenaming("timeSlicing")
 	// Disable renaming / device selection in Sharing.MPS.Resources
-	config.Sharing.MPS.disableResoureRenaming(logger, "mps")
+	config.Sharing.MPS.disableResoureRenaming("mps")
 }
 
 // parseConfig parses a config file as either YAML of JSON and unmarshals it into a Config struct.

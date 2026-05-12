@@ -82,7 +82,7 @@ type SyncableConfig struct {
 	cond     *sync.Cond
 	mutex    sync.Mutex
 	current  string
-	lastRead string
+	lastRead *string
 }
 
 // NewSyncableConfig creates a new SyncableConfig
@@ -106,11 +106,12 @@ func (m *SyncableConfig) Set(value string) {
 func (m *SyncableConfig) Get() string {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	if m.lastRead == m.current {
+	if m.lastRead != nil && *m.lastRead == m.current {
 		m.cond.Wait()
 	}
-	m.lastRead = m.current
-	return m.lastRead
+	val := m.current
+	m.lastRead = &val
+	return *m.lastRead
 }
 
 func main() {
@@ -261,25 +262,29 @@ func continuouslySyncConfigChanges(clientset *kubernetes.Clientset, config *Sync
 		fields.OneTermEqualSelector("metadata.name", f.NodeName),
 	)
 
-	_, controller := cache.NewInformer(
-		listWatch, &v1.Node{}, 0,
-		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				config.Set(obj.(*v1.Node).Labels[f.NodeLabel])
+	_, controller := cache.NewInformerWithOptions(
+		cache.InformerOptions{
+			ListerWatcher: listWatch,
+			ObjectType:    &v1.Node{},
+			Handler: cache.ResourceEventHandlerFuncs{
+				AddFunc: func(obj interface{}) {
+					config.Set(obj.(*v1.Node).Labels[f.NodeLabel])
+				},
+				UpdateFunc: func(oldObj, newObj interface{}) {
+					oldLabel := oldObj.(*v1.Node).Labels[f.NodeLabel]
+					newLabel := newObj.(*v1.Node).Labels[f.NodeLabel]
+					if oldLabel != newLabel {
+						config.Set(newLabel)
+					}
+				},
+				DeleteFunc: func(obj interface{}) {
+					oldLabel := obj.(*v1.Node).Labels[f.NodeLabel]
+					if oldLabel != "" {
+						config.Set("")
+					}
+				},
 			},
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				oldLabel := oldObj.(*v1.Node).Labels[f.NodeLabel]
-				newLabel := newObj.(*v1.Node).Labels[f.NodeLabel]
-				if oldLabel != newLabel {
-					config.Set(newLabel)
-				}
-			},
-			DeleteFunc: func(obj interface{}) {
-				oldLabel := obj.(*v1.Node).Labels[f.NodeLabel]
-				if oldLabel != "" {
-					config.Set("")
-				}
-			},
+			ResyncPeriod: 0,
 		},
 	)
 

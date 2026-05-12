@@ -20,7 +20,9 @@ import (
 	"fmt"
 
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"k8s.io/klog/v2"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
@@ -34,7 +36,7 @@ type nvmlResourceManager struct {
 var _ ResourceManager = (*nvmlResourceManager)(nil)
 
 // NewNVMLResourceManagers returns a set of ResourceManagers, one for each NVML resource in 'config'.
-func NewNVMLResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]ResourceManager, error) {
+func NewNVMLResourceManagers(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) ([]ResourceManager, error) {
 	ret := nvmllib.Init()
 	if ret != nvml.SUCCESS {
 		return nil, fmt.Errorf("failed to initialize NVML: %v", ret)
@@ -46,7 +48,9 @@ func NewNVMLResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]Res
 		}
 	}()
 
-	deviceMap, err := NewDeviceMap(nvmllib, config)
+	platform := infolib.ResolvePlatform()
+
+	deviceMap, err := NewDeviceMap(devicelib, config, platform)
 	if err != nil {
 		return nil, fmt.Errorf("error building device map: %v", err)
 	}
@@ -56,15 +60,25 @@ func NewNVMLResourceManagers(nvmllib nvml.Interface, config *spec.Config) ([]Res
 		if len(devices) == 0 {
 			continue
 		}
-		r := &nvmlResourceManager{
-			resourceManager: resourceManager{
-				config:   config,
-				resource: resourceName,
-				devices:  devices,
-			},
-			nvml: nvmllib,
+
+		resources := resourceManager{
+			config:   config,
+			resource: resourceName,
+			devices:  devices,
 		}
-		rms = append(rms, r)
+
+		var rm ResourceManager
+		switch platform {
+		case info.PlatformWSL:
+			rm = &resources
+		default:
+			rm = &nvmlResourceManager{
+				resourceManager: resources,
+				nvml:            nvmllib,
+			}
+		}
+
+		rms = append(rms, rm)
 	}
 
 	return rms, nil
@@ -85,7 +99,7 @@ func (r *nvmlResourceManager) GetDevicePaths(ids []string) []string {
 		"/dev/nvidia-modeset",
 	}
 
-	return append(paths, r.Devices().Subset(ids).GetPaths()...)
+	return append(paths, r.resourceManager.GetDevicePaths(ids)...)
 }
 
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices

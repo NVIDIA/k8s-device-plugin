@@ -19,7 +19,9 @@ package mps
 import (
 	"fmt"
 
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
+	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"k8s.io/klog/v2"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
@@ -31,15 +33,17 @@ type Manager interface {
 }
 
 type manager struct {
-	config  *spec.Config
-	nvmllib nvml.Interface
+	infolib   info.Interface
+	nvmllib   nvml.Interface
+	devicelib device.Interface
+	config    *spec.Config
 }
 
 type nullManager struct{}
 
 // Daemons creates the required set of MPS daemons for the specified options.
-func NewDaemons(opts ...Option) ([]*Daemon, error) {
-	manager, err := New(opts...)
+func NewDaemons(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, opts ...Option) ([]*Daemon, error) {
+	manager, err := New(infolib, nvmllib, devicelib, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create MPS manager: %w", err)
 	}
@@ -48,8 +52,12 @@ func NewDaemons(opts ...Option) ([]*Daemon, error) {
 
 // New creates a manager for MPS daemons.
 // If MPS is not configured, a manager is returned that manages no daemons.
-func New(opts ...Option) (Manager, error) {
-	m := &manager{}
+func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, opts ...Option) (Manager, error) {
+	m := &manager{
+		infolib:   infolib,
+		nvmllib:   nvmllib,
+		devicelib: devicelib,
+	}
 	for _, opt := range opts {
 		opt(m)
 	}
@@ -59,20 +67,11 @@ func New(opts ...Option) (Manager, error) {
 		return &nullManager{}, nil
 	}
 
-	// TODO: This should be controllable via an option
-	if m.nvmllib == nil {
-		driverLibraryPath, err := root("/driver-root").getDriverLibraryPath()
-		if err != nil {
-			return nil, fmt.Errorf("failed to locate driver libraries: %w", err)
-		}
-		m.nvmllib = nvml.New(nvml.WithLibraryPath(driverLibraryPath))
-	}
-
 	return m, nil
 }
 
 func (m *manager) Daemons() ([]*Daemon, error) {
-	resourceManagers, err := rm.NewNVMLResourceManagers(m.nvmllib, m.config)
+	resourceManagers, err := rm.NewNVMLResourceManagers(m.infolib, m.nvmllib, m.devicelib, m.config)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +88,17 @@ func (m *manager) Daemons() ([]*Daemon, error) {
 			klog.InfoS("Resource is not shared", "resource", "resource", resourceManager.Resource())
 			continue
 		}
-		daemon := NewDaemon(resourceManager)
+		// Check if MIG devices are included.
+		for _, rmDevice := range resourceManager.Devices() {
+			if rmDevice.IsMigDevice() {
+				klog.Warning("MPS sharing is not supported for MIG devices; skipping daemon creation")
+				continue
+			}
+			if err := (*mpsDevice)(rmDevice).assertReplicas(); err != nil {
+				return nil, fmt.Errorf("invalid MPS configuration: %w", err)
+			}
+		}
+		daemon := NewDaemon(resourceManager, ContainerRoot)
 		daemons = append(daemons, daemon)
 	}
 

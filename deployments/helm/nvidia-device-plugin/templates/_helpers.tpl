@@ -93,7 +93,7 @@ Security context for the plugin
 {{ toYaml .Values.securityContext }}
 {{- else if .Values.compatWithCPUManager -}}
 privileged: true
-{{- else if ne (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) "true" -}}
+{{- else if eq (include "nvidia-device-plugin.requiresCapSysAdmin" .) "true" -}}
 capabilities:
   add:
     - SYS_ADMIN
@@ -110,7 +110,7 @@ Security context for GFD
 {{- define "gpu-feature-discovery.securityContext" -}}
 {{- if ne (len .Values.gfd.securityContext) 0 -}}
 {{ toYaml .Values.gfd.securityContext }}
-{{- else if ne (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) "true" -}}
+{{- else if eq (include "nvidia-device-plugin.requiresCapSysAdmin" .) "true" -}}
 capabilities:
   add:
     - SYS_ADMIN
@@ -122,6 +122,19 @@ capabilities:
 {{- end -}}
 
 {{/*
+Check whether the SYS_ADMIN capability should be included.
+*/}}
+{{- define "nvidia-device-plugin.requiresCapSysAdmin" -}}
+{{- $result := false -}}
+{{- if ne (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" .) "true" -}}
+  {{- $result = true -}}
+{{- else if eq (include "nvidia-device-plugin.deviceListStrategyIncludesVolumeMount" .) "true" -}}
+  {{- $result = true -}}
+{{- end -}}
+{{- $result -}}
+{{- end -}}
+
+{{/*
 Check if migStrategy (from all possible configurations) is "none"
 */}}
 {{- define "nvidia-device-plugin.allPossibleMigStrategiesAreNone" -}}
@@ -130,7 +143,7 @@ Check if migStrategy (from all possible configurations) is "none"
   {{- if ne .Values.migStrategy "none" -}}
     {{- $result = false -}}
   {{- end -}}
-{{- else if ne (include "nvidia-device-plugin.configMapName" .) "true" -}}
+{{- else if eq (include "nvidia-device-plugin.hasConfigMap" .) "true" -}}
     {{- $result = false -}}
 {{- else -}}
   {{- range $name, $contents := $.Values.config.map -}}
@@ -138,6 +151,32 @@ Check if migStrategy (from all possible configurations) is "none"
     {{- if $config.flags -}}
       {{- if ne $config.flags.migStrategy "none" -}}
         {{- $result = false -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- $result -}}
+{{- end }}
+
+{{/*
+Check if volume-mounts is included in the set of device-list-strategies
+*/}}
+{{- define "nvidia-device-plugin.deviceListStrategyIncludesVolumeMount" -}}
+{{- $result := false -}}
+{{- if .Values.deviceListStrategy -}}
+  {{- $result = ( contains "volume-mounts" .Values.deviceListStrategy ) -}}
+{{- else if eq (include "nvidia-device-plugin.hasConfigMap" .) "true" -}}
+    {{- $result = true -}}
+{{- else -}}
+  {{- range $name, $contents := $.Values.config.map -}}
+    {{- $config := $contents | fromYaml -}}
+    {{- if $config.flags -}}
+      {{- if $config.flags.plugin -}}
+        {{- if typeIs "string" $config.flags.plugin.deviceListStrategy }}
+          {{- $result = ( contains "volume-mounts" $config.flags.plugin.deviceListStrategy ) -}}
+        {{- else if typeIs "list" $config.flags.plugin.deviceListStrategy }}
+          {{- $result = ( has "volume-mounts" $config.flags.plugin.deviceListStrategy ) -}}
+        {{- end -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
@@ -216,4 +255,17 @@ Pod annotations for the plugin and GFD
   {{- end -}}
 {{- end -}}
 {{- toYaml $annotations }}
+{{- end -}}
+
+
+{{/*
+Collection of typed options for the device plugin.
+
+We convert this to JSON so that it can be included and converted to an object using fromJson.
+*/}}
+{{- define "nvidia-device-plugin.options" -}}
+{{- $options := dict "" "" -}}
+{{- $_ := set $options "hasConfigMap" ( eq ( (include "nvidia-device-plugin.hasConfigMap" . ) | trim ) "true" ) -}}
+{{- $_ := set $options "addMigMonitorDevices" ( ne ( (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" . ) | trim ) "true" )  -}}
+{{- mustToJson $options -}}
 {{- end -}}

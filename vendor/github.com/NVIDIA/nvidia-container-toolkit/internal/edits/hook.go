@@ -17,9 +17,10 @@
 package edits
 
 import (
-	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
 	"tags.cncf.io/container-device-interface/pkg/cdi"
 	"tags.cncf.io/container-device-interface/specs-go"
+
+	"github.com/NVIDIA/nvidia-container-toolkit/internal/discover"
 )
 
 type hook discover.Hook
@@ -41,6 +42,7 @@ func (d hook) toSpec() *specs.Hook {
 		HookName: d.Lifecycle,
 		Path:     d.Path,
 		Args:     d.Args,
+		Env:      d.Env,
 	}
 
 	return &s

@@ -18,7 +18,7 @@ package resource
 
 import (
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 )
 
 type nvmlLib struct {
@@ -27,10 +27,7 @@ type nvmlLib struct {
 }
 
 // NewNVMLManager creates a new manager that uses NVML to query and manage devices
-func NewNVMLManager() Manager {
-	nvmllib := nvml.New()
-	devicelib := device.New(device.WithNvml(nvmllib))
-
+func NewNVMLManager(nvmllib nvml.Interface, devicelib device.Interface) Manager {
 	m := nvmlLib{
 		Interface: nvmllib,
 		devicelib: devicelib,
@@ -39,15 +36,15 @@ func NewNVMLManager() Manager {
 }
 
 // GetCudaDriverVersion : Return the cuda v using NVML
-func (l nvmlLib) GetCudaDriverVersion() (*uint, *uint, error) {
-	v, ret := l.Interface.SystemGetCudaDriverVersion()
+func (l nvmlLib) GetCudaDriverVersion() (int, int, error) {
+	v, ret := l.SystemGetCudaDriverVersion()
 	if ret != nvml.SUCCESS {
-		return nil, nil, ret
+		return 0, 0, ret
 	}
-	major := uint(v / 1000)
-	minor := uint(v % 1000 / 10)
+	major := v / 1000
+	minor := v % 1000 / 10
 
-	return &major, &minor, nil
+	return major, minor, nil
 }
 
 // GetDevices returns the NVML devices for the manager
@@ -71,7 +68,7 @@ func (l nvmlLib) GetDevices() ([]Device, error) {
 
 // GetDriverVersion returns the driver version
 func (l nvmlLib) GetDriverVersion() (string, error) {
-	v, ret := l.Interface.SystemGetDriverVersion()
+	v, ret := l.SystemGetDriverVersion()
 	if ret != nvml.SUCCESS {
 		return "", ret
 	}

@@ -34,14 +34,11 @@ func (l *NullLogger) Debugf(string, ...interface{}) {}
 // Errorf is a no-op for the null logger
 func (l *NullLogger) Errorf(string, ...interface{}) {}
 
-// Info is a no-op for the null logger
-func (l *NullLogger) Info(...interface{}) {}
-
 // Infof is a no-op for the null logger
 func (l *NullLogger) Infof(string, ...interface{}) {}
 
-// Warning is a no-op for the null logger
-func (l *NullLogger) Warning(...interface{}) {}
-
 // Warningf is a no-op for the null logger
 func (l *NullLogger) Warningf(string, ...interface{}) {}
+
+// Tracef is a no-op for the null logger
+func (l *NullLogger) Tracef(string, ...interface{}) {}

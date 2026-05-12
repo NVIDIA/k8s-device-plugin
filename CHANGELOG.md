@@ -1,5 +1,176 @@
 ## Changelog
 
+### v0.19.0
+- Add --sleep-interval=infinite support to GFD for running as a pod (#1603)
+- Fix image tag in static deployment (#1604)
+- Add ownerReference to NodeFeature CRs for garbage collection (#1597)
+- Change default value for gds, gdrcopy and mofed flags (#1550)
+- Fix healthchecking on old devices (#1562)
+- Enable NodeFeature API by default in GFD (#1504)
+- Build multiarch images on native GitHub runners (#1468)
+
+### v0.18.2
+- Ensure that cdi.FeatureFlags are passed to CDI library
+- Fix race condition in config-manager when label is unset
+- Fix nested container use cases by ensuring that IPC sockets are not mounted readonly
+- Bump NVIDIA Container Toolkit to v1.18.2
+- Bump distroless base image to v3.2.2-dev
+
+### v0.18.1
+- Allow CDI feature flags to be set
+- Pass driver root to nvinfo.New in device plugin main
+- Bump NVIDIA Container Toolkit to v1.18.1
+- Bump distroless base image to v3.2.1-dev
+- Bump github.com/opencontainers/selinux from 1.12.0 to 1.13.1 (#1506)
+
+### v0.18.0
+- Rename getHealthCheckXids and clarify documentation
+- Add support for explicitly enabling XIDs in health checks
+- Deduplicate requested device IDs
+- Check for nil before reading boolean config values
+- Make gated modes (GDS, MOFED, GDRCOPY) optional in CDI
+- Add support for setting gdrcopyEnabled
+- Ignore errors getting device memory using NVML
+- Ensure that directory volumes have Directory type
+- Switch to plain golang image for builds
+- Remove unneeded intermediate container
+- Update CI definitions
+- Switch to distroless golang image
+- Update README.md with RuntimeClass
+- Pass a single context throughout the device-plugin method call stack (#1284)
+- Remove internal logger in favour of klog (#1277)
+- Remove FAIL_ON_INIT_ERROR from static examples
+- Detect blackwell architecture
+- Updated .release:staging to stage device-plugin images in nvstaging
+- Use MiB instead of MB for gpu-memory
+- Ignore XID error 109
+- Update README.md adjust set docker runtime default
+- Remove nvidia.com/gpu.imex-domain label
+- Fix containerd runc config error when creating a kind cluster
+- Use stable nividia-container-toolkit repo when creating a kind cluster
+- Switch to context package in go stdlib
+- Raise a warning instead of an error if GPU mode labeler fails
+- Add ada-lovelace architecture label for compute capability 8.9
+- Ensure FAIL_ON_INIT_ERROR boolean env is quoted
+- Honor fail-on-init-error when no resources are found
+- Enable hostPID in the mps-control-daemon pod (#1045)
+
+### Version v0.17.1
+- Ensure that generated CDI specs do not contain `enable-cuda-compat` hooks
+- Remove nvidia.com/gpu.imex-domain label
+- Ignore XID error 109
+- Add `ada-lovelace` architecture label for compute capability 8.9
+- Ensure FAIL_ON_INIT_ERROR boolean env is quoted
+- Honor fail-on-init-error when no resources are found
+
+### v0.17.0
+- Promote v0.17.0-rc.1 to GA
+
+### v0.17.0-rc.1
+- Add CAP_SYS_ADMIN if volume-mounts list strategy is included
+- Remove unneeded DEVICE_PLUGIN_MODE envvar
+- Fix applying SELinux label for MPS
+- Use a base image that aligns with the ubi-minimal base image
+- Switch to a ubi9-based base image
+- Remove namespace field from cluster-scoped resources
+- Generate labels for IMEX cligue and domain
+- Add optional injection of the default IMEX channel
+- Allow kubelet-socket to be specified as command line argument
+
+### v0.16.2
+- Add CAP_SYS_ADMIN if volume-mounts list strategy is included (fixes #856)
+- Remove unneeded DEVICE_PLUGIN_MODE envvar
+- Fix applying SELinux label for MPS
+
+### v0.16.1
+- Bump nvidia-container-toolkit to v1.16.1 to fix a bug with CDI spec generation for MIG devices
+
+### v0.16.0
+- Fixed logic of atomic writing of the feature file
+- Replaced `WithDialer` with `WithContextDialer`
+- Fixed SELinux context of MPS pipe directory.
+- Changed behavior for empty MIG devices to issue a warning instead of an error when the mixed strategy is selected
+- Added a a GFD node label for the GPU mode.
+- Update CUDA base image version to 12.5.1
+
+### v0.16.0-rc.1
+- Skip container updates if only CDI is selected
+- Allow cdi hook path to be set
+- Add nvidiaDevRoot config option
+- Detect devRoot for driver installation
+- Changed the automatically created MPS /dev/shm to half of the total memory as obtained from /proc/meminfo
+- Remove redundant version log
+- Remove provenance information from image manifests
+- add ngc image signing job for auto signing
+- fix: target should be binaries
+- Allow device discovery strategy to be specified
+- Refactor cdi handler construction
+- Add addMigMonitorDevices field to nvidia-device-plugin.options helper
+- Fix allPossibleMigStrategiesAreNone helm chart helper
+- use the helm quote function to wrap boolean values in quotes
+- Fix usage of hasConfigMap
+- Make info, nvml, and device lib construction explicit
+- Clean up construction of WSL devices
+- Remove unused function
+- Don't require node-name to be set if not needed
+- Make vgpu failures non-fatal
+- Use HasTegraFiles over IsTegraSystem
+- Raise error for MPS when using MIG
+- Align container driver root envvars
+- Update github.com/NVIDIA/go-nvml to v0.12.0-6
+- Add unit tests cases for sanitise func
+- Improving logic to sanitize GFD generated node labels
+- Add newline to pod logs
+- Adding vfio manager
+- Add prepare-release.sh script
+- Don't require node-name to be set if not needed
+- Remove GitLab pipeline .gitlab.yml
+- E2E test: fix object names
+- strip parentheses from the gpu product name
+- E2E test: instanciate a logger for helm outputs
+- E2E test: enhance logging via ginkgo/gomega
+- E2E test: remove e2elogs helper pkg
+- E2E test: Create HelmClient during Framework init
+- E2E test: Add -ginkgo.v flag to increase verbosity
+- E2E test: Create DiagnosticsCollector
+- Update vendoring
+- Replace go-nvlib/pkg/nvml with go-nvml/pkg/nvml
+- Add dependabot updates for release-0.15
+
+### Version v0.15.0
+- Moved `nvidia-device-plugin.yml` static deployment at the root of the repository to `deployments/static/nvidia-device-plugin.yml`.
+- Simplify PCI device clases in NFD worker configuration.
+- Update CUDA base image version to 12.4.1.
+- Switch to Ubuntu22.04-based CUDA image for default image.
+- Add new CUDA driver and runtime version labels to align with other NFD version labels.
+- Update NFD dependency to v0.15.3.
+
+### Version v0.15.0-rc.2
+- Bump CUDA base image version to 12.3.2
+- Add `cdi-cri` device list strategy. This uses the CDIDevices CRI field to request CDI devices instead of annotations.
+- Set MPS memory limit by device index and not device UUID. This is a workaround for an issue where
+  these limits are not applied for devices if set by UUID.
+- Update MPS sharing to disallow requests for multiple devices if MPS sharing is configured.
+- Set mps device memory limit by index.
+- Explicitly set sharing.mps.failRequestsGreaterThanOne = true.
+- Run tail -f for each MPS daemon to output logs.
+- Enforce replica limits for MPS sharing.
+
+### Version v0.15.0-rc.1
+- Import GPU Feature Discovery into the GPU Device Plugin repo. This means that
+  the same version and container image is used for both components.
+- Add tooling to create a kind cluster for local development and testing.
+- Update `go-gpuallocator` dependency to migrate away from the deprecated `gpu-monitoring-tools` NVML bindings.
+- Remove `legacyDaemonsetAPI` config option. This was only required for k8s versions < 1.16.
+- Add support for MPS sharing.
+- Bump CUDA base image version to 12.3.1
+
+### Version v0.14.5
+
+- Fix bug in CDI spec generation on systems with `lib -> usr/lib` symlinks.
+- Bump CUDA base image version to 12.3.2.
+
+
 ### Version v0.14.4
 
 - Update to refactored go-gpuallocator code. This permanently fixes the NVML_NVLINK_MAX_LINKS value addressed in a

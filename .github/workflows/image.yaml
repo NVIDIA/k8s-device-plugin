@@ -12,64 +12,68 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Run this workflow on pull requests or merge to main/release branches
-name: image
+name: Image
 
 on:
-  pull_request:
-    types:
-      - opened
-      - synchronize
-    branches:
-      - main
-      - release-*
-  push:
-    branches:
-      - main
-      - release-*
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
 
 jobs:
   build:
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        dist: [ubuntu20.04, ubi8]
+        arch:
+          - amd64
+          - arm64
+    runs-on: linux-${{ matrix.arch }}-cpu4
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         name: Check out code
-      - name: Calculate build vars
-        id: vars
-        run: |
-          echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
-          echo "LOWERCASE_REPO_OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | awk '{print tolower($0)}')" >> $GITHUB_ENV
-          REPO_FULL_NAME="${{ github.event.pull_request.head.repo.full_name }}"
-          echo "${REPO_FULL_NAME}"
-          echo "LABEL_IMAGE_SOURCE=https://github.com/${REPO_FULL_NAME}" >> $GITHUB_ENV
-
-          GENERATE_ARTIFACTS="false"
-          if [[ "${{ github.actor }}" == "dependabot[bot]" ]]; then
-            GENERATE_ARTIFACTS="false"
-          elif [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.head.repo.full_name }}" == "${{ github.repository }}" ]]; then
-            GENERATE_ARTIFACTS="true"
-          elif [[ "${{ github.event_name }}" == "push" ]]; then
-            GENERATE_ARTIFACTS="true"
-          fi
-          echo "PUSH_ON_BUILD=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
-          echo "BUILD_MULTI_ARCH_IMAGES=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup Go Proxy
+        id: setup-go-proxy
+        uses: nv-gha-runners/setup-artifactory-go-proxy@main
       - name: Build image
         env:
-          IMAGE_NAME: ghcr.io/${LOWERCASE_REPO_OWNER}/k8s-device-plugin
-          VERSION: ${COMMIT_SHORT_SHA}
+          IMAGE_NAME: ghcr.io/nvidia/k8s-device-plugin
+          VERSION: ${{ inputs.version }}-${{ matrix.arch }}
+          PUSH_ON_BUILD: true
+          GOPROXY: ${{ steps.setup-go-proxy.outputs.goproxy-url }}
+          DOCKER_BUILD_PLATFORM_OPTIONS: "--platform=linux/${{ matrix.arch }}"
         run: |
           echo "${VERSION}"
-          make -f deployments/container/Makefile build-${{ matrix.dist }}
+          make -f deployments/container/Makefile build
+
+  create-manifest:
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        name: Check out code
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Manifest
+        env:
+          MULTIARCH_IMAGE: ghcr.io/nvidia/k8s-device-plugin:${{ inputs.version }}
+        run: |
+          docker manifest create \
+            ${MULTIARCH_IMAGE} \
+            ghcr.io/nvidia/k8s-device-plugin:${{ inputs.version }}-amd64 \
+            ghcr.io/nvidia/k8s-device-plugin:${{ inputs.version }}-arm64
+          docker manifest push ${MULTIARCH_IMAGE}

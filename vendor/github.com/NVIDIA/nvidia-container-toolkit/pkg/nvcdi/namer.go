@@ -20,13 +20,16 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/NVIDIA/go-nvlib/pkg/nvml"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
 )
 
 // UUIDer is an interface for getting UUIDs.
 type UUIDer interface {
 	GetUUID() (string, error)
 }
+
+// DeviceNamers represents a list of device namers
+type DeviceNamers []DeviceNamer
 
 // DeviceNamer is an interface for getting device names
 type DeviceNamer interface {
@@ -93,7 +96,7 @@ func (s deviceNameUUID) GetMigDeviceName(i int, _ UUIDer, j int, mig UUIDer) (st
 	return uuid, nil
 }
 
-//go:generate moq -stub -out namer_nvml_mock.go . nvmlUUIDer
+//go:generate moq -rm -fmt=goimports -stub -out namer_nvml_mock.go . nvmlUUIDer
 type nvmlUUIDer interface {
 	GetUUID() (string, nvml.Return)
 }
@@ -119,4 +122,40 @@ var errUUIDUnsupported = errors.New("GetUUID is not supported")
 
 func (m uuidUnsupported) GetUUID() (string, error) {
 	return "", errUUIDUnsupported
+}
+
+func (l DeviceNamers) GetDeviceNames(i int, d UUIDer) ([]string, error) {
+	var names []string
+	for _, namer := range l {
+		name, err := namer.GetDeviceName(i, d)
+		if err != nil {
+			return nil, err
+		}
+		if name == "" {
+			continue
+		}
+		names = append(names, name)
+	}
+	if len(names) == 0 {
+		return nil, errors.New("no names defined")
+	}
+	return names, nil
+}
+
+func (l DeviceNamers) GetMigDeviceNames(i int, d UUIDer, j int, mig UUIDer) ([]string, error) {
+	var names []string
+	for _, namer := range l {
+		name, err := namer.GetMigDeviceName(i, d, j, mig)
+		if err != nil {
+			return nil, err
+		}
+		if name == "" {
+			continue
+		}
+		names = append(names, name)
+	}
+	if len(names) == 0 {
+		return nil, errors.New("no names defined")
+	}
+	return names, nil
 }
