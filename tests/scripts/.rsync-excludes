@@ -1,0 +1,7 @@
+vendor/
+.cache
+.git
+bin/
+cnt-ci
+key.pem
+kubeconfig
