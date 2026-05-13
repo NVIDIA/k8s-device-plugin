@@ -78,6 +78,16 @@ Selector labels
 {{- end }}
 
 {{/*
+Optional component label for DaemonSet selector and template labels.
+*/}}
+{{- define "nvidia-device-plugin.componentLabel" -}}
+{{- $root := .root -}}
+{{- if and $root.Values.componentSelectorLabels.enabled (not $root.Values.selectorLabelsOverride) -}}
+app.kubernetes.io/component: {{ .component }}
+{{- end -}}
+{{- end }}
+
+{{/*
 Full image name with tag
 */}}
 {{- define "nvidia-device-plugin.fullimage" -}}
