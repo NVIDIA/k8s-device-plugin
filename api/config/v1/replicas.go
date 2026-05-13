@@ -29,7 +29,7 @@ import (
 // ReplicatedResources defines generic options for replicating devices.
 type ReplicatedResources struct {
 	RenameByDefault            bool                 `json:"renameByDefault,omitempty"            yaml:"renameByDefault,omitempty"`
-	FailRequestsGreaterThanOne bool                 `json:"failRequestsGreaterThanOne,omitempty" yaml:"failRequestsGreaterThanOne,omitempty"`
+	FailRequestsGreaterThanOne *bool                `json:"failRequestsGreaterThanOne,omitempty" yaml:"failRequestsGreaterThanOne,omitempty"`
 	Resources                  []ReplicatedResource `json:"resources,omitempty"                  yaml:"resources,omitempty"`
 }
 
@@ -180,14 +180,11 @@ func (s *ReplicatedResources) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	failRequestsGreaterThanOne, exists := ts["failRequestsGreaterThanOne"]
-	if !exists {
-		failRequestsGreaterThanOne = []byte(`false`)
-	}
-
-	err = json.Unmarshal(failRequestsGreaterThanOne, &s.FailRequestsGreaterThanOne)
-	if err != nil {
-		return err
+	if failRequestsGreaterThanOne, exists := ts["failRequestsGreaterThanOne"]; exists {
+		err = json.Unmarshal(failRequestsGreaterThanOne, &s.FailRequestsGreaterThanOne)
+		if err != nil {
+			return err
+		}
 	}
 
 	resources, exists := ts["resources"]
