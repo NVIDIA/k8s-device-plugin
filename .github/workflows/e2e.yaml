@@ -80,8 +80,9 @@ jobs:
         E2E_IMAGE_TAG: ${{ inputs.version }}
         E2E_IMAGE_PULL_POLICY: Always
         NVIDIA_DRIVER_ENABLED: true
+        GOLANG_VERSION: ${{ inputs.golang_version }}
       run: |
-        ./tests/ci-run-e2e.sh ${E2E_IMAGE_REPO} ${E2E_IMAGE_TAG} ${NVIDIA_DRIVER_ENABLED} || rc=$?
+        ./tests/ci-run-e2e.sh ${E2E_IMAGE_REPO} ${E2E_IMAGE_TAG} ${NVIDIA_DRIVER_ENABLED} ${GOLANG_VERSION} || rc=$?
         ./tests/scripts/pull.sh /tmp/logs logs
         exit $rc
     - name: Archive test logs
