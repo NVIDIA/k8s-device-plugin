@@ -65,6 +65,11 @@ jobs:
         NVIDIA_DRIVER_ENABLED: true
         LOG_ARTIFACTS: ${{ github.workspace }}/e2e_logs
       run: |
+        id
+        ls -l "${KUBECONFIG}"
+        stat "${KUBECONFIG}"
+        sudo chown "$(id -u):$(id -g)" "${KUBECONFIG}"
+        chmod 600 "${KUBECONFIG}"
         make -f tests/e2e/Makefile test
 
     - name: Archive test logs
