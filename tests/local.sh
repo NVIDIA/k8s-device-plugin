@@ -11,7 +11,10 @@ source ${SCRIPT_DIR}/.local.sh
 ${SCRIPT_DIR}/push.sh
 
 # We trigger the installation of prerequisites on the remote instance
-remote SKIP_PREREQUISITES="${SKIP_PREREQUISITES}" ./tests/scripts/prerequisites.sh
+remote \
+    SKIP_PREREQUISITES="${SKIP_PREREQUISITES}" \
+    GOLANG_VERSION="${GOLANG_VERSION}" \
+       ./tests/scripts/prerequisites.sh
 
 # We trigger the specified test case on the remote instance.
 # Note: We need to ensure that the required environment variables
