@@ -149,7 +149,11 @@ func (d *device) GetBrandAsString() (string, error) {
 
 // GetAddressingModeAsString returns the Device addressing mode as a string.
 func (d *device) GetAddressingModeAsString() (string, error) {
-	mode, ret := d.GetAddressingMode()
+	if !d.lib.hasSymbol("nvmlDeviceGetAddressingMode") {
+		return "", nil
+	}
+
+	mode, ret := nvml.Device(d).GetAddressingMode()
 
 	switch ret {
 	case nvml.SUCCESS:
