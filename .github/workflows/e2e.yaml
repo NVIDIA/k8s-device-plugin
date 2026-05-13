@@ -55,24 +55,42 @@ jobs:
         aws_ssh_key: ${{ secrets.AWS_SSH_KEY }}
         holodeck_config: "tests/e2e/infra/aws.yaml"
 
+    - name: Get public dns name
+      id: get_public_dns_name
+      uses: mikefarah/yq@v4
+      with:
+        cmd: yq '.status.properties[] | select(.name == "public-dns-name") | .value' /github/workspace/.cache/holodeck.yaml
+
+    - name: Set test environment
+      env:
+        PUBLIC_DNS_NAME: ${{ steps.get_public_dns_name.outputs.result }}
+      run: |
+        echo "instance_hostname=ubuntu@${PUBLIC_DNS_NAME}" >> $GITHUB_ENV
+        echo "private_key=${{ github.workspace }}/key.pem" >> $GITHUB_ENV
+
+    - name: Write SSH key
+      env:
+        AWS_SSH_KEY: ${{ secrets.AWS_SSH_KEY }}
+      run: |
+        echo "${AWS_SSH_KEY}" > ${private_key} && chmod 400 ${private_key}
+
     - name: Run e2e tests
       env:
-        KUBECONFIG: ${{ github.workspace }}/kubeconfig
-        HELM_CHART: ${{ github.workspace }}/deployments/helm/nvidia-device-plugin
         E2E_IMAGE_REPO: ghcr.io/nvidia/k8s-device-plugin
         E2E_IMAGE_TAG: ${{ inputs.version }}
         E2E_IMAGE_PULL_POLICY: Always
         NVIDIA_DRIVER_ENABLED: true
-        LOG_ARTIFACTS: ${{ github.workspace }}/e2e_logs
+        GOLANG_VERSION: ${{ inputs.golang_version }}
       run: |
-        make -f tests/e2e/Makefile test
-
+        ./tests/ci-run-e2e.sh ${E2E_IMAGE_REPO} ${E2E_IMAGE_TAG} ${NVIDIA_DRIVER_ENABLED} ${GOLANG_VERSION} || rc=$?
+        ./tests/scripts/pull.sh /tmp/logs logs
+        exit $rc
     - name: Archive test logs
       if: ${{ failure() }}
       uses: actions/upload-artifact@v7
       with:
         name: e2e-test-logs
-        path: ./e2e_logs/
+        path: ./logs/
         retention-days: 15
 
     - name: Archive Ginkgo logs
