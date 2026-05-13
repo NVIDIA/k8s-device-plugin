@@ -103,7 +103,7 @@ jobs:
     - name: Send Slack alert notification
       id: slack
       if: false
-      uses: slackapi/slack-github-action@v3.0.2
+      uses: slackapi/slack-github-action@v3.0.3
       env:
         SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         SUMMARY_URL: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
