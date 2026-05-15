@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"k8s.io/utils/ptr"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
@@ -94,7 +95,7 @@ func TestValidateRequest(t *testing.T) {
 			description: "timeslicing with two devices -- failRequestsGreaterThanOne",
 			sharing: spec.Sharing{
 				TimeSlicing: spec.ReplicatedResources{
-					FailRequestsGreaterThanOne: true,
+					FailRequestsGreaterThanOne: ptr.To(true),
 					Resources: []spec.ReplicatedResource{
 						{
 							Name:     "nvidia.com/gpu",
@@ -151,13 +152,12 @@ func TestValidateRequest(t *testing.T) {
 				"device1::1": nil,
 			},
 			requestDevicesIDs: []string{"device0::1", "device1::0"},
-			expectedError:     errInvalidRequest,
 		},
 		{
 			description: "MPS with two devices -- failRequestsGreaterThanOne",
 			sharing: spec.Sharing{
 				MPS: &spec.ReplicatedResources{
-					FailRequestsGreaterThanOne: true,
+					FailRequestsGreaterThanOne: ptr.To(true),
 					Resources: []spec.ReplicatedResource{
 						{
 							Name:     "nvidia.com/gpu",

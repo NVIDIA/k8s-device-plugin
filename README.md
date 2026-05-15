@@ -33,12 +33,15 @@
     - [Deploying gpu-feature-discovery in standalone mode](#deploying-gpu-feature-discovery-in-standalone-mode)
   - [Deploying via `helm install` with a direct URL to the `helm` package](#deploying-via-helm-install-with-a-direct-url-to-the-helm-package)
 - [Building and Running Locally](#building-and-running-locally)
+- Advanced Topics
+  - [Using CDI](#docs/cdi/md)
   - [With Docker](#with-docker)
     - [Build](#build)
     - [Run](#run)
   - [Without Docker](#without-docker)
     - [Build](#build-1)
     - [Run](#run-1)
+
 - [Changelog](#changelog)
 - [Issues and Contributing](#issues-and-contributing)
   - [Versioning](#versioning)

@@ -220,7 +220,7 @@ func getTestEnv() {
 	defer GinkgoRecover()
 	var err error
 
-	Kubeconfig = getRequiredEnvvar[string]("KUBECONFIG")
+	Kubeconfig = getEnvVarOrDefault[string]("KUBECONFIG", clientcmd.RecommendedHomeFile)
 
 	Timeout = time.Duration(getEnvVarOrDefault("E2E_TIMEOUT_SECONDS", 1800)) * time.Second
 
