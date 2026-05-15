@@ -70,7 +70,7 @@ func (rrs *ReplicatedResources) isReplicated() bool {
 		return false
 	}
 	for _, rr := range rrs.Resources {
-		if rr.Replicas > 1 {
+		if rr.Replicas >= 1 {
 			return true
 		}
 	}
@@ -248,8 +248,8 @@ func (s *ReplicatedResource) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	if s.Replicas < 2 {
-		return fmt.Errorf("number of replicas must be >= 2")
+	if s.Replicas < 1 {
+		return fmt.Errorf("number of replicas must be >= 1")
 	}
 
 	rename, exists := rr["rename"]
