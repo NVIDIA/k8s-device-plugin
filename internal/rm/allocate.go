@@ -33,42 +33,26 @@ func (r *resourceManager) distributedAlloc(available, required []string, size in
 		return nil, fmt.Errorf("not enough available devices to satisfy allocation")
 	}
 
-	// For each candidate device, build a mapping of (stripped) device ID to
-	// total / available replicas for that device.
-	replicas := make(map[string]*struct{ total, available int })
+	// Count the number of currently-available replicas per underlying device.
+	replicas := make(map[string]int)
 	for _, c := range candidates {
-		id := AnnotatedID(c).GetID()
-		if _, exists := replicas[id]; !exists {
-			replicas[id] = &struct{ total, available int }{}
-		}
-		replicas[id].available++
-	}
-	for d := range r.devices {
-		id := AnnotatedID(d).GetID()
-		if _, exists := replicas[id]; !exists {
-			continue
-		}
-		replicas[id].total++
+		replicas[AnnotatedID(c).GetID()]++
 	}
 
 	// Grab the set of 'needed' devices one-by-one from the candidates list.
-	// Before selecting each candidate, first sort the candidate list using the
-	// replicas map above. After sorting, the first element in the list will
-	// contain the device with the least difference between total and available
-	// replications (based on what's already been allocated). Add this device
-	// to the list of devices to allocate, remove it from the candidate list,
-	// down its available count in the replicas map, and repeat.
+	// Before selecting each candidate, sort the list so that the device with
+	// the most remaining replicas comes first. This balances allocations
+	// across devices, including across devices with heterogeneous replica
+	// counts.
 	var devices []string
 	for i := 0; i < needed; i++ {
 		sort.Slice(candidates, func(i, j int) bool {
 			iid := AnnotatedID(candidates[i]).GetID()
 			jid := AnnotatedID(candidates[j]).GetID()
-			idiff := replicas[iid].total - replicas[iid].available
-			jdiff := replicas[jid].total - replicas[jid].available
-			return idiff < jdiff
+			return replicas[iid] > replicas[jid]
 		})
 		id := AnnotatedID(candidates[0]).GetID()
-		replicas[id].available--
+		replicas[id]--
 		devices = append(devices, candidates[0])
 		candidates = candidates[1:]
 	}
