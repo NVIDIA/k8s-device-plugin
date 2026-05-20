@@ -242,31 +242,27 @@ func TestCheckHealth(t *testing.T) {
 		return nvml.SUCCESS
 	}
 
-	var count int
-	eventData := []nvml.EventData{
-		{
-			EventData: 109,
-			EventType: nvml.EventTypeXidCriticalError,
-			Device:    server.Devices[0],
-		},
-		{
-			EventData: 48,
-			EventType: nvml.EventTypeXidCriticalError,
-			Device:    server.Devices[0],
-		},
+	eventCh := make(chan nvml.EventData, 2)
+	eventCh <- nvml.EventData{
+		EventData: 109,
+		EventType: nvml.EventTypeXidCriticalError,
+		Device:    server.Devices[0],
+	}
+	eventCh <- nvml.EventData{
+		EventData: 48,
+		EventType: nvml.EventTypeXidCriticalError,
+		Device:    server.Devices[0],
 	}
 
 	server.EventSetCreateFunc = func() (nvml.EventSet, nvml.Return) {
 		es := &mock.EventSet{
 			WaitFunc: func(v uint32) (nvml.EventData, nvml.Return) {
-				ed := eventData[count%len(eventData)]
-				count++
-				if count == len(eventData) {
-					// Cancel the context to signal the health checker to terminate
-					// after the predefined events have been triggered.
-					cancel()
+				select {
+				case ed := <-eventCh:
+					return ed, nvml.SUCCESS
+				case <-ctx.Done():
+					return nvml.EventData{}, nvml.ERROR_TIMEOUT
 				}
-				return ed, nvml.SUCCESS
 			},
 			FreeFunc: func() nvml.Return {
 				return nvml.SUCCESS
@@ -287,6 +283,9 @@ func TestCheckHealth(t *testing.T) {
 		defer wg.Done()
 		for d := range unhealthy {
 			unhealthyDevices = append(unhealthyDevices, d)
+			// Cancel only after observing the unhealthy device so the send
+			// completes before runEventMonitor sees ctx.Done().
+			cancel()
 		}
 	}()
 
