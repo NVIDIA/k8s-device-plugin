@@ -8,8 +8,8 @@ github.com/NVIDIA/go-nvlib v0.10.0 h1:2jbAFmvLBntIc/4iUChI9DzxyYNI92pohXU4kFuNrg
 github.com/NVIDIA/go-nvlib v0.10.0/go.mod h1:7mzx9FSdO9fXWP9NKuZmWkCwhkEcSWQFe2tmFwtLb9c=
 github.com/NVIDIA/go-nvml v0.13.0-1.0.20260212130905-92cf8c963449 h1:UrArFAaPhj9av2yzEN35CvzWw68BeQjp2MaQFUIoJSU=
 github.com/NVIDIA/go-nvml v0.13.0-1.0.20260212130905-92cf8c963449/go.mod h1:ahi2psRYoa+wYUBIrZPRO+wJs9lcvMhxSSkjjvsJJNQ=
-github.com/NVIDIA/nvidia-container-toolkit v1.19.1-0.20260515194426-db3eab6e775b h1:41nL4Cqw6WvzwrP5U1IVLHSBTIrS1J0ryaqdbr4ZnvA=
-github.com/NVIDIA/nvidia-container-toolkit v1.19.1-0.20260515194426-db3eab6e775b/go.mod h1:WMJdrwb3QWMjua4xAEg9n0NjyWCRKMSfCXF7lpPsdjg=
+github.com/NVIDIA/nvidia-container-toolkit v1.19.1 h1:1sV4ddFrBccqL9Lbzcdu50w2j5FhyNJpN5hXTfCsjps=
+github.com/NVIDIA/nvidia-container-toolkit v1.19.1/go.mod h1:yGsZ4s2lMjfE4r8/DMUPVpaFhRGkWvo2H++/Dy84nVc=
 github.com/blang/semver/v4 v4.0.0 h1:1PFHFE6yCCTv8C1TeyNNarDzntLi7wMI5i/pzqYIsAM=
 github.com/blang/semver/v4 v4.0.0/go.mod h1:IbckMUScFkM3pff0VJDNKRiT6TG/YpiHIM2yvyW5YoQ=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
