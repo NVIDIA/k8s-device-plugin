@@ -269,3 +269,18 @@ We convert this to JSON so that it can be included and converted to an object us
 {{- $_ := set $options "addMigMonitorDevices" ( ne ( (include "nvidia-device-plugin.allPossibleMigStrategiesAreNone" . ) | trim ) "true" )  -}}
 {{- mustToJson $options -}}
 {{- end -}}
+
+{{/*
+OpenShift: RBAC rule to use the privileged SCC. Included in ClusterRole and,
+when the SCC API is present, in a namespaced Role (e.g. for MicroShift Pod Security + SCC).
+*/}}
+{{- define "nvidia-device-plugin.rule.openshiftSCC" -}}
+- apiGroups:
+    - security.openshift.io
+  resourceNames:
+    - privileged
+  resources:
+    - securitycontextconstraints
+  verbs:
+    - use
+{{- end -}}
