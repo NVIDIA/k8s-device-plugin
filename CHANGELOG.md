@@ -1,5 +1,11 @@
 ## Changelog
 
+### v0.19.2
+- Bump golang version to 1.26.3 (#1754)
+- Bump nvidia/distroless/go to v4.0.6-dev (#1806)
+- Bump nvidia-container-toolkit to v1.19.1 (#1798)
+- Always use a dedicated service account in the helm chart (#1804)
+
 ### v0.19.1
 - Default to `nvml` strategy when platform cannot be detected.
 - Fix CDI spec generation on Tegra-based systems.
