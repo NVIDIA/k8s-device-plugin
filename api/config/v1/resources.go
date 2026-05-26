@@ -168,6 +168,7 @@ func (p ResourcePattern) Matches(s string) bool {
 // wildCardToRegexp converts a wildcard pattern to a regular expression pattern.
 func wildCardToRegexp(pattern string) string {
 	var result strings.Builder
+	result.WriteString("^")
 	for i, literal := range strings.Split(pattern, "*") {
 		// Replace * with .*
 		if i > 0 {
@@ -176,5 +177,6 @@ func wildCardToRegexp(pattern string) string {
 		// Quote any regular expression meta characters in the literal text.
 		result.WriteString(regexp.QuoteMeta(literal))
 	}
+	result.WriteString("$")
 	return result.String()
 }
