@@ -1,5 +1,13 @@
 ## Changelog
 
+### v0.19.1
+- wsl: report a single "all" device to kubelet (#1699)
+- Fix CDI spec generation to respect driver root for Tegra CSV files (#1701)
+- Bump golang from 1.26.1 to 1.26.2 (#1704)
+* Bump nvidia/distroless/go from v4.0.3-dev to v4.0.4-dev (#1702)
+* Bump google.golang.org/grpc from 1.79.1 to 1.79.3 (#1711)
+* Bump the k8s.io dependencies to v1.35.4 (#1710)
+
 ### v0.19.0
 - Add --sleep-interval=infinite support to GFD for running as a pod (#1603)
 - Fix image tag in static deployment (#1604)
