@@ -29,6 +29,7 @@ on:
 
   # Allow this workflow to be run from the Actions tab.
   workflow_dispatch:
+    inputs:
       git_ref_to_deploy:
         description: The git reference to deploy
         required: false
