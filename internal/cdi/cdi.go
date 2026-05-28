@@ -62,6 +62,9 @@ type cdiHandler struct {
 	// nvcdiFeatureFlags allows finer control over CDI spec generation.
 	nvcdiFeatureFlags []string
 
+	// nvcdiDisabledHooks is a list of hooks to omit when generating CDI specs
+	nvcdiDisabledHooks []string
+
 	gdsEnabled     bool
 	mofedEnabled   bool
 	gdrcopyEnabled bool
@@ -126,6 +129,7 @@ func New(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interf
 		nvcdi.WithDevRoot(c.devRoot),
 		nvcdi.WithDriverRoot(c.driverRoot),
 		nvcdi.WithFeatureFlags(c.nvcdiFeatureFlags...),
+		nvcdi.WithDisabledHooks(c.nvcdiDisabledHooks...),
 		nvcdi.WithInfoLib(c.infolib),
 		nvcdi.WithLogger(c.logger),
 		nvcdi.WithNVIDIACDIHookPath(c.nvidiaCTKPath),
