@@ -32,6 +32,14 @@ func WithFeatureFlags(featureFlags ...string) Option {
 	}
 }
 
+// WithDisabledHooks provides and option to disable hooks for the nvcdi
+// spec generation instance.
+func WithDisabledHooks(disabledHooks ...string) Option {
+	return func(c *cdiHandler) {
+		c.nvcdiDisabledHooks = disabledHooks
+	}
+}
+
 // WithDeviceListStrategies provides an Option to set the enabled flag used by the 'cdi' interface
 func WithDeviceListStrategies(deviceListStrategies spec.DeviceListStrategies) Option {
 	return func(c *cdiHandler) {

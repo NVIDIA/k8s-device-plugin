@@ -45,6 +45,7 @@ type options struct {
 	configFile      string
 	kubeletSocket   string
 	cdiFeatureFlags cli.StringSlice
+	cdiDisableHooks cli.StringSlice
 }
 
 func main() {
@@ -179,6 +180,12 @@ func main() {
 			Usage:       "A set of feature flags to be passed to the CDI spec generation logic",
 			EnvVars:     []string{"CDI_FEATURE_FLAGS"},
 			Destination: &o.cdiFeatureFlags,
+		},
+		&cli.StringSliceFlag{
+			Name:        "cdi-disable-hooks",
+			Usage:       "A set of OCI hooks to disable when generating CDI specifications; if the value 'all' is specified, then the CDI specification will exclude all OCI hooks.",
+			EnvVars:     []string{"CDI_DISABLE_HOOKS"},
+			Destination: &o.cdiDisableHooks,
 		},
 	}
 	o.flags = c.Flags
