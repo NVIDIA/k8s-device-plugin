@@ -17,9 +17,39 @@
 package rm
 
 import (
+	"container/heap"
 	"fmt"
-	"sort"
 )
+
+// gpuAllocState holds per-physical-GPU bookkeeping for a single
+// distributedAlloc call.
+type gpuAllocState struct {
+	used       int      // (total advertised) - (currently available to this allocation)
+	pickedFrom int      // slots picked from this device in the current allocation
+	replicas   []string // remaining annotated-ID candidates belonging to this device
+}
+
+// gpuPriorityQueue is a min-heap of *gpuAllocState ordered primarily by
+// `used` so that devices with the fewest already-allocated replicas come
+// first, and tie-broken by `pickedFrom` so that devices we have not yet
+// touched during this allocation are preferred when used counts match.
+type gpuPriorityQueue []*gpuAllocState
+
+func (q gpuPriorityQueue) Len() int { return len(q) }
+func (q gpuPriorityQueue) Less(i, j int) bool {
+	if q[i].used != q[j].used {
+		return q[i].used < q[j].used
+	}
+	return q[i].pickedFrom < q[j].pickedFrom
+}
+func (q gpuPriorityQueue) Swap(i, j int) { q[i], q[j] = q[j], q[i] }
+func (q *gpuPriorityQueue) Push(x any)   { *q = append(*q, x.(*gpuAllocState)) }
+func (q *gpuPriorityQueue) Pop() any {
+	n := len(*q) - 1
+	x := (*q)[n]
+	*q = (*q)[:n]
+	return x
+}
 
 // distributedAlloc returns a list of devices such that any replicated
 // devices are distributed across all replicated GPUs equally. It takes into
@@ -33,60 +63,52 @@ func (r *resourceManager) distributedAlloc(available, required []string, size in
 		return nil, fmt.Errorf("not enough available devices to satisfy allocation")
 	}
 
-	// For each candidate device, build a mapping of (stripped) device ID to
-	// total / available replicas for that device.
-	replicas := make(map[string]*struct{ total, available int })
+	// Bucket candidates by their underlying physical device and tally counts.
+	// `used` is computed as (total replica records the plugin advertises for
+	// this device) minus (the number of those records present in candidates).
+	byGPU := make(map[string]*gpuAllocState)
 	for _, c := range candidates {
 		id := AnnotatedID(c).GetID()
-		if _, exists := replicas[id]; !exists {
-			replicas[id] = &struct{ total, available int }{}
+		s, ok := byGPU[id]
+		if !ok {
+			s = &gpuAllocState{}
+			byGPU[id] = s
 		}
-		replicas[id].available++
+		s.replicas = append(s.replicas, c)
 	}
 	for d := range r.devices {
-		id := AnnotatedID(d).GetID()
-		if _, exists := replicas[id]; !exists {
-			continue
+		if s, ok := byGPU[AnnotatedID(d).GetID()]; ok {
+			s.used++
 		}
-		replicas[id].total++
+	}
+	for _, s := range byGPU {
+		s.used -= len(s.replicas)
 	}
 
-	// Track how many slots have already been picked from each physical device
-	// during this allocation. Used as the tie-break sort key below so the
-	// allocator rotates to a sibling physical device when the underlying
-	// "used" counts would otherwise tie.
-	pickedFrom := make(map[string]int)
+	// Build the priority queue once; subsequent picks reorder it in O(log m).
+	pq := make(gpuPriorityQueue, 0, len(byGPU))
+	for _, s := range byGPU {
+		pq = append(pq, s)
+	}
+	heap.Init(&pq)
 
-	// Grab the set of 'needed' devices one-by-one from the candidates list.
-	// Before selecting each candidate, first sort the candidate list using the
-	// replicas map above. After sorting, the first element in the list will
-	// contain the device with the least difference between total and available
-	// replications (based on what's already been allocated). When two devices
-	// tie on that count, prefer the physical device we have not touched (or
-	// have touched the least) during this allocation. Add this device to the
-	// list of devices to allocate, remove it from the candidate list, down
-	// its available count in the replicas map, and repeat.
-	var devices []string
+	// Pop the highest-priority device, take one of its replicas, update its
+	// counters, and push it back if more replicas remain. Total cost is
+	// O(n log m), where n is `needed` and m is the number of distinct
+	// physical devices contributing candidates.
+	devices := make([]string, 0, needed)
 	for i := 0; i < needed; i++ {
-		sort.Slice(candidates, func(i, j int) bool {
-			iid := AnnotatedID(candidates[i]).GetID()
-			jid := AnnotatedID(candidates[j]).GetID()
-			idiff := replicas[iid].total - replicas[iid].available
-			jdiff := replicas[jid].total - replicas[jid].available
-			if idiff != jdiff {
-				return idiff < jdiff
-			}
-			return pickedFrom[iid] < pickedFrom[jid]
-		})
-		id := AnnotatedID(candidates[0]).GetID()
-		pickedFrom[id]++
-		replicas[id].available--
-		devices = append(devices, candidates[0])
-		candidates = candidates[1:]
+		top := heap.Pop(&pq).(*gpuAllocState)
+		last := len(top.replicas) - 1
+		pick := top.replicas[last]
+		top.replicas = top.replicas[:last]
+		top.used++
+		top.pickedFrom++
+		if len(top.replicas) > 0 {
+			heap.Push(&pq, top)
+		}
+		devices = append(devices, pick)
 	}
 
-	// Add the set of required devices to this list and return it.
-	devices = append(required, devices...)
-
-	return devices, nil
+	return append(required, devices...), nil
 }
