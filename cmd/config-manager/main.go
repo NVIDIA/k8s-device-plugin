@@ -453,6 +453,9 @@ func findPidToSignal(f *Flags) (int, error) {
 		if err != nil {
 			return -1, fmt.Errorf("error getting cmdline: %v", err)
 		}
+		if len(cmdline) == 0 {
+			continue
+		}
 		if cmdline[0] == f.ProcessToSignal {
 			return p.PID, nil
 		}
