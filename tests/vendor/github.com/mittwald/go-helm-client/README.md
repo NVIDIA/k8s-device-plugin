@@ -2,6 +2,8 @@
 Go client library for accessing [Helm](https://github.com/helm/helm), enabling the user to programmatically change helm charts and releases.
 
 This library is build upon [`helm`](https://github.com/helm/helm) and available under the MIT License.
+
+Note: The last release of this client that supports Helm v3 is **[v0.12.19](https://github.com/mittwald/go-helm-client/releases/tag/v0.12.19)**.
  
 ![Compile & Test](https://github.com/mittwald/go-helm-client/workflows/Compile%20&%20Test/badge.svg)
 [![GitHub license](https://img.shields.io/github/license/mittwald/go-helm-client.svg)](https://github.com/mittwald/go-helm-client/blob/master/LICENSE)
