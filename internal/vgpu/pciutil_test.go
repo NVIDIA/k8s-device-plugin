@@ -18,10 +18,34 @@ package vgpu
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestNvidiaPCILibDevicesWithCustomRoot(t *testing.T) {
+	root := t.TempDir()
+	busID := "0000:03:00.0"
+	deviceDir := filepath.Join(root, "bus", "pci", "devices", busID)
+	require.NoError(t, os.MkdirAll(deviceDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(deviceDir, "vendor"), []byte("0x10de\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(deviceDir, "class"), []byte("0x030000\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(deviceDir, "config"), make([]byte, 256), 0o644))
+
+	lib := NewNvidiaPCILib(root)
+	devices, err := lib.Devices()
+	require.NoError(t, err)
+	require.Len(t, devices, 1)
+	require.Equal(t, busID, devices[0].Address)
+}
+
+func TestNvidiaPCILibDevicesMissingRoot(t *testing.T) {
+	lib := NewNvidiaPCILib("/nonexistent-sysfs-root")
+	_, err := lib.Devices()
+	require.Error(t, err)
+}
 
 func TestGetVendorSpecificCapability(t *testing.T) {
 	devices, _ := NewMockNvidiaPCI().Devices()

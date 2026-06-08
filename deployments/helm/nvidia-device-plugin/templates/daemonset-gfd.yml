@@ -178,6 +178,10 @@ spec:
           - name: DEVICE_DISCOVERY_STRATEGY
             value: {{ .Values.deviceDiscoveryStrategy }}
         {{- end }}
+        {{- if typeIs "string" .Values.sysfsRoot }}
+          - name: SYSFS_ROOT
+            value: {{ .Values.sysfsRoot }}
+        {{- end }}
         securityContext:
           {{- include "gpu-feature-discovery.securityContext" . | nindent 10 }}
         volumeMounts:
@@ -185,6 +189,11 @@ spec:
             mountPath: "/etc/kubernetes/node-feature-discovery/features.d"
           - name: host-sys
             mountPath: "/sys"
+        {{- if and (typeIs "string" .Values.sysfsRoot) (typeIs "string" .Values.sysfsHostPath) }}
+          - name: sysfs-root
+            mountPath: {{ .Values.sysfsRoot }}
+            readOnly: true
+        {{- end }}
         {{- if $options.hasConfigMap }}
           - name: available-configs
             mountPath: /available-configs
@@ -208,6 +217,12 @@ spec:
           hostPath:
             path: {{ clean ( join "/" ( list "/" .Values.nvidiaDriverRoot ) ) | quote }}
             type: Directory
+        {{- if and (typeIs "string" .Values.sysfsRoot) (typeIs "string" .Values.sysfsHostPath) }}
+        - name: sysfs-root
+          hostPath:
+            path: {{ .Values.sysfsHostPath }}
+            type: Directory
+        {{- end }}
       {{- if $options.hasConfigMap }}
         - name: available-configs
           configMap:

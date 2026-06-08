@@ -221,6 +221,7 @@ deploying the plugin via `helm`.
 | `--mig-strategy`         | `$MIG_STRATEGY`         | `"none"`        |
 | `--fail-on-init-error`   | `$FAIL_ON_INIT_ERROR`   | `true`          |
 | `--nvidia-driver-root`   | `$NVIDIA_DRIVER_ROOT`   | `"/"`           |
+| `--sysfs-root`           | `$SYSFS_ROOT`           | `"/sys"`        |
 | `--pass-device-specs`    | `$PASS_DEVICE_SPECS`    | `false`         |
 | `--device-list-strategy` | `$DEVICE_LIST_STRATEGY` | `"envvar"`      |
 | `--device-id-strategy`   | `$DEVICE_ID_STRATEGY`   | `"uuid"`        |
@@ -234,6 +235,7 @@ flags:
   migStrategy: "none"
   failOnInitError: true
   nvidiaDriverRoot: "/"
+  sysfsRoot: "/sys"
   plugin:
     passDeviceSpecs: false
     deviceListStrategy: "envvar"

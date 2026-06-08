@@ -166,6 +166,10 @@ spec:
           - name: NVIDIA_DEV_ROOT
             value: "{{ .Values.nvidiaDevRoot }}"
         {{- end }}
+        {{- if typeIs "string" .Values.sysfsRoot }}
+          - name: SYSFS_ROOT
+            value: {{ .Values.sysfsRoot }}
+        {{- end }}
         {{- if typeIs "string" .Values.cdi.nvidiaHookPath }}
           - name: NVIDIA_CDI_HOOK_PATH
             value: {{ .Values.cdi.nvidiaHookPath }}
@@ -214,6 +218,11 @@ spec:
             mountPath: /driver-root
             readOnly: true
         {{- end }}
+        {{- if and (typeIs "string" .Values.sysfsRoot) (typeIs "string" .Values.sysfsHostPath) }}
+          - name: sysfs-root
+            mountPath: {{ .Values.sysfsRoot }}
+            readOnly: true
+        {{- end }}
           # The MPS /dev/shm is needed to allow for MPS daemon health-checking.
           - name: mps-shm
             mountPath: /dev/shm
@@ -247,6 +256,12 @@ spec:
         - name: driver-root
           hostPath:
             path: {{ .Values.nvidiaDriverRoot }}
+            type: Directory
+        {{- end }}
+        {{- if and (typeIs "string" .Values.sysfsRoot) (typeIs "string" .Values.sysfsHostPath) }}
+        - name: sysfs-root
+          hostPath:
+            path: {{ .Values.sysfsHostPath }}
             type: Directory
         {{- end }}
         - name: cdi-root
