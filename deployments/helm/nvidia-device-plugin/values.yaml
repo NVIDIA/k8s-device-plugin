@@ -45,6 +45,10 @@ deviceIDStrategy: null
 nvidiaDriverRoot: null
 # @schema type:[string, null]
 nvidiaDevRoot: null
+# @schema type:[string, null]
+sysfsRoot: null
+# @schema type:[string, null]
+sysfsHostPath: null
 # @schema type:[boolean, null]
 gdrcopyEnabled: null
 # @schema type:[boolean, null]
