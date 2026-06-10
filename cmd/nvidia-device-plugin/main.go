@@ -84,6 +84,12 @@ func main() {
 			Usage:   "the root path for the NVIDIA device nodes on the host (typical values are '/' or '/run/nvidia/driver')",
 			EnvVars: []string{"NVIDIA_DEV_ROOT"},
 		},
+		&cli.StringFlag{
+			Name:    "sysfs-root",
+			Value:   spec.DefaultSysfsRoot,
+			Usage:   "the root path for sysfs; used for PCI device NUMA detection",
+			EnvVars: []string{"SYSFS_ROOT"},
+		},
 		&cli.BoolFlag{
 			Name:    "pass-device-specs",
 			Value:   false,
