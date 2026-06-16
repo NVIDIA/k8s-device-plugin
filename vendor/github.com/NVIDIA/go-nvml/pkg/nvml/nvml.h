@@ -1,7 +1,7 @@
-/*** NVML VERSION: 13.1.115 ***/
-/*** From https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvml_dev/linux-x86_64/cuda_nvml_dev-linux-x86_64-13.1.115-archive.tar.xz ***/
+/*** NVML VERSION: 13.2.82 ***/
+/*** From https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvml_dev/linux-x86_64/cuda_nvml_dev-linux-x86_64-13.2.82-archive.tar.xz ***/
 /*
- * Copyright 1993-2025 NVIDIA Corporation.  All rights reserved.
+ * Copyright 1993-2026 NVIDIA Corporation.  All rights reserved.
  *
  * NOTICE TO USER:
  *
@@ -906,7 +906,7 @@ typedef enum nvmlBrandType_enum
     NVML_BRAND_TITAN                = 6,
     NVML_BRAND_NVIDIA_VAPPS         = 7,   // NVIDIA Virtual Applications
     NVML_BRAND_NVIDIA_VPC           = 8,   // NVIDIA Virtual PC
-    NVML_BRAND_NVIDIA_VCS           = 9,   // NVIDIA Virtual Compute Server
+    NVML_BRAND_NVIDIA_VCS           = 9,   // NVIDIA vGPU for Compute
     NVML_BRAND_NVIDIA_VWS           = 10,  // NVIDIA RTX Virtual Workstation
     NVML_BRAND_NVIDIA_CLOUD_GAMING  = 11,  // NVIDIA Cloud Gaming
     NVML_BRAND_NVIDIA_VGAMING       = NVML_BRAND_NVIDIA_CLOUD_GAMING,  // Deprecated from API reporting. Keeping definition for backward compatibility.
@@ -1493,6 +1493,16 @@ typedef struct
 typedef nvmlEccSramUniqueUncorrectedErrorCounts_v1_t nvmlEccSramUniqueUncorrectedErrorCounts_t;
 #define nvmlEccSramUniqueUncorrectedErrorCounts_v1 NVML_STRUCT_VERSION(EccSramUniqueUncorrectedErrorCounts, 1) //!< Version macro for \a nvmlEccSramUniqueUncorrectedErrorCounts_v1_t
 
+typedef struct nvmlRemappedRowsInfo_v2_t
+{
+    unsigned int corrActiveRemaps;      //!< Number of active row remappings due to correctable errors
+    unsigned int corrInactiveRemaps;    //!< Number of inactive row remappings due to correctable errors
+    unsigned int uncActiveRemaps;       //!< Number of active row remappings due to uncorrectable errors
+    unsigned int uncInactiveRemaps;     //!< Number of inactive row remappings due to uncorrectable errors
+    unsigned int bPending;              //!< Whether or not there is any pending row remapping; 0 indicates not pending, 1 indicates pending
+    unsigned int bFailureOccurred;      //!< Whether or not there's any row remapping failure in the past; 0 indicates no failure, 1 indicates failure occurred
+} nvmlRemappedRowsInfo_v2_t;
+
 #define NVML_RUSD_POLL_NONE        0x0                   //!< Disable RUSD polling on all metric groups
 #define NVML_RUSD_POLL_CLOCK       0x1                   //!< Enable RUSD polling on clock group
 #define NVML_RUSD_POLL_PERF        0x2                   //!< Enable RUSD polling on performance group
@@ -1983,6 +1993,9 @@ typedef nvmlVgpuRuntimeState_v1_t nvmlVgpuRuntimeState_t;
 
 #define NVML_SCHEDULER_SW_MAX_LOG_ENTRIES 200 //!< Maximum number of scheduler log entries.
 
+/*
+ * @deprecated Adaptive Round Robin mode is always enabled
+ */
 #define NVML_VGPU_SCHEDULER_ARR_DEFAULT   0 //!< Default Adaptive Round Robin mode.
 #define NVML_VGPU_SCHEDULER_ARR_DISABLE   1 //!< Disable Adaptive Round Robin mode.
 #define NVML_VGPU_SCHEDULER_ARR_ENABLE    2 //!< Enable Adaptive Round Robin mode.
@@ -1992,6 +2005,8 @@ typedef nvmlVgpuRuntimeState_v1_t nvmlVgpuRuntimeState_t;
  * A GPU or GI may support a subset of engines
  */
 #define NVML_VGPU_SCHEDULER_ENGINE_TYPE_GRAPHICS  1 //!< Graphics engine.
+#define NVML_VGPU_SCHEDULER_ENGINE_TYPE_NVENC1    2 //!< NVENC1
+#define NVML_VGPU_SCHEDULER_ENGINE_TYPE_NVENC0    3 //!< NVENC0
 
 /**
  * Union to represent the vGPU Scheduler Parameters
@@ -2166,11 +2181,11 @@ typedef struct nvmlGridLicensableFeatures_st
  * Enum describing the GPU Recovery Action
  */
 typedef enum nvmlDeviceGpuRecoveryAction_s  {
-    NVML_GPU_RECOVERY_ACTION_NONE = 0,
-    NVML_GPU_RECOVERY_ACTION_GPU_RESET = 1,
-    NVML_GPU_RECOVERY_ACTION_NODE_REBOOT = 2,
-    NVML_GPU_RECOVERY_ACTION_DRAIN_P2P = 3,
-    NVML_GPU_RECOVERY_ACTION_DRAIN_AND_RESET = 4,
+    NVML_GPU_RECOVERY_ACTION_NONE = 0,                //!< No action needed
+    NVML_GPU_RECOVERY_ACTION_GPU_RESET = 1,           //!< Reset Gpu
+    NVML_GPU_RECOVERY_ACTION_NODE_REBOOT = 2,         //!< Reboot Node
+    NVML_GPU_RECOVERY_ACTION_DRAIN_P2P = 3,           //!< Drain P2P
+    NVML_GPU_RECOVERY_ACTION_DRAIN_AND_RESET = 4,     //!< Drain P2P and Reset Gpu
 } nvmlDeviceGpuRecoveryAction_t;
 
 /**
@@ -2266,6 +2281,55 @@ typedef struct
 } nvmlVgpuCreatablePlacementInfo_v1_t;
 typedef nvmlVgpuCreatablePlacementInfo_v1_t nvmlVgpuCreatablePlacementInfo_t;
 #define nvmlVgpuCreatablePlacementInfo_v1 NVML_STRUCT_VERSION(VgpuCreatablePlacementInfo, 1) //!< Version macro for \a nvmlVgpuCreatablePlacementInfo_v1_t
+
+/**
+ * Structure to store vGPU scheduler state information
+ */
+typedef struct
+{
+    unsigned int    engineId;            //!< IN:  Engine whose software scheduler state info is fetched. One of NVML_VGPU_SCHEDULER_ENGINE_TYPE_*.
+    unsigned int    schedulerPolicy;     //!< OUT: Scheduler policy
+    unsigned int    avgFactor;           //!< OUT: Average factor in compensating the timeslice for Adaptive Round Robin mode. 0 when there is no active scheduling
+    unsigned int    timeslice;           //!< OUT: The timeslice in ns for each software run list as configured, or the default value otherwise. 0 when there is no active scheduling
+} nvmlVgpuSchedulerStateInfo_v2_t;
+
+/**
+* Structure to store the state and logs of a software runlist
+*/
+typedef struct
+{
+    unsigned long long         timestamp;                  //!< OUT: Timestamp in ns when this software runlist was preeempted
+    unsigned long long         timeRunTotal;               //!< OUT: Total time in ns this software runlist has run
+    unsigned long long         timeRun;                    //!< OUT: Time in ns this software runlist ran before preemption
+    unsigned int               swRunlistId;                //!< OUT: Software runlist Id
+    unsigned long long         targetTimeSlice;            //!< OUT: The actual timeslice after deduction
+    unsigned long long         cumulativePreemptionTime;   //!< OUT: Preemption time in ns for this SW runlist
+    unsigned int               weight;                     //!< OUT: Current weight of this SW runlist
+} nvmlVgpuSchedulerLogEntry_v2_t;
+
+/**
+* Structure to store vGPU scheduler log information
+*/
+typedef struct
+{
+    unsigned int                   engineId;                                      //!< IN: Engine whose software runlist log entries are fetched. One of One of NVML_VGPU_SCHEDULER_ENGINE_TYPE_*.
+    unsigned int                   schedulerPolicy;                               //!< OUT: Scheduler policy
+    unsigned int                   avgFactor;                                     //!< OUT: Average factor in compensating the timeslice for Adaptive Round Robin mode. 0 when there is no active scheduling
+    unsigned int                   timeslice;                                     //!< OUT: The timeslice in ns for each software run list as configured, or the default value otherwise. 0 when there is no active scheduling
+    unsigned int                   entriesCount;                                  //!< OUT: Count of log entries fetched
+    nvmlVgpuSchedulerLogEntry_v2_t logEntries[NVML_SCHEDULER_SW_MAX_LOG_ENTRIES]; //!< OUT: Structure to store the state and logs of a software runlist
+} nvmlVgpuSchedulerLogInfo_v2_t;
+
+/**
+ * Structure to set vGPU scheduler state information
+ */
+typedef struct
+{
+    unsigned int    engineId;           //!< IN: One of NVML_VGPU_SCHEDULER_ENGINE_TYPE_*.
+    unsigned int    schedulerPolicy;    //!< IN: Scheduler policy
+    unsigned int    avgFactor;          //!< IN: Average factor in compensating the timeslice for Adaptive Round Robin mode. 0 or unspecified uses default.
+    unsigned int    frequency;          //!< IN: Frequency for Adaptive Round Robin mode. 0 or unspecified uses default.
+} nvmlVgpuSchedulerState_v2_t;
 
 /** @} */
 /** @} */
@@ -2862,7 +2926,17 @@ typedef nvmlVgpuCreatablePlacementInfo_v1_t nvmlVgpuCreatablePlacementInfo_t;
  * will be activated.
  */
 #define NVML_FI_PWR_SMOOTHING_ADMIN_OVERRIDE_PRIMARY_FLOOR_ACT_OFFSET   288
-#define NVML_FI_MAX                                              289 //!< One greater than the largest field ID defined above
+#define NVML_FI_DEV_NVLINK_COUNT_RAW_ERRORS_LANE0                289 //!< NVLINK raw error count for lane 0
+#define NVML_FI_DEV_NVLINK_COUNT_RAW_ERRORS_LANE1                290 //!< NVLINK raw error count for lane 1
+#define NVML_FI_DEV_NVLINK_COUNT_RAW_BER_LANE0_V2                291 //!< NVLINK raw BER for lane 0
+#define NVML_FI_DEV_NVLINK_COUNT_RAW_BER_LANE1_V2                292 //!< NVLINK raw BER for lane 1
+#define NVML_FI_DEV_NVLINK_COUNT_RAW_BER_V2                      293 //!< NVLINK total raw BER
+#define NVML_FI_DEV_NVLINK_PLR_XMIT_BLOCKS                       294 //!< NVLINK PLR Xmit Blocks
+#define NVML_FI_DEV_NVLINK_PLR_XMIT_RETRY_BLOCKS                 295 //!< NVLINK PLR Xmit Retry Blocks
+
+#define NVML_FI_DEV_REMAPPED_ROWS_COR_INACTIVE                  301 //!< Number of inactive row remappings due to correctable errors
+#define NVML_FI_DEV_REMAPPED_ROWS_UNC_INACTIVE                  302 //!< Number of inactive row remappings due to uncorrectable errors
+#define NVML_FI_MAX                                             303 //!< One greater than the largest field ID defined above
 
 /**
  * NVML_FI_DEV_NVLINK_GET_POWER_THRESHOLD_UNITS
@@ -3748,9 +3822,20 @@ typedef struct
 #define NVML_GPU_FABRIC_HEALTH_MASK_INCORRECT_CONFIGURATION_INSUFFICIENT_NVLINKS 5 //!< Fabric Health Mask: Incorrect Configuration - Insufficient Nvlinks
 #define NVML_GPU_FABRIC_HEALTH_MASK_INCORRECT_CONFIGURATION_INCOMPATIBLE_GPU_FW  6 //!< Fabric Health Mask: Incorrect Configuration - Incompatible GPU Firmware
 #define NVML_GPU_FABRIC_HEALTH_MASK_INCORRECT_CONFIGURATION_INVALID_LOCATION     7 //!< Fabric Health Mask: Incorrect Configuration - Invalid Location
+#define NVML_GPU_FABRIC_HEALTH_MASK_INCORRECT_CONFIGURATION_GPU_STATE_INVALID    8 //!< Fabric Health Mask: Incorrect Configuration - GPU State Invalid
 
 #define NVML_GPU_FABRIC_HEALTH_MASK_SHIFT_INCORRECT_CONFIGURATION 8                //!< Fabric Health Mask Bit Shift for Incorrect Configuration
 #define NVML_GPU_FABRIC_HEALTH_MASK_WIDTH_INCORRECT_CONFIGURATION 0xf              //!< Fabric Health Mask Width for Incorrect Configuration
+
+/**
+ * Fabric Partition Assigned
+ */
+#define NVML_GPU_FABRIC_HEALTH_MASK_PARTITION_ASSIGNED_NOT_SUPPORTED 0 //!< Fabric Health Mask: Partition Assigned not supported
+#define NVML_GPU_FABRIC_HEALTH_MASK_PARTITION_ASSIGNED_TRUE          1 //!< Fabric Health Mask: Partition is Assigned
+#define NVML_GPU_FABRIC_HEALTH_MASK_PARTITION_ASSIGNED_FALSE         2 //!< Fabric Health Mask: Partition is not Assigned
+
+#define NVML_GPU_FABRIC_HEALTH_MASK_SHIFT_PARTITION_ASSIGNED 12        //!< Fabric Health Mask Bit Shift for Partition Assigned
+#define NVML_GPU_FABRIC_HEALTH_MASK_WIDTH_PARTITION_ASSIGNED 0x3       //!< Fabric Health Mask Width for Partition Assigned
 
 /**
  * Fabric Health
@@ -10233,6 +10318,30 @@ nvmlReturn_t DECLDIR nvmlVgpuInstanceGetRuntimeStateSize(nvmlVgpuInstance_t vgpu
 nvmlReturn_t DECLDIR nvmlDeviceSetVgpuCapabilities(nvmlDevice_t device, nvmlDeviceVgpuCapability_t capability, nvmlEnableState_t state);
 
 /**
+ * Executes a forced GSP unload operation on a device
+ *
+ * For Ada &tm; or newer fully supported devices.
+ * Forces the unload of the GSP firmware on a device currently operating in vGPU mode. This operation forcibly removes
+ * the GSP from the targeted GPU and terminates all GSP operations.
+ *
+ * @note This is a disruptive operation that will impact any active vGPU instances and should only be used when
+ * absolutely necessary, such as during error recovery or maintenance operations.
+ *
+ * @warning This operation may result in a temporary loss of GPU functionality and should be used with caution.
+ *
+ * @param device                               The identifier of the target device
+ *
+ * @return
+ *      - \ref NVML_SUCCESS                    GSP reset completed successfully
+ *      - \ref NVML_ERROR_UNINITIALIZED        If the library has not been successfully initialized
+ *      - \ref NVML_ERROR_INVALID_ARGUMENT     If \a device is invalid or null
+ *      - \ref NVML_ERROR_NOT_SUPPORTED        The API is not supported in current state, or \a device not in vGPU mode
+ *      - \ref NVML_ERROR_NO_PERMISSION        The user doesn't have permission to perform this operation
+ *      - \ref NVML_ERROR_UNKNOWN              On any unexpected error during GSP reset operation
+ */
+nvmlReturn_t DECLDIR nvmlDeviceVgpuForceGspUnload(nvmlDevice_t device);
+
+/**
  * Retrieve the vGPU Software licensable features.
  *
  * Identifies whether the system supports vGPU Software Licensing. If it does, return the list of licensable feature(s)
@@ -11063,6 +11172,8 @@ nvmlReturn_t DECLDIR nvmlVgpuTypeGetMaxInstancesPerGpuInstance(nvmlVgpuTypeMaxIn
 nvmlReturn_t DECLDIR nvmlGpuInstanceGetActiveVgpus(nvmlGpuInstance_t gpuInstance, nvmlActiveVgpuInstanceInfo_t *pVgpuInstanceInfo);
 
 /**
+ * @deprecated Will be deprecated in a future release. Use \ref nvmlGpuInstanceSetVgpuSchedulerState_v2 instead
+ *
  * Set vGPU scheduler state for the given GPU instance
  *
  * For Blackwell &tm GB20x; or newer fully supported devices.
@@ -11085,9 +11196,11 @@ nvmlReturn_t DECLDIR nvmlGpuInstanceGetActiveVgpus(nvmlGpuInstance_t gpuInstance
  *         - \ref NVML_ERROR_ARGUMENT_VERSION_MISMATCH  If the version of \a pScheduler is invalid
  *         - \ref NVML_ERROR_UNKNOWN                    On any unexpected error
  */
-nvmlReturn_t DECLDIR nvmlGpuInstanceSetVgpuSchedulerState(nvmlGpuInstance_t gpuInstance, nvmlVgpuSchedulerState_t *pScheduler);
+DEPRECATED(13.0) nvmlReturn_t DECLDIR nvmlGpuInstanceSetVgpuSchedulerState(nvmlGpuInstance_t gpuInstance, nvmlVgpuSchedulerState_t *pScheduler);
 
 /**
+ * @deprecated Will be deprecated in a future release. Use \ref nvmlGpuInstanceGetVgpuSchedulerState_v2 instead
+ *
  * Returns the vGPU scheduler state for the given GPU instance.
  * The information returned in \a nvmlVgpuSchedulerStateInfo_t is not relevant if the BEST EFFORT policy is set.
  *
@@ -11105,9 +11218,11 @@ nvmlReturn_t DECLDIR nvmlGpuInstanceSetVgpuSchedulerState(nvmlGpuInstance_t gpuI
  *         - \ref NVML_ERROR_ARGUMENT_VERSION_MISMATCH  If the version of \a pSchedulerStateInfo is invalid
  *         - \ref NVML_ERROR_UNKNOWN                    on any unexpected error
  */
-nvmlReturn_t DECLDIR nvmlGpuInstanceGetVgpuSchedulerState(nvmlGpuInstance_t gpuInstance, nvmlVgpuSchedulerStateInfo_t *pSchedulerStateInfo);
+DEPRECATED(13.0) nvmlReturn_t DECLDIR nvmlGpuInstanceGetVgpuSchedulerState(nvmlGpuInstance_t gpuInstance, nvmlVgpuSchedulerStateInfo_t *pSchedulerStateInfo);
 
 /**
+ * @deprecated Will be deprecated in a future release. Use \ref nvmlGpuInstanceGetVgpuSchedulerLog_v2 instead
+ *
  * Returns the vGPU scheduler logs for the given GPU instance.
  * \a pSchedulerLogInfo points to a caller-allocated structure to contain the logs. The number of elements returned will
  * never exceed \a NVML_SCHEDULER_SW_MAX_LOG_ENTRIES.
@@ -11128,7 +11243,7 @@ nvmlReturn_t DECLDIR nvmlGpuInstanceGetVgpuSchedulerState(nvmlGpuInstance_t gpuI
  *         - \ref NVML_ERROR_ARGUMENT_VERSION_MISMATCH  If the version of \a pSchedulerLogInfo is invalid
  *         - \ref NVML_ERROR_UNKNOWN                    on any unexpected error
  */
-nvmlReturn_t DECLDIR nvmlGpuInstanceGetVgpuSchedulerLog(nvmlGpuInstance_t gpuInstance, nvmlVgpuSchedulerLogInfo_t *pSchedulerLogInfo);
+DEPRECATED(13.0) nvmlReturn_t DECLDIR nvmlGpuInstanceGetVgpuSchedulerLog(nvmlGpuInstance_t gpuInstance, nvmlVgpuSchedulerLogInfo_t *pSchedulerLogInfo);
 
 /**
  * Query the creatable vGPU placement ID of the vGPU type within a GPU instance.
@@ -11213,6 +11328,128 @@ nvmlReturn_t DECLDIR nvmlGpuInstanceGetVgpuHeterogeneousMode(nvmlGpuInstance_t g
  *         - \ref NVML_ERROR_UNKNOWN                    On any unexpected error
  */
 nvmlReturn_t DECLDIR nvmlGpuInstanceSetVgpuHeterogeneousMode(nvmlGpuInstance_t gpuInstance, const nvmlVgpuHeterogeneousMode_t *pHeterogeneousMode);
+
+/**
+ * Returns the vGPU scheduler state.
+ * The information returned in \a nvmlVgpuSchedulerStateInfo_v2_t is not relevant if the BEST EFFORT policy is set.
+ *
+ * For Pascal &tm; or newer fully supported devices.
+ *
+ * @param device                  The identifier of the target \a device
+ * @param pSchedulerStateInfo     Reference in which \a pSchedulerStateInfo is returned
+ *
+ * @return
+ *         - \ref NVML_SUCCESS                   vGPU scheduler state is successfully obtained
+ *         - \ref NVML_ERROR_INVALID_ARGUMENT    If \a pSchedulerStateInfo is NULL or \a device is invalid
+ *         - \ref NVML_ERROR_NOT_SUPPORTED       If MIG is enabled or \a device not in vGPU host mode
+ *         - \ref NVML_ERROR_UNKNOWN             On any unexpected error
+ */
+nvmlReturn_t DECLDIR nvmlDeviceGetVgpuSchedulerState_v2(nvmlDevice_t device, nvmlVgpuSchedulerStateInfo_v2_t *pSchedulerStateInfo);
+
+/**
+ * Returns the vGPU scheduler state for the given GPU instance.
+ * The information returned in \a nvmlVgpuSchedulerStateInfo_v2_t is not relevant if the BEST EFFORT policy is set.
+ *
+ * For Blackwell &tm GB20x; or newer fully supported devices.
+ *
+ * @param gpuInstance                The GPU instance handle
+ * @param pSchedulerStateInfo        Reference in which \a pSchedulerStateInfo is returned
+ *
+ * @return
+ *         - \ref NVML_SUCCESS                          vGPU scheduler state is successfully obtained
+ *         - \ref NVML_ERROR_UNINITIALIZED              If library has not been successfully initialized
+ *         - \ref NVML_ERROR_INVALID_ARGUMENT           If \a gpuInstance is NULL or invalid, or \a pSchedulerStateInfo is NULL
+ *                                                      or GPU Instance Id is invalid
+ *         - \ref NVML_ERROR_NOT_SUPPORTED              If not on a vGPU host or an unsupported GPU
+ *         - \ref NVML_ERROR_UNKNOWN                    on any unexpected error
+ */
+nvmlReturn_t DECLDIR nvmlGpuInstanceGetVgpuSchedulerState_v2(nvmlGpuInstance_t gpuInstance, nvmlVgpuSchedulerStateInfo_v2_t *pSchedulerStateInfo);
+
+/**
+* Returns the vGPU Software scheduler logs for the device.
+* \a pSchedulerLogInfo points to a caller-allocated structure to contain the logs. The number of elements returned will
+* never exceed \a NVML_SCHEDULER_SW_MAX_LOG_ENTRIES.
+*
+* To get the entire logs, call the function atleast 5 times a second.
+*
+* For Pascal &tm; or newer fully supported devices.
+*
+* @param device                    The identifier of the target \a device
+* @param pSchedulerLogInfo         Reference in which \a pSchedulerLogInfo is written
+*
+* @return
+*         - \ref NVML_SUCCESS                  vGPU scheduler logs were successfully obtained
+*         - \ref NVML_ERROR_INVALID_ARGUMENT   If \a pSchedulerLogInfo is NULL or \a device is invalid
+*         - \ref NVML_ERROR_NOT_SUPPORTED      If MIG is enabled or \a device not in vGPU host mode
+*         - \ref NVML_ERROR_UNKNOWN            On any unexpected error
+*/
+nvmlReturn_t DECLDIR nvmlDeviceGetVgpuSchedulerLog_v2(nvmlDevice_t device, nvmlVgpuSchedulerLogInfo_v2_t *pSchedulerLogInfo);
+
+/**
+* Returns the vGPU scheduler logs for the given GPU instance.
+* \a pSchedulerLogInfo points to a caller-allocated structure to contain the logs. The number of elements returned will
+* never exceed \a NVML_SCHEDULER_SW_MAX_LOG_ENTRIES.
+*
+* To get the entire logs, call the function atleast 5 times a second.
+*
+* For Blackwell &tm GB20x; or newer fully supported devices.
+*
+* @param gpuInstance               The GPU instance handle
+* @param pSchedulerLogInfo         Reference in which \a pSchedulerLogInfo is written
+*
+* @return
+*         - \ref NVML_SUCCESS                         vGPU scheduler logs are successfully obtained
+*         - \ref NVML_ERROR_UNINITIALIZED             If library has not been successfully initialized
+*         - \ref NVML_ERROR_INVALID_ARGUMENT          If \a gpuInstance is NULL or invalid, or \a pSchedulerLogInfo is NULL
+*                                                     or GPU Instance Id is invalid
+*         - \ref NVML_ERROR_NOT_SUPPORTED             If not on a vGPU host or an unsupported GPU
+*         - \ref NVML_ERROR_UNKNOWN                   on any unexpected error
+*/
+nvmlReturn_t DECLDIR nvmlGpuInstanceGetVgpuSchedulerLog_v2(nvmlGpuInstance_t gpuInstance, nvmlVgpuSchedulerLogInfo_v2_t *pSchedulerLogInfo);
+
+/**
+ * Sets the vGPU scheduler state.
+ *
+ * For Pascal &tm; or newer fully supported devices.
+ *
+ * The scheduler state change won't persist across module load/unload.
+ * Scheduler state and params will be allowed to set only when no VM is running.
+ *
+ * @param device                The identifier of the target \a device
+ * @param pSchedulerState       vGPU \a pSchedulerState to set
+ *
+ * @return
+ *         - \ref NVML_SUCCESS                  vGPU scheduler state has been successfully set
+ *         - \ref NVML_ERROR_INVALID_ARGUMENT   If \a pSchedulerState is NULL or \a device is invalid
+ *         - \ref NVML_ERROR_RESET_REQUIRED     If setting \a pSchedulerState failed with fatal error,
+ *                                              reboot is required to overcome from this error.
+ *         - \ref NVML_ERROR_NOT_SUPPORTED      If MIG is enabled or \a device not in vGPU host mode
+ *                                              or if any vGPU instance currently exists on the \a device
+ *         - \ref NVML_ERROR_UNKNOWN            On any unexpected error
+ */
+nvmlReturn_t DECLDIR nvmlDeviceSetVgpuSchedulerState_v2(nvmlDevice_t device, nvmlVgpuSchedulerState_v2_t *pSchedulerState);
+
+/**
+ * Set vGPU scheduler state for the given GPU instance
+ *
+ * For Blackwell &tm GB20x; or newer fully supported devices.
+ *
+ * Scheduler state and params will be allowed to set only when no VM is running within the GPU instance.
+ *
+ * The scheduler state change won't persist across module load/unload and GPU Instance creation/deletion.
+ *
+ * @param gpuInstance                          The GPU instance handle
+ * @param pSchedulerState                      Pointer to the caller-provided structure of nvmlVgpuSchedulerState_v2_t
+ *
+ * @return
+ *         - \ref NVML_SUCCESS                          Upon success
+ *         - \ref NVML_ERROR_INVALID_ARGUMENT           If \a gpuInstance is NULL or invalid, or \a pSchedulerState is NULL
+ *                                                      or GPU Instance Id is invalid
+ *         - \ref NVML_ERROR_RESET_REQUIRED             If setting the state failed with fatal error, reboot is required
+ *         - \ref NVML_ERROR_NOT_SUPPORTED              If not on a vGPU host or an unsupported GPU or if any vGPU instance exists
+ *         - \ref NVML_ERROR_UNKNOWN                    On any unexpected error
+ */
+nvmlReturn_t DECLDIR nvmlGpuInstanceSetVgpuSchedulerState_v2(nvmlGpuInstance_t gpuInstance, nvmlVgpuSchedulerState_v2_t *pSchedulerState);
 
 /** @} */
 
@@ -11393,6 +11630,8 @@ nvmlReturn_t DECLDIR nvmlGetVgpuCompatibility(nvmlVgpuMetadata_t *vgpuMetadata, 
 nvmlReturn_t DECLDIR nvmlDeviceGetPgpuMetadataString(nvmlDevice_t device, char *pgpuMetadata, unsigned int *bufferSize);
 
 /**
+ * @deprecated Will be deprecated in a future release. Use \ref nvmlDeviceGetVgpuSchedulerLog_v2 instead
+ *
  * Returns the vGPU Software scheduler logs.
  * \a pSchedulerLog points to a caller-allocated structure to contain the logs. The number of elements returned will
  * never exceed \a NVML_SCHEDULER_SW_MAX_LOG_ENTRIES.
@@ -11410,9 +11649,11 @@ nvmlReturn_t DECLDIR nvmlDeviceGetPgpuMetadataString(nvmlDevice_t device, char *
  *         - \ref NVML_ERROR_NOT_SUPPORTED       If MIG is enabled or \a device not in vGPU host mode
  *         - \ref NVML_ERROR_UNKNOWN             On any unexpected error
  */
-nvmlReturn_t DECLDIR nvmlDeviceGetVgpuSchedulerLog(nvmlDevice_t device, nvmlVgpuSchedulerLog_t *pSchedulerLog);
+DEPRECATED(13.0) nvmlReturn_t DECLDIR nvmlDeviceGetVgpuSchedulerLog(nvmlDevice_t device, nvmlVgpuSchedulerLog_t *pSchedulerLog);
 
 /**
+ * @deprecated Will be deprecated in a future release. Use \ref nvmlDeviceGetVgpuSchedulerState_v2 instead
+ *
  * Returns the vGPU scheduler state.
  * The information returned in \a nvmlVgpuSchedulerGetState_t is not relevant if the BEST EFFORT policy is set.
  *
@@ -11427,7 +11668,34 @@ nvmlReturn_t DECLDIR nvmlDeviceGetVgpuSchedulerLog(nvmlDevice_t device, nvmlVgpu
  *         - \ref NVML_ERROR_NOT_SUPPORTED       If MIG is enabled or \a device not in vGPU host mode
  *         - \ref NVML_ERROR_UNKNOWN             On any unexpected error
  */
-nvmlReturn_t DECLDIR nvmlDeviceGetVgpuSchedulerState(nvmlDevice_t device, nvmlVgpuSchedulerGetState_t *pSchedulerState);
+DEPRECATED(13.0) nvmlReturn_t DECLDIR nvmlDeviceGetVgpuSchedulerState(nvmlDevice_t device, nvmlVgpuSchedulerGetState_t *pSchedulerState);
+
+/**
+ * @deprecated Will be deprecated in a future release. Use \ref nvmlDeviceSetVgpuSchedulerState_v2 instead
+ *
+ * Sets the vGPU scheduler state.
+ *
+ * For Pascal &tm; or newer fully supported devices.
+ *
+ * The scheduler state change won't persist across module load/unload.
+ * Scheduler state and params will be allowed to set only when no VM is running.
+ * In \a nvmlVgpuSchedulerSetState_t, IFF enableARRMode is enabled then
+ * provide avgFactorForARR and frequency as input. If enableARRMode is disabled
+ * then provide timeslice as input.
+ *
+ * @param device                The identifier of the target \a device
+ * @param pSchedulerState       vGPU \a pSchedulerState to set
+ *
+ * @return
+ *         - \ref NVML_SUCCESS                  vGPU scheduler state has been successfully set
+ *         - \ref NVML_ERROR_INVALID_ARGUMENT   If \a pSchedulerState is NULL or \a device is invalid
+ *         - \ref NVML_ERROR_RESET_REQUIRED     If setting \a pSchedulerState failed with fatal error,
+ *                                              reboot is required to overcome from this error.
+ *         - \ref NVML_ERROR_NOT_SUPPORTED      If MIG is enabled or \a device not in vGPU host mode
+ *                                              or if any vGPU instance currently exists on the \a device
+ *         - \ref NVML_ERROR_UNKNOWN            On any unexpected error
+ */
+DEPRECATED(13.0) nvmlReturn_t DECLDIR nvmlDeviceSetVgpuSchedulerState(nvmlDevice_t device, nvmlVgpuSchedulerSetState_t *pSchedulerState);
 
 /**
  * Returns the vGPU scheduler capabilities.
@@ -11451,31 +11719,6 @@ nvmlReturn_t DECLDIR nvmlDeviceGetVgpuSchedulerState(nvmlDevice_t device, nvmlVg
  *         - \ref NVML_ERROR_UNKNOWN             On any unexpected error
  */
 nvmlReturn_t DECLDIR nvmlDeviceGetVgpuSchedulerCapabilities(nvmlDevice_t device, nvmlVgpuSchedulerCapabilities_t *pCapabilities);
-
-/**
- * Sets the vGPU scheduler state.
- *
- * For Pascal &tm; or newer fully supported devices.
- *
- * The scheduler state change won't persist across module load/unload.
- * Scheduler state and params will be allowed to set only when no VM is running.
- * In \a nvmlVgpuSchedulerSetState_t, IFF enableARRMode is enabled then
- * provide avgFactorForARR and frequency as input. If enableARRMode is disabled
- * then provide timeslice as input.
- *
- * @param device                The identifier of the target \a device
- * @param pSchedulerState       vGPU \a pSchedulerState to set
- *
- * @return
- *         - \ref NVML_SUCCESS                  vGPU scheduler state has been successfully set
- *         - \ref NVML_ERROR_INVALID_ARGUMENT   If \a pSchedulerState is NULL or \a device is invalid
- *         - \ref NVML_ERROR_RESET_REQUIRED     If setting \a pSchedulerState failed with fatal error,
- *                                              reboot is required to overcome from this error.
- *         - \ref NVML_ERROR_NOT_SUPPORTED      If MIG is enabled or \a device not in vGPU host mode
- *                                              or if any vGPU instance currently exists on the \a device
- *         - \ref NVML_ERROR_UNKNOWN            On any unexpected error
- */
-nvmlReturn_t DECLDIR nvmlDeviceSetVgpuSchedulerState(nvmlDevice_t device, nvmlVgpuSchedulerSetState_t *pSchedulerState);
 
 /*
  * Virtual GPU (vGPU) version
@@ -12095,7 +12338,8 @@ nvmlReturn_t DECLDIR nvmlDeviceReadPRMCounters_v1(nvmlDevice_t device, nvmlPRMCo
 // Allocation of instance of this profile prevents allocation of
 // all but _NO_ME profiles.
 #define NVML_GPU_INSTANCE_PROFILE_2_SLICE_ALL_ME   0x10
-#define NVML_GPU_INSTANCE_PROFILE_COUNT            0x11
+#define NVML_GPU_INSTANCE_PROFILE_3_SLICE_GFX      0x11    //!< 3_SLICE gfx + media capable profile.
+#define NVML_GPU_INSTANCE_PROFILE_COUNT            0x12    //!< Total number of GPU instance profiles.
 
 /**
  * MIG GPU instance profile capability.
@@ -13057,6 +13301,7 @@ typedef enum
     NVML_GPM_METRIC_ANY_TENSOR_UTIL             = 5,    //!< Percentage of time the GPU's SMs were doing ANY tensor operations. 0.0 - 100.0
     NVML_GPM_METRIC_DFMA_TENSOR_UTIL            = 6,    //!< Percentage of time the GPU's SMs were doing DFMA tensor operations. 0.0 - 100.0
     NVML_GPM_METRIC_HMMA_TENSOR_UTIL            = 7,    //!< Percentage of time the GPU's SMs were doing HMMA tensor operations. 0.0 - 100.0
+    NVML_GPM_METRIC_DMMA_TENSOR_UTIL            = 8,    //!< Percentage of time the GPU's SMs were doing DMMA tensor operations. 0.0 - 100.0
     NVML_GPM_METRIC_IMMA_TENSOR_UTIL            = 9,    //!< Percentage of time the GPU's SMs were doing IMMA tensor operations. 0.0 - 100.0
     NVML_GPM_METRIC_DRAM_BW_UTIL                = 10,   //!< Percentage of DRAM bw used vs theoretical maximum. 0.0 - 100.0 */
     NVML_GPM_METRIC_FP64_UTIL                   = 11,   //!< Percentage of time the GPU's SMs were doing non-tensor FP64 math. 0.0 - 100.0
@@ -13120,7 +13365,6 @@ typedef enum
     NVML_GPM_METRIC_NVLINK_L16_TX_PER_SEC       = 95,   //!< NvLink write bandwidth for link 16 in MiB/sec
     NVML_GPM_METRIC_NVLINK_L17_RX_PER_SEC       = 96,   //!< NvLink read bandwidth for link 17 in MiB/sec
     NVML_GPM_METRIC_NVLINK_L17_TX_PER_SEC       = 97,   //!< NvLink write bandwidth for link 17 in MiB/sec
-    //Put new metrics for BLACKWELL here...
     NVML_GPM_METRIC_C2C_TOTAL_TX_PER_SEC        = 100,
     NVML_GPM_METRIC_C2C_TOTAL_RX_PER_SEC        = 101,
     NVML_GPM_METRIC_C2C_DATA_TX_PER_SEC         = 102,
@@ -13231,7 +13475,56 @@ typedef enum
     NVML_GPM_METRIC_GR7_CTXSW_REQUESTS          = 207,
     NVML_GPM_METRIC_GR7_CTXSW_CYCLES_PER_REQ    = 208,
     NVML_GPM_METRIC_GR7_CTXSW_ACTIVE_PCT        = 209,
-    NVML_GPM_METRIC_MAX                         = 210,  //!< Maximum value above +1. Note that changing this should also change NVML_GPM_METRICS_GET_VERSION due to struct size change
+    NVML_GPM_METRIC_SM_CYCLES_ELAPSED           = 248,  //!< The GPU's SM cycles elapsed since reboot
+    NVML_GPM_METRIC_SM_CYCLES_ACTIVE            = 249,  //!< The GPU's SM activity since reboot
+    NVML_GPM_METRIC_MMA_CYCLES_ACTIVE           = 250,  //!< The GPU's SM MMA tensor activity since reboot
+    NVML_GPM_METRIC_DMMA_CYCLES_ACTIVE          = 251,  //!< The GPU's SM DMMA tensor activity since reboot
+    NVML_GPM_METRIC_HMMA_CYCLES_ACTIVE          = 252,  //!< The GPU's SM HMMA tensor activity since reboot
+    NVML_GPM_METRIC_IMMA_CYCLES_ACTIVE          = 253,  //!< The GPU's SM IMMA tensor activity since reboot
+    NVML_GPM_METRIC_DFMA_CYCLES_ACTIVE          = 254,  //!< The GPU's SM DFMA tensor activity since reboot
+    NVML_GPM_METRIC_PCIE_TX                     = 255,  //!< The PCIe TX traffic since reboot
+    NVML_GPM_METRIC_PCIE_RX                     = 256,  //!< The PCIe RX traffic since reboot
+    NVML_GPM_METRIC_INTEGER_CYCLES_ACTIVE       = 257,  //!< The GPU's SM integer activity since reboot
+    NVML_GPM_METRIC_FP64_CYCLES_ACTIVE          = 258,  //!< The GPU's SM FP64 activity since reboot
+    NVML_GPM_METRIC_FP32_CYCLES_ACTIVE          = 259,  //!< The GPU's SM FP64 activity since reboot
+    NVML_GPM_METRIC_FP16_CYCLES_ACTIVE          = 260,  //!< The GPU's SM FP64 activity since reboot
+    NVML_GPM_METRIC_NVLINK_L0_RX                = 261,  //!< NvLink read for link 0 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L0_TX                = 262,  //!< NvLink write for link 0 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L1_RX                = 263,  //!< NvLink read for link 1 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L1_TX                = 264,  //!< NvLink write for link 1 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L2_RX                = 265,  //!< NvLink read for link 2 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L2_TX                = 266,  //!< NvLink write for link 2 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L3_RX                = 267,  //!< NvLink read for link 3 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L3_TX                = 268,  //!< NvLink write for link 3 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L4_RX                = 269,  //!< NvLink read for link 4 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L4_TX                = 270,  //!< NvLink write for link 4 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L5_RX                = 271,  //!< NvLink read for link 5 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L5_TX                = 272,  //!< NvLink write for link 5 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L6_RX                = 273,  //!< NvLink read for link 6 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L6_TX                = 274,  //!< NvLink write for link 6 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L7_RX                = 275,  //!< NvLink read for link 7 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L7_TX                = 276,  //!< NvLink write for link 7 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L8_RX                = 277,  //!< NvLink read for link 8 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L8_TX                = 278,  //!< NvLink write for link 8 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L9_RX                = 279,  //!< NvLink read for link 9 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L9_TX                = 280,  //!< NvLink write for link 9 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L10_RX               = 281,  //!< NvLink read for link 10 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L10_TX               = 282,  //!< NvLink write for link 10 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L11_RX               = 283,  //!< NvLink read for link 11 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L11_TX               = 284,  //!< NvLink write for link 11 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L12_RX               = 285,  //!< NvLink read for link 12 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L12_TX               = 286,  //!< NvLink write for link 12 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L13_RX               = 287,  //!< NvLink read for link 13 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L13_TX               = 288,  //!< NvLink write for link 13 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L14_RX               = 289,  //!< NvLink read for link 14 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L14_TX               = 290,  //!< NvLink write for link 14 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L15_RX               = 291,  //!< NvLink read for link 15 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L15_TX               = 292,  //!< NvLink write for link 15 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L16_RX               = 293,  //!< NvLink read for link 16 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L16_TX               = 294,  //!< NvLink write for link 16 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L17_RX               = 295,  //!< NvLink read for link 17 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L17_TX               = 296,  //!< NvLink write for link 17 in bytes since reboot
+    NVML_GPM_METRIC_MAX                         = 333,  //!< Maximum value above +1
 } nvmlGpmMetricId_t;
 
 /** @} */ // @defgroup nvmlGpmEnums
@@ -13363,9 +13656,10 @@ nvmlReturn_t DECLDIR nvmlGpmSampleAlloc(nvmlGpmSample_t *gpmSample);
  * For Hopper &tm; or newer fully supported devices.
  *
  * @note The interval between two \a nvmlGpmSampleGet() calls should be greater than 100ms due to
- * the internal sample refresh rate.
+ *       the internal sample refresh rate.
+ * @note This API supports the device handle and MIG device handle.
  *
- * @param device                Device to get samples for
+ * @param device                The device handle or MIG device handle to get samples for
  * @param gpmSample             Buffer to read samples into
  *
  * @return
@@ -13400,7 +13694,9 @@ nvmlReturn_t DECLDIR nvmlGpmMigSampleGet(nvmlDevice_t device, unsigned int gpuIn
  *
  * For Hopper &tm; or newer fully supported devices.
  *
- * @param device                NVML device to query for
+ * @note This API supports the device handle and MIG device handle.
+ *
+ * @param device                The device handle or MIG device handle to query for
  * @param gpmSupport            Structure to indicate GPM support \a nvmlGpmSupport_t. Indicates
  *                              GPM support per system for the supplied device
  *
@@ -13893,6 +14189,25 @@ nvmlReturn_t  DECLDIR nvmlDevicePowerSmoothingSetState(nvmlDevice_t device,
  */
 nvmlReturn_t DECLDIR nvmlDeviceGetSramUniqueUncorrectedEccErrorCounts(nvmlDevice_t device,
                                                                       nvmlEccSramUniqueUncorrectedErrorCounts_t *errorCounts);
+
+/**
+ * Get the status of row remapper.
+ *
+ * @note On MIG-enabled GPUs with active instances, querying the number of
+ * remapped rows is not supported
+ *
+ * For Ampere &tm; or newer fully supported devices.
+ *
+ * @param device                               The identifier of the target device
+ * @param info                                 Reference for \a nvmlRemappedRowsInfo_v2_t
+ *
+ * @return
+ *         - \ref NVML_SUCCESS                 Upon success
+ *         - \ref NVML_ERROR_INVALID_ARGUMENT  If \a info is invalid
+ *         - \ref NVML_ERROR_NOT_SUPPORTED     If MIG is enabled or if the device doesn't support this feature
+ *         - \ref NVML_ERROR_UNKNOWN           Unexpected error
+ */
+nvmlReturn_t DECLDIR nvmlDeviceGetRemappedRows_v2(nvmlDevice_t device, nvmlRemappedRowsInfo_v2_t *info);
 
 /**
  * Set Read-only user shared data (RUSD) settings for GPU.
