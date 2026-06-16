@@ -472,6 +472,15 @@ type EccSramUniqueUncorrectedErrorCounts struct {
 	Entries    *EccSramUniqueUncorrectedErrorEntry_v1
 }
 
+type RemappedRowsInfo_v2 struct {
+	CorrActiveRemaps   uint32
+	CorrInactiveRemaps uint32
+	UncActiveRemaps    uint32
+	UncInactiveRemaps  uint32
+	BPending           uint32
+	BFailureOccurred   uint32
+}
+
 type RusdSettings_v1 struct {
 	Version  uint32
 	PollMask uint64
@@ -863,6 +872,40 @@ type VgpuCreatablePlacementInfo struct {
 	PlacementIds  *uint32
 	PlacementSize uint32
 	Pad_cgo_0     [4]byte
+}
+
+type VgpuSchedulerStateInfo_v2 struct {
+	EngineId        uint32
+	SchedulerPolicy uint32
+	AvgFactor       uint32
+	Timeslice       uint32
+}
+
+type VgpuSchedulerLogEntry_v2 struct {
+	Timestamp                uint64
+	TimeRunTotal             uint64
+	TimeRun                  uint64
+	SwRunlistId              uint32
+	TargetTimeSlice          uint64
+	CumulativePreemptionTime uint64
+	Weight                   uint32
+	Pad_cgo_0                [4]byte
+}
+
+type VgpuSchedulerLogInfo_v2 struct {
+	EngineId        uint32
+	SchedulerPolicy uint32
+	AvgFactor       uint32
+	Timeslice       uint32
+	EntriesCount    uint32
+	LogEntries      [200]VgpuSchedulerLogEntry_v2
+}
+
+type VgpuSchedulerState_v2 struct {
+	EngineId        uint32
+	SchedulerPolicy uint32
+	AvgFactor       uint32
+	Frequency       uint32
 }
 
 type NvLinkPowerThres struct {
@@ -1438,7 +1481,7 @@ type nvmlGpmMetricsGetType struct {
 	NumMetrics uint32
 	Sample1    nvmlGpmSample
 	Sample2    nvmlGpmSample
-	Metrics    [210]GpmMetric
+	Metrics    [333]GpmMetric
 }
 
 type GpmSupport struct {
