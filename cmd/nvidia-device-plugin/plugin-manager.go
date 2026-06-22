@@ -63,6 +63,7 @@ func GetPlugins(ctx context.Context, infolib info.Interface, nvmllib nvml.Interf
 		cdi.WithMofedEnabled(*config.Flags.MOFEDEnabled),
 		cdi.WithImexChannels(imexChannels),
 		cdi.WithFeatureFlags(o.cdiFeatureFlags.Value()...),
+		cdi.WithDisabledHooks(o.cdiDisableHooks.Value()...),
 		cdi.WithDeviceDiscoveryStrategy(resolvedStrategy),
 	)
 	if err != nil {
