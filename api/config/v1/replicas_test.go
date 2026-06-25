@@ -464,3 +464,120 @@ func TestUnmarshalReplicatedResources(t *testing.T) {
 		})
 	}
 }
+
+func TestDisableResoureRenamingKeepsUserSpec(t *testing.T) {
+	const (
+		uuidA = "GPU-4cf8db2d-06c0-7d70-1a51-e59b25b2c16c"
+		uuidB = "GPU-662077db-fa3f-0d8f-9502-21ab0ef058a2"
+	)
+
+	testCases := []struct {
+		name     string
+		input    *ReplicatedResources
+		expected *ReplicatedResources
+	}{
+		{
+			name: "per-UUID rename preserved (renameByDefault=false)",
+			input: &ReplicatedResources{
+				RenameByDefault: false,
+				Resources: []ReplicatedResource{
+					{
+						Name:   NoErrorNewResourceName("nvidia.com/gpu"),
+						Rename: NoErrorNewResourceName("nvidia.com/gpu.shared"),
+						Devices: ReplicatedDevices{
+							List: []ReplicatedDeviceRef{uuidA},
+						},
+						Replicas: 2,
+					},
+				},
+			},
+			expected: &ReplicatedResources{
+				RenameByDefault: false,
+				Resources: []ReplicatedResource{
+					{
+						Name:   NoErrorNewResourceName("nvidia.com/gpu"),
+						Rename: NoErrorNewResourceName("nvidia.com/gpu.shared"),
+						Devices: ReplicatedDevices{
+							List: []ReplicatedDeviceRef{uuidA},
+						},
+						Replicas: 2,
+					},
+				},
+			},
+		},
+		{
+			name: "per-UUID devices preserved (renameByDefault=true, default rename target)",
+			input: &ReplicatedResources{
+				RenameByDefault: true,
+				Resources: []ReplicatedResource{
+					{
+						Name:   NoErrorNewResourceName("nvidia.com/gpu"),
+						Rename: NoErrorNewResourceName("nvidia.com/gpu.shared"),
+						Devices: ReplicatedDevices{
+							List: []ReplicatedDeviceRef{uuidA, uuidB},
+						},
+						Replicas: 2,
+					},
+				},
+			},
+			expected: &ReplicatedResources{
+				RenameByDefault: true,
+				Resources: []ReplicatedResource{
+					{
+						Name:   NoErrorNewResourceName("nvidia.com/gpu"),
+						Rename: NoErrorNewResourceName("nvidia.com/gpu.shared"),
+						Devices: ReplicatedDevices{
+							List: []ReplicatedDeviceRef{uuidA, uuidB},
+						},
+						Replicas: 2,
+					},
+				},
+			},
+		},
+		{
+			name: "two resource names on one node: nvidia.com/gpu full + nvidia.com/gpu.shared per-UUID",
+			input: &ReplicatedResources{
+				RenameByDefault: false,
+				Resources: []ReplicatedResource{
+					// Only the GPU identified by uuidA is sliced into
+					// nvidia.com/gpu.shared. Any other GPU on the node that
+					// is not listed here keeps its original nvidia.com/gpu
+					// resource name (no entry is required for full cards).
+					{
+						Name:   NoErrorNewResourceName("nvidia.com/gpu"),
+						Rename: NoErrorNewResourceName("nvidia.com/gpu.shared"),
+						Devices: ReplicatedDevices{
+							List: []ReplicatedDeviceRef{uuidA},
+						},
+						Replicas: 2,
+					},
+				},
+			},
+			expected: &ReplicatedResources{
+				RenameByDefault: false,
+				Resources: []ReplicatedResource{
+					{
+						Name:   NoErrorNewResourceName("nvidia.com/gpu"),
+						Rename: NoErrorNewResourceName("nvidia.com/gpu.shared"),
+						Devices: ReplicatedDevices{
+							List: []ReplicatedDeviceRef{uuidA},
+						},
+						Replicas: 2,
+					},
+				},
+			},
+		},
+		{
+			name:     "nil receiver is a no-op",
+			input:    nil,
+			expected: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.input.disableResoureRenaming("timeSlicing")
+			require.Equal(t, tc.expected, tc.input)
+		})
+	}
+}
