@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.26.3 AS base
+FROM golang:1.26.4 AS base
 
 # The devel image is used for local development.
 FROM base AS devel
@@ -51,7 +51,7 @@ RUN apt-get update \
  && cp /bin/busybox /busybox/busybox \
  && /busybox/busybox --install -s /busybox
 
-FROM nvcr.io/nvidia/distroless/go:v4.0.6 AS application
+FROM nvcr.io/nvidia/distroless/go:v4.0.8 AS application
 
 USER 0:0
 

@@ -1,5 +1,11 @@
 ## Changelog
 
+### v0.19.3
+- bump nvcr.io/nvidia/distroless/go to v4.0.8-dev (#1852)
+- revert default enablement of features mofed, gdrcopy and mofed (#1837)
+- bump golang version to 1.26.4 (#1828)
+- bump golang.org/x/net to v0.56.0 (#1867)
+
 ### v0.19.2
 - Bump golang version to 1.26.3 (#1754)
 - Bump nvidia/distroless/go to v4.0.6-dev (#1806)
