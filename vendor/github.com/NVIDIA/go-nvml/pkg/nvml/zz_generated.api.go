@@ -35,6 +35,7 @@ var (
 	DeviceGetAccountingMode                          = libnvml.DeviceGetAccountingMode
 	DeviceGetAccountingPids                          = libnvml.DeviceGetAccountingPids
 	DeviceGetAccountingStats                         = libnvml.DeviceGetAccountingStats
+	DeviceGetAccountingStats_v2                      = libnvml.DeviceGetAccountingStats_v2
 	DeviceGetActiveVgpus                             = libnvml.DeviceGetActiveVgpus
 	DeviceGetAdaptiveClockInfoStatus                 = libnvml.DeviceGetAdaptiveClockInfoStatus
 	DeviceGetAddressingMode                          = libnvml.DeviceGetAddressingMode
@@ -43,6 +44,7 @@ var (
 	DeviceGetAttributes                              = libnvml.DeviceGetAttributes
 	DeviceGetAutoBoostedClocksEnabled                = libnvml.DeviceGetAutoBoostedClocksEnabled
 	DeviceGetBAR1MemoryInfo                          = libnvml.DeviceGetBAR1MemoryInfo
+	DeviceGetBBXTimeData_v1                          = libnvml.DeviceGetBBXTimeData_v1
 	DeviceGetBoardId                                 = libnvml.DeviceGetBoardId
 	DeviceGetBoardPartNumber                         = libnvml.DeviceGetBoardPartNumber
 	DeviceGetBrand                                   = libnvml.DeviceGetBrand
@@ -343,6 +345,7 @@ var (
 	SystemEventSetCreate                             = libnvml.SystemEventSetCreate
 	SystemEventSetFree                               = libnvml.SystemEventSetFree
 	SystemEventSetWait                               = libnvml.SystemEventSetWait
+	SystemGetCPER_v1                                 = libnvml.SystemGetCPER_v1
 	SystemGetConfComputeCapabilities                 = libnvml.SystemGetConfComputeCapabilities
 	SystemGetConfComputeGpusReadyState               = libnvml.SystemGetConfComputeGpusReadyState
 	SystemGetConfComputeKeyRotationThresholdInfo     = libnvml.SystemGetConfComputeKeyRotationThresholdInfo
@@ -429,6 +432,7 @@ type Interface interface {
 	DeviceGetAccountingMode(Device) (EnableState, Return)
 	DeviceGetAccountingPids(Device) ([]int, Return)
 	DeviceGetAccountingStats(Device, uint32) (AccountingStats, Return)
+	DeviceGetAccountingStats_v2(Device, uint32) (AccountingStats_v2, Return)
 	DeviceGetActiveVgpus(Device) ([]VgpuInstance, Return)
 	DeviceGetAdaptiveClockInfoStatus(Device) (uint32, Return)
 	DeviceGetAddressingMode(Device) (DeviceAddressingMode, Return)
@@ -437,6 +441,7 @@ type Interface interface {
 	DeviceGetAttributes(Device) (DeviceAttributes, Return)
 	DeviceGetAutoBoostedClocksEnabled(Device) (EnableState, EnableState, Return)
 	DeviceGetBAR1MemoryInfo(Device) (BAR1Memory, Return)
+	DeviceGetBBXTimeData_v1(Device) (BBXTimeData_v1, Return)
 	DeviceGetBoardId(Device) (uint32, Return)
 	DeviceGetBoardPartNumber(Device) (string, Return)
 	DeviceGetBrand(Device) (BrandType, Return)
@@ -737,6 +742,7 @@ type Interface interface {
 	SystemEventSetCreate(*SystemEventSetCreateRequest) Return
 	SystemEventSetFree(*SystemEventSetFreeRequest) Return
 	SystemEventSetWait(*SystemEventSetWaitRequest) Return
+	SystemGetCPER_v1(*GetCPER_v1) Return
 	SystemGetConfComputeCapabilities() (ConfComputeSystemCaps, Return)
 	SystemGetConfComputeGpusReadyState() (uint32, Return)
 	SystemGetConfComputeKeyRotationThresholdInfo() (ConfComputeGetKeyRotationThresholdInfo, Return)
@@ -820,6 +826,7 @@ type Device interface {
 	GetAccountingMode() (EnableState, Return)
 	GetAccountingPids() ([]int, Return)
 	GetAccountingStats(uint32) (AccountingStats, Return)
+	GetAccountingStats_v2(uint32) (AccountingStats_v2, Return)
 	GetActiveVgpus() ([]VgpuInstance, Return)
 	GetAdaptiveClockInfoStatus() (uint32, Return)
 	GetAddressingMode() (DeviceAddressingMode, Return)
@@ -828,6 +835,7 @@ type Device interface {
 	GetAttributes() (DeviceAttributes, Return)
 	GetAutoBoostedClocksEnabled() (EnableState, EnableState, Return)
 	GetBAR1MemoryInfo() (BAR1Memory, Return)
+	GetBBXTimeData_v1() (BBXTimeData_v1, Return)
 	GetBoardId() (uint32, Return)
 	GetBoardPartNumber() (string, Return)
 	GetBrand() (BrandType, Return)

@@ -130,6 +130,14 @@ func nvmlSystemGetDriverBranch(BranchInfo *SystemDriverBranchInfo, Length uint32
 	return __v
 }
 
+// nvmlSystemGetCPER_v1 function as declared in nvml/nvml.h
+func nvmlSystemGetCPER_v1(Cper *GetCPER_v1) Return {
+	cCper, _ := (*C.nvmlGetCPER_v1_t)(unsafe.Pointer(Cper)), cgoAllocsUnknown
+	__ret := C.nvmlSystemGetCPER_v1(cCper)
+	__v := (Return)(__ret)
+	return __v
+}
+
 // nvmlUnitGetCount function as declared in nvml/nvml.h
 func nvmlUnitGetCount(UnitCount *uint32) Return {
 	cUnitCount, _ := (*C.uint)(unsafe.Pointer(UnitCount)), cgoAllocsUnknown
@@ -510,6 +518,15 @@ func nvmlDeviceGetLastBBXFlushTime(nvmlDevice nvmlDevice, Timestamp *uint64, Dur
 	cTimestamp, _ := (*C.ulonglong)(unsafe.Pointer(Timestamp)), cgoAllocsUnknown
 	cDurationUs, _ := (*C.ulong)(unsafe.Pointer(DurationUs)), cgoAllocsUnknown
 	__ret := C.nvmlDeviceGetLastBBXFlushTime(cnvmlDevice, cTimestamp, cDurationUs)
+	__v := (Return)(__ret)
+	return __v
+}
+
+// nvmlDeviceGetBBXTimeData_v1 function as declared in nvml/nvml.h
+func nvmlDeviceGetBBXTimeData_v1(nvmlDevice nvmlDevice, TimeData *BBXTimeData_v1) Return {
+	cnvmlDevice, _ := *(*C.nvmlDevice_t)(unsafe.Pointer(&nvmlDevice)), cgoAllocsUnknown
+	cTimeData, _ := (*C.nvmlBBXTimeData_v1_t)(unsafe.Pointer(TimeData)), cgoAllocsUnknown
+	__ret := C.nvmlDeviceGetBBXTimeData_v1(cnvmlDevice, cTimeData)
 	__v := (Return)(__ret)
 	return __v
 }
@@ -1698,6 +1715,15 @@ func nvmlDeviceGetAccountingBufferSize(nvmlDevice nvmlDevice, BufferSize *uint32
 	cnvmlDevice, _ := *(*C.nvmlDevice_t)(unsafe.Pointer(&nvmlDevice)), cgoAllocsUnknown
 	cBufferSize, _ := (*C.uint)(unsafe.Pointer(BufferSize)), cgoAllocsUnknown
 	__ret := C.nvmlDeviceGetAccountingBufferSize(cnvmlDevice, cBufferSize)
+	__v := (Return)(__ret)
+	return __v
+}
+
+// nvmlDeviceGetAccountingStats_v2 function as declared in nvml/nvml.h
+func nvmlDeviceGetAccountingStats_v2(nvmlDevice nvmlDevice, Stats *AccountingStats_v2) Return {
+	cnvmlDevice, _ := *(*C.nvmlDevice_t)(unsafe.Pointer(&nvmlDevice)), cgoAllocsUnknown
+	cStats, _ := (*C.nvmlAccountingStats_v2_t)(unsafe.Pointer(Stats)), cgoAllocsUnknown
+	__ret := C.nvmlDeviceGetAccountingStats_v2(cnvmlDevice, cStats)
 	__v := (Return)(__ret)
 	return __v
 }

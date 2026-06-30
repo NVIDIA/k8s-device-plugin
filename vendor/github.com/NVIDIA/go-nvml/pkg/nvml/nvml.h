@@ -1,5 +1,5 @@
-/*** NVML VERSION: 13.2.82 ***/
-/*** From https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvml_dev/linux-x86_64/cuda_nvml_dev-linux-x86_64-13.2.82-archive.tar.xz ***/
+/*** NVML VERSION: 13.3.29 ***/
+/*** From https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvml_dev/linux-x86_64/cuda_nvml_dev-linux-x86_64-13.3.29-archive.tar.xz ***/
 /*
  * Copyright 1993-2026 NVIDIA Corporation.  All rights reserved.
  *
@@ -336,12 +336,24 @@ typedef struct
 } nvmlProcessDetail_v1_t;
 
 /**
+ * Enum to represent process mode.
+ */
+ typedef enum nvmlProcessMode_enum
+ {
+     NVML_PROCESS_MODE_COMPUTE       = 0,   //!< Processes with a compute context
+     NVML_PROCESS_MODE_GRAPHICS      = 1,   //!< Processes with a graphics context
+     NVML_PROCESS_MODE_MPS           = 2,   //!< Processes with a MPS (Multi-Process Service) compute context
+     NVML_PROCESS_MODE_ALL           = 3,   //!< All processes running on the GPU (compute, graphics, MPS, and other types)
+     NVML_PROCESS_MODE_MAX           = NVML_PROCESS_MODE_ALL + 1  //!< Maximum value for bounds checking
+ } nvmlProcessMode_t;
+
+/**
  * Information about all running processes on the GPU for the given mode
  */
 typedef struct
 {
     unsigned int           version;             //!< Struct version, MUST be nvmlProcessDetailList_v1
-    unsigned int           mode;                //!< Process mode(Compute/Graphics/MPSCompute)
+    unsigned int           mode;                //!< Process mode, One of \ref nvmlProcessMode_t
     unsigned int           numProcArrayEntries; //!< Number of process entries in procArray
     nvmlProcessDetail_v1_t *procArray;          //!< Process array
 } nvmlProcessDetailList_v1_t;
@@ -446,7 +458,7 @@ typedef enum nvmlBridgeChipType_enum
 /**
  * Maximum number of NvLink links supported
  */
-#define NVML_NVLINK_MAX_LINKS 18 //!< Maximum number of NVLink links supported.
+#define NVML_NVLINK_MAX_LINKS 36 //!< Maximum number of NVLink links supported.
 
 /**
  * Enum to represent the NvLink utilization counter packet units
@@ -857,6 +869,13 @@ typedef struct
 typedef nvmlPdi_v1_t nvmlPdi_t;
 
 #define nvmlPdi_v1 NVML_STRUCT_VERSION(Pdi, 1) //!< Version macro for \a nvmlPdi_v1_t
+
+/**
+ * BBX Time Data
+ */
+ typedef struct {
+    unsigned int timeRun;  //!< [out] Cumulative number of seconds the GPU has had the driver loaded
+} nvmlBBXTimeData_v1_t;
 
 /** @} */
 
@@ -1540,6 +1559,8 @@ typedef struct
 
 #define NVML_DEVICE_ARCH_BLACKWELL 10 //!< Devices based on the NVIDIA Blackwell architecture
 
+#define NVML_DEVICE_ARCH_RUBIN     13 //!< Devices based on the NVIDIA Rubin architecture.
+
 #define NVML_DEVICE_ARCH_UNKNOWN   0xffffffff //!< Anything else, presumably something newer
 
 typedef unsigned int nvmlDeviceArchitecture_t;
@@ -1634,9 +1655,11 @@ typedef struct nvmlGpuDynamicPstatesInfo_st
 /**
  * Device Scope - This is useful to retrieve the telemetry at GPU and module (e.g. GPU + CPU) level
  */
-#define NVML_POWER_SCOPE_GPU     0U    //!< Targets only GPU
-#define NVML_POWER_SCOPE_MODULE  1U    //!< Targets the whole module
-#define NVML_POWER_SCOPE_MEMORY  2U    //!< Targets the GPU Memory
+#define NVML_POWER_SCOPE_GPU      0U    //!< Targets only GPU
+#define NVML_POWER_SCOPE_MODULE   1U    //!< Targets the whole module
+#define NVML_POWER_SCOPE_MEMORY   2U    //!< Targets the GPU Memory
+#define NVML_POWER_SCOPE_GPU_BASE 3U    //!< Targets base GPU power
+#define NVML_POWER_SCOPE_COUNT    4U    //!< Maximum number of power scopes
 
 typedef unsigned char nvmlPowerScopeType_t;
 
@@ -2186,6 +2209,7 @@ typedef enum nvmlDeviceGpuRecoveryAction_s  {
     NVML_GPU_RECOVERY_ACTION_NODE_REBOOT = 2,         //!< Reboot Node
     NVML_GPU_RECOVERY_ACTION_DRAIN_P2P = 3,           //!< Drain P2P
     NVML_GPU_RECOVERY_ACTION_DRAIN_AND_RESET = 4,     //!< Drain P2P and Reset Gpu
+    NVML_GPU_RECOVERY_ACTION_RECOVER_IMEX_DOMAIN = 5, //!< Recover IMEX Domain.
 } nvmlDeviceGpuRecoveryAction_t;
 
 /**
@@ -2696,7 +2720,9 @@ typedef struct
  *
  * scopeId needs to be specified. It signifies:
  * 0 - GPU Only Scope - Metrics for GPU are retrieved
- * 1 - Module scope - Metrics for the module (e.g. CPU + GPU) are retrieved.
+ * 1 - Module scope   - Metrics for the module (e.g. CPU + GPU) are retrieved.
+ * 2 - GPU base scope - GPU base Power metrics are retrieved.
+ *                      Note: Only supports _MIN_LIMIT, _MAX_LIMIT, _DEFAULT_LIMIT, and _CURRENT_LIMIT fields.
  * Note: CPU here refers to NVIDIA CPU (e.g. Grace). x86 or non-NVIDIA ARM is not supported
  */
 #define NVML_FI_DEV_POWER_AVERAGE                     185 //!< GPU power averaged over 1 sec interval, supported on Ampere (except GA100) or newer architectures.
@@ -2933,10 +2959,21 @@ typedef struct
 #define NVML_FI_DEV_NVLINK_COUNT_RAW_BER_V2                      293 //!< NVLINK total raw BER
 #define NVML_FI_DEV_NVLINK_PLR_XMIT_BLOCKS                       294 //!< NVLINK PLR Xmit Blocks
 #define NVML_FI_DEV_NVLINK_PLR_XMIT_RETRY_BLOCKS                 295 //!< NVLINK PLR Xmit Retry Blocks
-
+#define NVML_FI_DEV_NVLINK_GET_DATA_RATE                         296 //!< The Effective Nvlink Data rate available for transactions after accounting for FEC overhead
+#define NVML_FI_DEV_MMA_STALL_PERCENT                            297 //!< MMA (Matrix Multiply Accumulate) stall percentage
+#define NVML_FI_DEV_MCLK_SWITCH_TYPE                             298 //!< See NVML_MCLK_SWITCH_TYPE_<XYZ> for all enumerations
+#define NVML_FI_DEV_MCLK_MIN_SWITCH_INTERVAL_MILLISECONDS        299 //!< minimum required elapsed time between runtime mclk switches, 0 = no rate limit
+#define NVML_FI_PWR_SMOOTHING_SOC_POWER_SMOOTHING_ENABLED        300 //!< State-Of-Charge Power Smoothing Enabled (0/DISABLED or 1/ENABLED)
 #define NVML_FI_DEV_REMAPPED_ROWS_COR_INACTIVE                  301 //!< Number of inactive row remappings due to correctable errors
 #define NVML_FI_DEV_REMAPPED_ROWS_UNC_INACTIVE                  302 //!< Number of inactive row remappings due to uncorrectable errors
 #define NVML_FI_MAX                                             303 //!< One greater than the largest field ID defined above
+
+/**
+ * NVML_FI_DEV_MCLK_SWITCH_TYPE enumerations
+ */
+#define NVML_MCLK_SWITCH_TYPE_NOT_SUPPORTED 0x0 //!< switching is not supported
+#define NVML_MCLK_SWITCH_TYPE_DEFERRED      0x1 //!< deferred switching (driver reload)
+#define NVML_MCLK_SWITCH_TYPE_RUNTIME       0x2 //!< runtime switching
 
 /**
  * NVML_FI_DEV_NVLINK_GET_POWER_THRESHOLD_UNITS
@@ -3481,6 +3518,37 @@ typedef struct nvmlAccountingStats_st {
 
     unsigned int reserved[5];                   //!< Reserved for future use
 } nvmlAccountingStats_t;
+
+/**
+ * Describes accounting statistics (v2) of a process.
+ */
+typedef struct {
+    unsigned int pid;                           //!< Process Id of the target process to query stats for
+
+    unsigned int isRunning;                     //!< Flag to represent if the process is running (1 for running, 0 for terminated)
+
+    unsigned int gpuUtilization;                //!< Percent of time over the process's lifetime during which one or more kernels was executing on the GPU.
+                                                //! Utilization stats just like returned by \ref nvmlDeviceGetUtilizationRates but for the life time of a
+                                                //! process (not just the last sample period).
+                                                //! Set to NVML_VALUE_NOT_AVAILABLE if nvmlDeviceGetUtilizationRates is not supported
+
+    unsigned int memoryUtilization;             //!< Percent of time over the process's lifetime during which global (device) memory was being read or written.
+                                                //! Set to NVML_VALUE_NOT_AVAILABLE if nvmlDeviceGetUtilizationRates is not supported
+
+    unsigned long long maxMemoryUsage;          //!< Maximum total memory in bytes that was ever allocated by the process.
+                                                //! Set to NVML_VALUE_NOT_AVAILABLE if nvmlProcessInfo_t->usedGpuMemory is not supported
+
+    unsigned int sampleCount;                   //!< The sample counts since the process starts
+
+    unsigned long long sumGpuUtil;              //!< The sum of process's GR engine utilization in unit of pct * 100
+
+    unsigned long long sumFbUtil;               //!< The sum of process's FB bandwidth utilization in unit of pct * 100
+
+    unsigned long long time;                    //!< Amount of time in ms during which the compute context was active. The time is reported as 0 if
+                                                //! the process is not terminated
+
+    unsigned long long startTime;               //!< CPU Timestamp in usec representing start time for the process
+} nvmlAccountingStats_v2_t;
 
 /** @} */
 
@@ -4070,6 +4138,56 @@ const DECLDIR char* nvmlErrorString(nvmlReturn_t result);
 /** @} */
 
 /***************************************************************************************************/
+/** @defgroup nvmlCPER CPER (Common Platform Error Record)
+ * Types and API for retrieving CPER data.
+ *  @{
+ */
+/***************************************************************************************************/
+
+typedef unsigned long long nvmlCPERCursorHandle_t;   //!< Opaque handle to a CPER read position
+
+#define NVML_CPER_CURSOR_HANDLE_INIT ((nvmlCPERCursorHandle_t) 0) //!< Initialize \ref nvmlCPERCursorHandle_t to this value before first use in any CPER API
+
+/**
+ * Bitmask of CPER record types. Multiple values may be combined
+ * to request records from several sources in one call.
+ */
+typedef enum
+{
+    NVML_CPER_ACCESS_TYPE_GPU = (1 << 0),   //!< Access GPU CPER records
+} nvmlCPERType_t;
+
+/**
+ * CPER query and cursor parameters. Groups the filter options and opaque
+ * read position used to iterate through CPER records.
+ *
+ * Cursor semantics for iterative calls:
+ * - Pass the same \a nvmlCPERCursor_v1_t (i.e. the same \a cursor) on every call
+ *   in a single iteration sequence.
+ * - Do not modify this struct between calls.
+ * - To change \a cperTypeMask or \a uuid, set \a handle to \ref NVML_CPER_CURSOR_HANDLE_INIT
+ *   and call again with the updated filter (this starts a new iteration).
+ */
+typedef struct
+{
+    unsigned int cperTypeMask;               //!< [IN] Types of records to access. Bitmask of \ref nvmlCPERType_t values. To change, reset \a handle to \ref NVML_CPER_CURSOR_HANDLE_INIT.
+    char uuid[NVML_DEVICE_UUID_BUFFER_SIZE]; //!< [IN] UUID of target to filter records for. Required for \ref NVML_CPER_ACCESS_TYPE_GPU. To change, reset \a handle to \ref NVML_CPER_CURSOR_HANDLE_INIT.
+    nvmlCPERCursorHandle_t handle;           //!< [IN/OUT] Opaque handle tracking read position. Initialize to \ref NVML_CPER_CURSOR_HANDLE_INIT on first call; pass the same \a nvmlCPERCursor_v1_t on the next call to continue. Caller must not interpret or modify.
+} nvmlCPERCursor_v1_t;
+
+/**
+ * Input/output structure for \ref nvmlSystemGetCPER_v1.
+ */
+typedef struct
+{
+    nvmlCPERCursor_v1_t cursor;  //!< [IN/OUT] Query parameters and cursor. See \ref nvmlCPERCursor_v1_t
+    unsigned char *buffer;       //!< [OUT] Buffer to be filled (allocated by client). May be NULL for size query.
+    unsigned int bufferSize;     //!< [IN/OUT] Size of \a buffer. Set to 0 with \a buffer NULL to query required size. On return, set to required or used size; 0 means no (more) records.
+} nvmlGetCPER_v1_t;
+
+/** @} */
+
+/***************************************************************************************************/
 /** @defgroup nvmlSystemQueries System Queries
  * This chapter describes the queries that NVML can perform against the local system. These queries
  * are not device-specific.
@@ -4244,6 +4362,37 @@ typedef nvmlSystemDriverBranchInfo_v1_t nvmlSystemDriverBranchInfo_t;
  */
 nvmlReturn_t DECLDIR nvmlSystemGetDriverBranch(nvmlSystemDriverBranchInfo_t *branchInfo, unsigned int length);
 
+/**
+ * Retrieves Common Platform Error Record (CPER) data.
+ *
+ * Records are returned in a caller-supplied buffer. Iteration is driven by the
+ * \a cursor (\ref nvmlCPERCursor_v1_t) struct: pass the same \a cursor on every call
+ * in a sequence; the implementation updates \a cursor.handle. Do not modify \a cursor between
+ * calls. To change \a cursor.cperTypeMask or \a cursor.uuid, set \a cursor.handle to
+ * \ref NVML_CPER_CURSOR_HANDLE_INIT and call again (new iteration).
+ *
+ * For a size query, call with \a buffer NULL and \a bufferSize 0; the function
+ * returns \ref NVML_ERROR_INSUFFICIENT_SIZE and sets \a bufferSize when records exist,
+ * or \ref NVML_SUCCESS with \a bufferSize set to 0 when there are no CPER records.
+ * Use \a bufferSize == 0 on return as the indicator for "no records" or "no more records".
+ *
+ * This API requires root privileges. Records are available from initialization.
+ *
+ * @param cper     Pointer to an \ref nvmlGetCPER_v1_t. On entry set \a cursor.cperTypeMask,
+ *                 \a cursor.uuid (empty string for all), \a cursor.handle (to
+ *                 \ref NVML_CPER_CURSOR_HANDLE_INIT for first call), \a buffer (or NULL),
+ *                 \a bufferSize. On return \a cursor.handle and \a bufferSize are updated.
+ *
+ * @return
+ *         - \ref NVML_SUCCESS                 Buffer has been populated with CPER data, or \a bufferSize is 0 (no/more records).
+ *         - \ref NVML_ERROR_UNINITIALIZED     The library has not been successfully initialized.
+ *         - \ref NVML_ERROR_INVALID_ARGUMENT  \a cper is NULL, or \a buffer is NULL while \a bufferSize is non-zero.
+ *         - \ref NVML_ERROR_NOT_SUPPORTED     The feature is not supported on this system.
+ *         - \ref NVML_ERROR_INSUFFICIENT_SIZE Buffer too small; \a bufferSize set to required size.
+ *         - \ref NVML_ERROR_NO_PERMISSION     Insufficient privileges.
+ *         - \ref NVML_ERROR_UNKNOWN           An unexpected error occurred.
+ */
+nvmlReturn_t DECLDIR nvmlSystemGetCPER_v1(nvmlGetCPER_v1_t *cper);
 
 /** @} */
 
@@ -5213,6 +5362,23 @@ nvmlReturn_t DECLDIR nvmlDeviceValidateInforom(nvmlDevice_t device);
 nvmlReturn_t DECLDIR nvmlDeviceGetLastBBXFlushTime(nvmlDevice_t device, unsigned long long *timestamp,
                                                    unsigned long *durationUs);
 
+/**
+ * Retrieves the cumulative number of seconds the GPU has had the driver loaded.
+ *
+ * For all products with an inforom.
+ *
+ * @param device                               The identifier of the target device
+ * @param timeData                             Reference in which to return the cumulative number of seconds the GPU has had the driver loaded
+ *
+ * @return
+ *         - \ref NVML_SUCCESS                 if \a timeData has been set
+ *         - \ref NVML_ERROR_INVALID_ARGUMENT  if \a device is invalid or \a timeData is NULL
+ *         - \ref NVML_ERROR_NOT_SUPPORTED     if the device does not support this feature
+ *         - \ref NVML_ERROR_GPU_IS_LOST       if the target GPU has fallen off the bus or is otherwise inaccessible
+ *         - \ref NVML_ERROR_UNKNOWN           on any unexpected error
+ */
+
+nvmlReturn_t DECLDIR nvmlDeviceGetBBXTimeData_v1(nvmlDevice_t device, nvmlBBXTimeData_v1_t *timeData);
 /**
  * Retrieves the display mode for the device.
  *
@@ -6605,13 +6771,15 @@ nvmlReturn_t DECLDIR nvmlDeviceGetMemoryInfo(nvmlDevice_t device, nvmlMemory_t *
 nvmlReturn_t DECLDIR nvmlDeviceGetMemoryInfo_v2(nvmlDevice_t device, nvmlMemory_v2_t *memory);
 
 /**
- * Retrieves the current compute mode for the device.
+ * Retrieves the current compute mode for the device or MIG device.
  *
  * For all products.
  *
+ * @note If MIG is enabled on a GPU, device must be MIG device handle.
+ *
  * See \ref nvmlComputeMode_t for details on allowed compute modes.
  *
- * @param device                               The identifier of the target device
+ * @param device                               The identifier of the target device handle or MIG device handle
  * @param mode                                 Reference in which to return the current compute mode
  *
  * @return
@@ -8137,6 +8305,44 @@ nvmlReturn_t DECLDIR nvmlDeviceGetAccountingPids(nvmlDevice_t device, unsigned i
  */
 nvmlReturn_t DECLDIR nvmlDeviceGetAccountingBufferSize(nvmlDevice_t device, unsigned int *bufferSize);
 
+/**
+ * Queries process's accounting stats (v2).
+ *
+ * For Kepler &tm; or newer fully supported devices.
+ *
+ * Accounting stats (v2) capture GPU utilization and other statistics across the lifetime of a process.
+ * Accounting stats (v2) can be queried during life time of the process and after its termination.
+ * The time field in \ref nvmlAccountingStats_v2_t is reported as 0 during the lifetime of the process and
+ * updated to actual running time after its termination.
+ * Accounting stats (v2) are kept in a circular buffer, newly created processes overwrite information about old
+ * processes.
+ *
+ * See \ref nvmlAccountingStats_v2_t for description of each returned metric.
+ * List of processes that can be queried can be retrieved from \ref nvmlDeviceGetAccountingPids.
+ *
+ * @note Accounting Mode needs to be on. See \ref nvmlDeviceGetAccountingMode.
+ * @note Only compute and graphics applications stats can be queried. Monitoring applications stats can't be
+ *         queried since they don't contribute to GPU utilization.
+ * @note In case of pid collision stats of only the latest process (that terminated last) will be reported
+ *
+ * @warning On Kepler devices per process statistics are accurate only if there's one process running on a GPU.
+ *
+ * @param device                               The identifier of the target device
+ * @param stats                                Reference in which to return the process's accounting stats (v2)
+ *
+ * @return
+ *         - \ref NVML_SUCCESS                 if stats (v2) have been successfully retrieved
+ *         - \ref NVML_ERROR_UNINITIALIZED     if the library has not been successfully initialized
+ *         - \ref NVML_ERROR_INVALID_ARGUMENT  if \a device is invalid or \a stats are NULL
+ *         - \ref NVML_ERROR_NOT_FOUND         if process stats were not found
+ *         - \ref NVML_ERROR_NOT_SUPPORTED     if \a device doesn't support this feature or accounting mode is disabled
+ *                                              or on vGPU host.
+ *         - \ref NVML_ERROR_UNKNOWN           on any unexpected error
+ *
+ * @see nvmlDeviceGetAccountingBufferSize
+ */
+nvmlReturn_t DECLDIR nvmlDeviceGetAccountingStats_v2(nvmlDevice_t device, nvmlAccountingStats_v2_t *stats);
+
 /** @} */
 
 /** @addtogroup nvmlDeviceQueries
@@ -8569,7 +8775,7 @@ nvmlReturn_t DECLDIR nvmlUnitSetLedState(nvmlUnit_t unit, nvmlLedColor_t color);
 nvmlReturn_t DECLDIR nvmlDeviceSetPersistenceMode(nvmlDevice_t device, nvmlEnableState_t mode);
 
 /**
- * Set the compute mode for the device.
+ * Set the compute mode for the device or MIG device.
  *
  * For all products.
  * Requires root/admin permissions.
@@ -8582,11 +8788,11 @@ nvmlReturn_t DECLDIR nvmlDeviceSetPersistenceMode(nvmlDevice_t device, nvmlEnabl
  *
  * Under windows compute mode may only be set to DEFAULT when running in WDDM
  *
- * @note On MIG-enabled GPUs, compute mode would be set to DEFAULT and changing it is not supported.
+ * @note If MIG is enabled on a GPU, device must be MIG device handle.
  *
  * See \ref nvmlComputeMode_t for details on available compute modes.
  *
- * @param device                               The identifier of the target device
+ * @param device                               The identifier of the target device handle or MIG device handle
  * @param mode                                 The target compute mode
  *
  * @return
@@ -9219,6 +9425,7 @@ typedef enum nvmlNvlinkVersion_enum
     NVML_NVLINK_VERSION_3_1     = 5, //!< NVLink Version 3.1
     NVML_NVLINK_VERSION_4_0     = 6, //!< NVLink Version 4.0
     NVML_NVLINK_VERSION_5_0     = 7, //!< NVLink Version 5.0
+    NVML_NVLINK_VERSION_6_0     = 8, //!< NVLink Version 6.0
 } nvmlNvlinkVersion_t;
 
 #define NVML_NVLINK_TOTAL_SUPPORTED_BW_MODES 23 //!< Total supported NVLink bandwidth modes.
@@ -12338,8 +12545,9 @@ nvmlReturn_t DECLDIR nvmlDeviceReadPRMCounters_v1(nvmlDevice_t device, nvmlPRMCo
 // Allocation of instance of this profile prevents allocation of
 // all but _NO_ME profiles.
 #define NVML_GPU_INSTANCE_PROFILE_2_SLICE_ALL_ME   0x10
-#define NVML_GPU_INSTANCE_PROFILE_3_SLICE_GFX      0x11    //!< 3_SLICE gfx + media capable profile.
-#define NVML_GPU_INSTANCE_PROFILE_COUNT            0x12    //!< Total number of GPU instance profiles.
+
+#define NVML_GPU_INSTANCE_PROFILE_3_SLICE_GFX           0x11    //!< 3_SLICE gfx + media capable profile.
+#define NVML_GPU_INSTANCE_PROFILE_COUNT                 0x12    //!< Total number of GPU instance profiles.
 
 /**
  * MIG GPU instance profile capability.
@@ -12459,11 +12667,12 @@ typedef struct nvmlGpuInstanceInfo_st
 #define NVML_COMPUTE_INSTANCE_PROFILE_2_SLICE       0x1 //!< 2_SLICE compute instance profile.
 #define NVML_COMPUTE_INSTANCE_PROFILE_3_SLICE       0x2 //!< 3_SLICE compute instance profile.
 #define NVML_COMPUTE_INSTANCE_PROFILE_4_SLICE       0x3 //!< 4_SLICE compute instance profile.
-#define NVML_COMPUTE_INSTANCE_PROFILE_7_SLICE       0x4 //!< 7_SLICE compute instance profile.
+#define NVML_COMPUTE_INSTANCE_PROFILE_7_SLICE       0x4 //!< 7_SLICE compute instance profile  (perf optimized for host work scheduling).
 #define NVML_COMPUTE_INSTANCE_PROFILE_8_SLICE       0x5 //!< 8_SLICE compute instance profile.
 #define NVML_COMPUTE_INSTANCE_PROFILE_6_SLICE       0x6 //!< 6_SLICE compute instance profile.
 #define NVML_COMPUTE_INSTANCE_PROFILE_1_SLICE_REV1  0x7 //!< 1_SLICE compute instance profile (rev1).
-#define NVML_COMPUTE_INSTANCE_PROFILE_COUNT         0x8 //!< Number of compute instance profiles.
+#define NVML_COMPUTE_INSTANCE_PROFILE_7_SLICE_NVL   0x8 //!< 7_SLICE compute instance profile (perf optimized for multi-GPU use).
+#define NVML_COMPUTE_INSTANCE_PROFILE_COUNT         0x9 //!< Number of compute instance profiles.
 
 #define NVML_COMPUTE_INSTANCE_ENGINE_PROFILE_SHARED 0x0 //!< All the engines except multiprocessors would be shared.
 #define NVML_COMPUTE_INSTANCE_ENGINE_PROFILE_COUNT  0x1 //!< Number of engine profiles.
@@ -13475,6 +13684,42 @@ typedef enum
     NVML_GPM_METRIC_GR7_CTXSW_REQUESTS          = 207,
     NVML_GPM_METRIC_GR7_CTXSW_CYCLES_PER_REQ    = 208,
     NVML_GPM_METRIC_GR7_CTXSW_ACTIVE_PCT        = 209,
+    NVML_GPM_METRIC_NVLINK_L18_RX_PER_SEC       = 212,
+    NVML_GPM_METRIC_NVLINK_L18_TX_PER_SEC       = 213,
+    NVML_GPM_METRIC_NVLINK_L19_RX_PER_SEC       = 214,
+    NVML_GPM_METRIC_NVLINK_L19_TX_PER_SEC       = 215,
+    NVML_GPM_METRIC_NVLINK_L20_RX_PER_SEC       = 216,
+    NVML_GPM_METRIC_NVLINK_L20_TX_PER_SEC       = 217,
+    NVML_GPM_METRIC_NVLINK_L21_RX_PER_SEC       = 218,
+    NVML_GPM_METRIC_NVLINK_L21_TX_PER_SEC       = 219,
+    NVML_GPM_METRIC_NVLINK_L22_RX_PER_SEC       = 220,
+    NVML_GPM_METRIC_NVLINK_L22_TX_PER_SEC       = 221,
+    NVML_GPM_METRIC_NVLINK_L23_RX_PER_SEC       = 222,
+    NVML_GPM_METRIC_NVLINK_L23_TX_PER_SEC       = 223,
+    NVML_GPM_METRIC_NVLINK_L24_RX_PER_SEC       = 224,
+    NVML_GPM_METRIC_NVLINK_L24_TX_PER_SEC       = 225,
+    NVML_GPM_METRIC_NVLINK_L25_RX_PER_SEC       = 226,
+    NVML_GPM_METRIC_NVLINK_L25_TX_PER_SEC       = 227,
+    NVML_GPM_METRIC_NVLINK_L26_RX_PER_SEC       = 228,
+    NVML_GPM_METRIC_NVLINK_L26_TX_PER_SEC       = 229,
+    NVML_GPM_METRIC_NVLINK_L27_RX_PER_SEC       = 230,
+    NVML_GPM_METRIC_NVLINK_L27_TX_PER_SEC       = 231,
+    NVML_GPM_METRIC_NVLINK_L28_RX_PER_SEC       = 232,
+    NVML_GPM_METRIC_NVLINK_L28_TX_PER_SEC       = 233,
+    NVML_GPM_METRIC_NVLINK_L29_RX_PER_SEC       = 234,
+    NVML_GPM_METRIC_NVLINK_L29_TX_PER_SEC       = 235,
+    NVML_GPM_METRIC_NVLINK_L30_RX_PER_SEC       = 236,
+    NVML_GPM_METRIC_NVLINK_L30_TX_PER_SEC       = 237,
+    NVML_GPM_METRIC_NVLINK_L31_RX_PER_SEC       = 238,
+    NVML_GPM_METRIC_NVLINK_L31_TX_PER_SEC       = 239,
+    NVML_GPM_METRIC_NVLINK_L32_RX_PER_SEC       = 240,
+    NVML_GPM_METRIC_NVLINK_L32_TX_PER_SEC       = 241,
+    NVML_GPM_METRIC_NVLINK_L33_RX_PER_SEC       = 242,
+    NVML_GPM_METRIC_NVLINK_L33_TX_PER_SEC       = 243,
+    NVML_GPM_METRIC_NVLINK_L34_RX_PER_SEC       = 244,
+    NVML_GPM_METRIC_NVLINK_L34_TX_PER_SEC       = 245,
+    NVML_GPM_METRIC_NVLINK_L35_RX_PER_SEC       = 246,
+    NVML_GPM_METRIC_NVLINK_L35_TX_PER_SEC       = 247,
     NVML_GPM_METRIC_SM_CYCLES_ELAPSED           = 248,  //!< The GPU's SM cycles elapsed since reboot
     NVML_GPM_METRIC_SM_CYCLES_ACTIVE            = 249,  //!< The GPU's SM activity since reboot
     NVML_GPM_METRIC_MMA_CYCLES_ACTIVE           = 250,  //!< The GPU's SM MMA tensor activity since reboot
@@ -13524,6 +13769,42 @@ typedef enum
     NVML_GPM_METRIC_NVLINK_L16_TX               = 294,  //!< NvLink write for link 16 in bytes since reboot
     NVML_GPM_METRIC_NVLINK_L17_RX               = 295,  //!< NvLink read for link 17 in bytes since reboot
     NVML_GPM_METRIC_NVLINK_L17_TX               = 296,  //!< NvLink write for link 17 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L18_RX               = 297,  //!< NvLink read for link 18 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L18_TX               = 298,  //!< NvLink write for link 18 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L19_RX               = 299,  //!< NvLink read for link 19 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L19_TX               = 300,  //!< NvLink write for link 19 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L20_RX               = 301,  //!< NvLink read for link 20 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L20_TX               = 302,  //!< NvLink write for link 20 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L21_RX               = 303,  //!< NvLink read for link 21 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L21_TX               = 304,  //!< NvLink write for link 21 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L22_RX               = 305,  //!< NvLink read for link 22 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L22_TX               = 306,  //!< NvLink write for link 22 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L23_RX               = 307,  //!< NvLink read for link 23 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L23_TX               = 308,  //!< NvLink write for link 23 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L24_RX               = 309,  //!< NvLink read for link 24 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L24_TX               = 310,  //!< NvLink write for link 24 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L25_RX               = 311,  //!< NvLink read for link 25 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L25_TX               = 312,  //!< NvLink write for link 25 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L26_RX               = 313,  //!< NvLink read for link 26 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L26_TX               = 314,  //!< NvLink write for link 26 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L27_RX               = 315,  //!< NvLink read for link 27 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L27_TX               = 316,  //!< NvLink write for link 27 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L28_RX               = 317,  //!< NvLink read for link 28 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L28_TX               = 318,  //!< NvLink write for link 28 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L29_RX               = 319,  //!< NvLink read for link 29 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L29_TX               = 320,  //!< NvLink write for link 29 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L30_RX               = 321,  //!< NvLink read for link 30 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L30_TX               = 322,  //!< NvLink write for link 30 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L31_RX               = 323,  //!< NvLink read for link 31 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L31_TX               = 324,  //!< NvLink write for link 31 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L32_RX               = 325,  //!< NvLink read for link 32 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L32_TX               = 326,  //!< NvLink write for link 32 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L33_RX               = 327,  //!< NvLink read for link 33 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L33_TX               = 328,  //!< NvLink write for link 33 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L34_RX               = 329,  //!< NvLink read for link 34 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L34_TX               = 330,  //!< NvLink write for link 34 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L35_RX               = 331,  //!< NvLink read for link 35 in bytes since reboot
+    NVML_GPM_METRIC_NVLINK_L35_TX               = 332,  //!< NvLink write for link 35 in bytes since reboot
     NVML_GPM_METRIC_MAX                         = 333,  //!< Maximum value above +1
 } nvmlGpmMetricId_t;
 
@@ -14036,14 +14317,18 @@ nvmlReturn_t DECLDIR nvmlDeviceWorkloadPowerProfileUpdateProfiles_v1(nvmlDevice_
  */
 /***************************************************************************************************/
 /**
- * Macro for accomodating the gap in field values for delayed power smoothing.
+ * Macro for accomodating the gaps in field values for power smoothing.
  */
 #define NVML_POWER_SMOOTHING_IDX_FROM_FIELD_VAL(field_val)  \
     ( \
-        (field_val > NVML_FI_PWR_SMOOTHING_ADMIN_OVERRIDE_RAMP_DOWN_HYST_VAL) ? \
-        (field_val - NVML_FI_PWR_SMOOTHING_ENABLED - \
+        ((field_val) >= NVML_FI_PWR_SMOOTHING_SOC_POWER_SMOOTHING_ENABLED) ? \
+        ((field_val) - NVML_FI_PWR_SMOOTHING_ENABLED - \
+            (NVML_FI_PWR_SMOOTHING_PRIMARY_POWER_FLOOR - NVML_FI_PWR_SMOOTHING_ADMIN_OVERRIDE_RAMP_DOWN_HYST_VAL - 1) - \
+            (NVML_FI_PWR_SMOOTHING_SOC_POWER_SMOOTHING_ENABLED - NVML_FI_PWR_SMOOTHING_ADMIN_OVERRIDE_PRIMARY_FLOOR_ACT_OFFSET - 1)) : \
+        ((field_val) > NVML_FI_PWR_SMOOTHING_ADMIN_OVERRIDE_RAMP_DOWN_HYST_VAL) ? \
+        ((field_val) - NVML_FI_PWR_SMOOTHING_ENABLED - \
             (NVML_FI_PWR_SMOOTHING_PRIMARY_POWER_FLOOR - NVML_FI_PWR_SMOOTHING_ADMIN_OVERRIDE_RAMP_DOWN_HYST_VAL - 1)) : \
-        (field_val - NVML_FI_PWR_SMOOTHING_ENABLED) \
+        ((field_val) - NVML_FI_PWR_SMOOTHING_ENABLED) \
     ) //!< Index from field value.
 
 #define NVML_POWER_SMOOTHING_MAX_NUM_PROFILES                   5 //!< Maximum number of profiles.

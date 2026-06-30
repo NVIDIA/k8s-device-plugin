@@ -45,7 +45,7 @@ const (
 	// DEVICE_PCI_BUS_ID_FMT as defined in nvml/nvml.h
 	DEVICE_PCI_BUS_ID_FMT = "%08X:%02X:%02X.0"
 	// NVLINK_MAX_LINKS as defined in nvml/nvml.h
-	NVLINK_MAX_LINKS = 18
+	NVLINK_MAX_LINKS = 36
 	// TOPOLOGY_CPU as defined in nvml/nvml.h
 	TOPOLOGY_CPU = 0
 	// MAX_PHYSICAL_BRIDGE as defined in nvml/nvml.h
@@ -118,6 +118,8 @@ const (
 	DEVICE_ARCH_HOPPER = 9
 	// DEVICE_ARCH_BLACKWELL as defined in nvml/nvml.h
 	DEVICE_ARCH_BLACKWELL = 10
+	// DEVICE_ARCH_RUBIN as defined in nvml/nvml.h
+	DEVICE_ARCH_RUBIN = 13
 	// DEVICE_ARCH_UNKNOWN as defined in nvml/nvml.h
 	DEVICE_ARCH_UNKNOWN = 4294967295
 	// BUS_TYPE_UNKNOWN as defined in nvml/nvml.h
@@ -182,6 +184,10 @@ const (
 	POWER_SCOPE_MODULE = 1
 	// POWER_SCOPE_MEMORY as defined in nvml/nvml.h
 	POWER_SCOPE_MEMORY = 2
+	// POWER_SCOPE_GPU_BASE as defined in nvml/nvml.h
+	POWER_SCOPE_GPU_BASE = 3
+	// POWER_SCOPE_COUNT as defined in nvml/nvml.h
+	POWER_SCOPE_COUNT = 4
 	// GRID_LICENSE_EXPIRY_NOT_AVAILABLE as defined in nvml/nvml.h
 	GRID_LICENSE_EXPIRY_NOT_AVAILABLE = 0
 	// GRID_LICENSE_EXPIRY_INVALID as defined in nvml/nvml.h
@@ -834,12 +840,28 @@ const (
 	FI_DEV_NVLINK_PLR_XMIT_BLOCKS = 294
 	// FI_DEV_NVLINK_PLR_XMIT_RETRY_BLOCKS as defined in nvml/nvml.h
 	FI_DEV_NVLINK_PLR_XMIT_RETRY_BLOCKS = 295
+	// FI_DEV_NVLINK_GET_DATA_RATE as defined in nvml/nvml.h
+	FI_DEV_NVLINK_GET_DATA_RATE = 296
+	// FI_DEV_MMA_STALL_PERCENT as defined in nvml/nvml.h
+	FI_DEV_MMA_STALL_PERCENT = 297
+	// FI_DEV_MCLK_SWITCH_TYPE as defined in nvml/nvml.h
+	FI_DEV_MCLK_SWITCH_TYPE = 298
+	// FI_DEV_MCLK_MIN_SWITCH_INTERVAL_MILLISECONDS as defined in nvml/nvml.h
+	FI_DEV_MCLK_MIN_SWITCH_INTERVAL_MILLISECONDS = 299
+	// FI_PWR_SMOOTHING_SOC_POWER_SMOOTHING_ENABLED as defined in nvml/nvml.h
+	FI_PWR_SMOOTHING_SOC_POWER_SMOOTHING_ENABLED = 300
 	// FI_DEV_REMAPPED_ROWS_COR_INACTIVE as defined in nvml/nvml.h
 	FI_DEV_REMAPPED_ROWS_COR_INACTIVE = 301
 	// FI_DEV_REMAPPED_ROWS_UNC_INACTIVE as defined in nvml/nvml.h
 	FI_DEV_REMAPPED_ROWS_UNC_INACTIVE = 302
 	// FI_MAX as defined in nvml/nvml.h
 	FI_MAX = 303
+	// MCLK_SWITCH_TYPE_NOT_SUPPORTED as defined in nvml/nvml.h
+	MCLK_SWITCH_TYPE_NOT_SUPPORTED = 0
+	// MCLK_SWITCH_TYPE_DEFERRED as defined in nvml/nvml.h
+	MCLK_SWITCH_TYPE_DEFERRED = 1
+	// MCLK_SWITCH_TYPE_RUNTIME as defined in nvml/nvml.h
+	MCLK_SWITCH_TYPE_RUNTIME = 2
 	// NVLINK_LOW_POWER_THRESHOLD_UNIT_100US as defined in nvml/nvml.h
 	NVLINK_LOW_POWER_THRESHOLD_UNIT_100US = 0
 	// NVLINK_LOW_POWER_THRESHOLD_UNIT_50US as defined in nvml/nvml.h
@@ -1120,6 +1142,8 @@ const (
 	DEVICE_SERIAL_BUFFER_SIZE = 30
 	// DEVICE_VBIOS_VERSION_BUFFER_SIZE as defined in nvml/nvml.h
 	DEVICE_VBIOS_VERSION_BUFFER_SIZE = 32
+	// CPER_CURSOR_HANDLE_INIT as defined in nvml/nvml.h
+	CPER_CURSOR_HANDLE_INIT = ((CPERCursorHandle)(0))
 	// AFFINITY_SCOPE_NODE as defined in nvml/nvml.h
 	AFFINITY_SCOPE_NODE = 0
 	// AFFINITY_SCOPE_SOCKET as defined in nvml/nvml.h
@@ -1220,8 +1244,10 @@ const (
 	COMPUTE_INSTANCE_PROFILE_6_SLICE = 6
 	// COMPUTE_INSTANCE_PROFILE_1_SLICE_REV1 as defined in nvml/nvml.h
 	COMPUTE_INSTANCE_PROFILE_1_SLICE_REV1 = 7
+	// COMPUTE_INSTANCE_PROFILE_7_SLICE_NVL as defined in nvml/nvml.h
+	COMPUTE_INSTANCE_PROFILE_7_SLICE_NVL = 8
 	// COMPUTE_INSTANCE_PROFILE_COUNT as defined in nvml/nvml.h
-	COMPUTE_INSTANCE_PROFILE_COUNT = 8
+	COMPUTE_INSTANCE_PROFILE_COUNT = 9
 	// COMPUTE_INSTANCE_ENGINE_PROFILE_SHARED as defined in nvml/nvml.h
 	COMPUTE_INSTANCE_ENGINE_PROFILE_SHARED = 0
 	// COMPUTE_INSTANCE_ENGINE_PROFILE_COUNT as defined in nvml/nvml.h
@@ -1256,6 +1282,18 @@ const (
 	POWER_SMOOTHING_PROFILE_PARAM_PRIMARY_FLOOR_TAR_WIN_MULT = 6
 	// POWER_SMOOTHING_PROFILE_PARAM_PRIMARY_FLOOR_ACT_OFFSET as defined in nvml/nvml.h
 	POWER_SMOOTHING_PROFILE_PARAM_PRIMARY_FLOOR_ACT_OFFSET = 7
+)
+
+// ProcessMode as declared in nvml/nvml.h
+type ProcessMode int32
+
+// ProcessMode enumeration from nvml/nvml.h
+const (
+	PROCESS_MODE_COMPUTE  ProcessMode = iota
+	PROCESS_MODE_GRAPHICS ProcessMode = 1
+	PROCESS_MODE_MPS      ProcessMode = 2
+	PROCESS_MODE_ALL      ProcessMode = 3
+	PROCESS_MODE_MAX      ProcessMode = 4
 )
 
 // BridgeChipType as declared in nvml/nvml.h
@@ -1803,11 +1841,12 @@ type DeviceGpuRecoveryAction int32
 
 // DeviceGpuRecoveryAction enumeration from nvml/nvml.h
 const (
-	GPU_RECOVERY_ACTION_NONE            DeviceGpuRecoveryAction = iota
-	GPU_RECOVERY_ACTION_GPU_RESET       DeviceGpuRecoveryAction = 1
-	GPU_RECOVERY_ACTION_NODE_REBOOT     DeviceGpuRecoveryAction = 2
-	GPU_RECOVERY_ACTION_DRAIN_P2P       DeviceGpuRecoveryAction = 3
-	GPU_RECOVERY_ACTION_DRAIN_AND_RESET DeviceGpuRecoveryAction = 4
+	GPU_RECOVERY_ACTION_NONE                DeviceGpuRecoveryAction = iota
+	GPU_RECOVERY_ACTION_GPU_RESET           DeviceGpuRecoveryAction = 1
+	GPU_RECOVERY_ACTION_NODE_REBOOT         DeviceGpuRecoveryAction = 2
+	GPU_RECOVERY_ACTION_DRAIN_P2P           DeviceGpuRecoveryAction = 3
+	GPU_RECOVERY_ACTION_DRAIN_AND_RESET     DeviceGpuRecoveryAction = 4
+	GPU_RECOVERY_ACTION_RECOVER_IMEX_DOMAIN DeviceGpuRecoveryAction = 5
 )
 
 // FanState as declared in nvml/nvml.h
@@ -1892,6 +1931,7 @@ const (
 	NVLINK_VERSION_3_1     NvlinkVersion = 5
 	NVLINK_VERSION_4_0     NvlinkVersion = 6
 	NVLINK_VERSION_5_0     NvlinkVersion = 7
+	NVLINK_VERSION_6_0     NvlinkVersion = 8
 )
 
 // VgpuVmCompatibility as declared in nvml/nvml.h
@@ -1992,6 +2032,14 @@ const (
 	GRID_LICENSE_FEATURE_CODE_VWORKSTATION GridLicenseFeatureCode = 2
 	GRID_LICENSE_FEATURE_CODE_GAMING       GridLicenseFeatureCode = 3
 	GRID_LICENSE_FEATURE_CODE_COMPUTE      GridLicenseFeatureCode = 4
+)
+
+// CPERType as declared in nvml/nvml.h
+type CPERType int32
+
+// CPERType enumeration from nvml/nvml.h
+const (
+	CPER_ACCESS_TYPE_GPU CPERType = 1
 )
 
 // PRMCounterId as declared in nvml/nvml.h
@@ -2202,6 +2250,42 @@ const (
 	GPM_METRIC_GR7_CTXSW_REQUESTS          GpmMetricId = 207
 	GPM_METRIC_GR7_CTXSW_CYCLES_PER_REQ    GpmMetricId = 208
 	GPM_METRIC_GR7_CTXSW_ACTIVE_PCT        GpmMetricId = 209
+	GPM_METRIC_NVLINK_L18_RX_PER_SEC       GpmMetricId = 212
+	GPM_METRIC_NVLINK_L18_TX_PER_SEC       GpmMetricId = 213
+	GPM_METRIC_NVLINK_L19_RX_PER_SEC       GpmMetricId = 214
+	GPM_METRIC_NVLINK_L19_TX_PER_SEC       GpmMetricId = 215
+	GPM_METRIC_NVLINK_L20_RX_PER_SEC       GpmMetricId = 216
+	GPM_METRIC_NVLINK_L20_TX_PER_SEC       GpmMetricId = 217
+	GPM_METRIC_NVLINK_L21_RX_PER_SEC       GpmMetricId = 218
+	GPM_METRIC_NVLINK_L21_TX_PER_SEC       GpmMetricId = 219
+	GPM_METRIC_NVLINK_L22_RX_PER_SEC       GpmMetricId = 220
+	GPM_METRIC_NVLINK_L22_TX_PER_SEC       GpmMetricId = 221
+	GPM_METRIC_NVLINK_L23_RX_PER_SEC       GpmMetricId = 222
+	GPM_METRIC_NVLINK_L23_TX_PER_SEC       GpmMetricId = 223
+	GPM_METRIC_NVLINK_L24_RX_PER_SEC       GpmMetricId = 224
+	GPM_METRIC_NVLINK_L24_TX_PER_SEC       GpmMetricId = 225
+	GPM_METRIC_NVLINK_L25_RX_PER_SEC       GpmMetricId = 226
+	GPM_METRIC_NVLINK_L25_TX_PER_SEC       GpmMetricId = 227
+	GPM_METRIC_NVLINK_L26_RX_PER_SEC       GpmMetricId = 228
+	GPM_METRIC_NVLINK_L26_TX_PER_SEC       GpmMetricId = 229
+	GPM_METRIC_NVLINK_L27_RX_PER_SEC       GpmMetricId = 230
+	GPM_METRIC_NVLINK_L27_TX_PER_SEC       GpmMetricId = 231
+	GPM_METRIC_NVLINK_L28_RX_PER_SEC       GpmMetricId = 232
+	GPM_METRIC_NVLINK_L28_TX_PER_SEC       GpmMetricId = 233
+	GPM_METRIC_NVLINK_L29_RX_PER_SEC       GpmMetricId = 234
+	GPM_METRIC_NVLINK_L29_TX_PER_SEC       GpmMetricId = 235
+	GPM_METRIC_NVLINK_L30_RX_PER_SEC       GpmMetricId = 236
+	GPM_METRIC_NVLINK_L30_TX_PER_SEC       GpmMetricId = 237
+	GPM_METRIC_NVLINK_L31_RX_PER_SEC       GpmMetricId = 238
+	GPM_METRIC_NVLINK_L31_TX_PER_SEC       GpmMetricId = 239
+	GPM_METRIC_NVLINK_L32_RX_PER_SEC       GpmMetricId = 240
+	GPM_METRIC_NVLINK_L32_TX_PER_SEC       GpmMetricId = 241
+	GPM_METRIC_NVLINK_L33_RX_PER_SEC       GpmMetricId = 242
+	GPM_METRIC_NVLINK_L33_TX_PER_SEC       GpmMetricId = 243
+	GPM_METRIC_NVLINK_L34_RX_PER_SEC       GpmMetricId = 244
+	GPM_METRIC_NVLINK_L34_TX_PER_SEC       GpmMetricId = 245
+	GPM_METRIC_NVLINK_L35_RX_PER_SEC       GpmMetricId = 246
+	GPM_METRIC_NVLINK_L35_TX_PER_SEC       GpmMetricId = 247
 	GPM_METRIC_SM_CYCLES_ELAPSED           GpmMetricId = 248
 	GPM_METRIC_SM_CYCLES_ACTIVE            GpmMetricId = 249
 	GPM_METRIC_MMA_CYCLES_ACTIVE           GpmMetricId = 250
@@ -2251,6 +2335,42 @@ const (
 	GPM_METRIC_NVLINK_L16_TX               GpmMetricId = 294
 	GPM_METRIC_NVLINK_L17_RX               GpmMetricId = 295
 	GPM_METRIC_NVLINK_L17_TX               GpmMetricId = 296
+	GPM_METRIC_NVLINK_L18_RX               GpmMetricId = 297
+	GPM_METRIC_NVLINK_L18_TX               GpmMetricId = 298
+	GPM_METRIC_NVLINK_L19_RX               GpmMetricId = 299
+	GPM_METRIC_NVLINK_L19_TX               GpmMetricId = 300
+	GPM_METRIC_NVLINK_L20_RX               GpmMetricId = 301
+	GPM_METRIC_NVLINK_L20_TX               GpmMetricId = 302
+	GPM_METRIC_NVLINK_L21_RX               GpmMetricId = 303
+	GPM_METRIC_NVLINK_L21_TX               GpmMetricId = 304
+	GPM_METRIC_NVLINK_L22_RX               GpmMetricId = 305
+	GPM_METRIC_NVLINK_L22_TX               GpmMetricId = 306
+	GPM_METRIC_NVLINK_L23_RX               GpmMetricId = 307
+	GPM_METRIC_NVLINK_L23_TX               GpmMetricId = 308
+	GPM_METRIC_NVLINK_L24_RX               GpmMetricId = 309
+	GPM_METRIC_NVLINK_L24_TX               GpmMetricId = 310
+	GPM_METRIC_NVLINK_L25_RX               GpmMetricId = 311
+	GPM_METRIC_NVLINK_L25_TX               GpmMetricId = 312
+	GPM_METRIC_NVLINK_L26_RX               GpmMetricId = 313
+	GPM_METRIC_NVLINK_L26_TX               GpmMetricId = 314
+	GPM_METRIC_NVLINK_L27_RX               GpmMetricId = 315
+	GPM_METRIC_NVLINK_L27_TX               GpmMetricId = 316
+	GPM_METRIC_NVLINK_L28_RX               GpmMetricId = 317
+	GPM_METRIC_NVLINK_L28_TX               GpmMetricId = 318
+	GPM_METRIC_NVLINK_L29_RX               GpmMetricId = 319
+	GPM_METRIC_NVLINK_L29_TX               GpmMetricId = 320
+	GPM_METRIC_NVLINK_L30_RX               GpmMetricId = 321
+	GPM_METRIC_NVLINK_L30_TX               GpmMetricId = 322
+	GPM_METRIC_NVLINK_L31_RX               GpmMetricId = 323
+	GPM_METRIC_NVLINK_L31_TX               GpmMetricId = 324
+	GPM_METRIC_NVLINK_L32_RX               GpmMetricId = 325
+	GPM_METRIC_NVLINK_L32_TX               GpmMetricId = 326
+	GPM_METRIC_NVLINK_L33_RX               GpmMetricId = 327
+	GPM_METRIC_NVLINK_L33_TX               GpmMetricId = 328
+	GPM_METRIC_NVLINK_L34_RX               GpmMetricId = 329
+	GPM_METRIC_NVLINK_L34_TX               GpmMetricId = 330
+	GPM_METRIC_NVLINK_L35_RX               GpmMetricId = 331
+	GPM_METRIC_NVLINK_L35_TX               GpmMetricId = 332
 	GPM_METRIC_MAX                         GpmMetricId = 333
 )
 
