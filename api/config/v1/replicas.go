@@ -34,35 +34,34 @@ type ReplicatedResources struct {
 }
 
 func (rrs *ReplicatedResources) disableResoureRenaming(id string) {
+	// Preserve user-specified `rename` and `devices` fields on each shared
+	// resource entry instead of resetting them. This enables per-UUID
+	// time-slicing, where only a subset of GPUs on a node is exposed under
+	// a renamed shared resource (e.g. nvidia.com/gpu.shared) while the
+	// remaining devices stay on the original resource name.
 	if rrs == nil {
 		return
 	}
 	renameByDefault := rrs.RenameByDefault
 	setsNonDefaultRename := false
 	setsDevices := false
-	for i, r := range rrs.Resources {
+	for _, r := range rrs.Resources {
 		if !renameByDefault && r.Rename != "" {
 			setsNonDefaultRename = true
-			rrs.Resources[i].Rename = ""
 		}
 		if renameByDefault && r.Rename != r.Name.DefaultSharedRename() {
 			setsNonDefaultRename = true
-			rrs.Resources[i].Rename = r.Name.DefaultSharedRename()
 		}
 		if !r.Devices.All {
 			setsDevices = true
-			rrs.Resources[i].Devices.All = true
-			rrs.Resources[i].Devices.Count = 0
-			rrs.Resources[i].Devices.List = nil
 		}
 	}
 	if setsNonDefaultRename {
-		klog.Warningf("Setting the 'rename' field in sharing.%s.resources is not yet supported in the config. Ignoring...", id)
+		klog.Warningf("sharing.%s.resources: keeping user-specified `rename` field (per-UUID time-slicing)", id)
 	}
 	if setsDevices {
-		klog.Warningf("Customizing the 'devices' field in sharing.%s.resources is not yet supported in the config. Ignoring...", id)
+		klog.Warningf("sharing.%s.resources: keeping user-specified `devices` field (per-UUID time-slicing)", id)
 	}
-
 }
 
 func (rrs *ReplicatedResources) isReplicated() bool {
