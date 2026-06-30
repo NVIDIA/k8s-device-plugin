@@ -113,6 +113,8 @@ gfd:
   namespaceOverride: ""
   noTimestamp: null
   sleepInterval: null
+  # custom env. needed (for example: LD_PRELOAD=/driver-root/usr/lib64/libnvidia-ml.so.1 when deviceListStrategy=cdi-cri)
+  env: []
   securityContext:
     # privileged access is required for the gpu-feature-discovery to access the
     # vgpu info on a host.
