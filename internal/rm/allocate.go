@@ -51,13 +51,21 @@ func (r *resourceManager) distributedAlloc(available, required []string, size in
 		replicas[id].total++
 	}
 
+	// Track how many slots have already been picked from each physical device
+	// during this allocation. Used as the tie-break sort key below so the
+	// allocator rotates to a sibling physical device when the underlying
+	// "used" counts would otherwise tie.
+	pickedFrom := make(map[string]int)
+
 	// Grab the set of 'needed' devices one-by-one from the candidates list.
 	// Before selecting each candidate, first sort the candidate list using the
 	// replicas map above. After sorting, the first element in the list will
 	// contain the device with the least difference between total and available
-	// replications (based on what's already been allocated). Add this device
-	// to the list of devices to allocate, remove it from the candidate list,
-	// down its available count in the replicas map, and repeat.
+	// replications (based on what's already been allocated). When two devices
+	// tie on that count, prefer the physical device we have not touched (or
+	// have touched the least) during this allocation. Add this device to the
+	// list of devices to allocate, remove it from the candidate list, down
+	// its available count in the replicas map, and repeat.
 	var devices []string
 	for i := 0; i < needed; i++ {
 		sort.Slice(candidates, func(i, j int) bool {
@@ -65,9 +73,13 @@ func (r *resourceManager) distributedAlloc(available, required []string, size in
 			jid := AnnotatedID(candidates[j]).GetID()
 			idiff := replicas[iid].total - replicas[iid].available
 			jdiff := replicas[jid].total - replicas[jid].available
-			return idiff < jdiff
+			if idiff != jdiff {
+				return idiff < jdiff
+			}
+			return pickedFrom[iid] < pickedFrom[jid]
 		})
 		id := AnnotatedID(candidates[0]).GetID()
+		pickedFrom[id]++
 		replicas[id].available--
 		devices = append(devices, candidates[0])
 		candidates = candidates[1:]
