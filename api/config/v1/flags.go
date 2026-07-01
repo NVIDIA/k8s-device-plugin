@@ -73,12 +73,13 @@ type CommandLineFlags struct {
 
 // PluginCommandLineFlags holds the list of command line flags specific to the device plugin.
 type PluginCommandLineFlags struct {
-	PassDeviceSpecs     *bool                   `json:"passDeviceSpecs"     yaml:"passDeviceSpecs"`
-	DeviceListStrategy  *deviceListStrategyFlag `json:"deviceListStrategy"  yaml:"deviceListStrategy"`
-	DeviceIDStrategy    *string                 `json:"deviceIDStrategy"    yaml:"deviceIDStrategy"`
-	CDIAnnotationPrefix *string                 `json:"cdiAnnotationPrefix" yaml:"cdiAnnotationPrefix"`
-	NvidiaCTKPath       *string                 `json:"nvidiaCTKPath"       yaml:"nvidiaCTKPath"`
-	ContainerDriverRoot *string                 `json:"containerDriverRoot" yaml:"containerDriverRoot"`
+	PassDeviceSpecs               *bool                   `json:"passDeviceSpecs"               yaml:"passDeviceSpecs"`
+	DeviceListStrategy            *deviceListStrategyFlag `json:"deviceListStrategy"            yaml:"deviceListStrategy"`
+	DeviceIDStrategy              *string                 `json:"deviceIDStrategy"              yaml:"deviceIDStrategy"`
+	CDIAnnotationPrefix           *string                 `json:"cdiAnnotationPrefix"           yaml:"cdiAnnotationPrefix"`
+	NvidiaCTKPath                 *string                 `json:"nvidiaCTKPath"                 yaml:"nvidiaCTKPath"`
+	ContainerDriverRoot           *string                 `json:"containerDriverRoot"           yaml:"containerDriverRoot"`
+	SharedDevicesAllocationPolicy *string                 `json:"sharedDevicesAllocationPolicy" yaml:"sharedDevicesAllocationPolicy"`
 }
 
 // deviceListStrategyFlag is a custom type for parsing the deviceListStrategy flag.
@@ -157,6 +158,8 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.Plugin.NvidiaCTKPath, c, n)
 			case "container-driver-root":
 				updateFromCLIFlag(&f.Plugin.ContainerDriverRoot, c, n)
+			case "shared-devices-allocation-policy":
+				updateFromCLIFlag(&f.Plugin.SharedDevicesAllocationPolicy, c, n)
 			}
 			// GFD specific flags
 			if f.GFD == nil {
