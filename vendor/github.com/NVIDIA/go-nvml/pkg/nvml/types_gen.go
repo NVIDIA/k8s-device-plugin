@@ -254,6 +254,10 @@ type Pdi struct {
 	Value   uint64
 }
 
+type BBXTimeData_v1 struct {
+	TimeRun uint32
+}
+
 type DramEncryptionInfo_v1 struct {
 	Version         uint32
 	EncryptionState uint32
@@ -1042,6 +1046,19 @@ type AccountingStats struct {
 	Reserved          [5]uint32
 }
 
+type AccountingStats_v2 struct {
+	Pid               uint32
+	IsRunning         uint32
+	GpuUtilization    uint32
+	MemoryUtilization uint32
+	MaxMemoryUsage    uint64
+	SampleCount       uint32
+	SumGpuUtil        uint64
+	SumFbUtil         uint64
+	Time              uint64
+	StartTime         uint64
+}
+
 type EncoderSessionInfo struct {
 	SessionId      uint32
 	Pid            uint32
@@ -1181,6 +1198,21 @@ type GpuFabricInfoV struct {
 	HealthMask    uint32
 	HealthSummary uint8
 	Pad_cgo_0     [3]byte
+}
+
+type CPERCursorHandle uint64
+
+type CPERCursor_v1 struct {
+	CperTypeMask uint32
+	Uuid         [80]int8
+	Handle       uint64
+}
+
+type GetCPER_v1 struct {
+	Cursor     CPERCursor_v1
+	Buffer     *uint8
+	BufferSize uint32
+	Pad_cgo_0  [4]byte
 }
 
 type SystemDriverBranchInfo_v1 struct {

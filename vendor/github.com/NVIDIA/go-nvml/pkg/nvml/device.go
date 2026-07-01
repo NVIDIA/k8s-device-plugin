@@ -1460,6 +1460,18 @@ func (device nvmlDevice) GetAccountingBufferSize() (int, Return) {
 	return int(bufferSize), ret
 }
 
+// nvml.DeviceGetAccountingStats_v2()
+func (l *library) DeviceGetAccountingStats_v2(device Device, pid uint32) (AccountingStats_v2, Return) {
+	return device.GetAccountingStats_v2(pid)
+}
+
+func (device nvmlDevice) GetAccountingStats_v2(pid uint32) (AccountingStats_v2, Return) {
+	var stats AccountingStats_v2
+	stats.Pid = pid
+	ret := nvmlDeviceGetAccountingStats_v2(device, &stats)
+	return stats, ret
+}
+
 // nvml.DeviceGetRetiredPages()
 func (l *library) DeviceGetRetiredPages(device Device, cause PageRetirementCause) ([]uint64, Return) {
 	return device.GetRetiredPages(cause)
@@ -3144,6 +3156,17 @@ func (device nvmlDevice) GetLastBBXFlushTime() (uint64, uint, Return) {
 	var durationUs uint
 	ret := nvmlDeviceGetLastBBXFlushTime(device, &timestamp, &durationUs)
 	return timestamp, durationUs, ret
+}
+
+// nvml.DeviceGetBBXTimeData_v1()
+func (l *library) DeviceGetBBXTimeData_v1(device Device) (BBXTimeData_v1, Return) {
+	return device.GetBBXTimeData_v1()
+}
+
+func (device nvmlDevice) GetBBXTimeData_v1() (BBXTimeData_v1, Return) {
+	var timeData BBXTimeData_v1
+	ret := nvmlDeviceGetBBXTimeData_v1(device, &timeData)
+	return timeData, ret
 }
 
 // nvml.DeviceGetNumaNodeId()
