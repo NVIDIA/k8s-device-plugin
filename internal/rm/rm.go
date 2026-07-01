@@ -62,7 +62,7 @@ func (r *resourceManager) GetDevicePaths(ids []string) []string {
 
 // GetPreferredAllocation runs an allocation algorithm over the inputs.
 func (r *resourceManager) GetPreferredAllocation(available, required []string, size int) ([]string, error) {
-	return r.distributedAlloc(available, required, size)
+	return r.greedyAlloc(available, required, size, comparatorForPolicy(spec.AllocationPolicyDistributed))
 }
 
 // Resource gets the resource name associated with the ResourceManager
