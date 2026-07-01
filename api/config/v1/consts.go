@@ -48,6 +48,12 @@ const (
 	DeviceIDStrategyIndex = "index"
 )
 
+// Constants to represent the various allocation policies
+const (
+	AllocationPolicyDistributed = "distributed"
+	AllocationPolicyPacked      = "packed"
+)
+
 // Constants related to generating CDI specifications
 const (
 	DefaultCDIAnnotationPrefix = cdiapi.AnnotationPrefix
