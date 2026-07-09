@@ -28,6 +28,8 @@ import (
 
 	helm "github.com/mittwald/go-helm-client"
 	helmValues "github.com/mittwald/go-helm-client/values"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/kube"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
 
@@ -79,13 +81,15 @@ var _ = Describe("GPU Device Plugin", Ordered, Label("gpu", "e2e", "device-plugi
 			helmReleaseName = "nvdp-e2e-test-" + rand.String(5)
 
 			chartSpec = helm.ChartSpec{
-				ReleaseName:   helmReleaseName,
-				ChartName:     HelmChart,
-				Namespace:     testNamespace.Name,
-				Wait:          true,
-				Timeout:       1 * time.Minute,
-				ValuesOptions: values,
-				CleanupOnFail: true,
+				ReleaseName:     helmReleaseName,
+				ChartName:       HelmChart,
+				Namespace:       testNamespace.Name,
+				Timeout:         1 * time.Minute,
+				ValuesOptions:   values,
+				WaitStrategy:    kube.LegacyStrategy,
+				CleanupOnFail:   true,
+				DryRunStrategy:  action.DryRunNone,
+				ServerSideApply: "auto",
 			}
 
 			By("Installing k8s-device-plugin Helm chart")
@@ -102,7 +106,7 @@ var _ = Describe("GPU Device Plugin", Ordered, Label("gpu", "e2e", "device-plugi
 
 		AfterAll(func(ctx SpecContext) {
 			By("Uninstalling k8s-device-plugin Helm chart")
-			err := helmClient.UninstallReleaseByName(helmReleaseName)
+			err := helmClient.UninstallRelease(&chartSpec)
 			if err != nil {
 				GinkgoWriter.Printf("Failed to uninstall helm release %s: %v\n", helmReleaseName, err)
 			}

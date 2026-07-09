@@ -3,13 +3,13 @@ package helmclient
 import (
 	"context"
 
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/getter"
 
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/pkg/action"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
 // Client holds the method signatures for a Helm client.
@@ -32,7 +32,7 @@ type Client interface {
 	UninstallReleaseByName(name string) error
 	TemplateChart(spec *ChartSpec, options *HelmTemplateOptions) ([]byte, error)
 	LintChart(spec *ChartSpec) error
-	SetDebugLog(debugLog action.DebugLog)
+	SetDebugLog(debugLog DebugLog)
 	ListReleaseHistory(name string, max int) ([]*release.Release, error)
 	GetChart(chartName string, chartPathOptions *action.ChartPathOptions) (*chart.Chart, string, error)
 	RunChartTests(releaseName string) (bool, error)
