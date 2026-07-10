@@ -295,29 +295,37 @@ func (r *nvmlResourceManager) getMigDeviceParts(d *Device) (string, uint32, uint
 	uuid := d.GetUUID()
 	// For older driver versions, the call to DeviceGetHandleByUUID will fail for MIG devices.
 	mig, ret := r.nvml.DeviceGetHandleByUUID(uuid)
-	if ret == nvml.SUCCESS {
-		parentHandle, ret := mig.GetDeviceHandleFromMigDeviceHandle()
-		if ret != nvml.SUCCESS {
-			return "", 0, 0, fmt.Errorf("failed to get parent device handle: %v", ret)
+	if ret != nvml.SUCCESS {
+		// Fall back to parsing the legacy MIG UUID format (MIG-GPU-<parent-uuid>/<gi>/<ci>).
+		// Modern drivers assign opaque MIG UUIDs that carry no placement information,
+		// so if parsing fails the NVML error above must not be masked: it is the
+		// actual reason the device placement could not be determined.
+		parentUUID, gi, ci, err := parseMigDeviceUUID(uuid)
+		if err != nil {
+			return "", 0, 0, fmt.Errorf("failed to get MIG device handle for %s: %s; %w", uuid, nvml.ErrorString(ret), err)
 		}
-
-		parentUUID, ret := parentHandle.GetUUID()
-		if ret != nvml.SUCCESS {
-			return "", 0, 0, fmt.Errorf("failed to get parent uuid: %v", ret)
-		}
-		gi, ret := mig.GetGpuInstanceId()
-		if ret != nvml.SUCCESS {
-			return "", 0, 0, fmt.Errorf("failed to get GPU Instance ID: %v", ret)
-		}
-
-		ci, ret := mig.GetComputeInstanceId()
-		if ret != nvml.SUCCESS {
-			return "", 0, 0, fmt.Errorf("failed to get Compute Instance ID: %v", ret)
-		}
-		//nolint:gosec  // We know that the values returned from Get*InstanceId are within the valid uint32 range.
-		return parentUUID, uint32(gi), uint32(ci), nil
+		return parentUUID, gi, ci, nil
 	}
-	return parseMigDeviceUUID(uuid)
+	parentHandle, ret := mig.GetDeviceHandleFromMigDeviceHandle()
+	if ret != nvml.SUCCESS {
+		return "", 0, 0, fmt.Errorf("failed to get parent device handle: %v", ret)
+	}
+
+	parentUUID, ret := parentHandle.GetUUID()
+	if ret != nvml.SUCCESS {
+		return "", 0, 0, fmt.Errorf("failed to get parent uuid: %v", ret)
+	}
+	gi, ret := mig.GetGpuInstanceId()
+	if ret != nvml.SUCCESS {
+		return "", 0, 0, fmt.Errorf("failed to get GPU Instance ID: %v", ret)
+	}
+
+	ci, ret := mig.GetComputeInstanceId()
+	if ret != nvml.SUCCESS {
+		return "", 0, 0, fmt.Errorf("failed to get Compute Instance ID: %v", ret)
+	}
+	//nolint:gosec  // We know that the values returned from Get*InstanceId are within the valid uint32 range.
+	return parentUUID, uint32(gi), uint32(ci), nil
 }
 
 // parseMigDeviceUUID splits the MIG device UUID into the parent device UUID and ci and gi
