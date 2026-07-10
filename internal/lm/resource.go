@@ -309,6 +309,8 @@ func getArchFamily(computeMajor, computeMinor int) string {
 	// The Blackwell GPU family is bifurcated into two cuda compute capabilities 10.0 and 12.0
 	case 10, 12:
 		return "blackwell"
+	case 13:
+		return "rubin"
 	}
 	return "undefined"
 }
