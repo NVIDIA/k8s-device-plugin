@@ -3,7 +3,7 @@ package helmclient
 import (
 	"fmt"
 
-	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v4/pkg/getter"
 	"sigs.k8s.io/yaml"
 
 	"github.com/mittwald/go-helm-client/values"

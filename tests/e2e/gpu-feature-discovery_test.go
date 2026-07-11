@@ -28,6 +28,8 @@ import (
 
 	helm "github.com/mittwald/go-helm-client"
 	helmValues "github.com/mittwald/go-helm-client/values"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/kube"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
 
@@ -100,13 +102,15 @@ var _ = Describe("GPU Feature Discovery", Ordered, Label("gfd", "gpu", "e2e"), f
 
 			// reset Helm Client
 			chartSpec = helm.ChartSpec{
-				ReleaseName:   helmReleaseName,
-				ChartName:     HelmChart,
-				Namespace:     testNamespace.Name,
-				Wait:          true,
-				Timeout:       1 * time.Minute,
-				ValuesOptions: values,
-				CleanupOnFail: true,
+				ReleaseName:     helmReleaseName,
+				ChartName:       HelmChart,
+				Namespace:       testNamespace.Name,
+				Timeout:         1 * time.Minute,
+				ValuesOptions:   values,
+				WaitStrategy:    kube.LegacyStrategy,
+				CleanupOnFail:   true,
+				DryRunStrategy:  action.DryRunNone,
+				ServerSideApply: "auto",
 			}
 
 			By("Installing GFD Helm chart")
@@ -123,7 +127,7 @@ var _ = Describe("GPU Feature Discovery", Ordered, Label("gfd", "gpu", "e2e"), f
 
 		AfterAll(func(ctx SpecContext) {
 			By("Uninstalling GFD Helm chart")
-			err := helmClient.UninstallReleaseByName(helmReleaseName)
+			err := helmClient.UninstallRelease(&chartSpec)
 			if err != nil {
 				GinkgoWriter.Printf("Failed to uninstall helm release %s: %v\n", helmReleaseName, err)
 			}
