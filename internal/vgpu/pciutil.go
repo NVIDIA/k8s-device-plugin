@@ -137,7 +137,14 @@ func (d *PCIDevice) GetVendorSpecificCapability() ([]byte, error) {
 			break
 		}
 		if id == PciCapabilityVendorSpecificID {
-			capability := d.Config[pos+PciCapabilityListID : pos+PciCapabilityListID+length]
+			start := int(pos) + PciCapabilityListID
+			if length == 0 || start+int(length) > len(d.Config) {
+				// Malformed capability record (e.g. length read from PCI
+				// config space exceeds the buffer). Skip it instead of
+				// panicking so a single bad device can't crash GFD.
+				return nil, nil
+			}
+			capability := d.Config[start : start+int(length)]
 			return capability, nil
 		}
 
