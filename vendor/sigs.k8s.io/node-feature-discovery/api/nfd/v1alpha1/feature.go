@@ -80,6 +80,15 @@ func (f *Features) InsertAttributeFeatures(domain, feature string, values map[st
 	maps.Copy(f.Attributes[key].Elements, values)
 }
 
+// HasFeatures returns true if the NodeFeature object contains any features
+// (labels, flag features, attribute features, or instance features).
+func (n *NodeFeature) HasFeatures() bool {
+	return len(n.Spec.Labels) > 0 ||
+		len(n.Spec.Features.Attributes) > 0 ||
+		len(n.Spec.Features.Flags) > 0 ||
+		len(n.Spec.Features.Instances) > 0
+}
+
 // MergeInto merges two FeatureSpecs into one. Data in the input object takes
 // precedence (overwrite) over data of the existing object we're merging into.
 func (in *NodeFeatureSpec) MergeInto(out *NodeFeatureSpec) {
