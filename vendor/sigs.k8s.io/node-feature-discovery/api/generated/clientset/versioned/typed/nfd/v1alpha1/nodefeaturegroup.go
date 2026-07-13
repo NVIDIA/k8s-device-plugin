@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	gentype "k8s.io/client-go/gentype"
+	applyconfigurationnfdv1alpha1 "sigs.k8s.io/node-feature-discovery/api/generated/applyconfiguration/nfd/v1alpha1"
 	scheme "sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned/scheme"
 	nfdv1alpha1 "sigs.k8s.io/node-feature-discovery/api/nfd/v1alpha1"
 )
@@ -47,18 +48,21 @@ type NodeFeatureGroupInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*nfdv1alpha1.NodeFeatureGroupList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *nfdv1alpha1.NodeFeatureGroup, err error)
+	Apply(ctx context.Context, nodeFeatureGroup *applyconfigurationnfdv1alpha1.NodeFeatureGroupApplyConfiguration, opts v1.ApplyOptions) (result *nfdv1alpha1.NodeFeatureGroup, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, nodeFeatureGroup *applyconfigurationnfdv1alpha1.NodeFeatureGroupApplyConfiguration, opts v1.ApplyOptions) (result *nfdv1alpha1.NodeFeatureGroup, err error)
 	NodeFeatureGroupExpansion
 }
 
 // nodeFeatureGroups implements NodeFeatureGroupInterface
 type nodeFeatureGroups struct {
-	*gentype.ClientWithList[*nfdv1alpha1.NodeFeatureGroup, *nfdv1alpha1.NodeFeatureGroupList]
+	*gentype.ClientWithListAndApply[*nfdv1alpha1.NodeFeatureGroup, *nfdv1alpha1.NodeFeatureGroupList, *applyconfigurationnfdv1alpha1.NodeFeatureGroupApplyConfiguration]
 }
 
 // newNodeFeatureGroups returns a NodeFeatureGroups
 func newNodeFeatureGroups(c *NfdV1alpha1Client, namespace string) *nodeFeatureGroups {
 	return &nodeFeatureGroups{
-		gentype.NewClientWithList[*nfdv1alpha1.NodeFeatureGroup, *nfdv1alpha1.NodeFeatureGroupList](
+		gentype.NewClientWithListAndApply[*nfdv1alpha1.NodeFeatureGroup, *nfdv1alpha1.NodeFeatureGroupList, *applyconfigurationnfdv1alpha1.NodeFeatureGroupApplyConfiguration](
 			"nodefeaturegroups",
 			c.RESTClient(),
 			scheme.ParameterCodec,
