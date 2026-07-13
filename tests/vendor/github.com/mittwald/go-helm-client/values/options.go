@@ -31,8 +31,8 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/strvals"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/strvals"
 )
 
 // Options captures the different ways to specify values
