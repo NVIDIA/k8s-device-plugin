@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	gentype "k8s.io/client-go/gentype"
+	applyconfigurationnfdv1alpha1 "sigs.k8s.io/node-feature-discovery/api/generated/applyconfiguration/nfd/v1alpha1"
 	scheme "sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned/scheme"
 	nfdv1alpha1 "sigs.k8s.io/node-feature-discovery/api/nfd/v1alpha1"
 )
@@ -45,18 +46,19 @@ type NodeFeatureInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*nfdv1alpha1.NodeFeatureList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *nfdv1alpha1.NodeFeature, err error)
+	Apply(ctx context.Context, nodeFeature *applyconfigurationnfdv1alpha1.NodeFeatureApplyConfiguration, opts v1.ApplyOptions) (result *nfdv1alpha1.NodeFeature, err error)
 	NodeFeatureExpansion
 }
 
 // nodeFeatures implements NodeFeatureInterface
 type nodeFeatures struct {
-	*gentype.ClientWithList[*nfdv1alpha1.NodeFeature, *nfdv1alpha1.NodeFeatureList]
+	*gentype.ClientWithListAndApply[*nfdv1alpha1.NodeFeature, *nfdv1alpha1.NodeFeatureList, *applyconfigurationnfdv1alpha1.NodeFeatureApplyConfiguration]
 }
 
 // newNodeFeatures returns a NodeFeatures
 func newNodeFeatures(c *NfdV1alpha1Client, namespace string) *nodeFeatures {
 	return &nodeFeatures{
-		gentype.NewClientWithList[*nfdv1alpha1.NodeFeature, *nfdv1alpha1.NodeFeatureList](
+		gentype.NewClientWithListAndApply[*nfdv1alpha1.NodeFeature, *nfdv1alpha1.NodeFeatureList, *applyconfigurationnfdv1alpha1.NodeFeatureApplyConfiguration](
 			"nodefeatures",
 			c.RESTClient(),
 			scheme.ParameterCodec,
