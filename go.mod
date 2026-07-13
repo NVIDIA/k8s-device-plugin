@@ -25,7 +25,7 @@ require (
 	k8s.io/mount-utils v0.36.2
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
 	sigs.k8s.io/node-feature-discovery v0.18.3
-	sigs.k8s.io/node-feature-discovery/api/nfd v0.18.3
+	sigs.k8s.io/node-feature-discovery/api/nfd v0.19.0
 	sigs.k8s.io/yaml v1.6.0
 	tags.cncf.io/container-device-interface v1.1.0
 	tags.cncf.io/container-device-interface/specs-go v1.1.0
