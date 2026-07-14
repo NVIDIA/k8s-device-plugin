@@ -234,8 +234,23 @@ func (d *Daemon) EchoPipeToControl(command string) (string, error) {
 	return out.String(), nil
 }
 
+// sharedDevices returns the subset of the daemon's devices that are actually
+// MPS-shared (i.e., replicated with annotated IDs). Devices that end up in
+// the same resource manager but are not being replicated (per the sharing
+// config's Devices selector) are excluded so their compute mode and memory
+// limits are not touched by MPS setup.
+func (d *Daemon) sharedDevices() rm.Devices {
+	result := make(rm.Devices)
+	for id, dev := range d.rm.Devices() {
+		if rm.AnnotatedID(id).HasAnnotations() {
+			result[id] = dev
+		}
+	}
+	return result
+}
+
 func (d *Daemon) setComputeMode(mode computeMode) error {
-	for _, uuid := range d.Devices().GetUUIDs() {
+	for _, uuid := range d.sharedDevices().GetUUIDs() {
 		cmd := exec.Command(
 			"nvidia-smi",
 			"-i", uuid,
@@ -253,7 +268,7 @@ func (d *Daemon) setComputeMode(mode computeMode) error {
 func (m *Daemon) perDevicePinnedDeviceMemoryLimits() map[string]string {
 	totalMemoryInBytesPerDevice := make(map[string]uint64)
 	replicasPerDevice := make(map[string]uint64)
-	for _, device := range m.Devices() {
+	for _, device := range m.sharedDevices() {
 		index := device.Index
 		totalMemoryInBytesPerDevice[index] = device.TotalMemory
 		replicasPerDevice[index] += 1
@@ -271,10 +286,11 @@ func (m *Daemon) perDevicePinnedDeviceMemoryLimits() map[string]string {
 }
 
 func (m *Daemon) activeThreadPercentage() string {
-	if len(m.Devices()) == 0 {
+	shared := m.sharedDevices()
+	if len(shared) == 0 {
 		return ""
 	}
-	replicasPerDevice := len(m.Devices()) / len(m.Devices().GetUUIDs())
+	replicasPerDevice := len(shared) / len(shared.GetUUIDs())
 
 	return fmt.Sprintf("%d", 100/replicasPerDevice)
 }
