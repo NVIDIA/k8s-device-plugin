@@ -18,6 +18,7 @@ package rm
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
@@ -243,9 +244,14 @@ func (d DeviceMap) getIDsOfDevicesToReplicate(r *spec.ReplicatedResource) ([]str
 		return nil, nil
 	}
 
+	// Sort by UUID so selection is deterministic across processes (the plugin
+	// and MPS daemon build the map independently; map order is otherwise random).
+	ids := devices.GetIDs()
+	sort.Strings(ids)
+
 	// If all devices for this resource type are to be replicated.
 	if r.Devices.All {
-		return devices.GetIDs(), nil
+		return ids, nil
 	}
 
 	// If a specific number of devices for this resource type are to be replicated.
@@ -253,7 +259,7 @@ func (d DeviceMap) getIDsOfDevicesToReplicate(r *spec.ReplicatedResource) ([]str
 		if r.Devices.Count > len(devices) {
 			return nil, fmt.Errorf("requested %d devices to be replicated, but only %d devices available", r.Devices.Count, len(devices))
 		}
-		return devices.GetIDs()[:r.Devices.Count], nil
+		return ids[:r.Devices.Count], nil
 	}
 
 	// If a specific set of devices for this resource type are to be replicated.
@@ -299,6 +305,12 @@ func updateDeviceMapWithReplicas(replicatedResources *spec.ReplicatedResources, 
 		}
 	}
 
+	// selectedIDs is the set of device IDs claimed per source resource. Entries
+	// may share a Name (to give different GPUs different replica counts), so
+	// leftovers are computed against the union; a device claimed twice under one
+	// Name is a contradictory config and is rejected.
+	selectedIDs := make(map[spec.ResourceName]map[string]struct{})
+
 	// Walk shared Resources and update devices in the device map as appropriate.
 	for _, resource := range replicatedResources.Resources {
 		r := resource
@@ -311,10 +323,16 @@ func updateDeviceMapWithReplicas(replicatedResources *spec.ReplicatedResources, 
 		if len(ids) == 0 {
 			continue
 		}
-
-		// Add any devices we don't want replicated directly into the device map.
-		for _, d := range oDevices[r.Name].Difference(oDevices[r.Name].Subset(ids)) {
-			devices.insert(r.Name, d)
+		selected := selectedIDs[r.Name]
+		if selected == nil {
+			selected = make(map[string]struct{})
+			selectedIDs[r.Name] = selected
+		}
+		for _, id := range ids {
+			if _, exists := selected[id]; exists {
+				return nil, fmt.Errorf("device %q is selected by multiple entries for resource %q", id, r.Name)
+			}
+			selected[id] = struct{}{}
 		}
 
 		// Create replicated devices add them to the device map.
@@ -341,6 +359,19 @@ func updateDeviceMapWithReplicas(replicatedResources *spec.ReplicatedResources, 
 				}
 				devices.insert(name, &replicatedDevice)
 			}
+		}
+	}
+
+	// Add unselected devices back under their source name, computed once against
+	// the union of all selections so entries sharing a Name don't re-add each
+	// other's devices.
+	for name, selected := range selectedIDs {
+		ids := make([]string, 0, len(selected))
+		for id := range selected {
+			ids = append(ids, id)
+		}
+		for _, d := range oDevices[name].Difference(oDevices[name].Subset(ids)) {
+			devices.insert(name, d)
 		}
 	}
 

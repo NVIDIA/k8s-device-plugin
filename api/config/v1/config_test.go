@@ -57,6 +57,84 @@ sharing:
 	require.False(t, *config.Sharing.MPS.FailRequestsGreaterThanOne)
 }
 
+func TestDisableResourceNamingInConfig_PreservesPerDeviceTimeSlicingSelection(t *testing.T) {
+	cfg := &Config{
+		Sharing: Sharing{
+			TimeSlicing: ReplicatedResources{
+				Resources: []ReplicatedResource{
+					{
+						Name:     ResourceName("nvidia.com/gpu"),
+						Rename:   ResourceName("nvidia.com/gpu-light"),
+						Devices:  ReplicatedDevices{List: []ReplicatedDeviceRef{"0"}},
+						Replicas: 2,
+					},
+					{
+						Name:     ResourceName("nvidia.com/gpu"),
+						Rename:   ResourceName("nvidia.com/gpu-heavy"),
+						Devices:  ReplicatedDevices{List: []ReplicatedDeviceRef{"1"}},
+						Replicas: 4,
+					},
+				},
+			},
+		},
+	}
+
+	DisableResourceNamingInConfig(cfg)
+
+	require.Len(t, cfg.Sharing.TimeSlicing.Resources, 2)
+
+	first := cfg.Sharing.TimeSlicing.Resources[0]
+	require.Equal(t, ResourceName("nvidia.com/gpu-light"), first.Rename,
+		"expected per-entry Rename to be preserved")
+	require.False(t, first.Devices.All,
+		"expected per-entry Devices.List to remain (Devices.All should NOT be forced)")
+	require.Equal(t, []ReplicatedDeviceRef{"0"}, first.Devices.List,
+		"expected Devices.List to be preserved")
+
+	second := cfg.Sharing.TimeSlicing.Resources[1]
+	require.Equal(t, ResourceName("nvidia.com/gpu-heavy"), second.Rename)
+	require.False(t, second.Devices.All)
+	require.Equal(t, []ReplicatedDeviceRef{"1"}, second.Devices.List)
+}
+
+func TestDisableResourceNamingInConfig_PreservesPerDeviceMPSSelection(t *testing.T) {
+	cfg := &Config{
+		Sharing: Sharing{
+			MPS: &ReplicatedResources{
+				Resources: []ReplicatedResource{
+					{
+						Name:     ResourceName("nvidia.com/gpu"),
+						Rename:   ResourceName("nvidia.com/gpu-light"),
+						Devices:  ReplicatedDevices{List: []ReplicatedDeviceRef{"0"}},
+						Replicas: 2,
+					},
+					{
+						Name:     ResourceName("nvidia.com/gpu"),
+						Rename:   ResourceName("nvidia.com/gpu-heavy"),
+						Devices:  ReplicatedDevices{List: []ReplicatedDeviceRef{"1"}},
+						Replicas: 4,
+					},
+				},
+			},
+		},
+	}
+
+	DisableResourceNamingInConfig(cfg)
+
+	require.NotNil(t, cfg.Sharing.MPS)
+	require.Len(t, cfg.Sharing.MPS.Resources, 2)
+
+	first := cfg.Sharing.MPS.Resources[0]
+	require.Equal(t, ResourceName("nvidia.com/gpu-light"), first.Rename)
+	require.False(t, first.Devices.All)
+	require.Equal(t, []ReplicatedDeviceRef{"0"}, first.Devices.List)
+
+	second := cfg.Sharing.MPS.Resources[1]
+	require.Equal(t, ResourceName("nvidia.com/gpu-heavy"), second.Rename)
+	require.False(t, second.Devices.All)
+	require.Equal(t, []ReplicatedDeviceRef{"1"}, second.Devices.List)
+}
+
 func newConfigForTest(t *testing.T, contents string) (*Config, error) {
 	t.Helper()
 
