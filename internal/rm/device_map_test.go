@@ -131,3 +131,48 @@ func TestDeviceMapInsert(t *testing.T) {
 		})
 	}
 }
+
+// TestUpdateDeviceMapWithReplicasSameNameDistinctSelections covers giving
+// different GPUs different replica counts via two entries that share a source
+// Name. Neither selected GPU must leak back under the bare resource.
+func TestUpdateDeviceMapWithReplicasSameNameDistinctSelections(t *testing.T) {
+	const gpu = spec.ResourceName("nvidia.com/gpu")
+	oDevices := DeviceMap{
+		gpu: Devices{
+			"GPU0": &Device{Device: pluginapi.Device{ID: "GPU0"}, Index: "0"},
+			"GPU1": &Device{Device: pluginapi.Device{ID: "GPU1"}, Index: "1"},
+		},
+	}
+
+	rrs := &spec.ReplicatedResources{
+		Resources: []spec.ReplicatedResource{
+			{
+				Name:     gpu,
+				Rename:   "nvidia.com/gpu-light",
+				Devices:  spec.ReplicatedDevices{List: []spec.ReplicatedDeviceRef{"0"}},
+				Replicas: 2,
+			},
+			{
+				Name:     gpu,
+				Rename:   "nvidia.com/gpu-heavy",
+				Devices:  spec.ReplicatedDevices{List: []spec.ReplicatedDeviceRef{"1"}},
+				Replicas: 4,
+			},
+		},
+	}
+
+	devices, err := updateDeviceMapWithReplicas(rrs, oDevices)
+	require.NoError(t, err)
+
+	// Both GPUs were claimed by a sibling entry, so nothing is left over.
+	require.NotContains(t, devices, gpu, "no device should remain under the bare resource")
+	require.Len(t, devices["nvidia.com/gpu-light"], 2, "GPU0 should be replicated x2 as gpu-light")
+	require.Len(t, devices["nvidia.com/gpu-heavy"], 4, "GPU1 should be replicated x4 as gpu-heavy")
+
+	for _, d := range devices["nvidia.com/gpu-light"] {
+		require.Equal(t, "0", d.Index)
+	}
+	for _, d := range devices["nvidia.com/gpu-heavy"] {
+		require.Equal(t, "1", d.Index)
+	}
+}
