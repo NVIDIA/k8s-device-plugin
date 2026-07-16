@@ -23,6 +23,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestGetVendorSpecificCapabilityMalformedLength(t *testing.T) {
+	config := make([]byte, 256)
+	config[PciStatusByte] = PciStatusCapabilityList
+	config[PciCapabilityList] = 224
+
+	config[224+PciCapabilityListID] = PciCapabilityVendorSpecificID
+	config[224+PciCapabilityLength] = 100
+
+	device := &PCIDevice{
+		Address: "malformed",
+		Config:  config,
+	}
+
+	capability, err := device.GetVendorSpecificCapability()
+	require.NoError(t, err)
+	require.Nil(t, capability)
+}
+
 func TestGetVendorSpecificCapability(t *testing.T) {
 	devices, _ := NewMockNvidiaPCI().Devices()
 	for _, device := range devices {
