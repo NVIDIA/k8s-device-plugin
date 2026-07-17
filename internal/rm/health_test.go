@@ -409,3 +409,87 @@ func TestGetMigDeviceParts(t *testing.T) {
 		})
 	}
 }
+
+func TestGroupByParent(t *testing.T) {
+	parentA := "GPU-A"
+	parentB := "GPU-B"
+
+	deviceA0 := &Device{Device: pluginapi.Device{ID: "GPU-A::0"}}
+	deviceA1 := &Device{Device: pluginapi.Device{ID: "GPU-A::1"}}
+	deviceB0 := &Device{Device: pluginapi.Device{ID: "GPU-B::0"}}
+
+	grouped := groupByParent([]placedDevice{
+		{parentUUID: parentA, device: deviceA0},
+		{parentUUID: parentA, device: deviceA1},
+		{parentUUID: parentB, device: deviceB0},
+	})
+
+	require.Equal(t, []*Device{deviceA0, deviceA1}, grouped[parentA])
+	require.Equal(t, []*Device{deviceB0}, grouped[parentB])
+}
+
+func TestMatchesMigEvent(t *testing.T) {
+	testCases := []struct {
+		description string
+		deviceGI    uint32
+		deviceCI    uint32
+		eventGI     uint32
+		eventCI     uint32
+		expected    bool
+	}{
+		{
+			description: "GI and CI match",
+			deviceGI:    3,
+			deviceCI:    0,
+			eventGI:     3,
+			eventCI:     0,
+			expected:    true,
+		},
+		{
+			description: "only GI is specified and matches",
+			deviceGI:    3,
+			deviceCI:    0,
+			eventGI:     3,
+			eventCI:     0xFFFFFFFF,
+			expected:    true,
+		},
+		{
+			description: "only GI is specified and does not match",
+			deviceGI:    5,
+			deviceCI:    0,
+			eventGI:     3,
+			eventCI:     0xFFFFFFFF,
+			expected:    false,
+		},
+		{
+			description: "only CI is specified and matches",
+			deviceGI:    3,
+			deviceCI:    0,
+			eventGI:     0xFFFFFFFF,
+			eventCI:     0,
+			expected:    true,
+		},
+		{
+			description: "only CI is specified and does not match",
+			deviceGI:    3,
+			deviceCI:    1,
+			eventGI:     0xFFFFFFFF,
+			eventCI:     0,
+			expected:    false,
+		},
+		{
+			description: "neither GI nor CI is specified",
+			deviceGI:    3,
+			deviceCI:    0,
+			eventGI:     0xFFFFFFFF,
+			eventCI:     0xFFFFFFFF,
+			expected:    true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			require.Equal(t, tc.expected, matchesMigEvent(tc.deviceGI, tc.deviceCI, tc.eventGI, tc.eventCI))
+		})
+	}
+}
