@@ -31,6 +31,7 @@
     - [Setting other helm chart values](#setting-other-helm-chart-values)
     - [Deploying with gpu-feature-discovery for automatic node labels](#deploying-with-gpu-feature-discovery-for-automatic-node-labels)
     - [Deploying gpu-feature-discovery in standalone mode](#deploying-gpu-feature-discovery-in-standalone-mode)
+    - [Setting NVIDIA_VISIBLE_DEVICES on the device plugin and MPS containers](#setting-nvidia_visible_devices-on-the-device-plugin-and-mps-containers)
   - [Deploying via `helm install` with a direct URL to the `helm` package](#deploying-via-helm-install-with-a-direct-url-to-the-helm-package)
 - [Building and Running Locally](#building-and-running-locally)
 - Advanced Topics
@@ -1025,6 +1026,15 @@ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
 **Note:** You only need the to pass the `--devel` flag to `helm search repo`
 and the `--version` flag to `helm upgrade -i` if this is a pre-release
 version (e.g. `<version>-rc.1`). Full releases will be listed without this.
+
+#### Setting NVIDIA_VISIBLE_DEVICES on the device plugin and MPS containers
+
+`devicePlugin.nvidiaVisibleDevices` sets the `NVIDIA_VISIBLE_DEVICES`
+environment variable on the device plugin container.
+`mps.nvidiaVisibleDevices` sets it on the MPS control daemon container.
+Both default to `all`, and a `null` or empty value also renders `all`.
+To clear an override during `helm upgrade --reuse-values`, set the value to
+`all`. Helm keeps the previous value when you set it to `null`.
 
 ### Deploying via `helm install` with a direct URL to the `helm` package
 

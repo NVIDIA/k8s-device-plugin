@@ -186,7 +186,7 @@ spec:
             value: all
         {{- end }}
           - name: NVIDIA_VISIBLE_DEVICES
-            value: all
+            value: {{ .Values.mps.nvidiaVisibleDevices | default "all" | quote }}
         {{- if .Values.nvidiaDriverCapabilities }}
           - name: NVIDIA_DRIVER_CAPABILITIES
             value: {{ .Values.nvidiaDriverCapabilities }}

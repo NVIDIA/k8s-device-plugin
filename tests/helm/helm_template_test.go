@@ -319,6 +319,88 @@ func TestDevicePluginDaemonsetNvidiaDriverCapabilities(t *testing.T) {
 	}
 }
 
+func TestDaemonsetNvidiaVisibleDevices(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	components := []struct {
+		valuePath string
+		template  string
+	}{
+		{valuePath: "devicePlugin.nvidiaVisibleDevices", template: "templates/daemonset-device-plugin.yml"},
+		{valuePath: "mps.nvidiaVisibleDevices", template: "templates/daemonset-mps-control-daemon.yml"},
+	}
+
+	testCases := []struct {
+		description               string
+		nvidiaVisibleDevicesJSON  string
+		expectedVisibleDevicesEnv []v1.EnvVar
+		expectSchemaRejection     bool
+	}{
+		{
+			description:               "default",
+			expectedVisibleDevicesEnv: []v1.EnvVar{{Name: "NVIDIA_VISIBLE_DEVICES", Value: "all"}},
+		},
+		{
+			description:               "string",
+			nvidiaVisibleDevicesJSON:  `"void"`,
+			expectedVisibleDevicesEnv: []v1.EnvVar{{Name: "NVIDIA_VISIBLE_DEVICES", Value: "void"}},
+		},
+		{
+			description:               "null falls back to all",
+			nvidiaVisibleDevicesJSON:  "null",
+			expectedVisibleDevicesEnv: []v1.EnvVar{{Name: "NVIDIA_VISIBLE_DEVICES", Value: "all"}},
+		},
+		{
+			description:               "empty string falls back to all",
+			nvidiaVisibleDevicesJSON:  `""`,
+			expectedVisibleDevicesEnv: []v1.EnvVar{{Name: "NVIDIA_VISIBLE_DEVICES", Value: "all"}},
+		},
+		{
+			description:              "boolean is rejected",
+			nvidiaVisibleDevicesJSON: "true",
+			expectSchemaRejection:    true,
+		},
+		{
+			description:              "number is rejected",
+			nvidiaVisibleDevicesJSON: "1",
+			expectSchemaRejection:    true,
+		},
+		{
+			description:              "list is rejected",
+			nvidiaVisibleDevicesJSON: `["0","1"]`,
+			expectSchemaRejection:    true,
+		},
+	}
+
+	for _, component := range components {
+		for _, tc := range testCases {
+			t.Run(component.valuePath+"/"+tc.description, func(t *testing.T) {
+				options := &helm.Options{
+					KubectlOptions: k8s.NewKubectlOptions("", "", "k8s-device-plugin-test"),
+					Logger:         logger.Discard,
+				}
+				if tc.nvidiaVisibleDevicesJSON != "" {
+					options.SetJsonValues = map[string]string{component.valuePath: tc.nvidiaVisibleDevicesJSON}
+				}
+
+				output, err := helm.RenderTemplateE(t, options, helmChartPath, "nvidia-device-plugin", []string{component.template})
+				if tc.expectSchemaRejection {
+					requireSchemaRejection(t, err, component.valuePath)
+					return
+				}
+				require.NoError(t, err)
+
+				var daemonset appsv1.DaemonSet
+				helm.UnmarshalK8SYaml(t, output, &daemonset)
+				require.Len(t, daemonset.Spec.Template.Spec.Containers, 1)
+
+				require.Equal(t, tc.expectedVisibleDevicesEnv, envVarsNamed(daemonset.Spec.Template.Spec.Containers[0].Env, "NVIDIA_VISIBLE_DEVICES"))
+			})
+		}
+	}
+}
+
 func TestDevicePluginDaemonsetNvidiaDevRoot(t *testing.T) {
 	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
 	require.NoError(t, err)
@@ -710,6 +792,17 @@ func TestDevicePluginDaemonsetAffinityTemplateRendered(t *testing.T) {
 
 // Helm 3.18 switched JSON schema validators, so the error names a value as
 // "/devicePlugin/enableHostNetwork" from then on and as "devicePlugin.enableHostNetwork" before it.
+// envVarsNamed returns every match because duplicate entries break strategic merge patches on helm upgrade.
+func envVarsNamed(envs []v1.EnvVar, name string) []v1.EnvVar {
+	var matches []v1.EnvVar
+	for _, env := range envs {
+		if env.Name == name {
+			matches = append(matches, env)
+		}
+	}
+	return matches
+}
+
 func requireSchemaRejection(t *testing.T, err error, valuePath string) {
 	t.Helper()
 	require.ErrorContains(t, err, "values don't meet the specifications of the schema")

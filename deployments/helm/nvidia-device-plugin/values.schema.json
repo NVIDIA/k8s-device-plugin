@@ -140,6 +140,12 @@
             "null"
           ]
         },
+        "nvidiaVisibleDevices": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "resources": {
           "type": [
             "object",
@@ -288,6 +294,12 @@
         "enableHostPID": {
           "type": [
             "boolean",
+            "null"
+          ]
+        },
+        "nvidiaVisibleDevices": {
+          "type": [
+            "string",
             "null"
           ]
         },
