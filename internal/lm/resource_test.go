@@ -17,9 +17,11 @@
 package lm
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/validate/content"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	rt "github.com/NVIDIA/k8s-device-plugin/internal/resource/testing"
@@ -214,6 +216,78 @@ func TestGPUResourceLabeler(t *testing.T) {
 		})
 	}
 
+}
+
+func TestGetProductName(t *testing.T) {
+	// A sanitised product name that is already close to the 63-character limit.
+	const longModel = "NVIDIA-RTX-PRO-6000-Blackwell-Max-Q-Workstation-Edition" // 55 chars
+
+	shared := &spec.Sharing{
+		TimeSlicing: spec.ReplicatedResources{
+			Resources: []spec.ReplicatedResource{
+				{Name: "nvidia.com/gpu", Replicas: 2},
+			},
+		},
+	}
+
+	testCases := []struct {
+		description string
+		sharing     *spec.Sharing
+		parts       []string
+		expected    string
+	}{
+		{
+			description: "short value is returned unchanged",
+			parts:       []string{"MOCKMODEL", "MIG", "1g.300gb"},
+			expected:    "MOCKMODEL-MIG-1g.300gb",
+		},
+		{
+			description: "short bare model is returned unchanged",
+			parts:       []string{"MOCKMODEL"},
+			expected:    "MOCKMODEL",
+		},
+		{
+			description: "long model with mig profile truncates the model and preserves the profile",
+			parts:       []string{longModel, "MIG", "1g.24gb"},
+			expected:    "NVIDIA-RTX-PRO-6000-Blackwell-Max-Q-Workstation-Edi-MIG-1g.24gb",
+		},
+		{
+			description: "media-extension profile is preserved and trailing separator is trimmed",
+			parts:       []string{longModel, "MIG", "1g.24gb.me"},
+			expected:    "NVIDIA-RTX-PRO-6000-Blackwell-Max-Q-Workstation-MIG-1g.24gb.me",
+		},
+		{
+			description: "trailing dot from truncation is trimmed",
+			parts:       []string{strings.Repeat("A", 51) + "." + strings.Repeat("B", 10), "MIG", "1g.5gb"},
+			expected:    strings.Repeat("A", 51) + "-MIG-1g.5gb",
+		},
+		{
+			description: "long bare model is truncated to the limit",
+			parts:       []string{strings.Repeat("A", 80)},
+			expected:    strings.Repeat("A", 63),
+		},
+		{
+			description: "shared suffix is preserved when truncating",
+			sharing:     shared,
+			parts:       []string{longModel, "MIG", "1g.24gb"},
+			expected:    "NVIDIA-RTX-PRO-6000-Blackwell-Max-Q-Workstat-MIG-1g.24gb-SHARED",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			rl := resourceLabeler{
+				resourceName: "nvidia.com/gpu",
+				sharing:      tc.sharing,
+			}
+
+			result := rl.getProductName(tc.parts...)
+
+			require.Equal(t, tc.expected, result)
+			require.LessOrEqual(t, len(result), content.LabelValueMaxLength)
+			require.Empty(t, content.IsLabelValue(result))
+		})
+	}
 }
 
 func TestSanitise(t *testing.T) {
