@@ -19,27 +19,67 @@ package rm
 import (
 	"fmt"
 	"sort"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
-// distributedAlloc returns a list of devices such that any replicated
-// devices are distributed across all replicated GPUs equally. It takes into
-// account already allocated replicas to ensure a proper balance across them.
-func (r *resourceManager) distributedAlloc(available, required []string, size int) ([]string, error) {
-	// Get the set of candidate devices as the difference between available and required.
+// replicaCount tracks the total and available replica counts for a physical GPU.
+type replicaCount struct {
+	total     int
+	available int
+}
+
+// allocated returns the number of replicas currently allocated on the GPU.
+func (rc *replicaCount) allocated() int {
+	return rc.total - rc.available
+}
+
+// replicaComparator decides whether the physical GPU represented by i should
+// be preferred over the one represented by j when greedily selecting the next
+// device to allocate.
+type replicaComparator func(i, j *replicaCount) bool
+
+// allocationComparators maps each allocation policy to the comparator that
+// implements it. All policies share the same greedy selection loop
+// (greedyAlloc) and differ only in how the next best candidate is chosen.
+var allocationComparators = map[string]replicaComparator{
+	// distributed prefers GPUs with the fewest allocated replicas to spread
+	// workload evenly across physical GPUs.
+	spec.AllocationPolicyDistributed: func(i, j *replicaCount) bool {
+		return i.allocated() < j.allocated()
+	},
+	// packed prefers GPUs with the most allocated replicas to consolidate
+	// workloads onto fewer physical GPUs.
+	spec.AllocationPolicyPacked: func(i, j *replicaCount) bool {
+		return i.allocated() > j.allocated()
+	},
+}
+
+// comparatorForPolicy returns the comparator implementing the given
+// allocation policy. Unknown policies are rejected at startup, but fall back
+// to the default distributed policy here as a safety net.
+func comparatorForPolicy(policy string) replicaComparator {
+	if comparator, ok := allocationComparators[policy]; ok {
+		return comparator
+	}
+	return allocationComparators[spec.AllocationPolicyDistributed]
+}
+
+// prepareCandidates filters candidates from available devices (excluding required),
+// validates there are enough, and builds a per-GPU replica count map.
+func (r *resourceManager) prepareCandidates(available, required []string, size int) ([]string, map[string]*replicaCount, int, error) {
 	candidates := r.devices.Subset(available).Difference(r.devices.Subset(required)).GetIDs()
 	needed := size - len(required)
 
 	if len(candidates) < needed {
-		return nil, fmt.Errorf("not enough available devices to satisfy allocation")
+		return nil, nil, 0, fmt.Errorf("not enough available devices to satisfy allocation")
 	}
 
-	// For each candidate device, build a mapping of (stripped) device ID to
-	// total / available replicas for that device.
-	replicas := make(map[string]*struct{ total, available int })
+	replicas := make(map[string]*replicaCount)
 	for _, c := range candidates {
 		id := AnnotatedID(c).GetID()
 		if _, exists := replicas[id]; !exists {
-			replicas[id] = &struct{ total, available int }{}
+			replicas[id] = &replicaCount{}
 		}
 		replicas[id].available++
 	}
@@ -51,30 +91,40 @@ func (r *resourceManager) distributedAlloc(available, required []string, size in
 		replicas[id].total++
 	}
 
+	return candidates, replicas, needed, nil
+}
+
+// greedyAlloc returns a list of devices by repeatedly selecting the best
+// remaining candidate according to the supplied comparator. It takes into
+// account already allocated replicas so that consecutive allocations keep
+// following the policy the comparator implements.
+func (r *resourceManager) greedyAlloc(available, required []string, size int, preferred replicaComparator) ([]string, error) {
+	candidates, replicas, needed, err := r.prepareCandidates(available, required, size)
+	if err != nil {
+		return nil, err
+	}
+
 	// Track how many slots have already been picked from each physical device
-	// during this allocation. Used as the tie-break sort key below so the
-	// allocator rotates to a sibling physical device when the underlying
-	// "used" counts would otherwise tie.
+	// during this allocation. Used as the tie-break sort key below so that,
+	// when the comparator ranks two physical GPUs equally, the allocator
+	// rotates to a sibling device it has touched the least this round. This
+	// keeps the distributed policy spreading replicas across physical GPUs
+	// even when their allocated counts tie.
 	pickedFrom := make(map[string]int)
 
-	// Grab the set of 'needed' devices one-by-one from the candidates list.
-	// Before selecting each candidate, first sort the candidate list using the
-	// replicas map above. After sorting, the first element in the list will
-	// contain the device with the least difference between total and available
-	// replications (based on what's already been allocated). When two devices
-	// tie on that count, prefer the physical device we have not touched (or
-	// have touched the least) during this allocation. Add this device to the
-	// list of devices to allocate, remove it from the candidate list, down
-	// its available count in the replicas map, and repeat.
+	// Select devices one-by-one. The supplied comparator decides which
+	// physical GPU is preferred for the current policy. Comparators order
+	// solely by allocated() (see TestComparatorsOrderSolelyByAllocated), so
+	// equal allocated counts mean the comparator has no preference and the
+	// pickedFrom tie-break above applies.
 	var devices []string
 	for i := 0; i < needed; i++ {
 		sort.Slice(candidates, func(i, j int) bool {
 			iid := AnnotatedID(candidates[i]).GetID()
 			jid := AnnotatedID(candidates[j]).GetID()
-			idiff := replicas[iid].total - replicas[iid].available
-			jdiff := replicas[jid].total - replicas[jid].available
-			if idiff != jdiff {
-				return idiff < jdiff
+			ri, rj := replicas[iid], replicas[jid]
+			if ri.allocated() != rj.allocated() {
+				return preferred(ri, rj)
 			}
 			return pickedFrom[iid] < pickedFrom[jid]
 		})
@@ -85,8 +135,5 @@ func (r *resourceManager) distributedAlloc(available, required []string, size in
 		candidates = candidates[1:]
 	}
 
-	// Add the set of required devices to this list and return it.
-	devices = append(required, devices...)
-
-	return devices, nil
+	return append(required, devices...), nil
 }
