@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	gentype "k8s.io/client-go/gentype"
+	applyconfigurationnfdv1alpha1 "sigs.k8s.io/node-feature-discovery/api/generated/applyconfiguration/nfd/v1alpha1"
 	scheme "sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned/scheme"
 	nfdv1alpha1 "sigs.k8s.io/node-feature-discovery/api/nfd/v1alpha1"
 )
@@ -45,18 +46,19 @@ type NodeFeatureRuleInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*nfdv1alpha1.NodeFeatureRuleList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *nfdv1alpha1.NodeFeatureRule, err error)
+	Apply(ctx context.Context, nodeFeatureRule *applyconfigurationnfdv1alpha1.NodeFeatureRuleApplyConfiguration, opts v1.ApplyOptions) (result *nfdv1alpha1.NodeFeatureRule, err error)
 	NodeFeatureRuleExpansion
 }
 
 // nodeFeatureRules implements NodeFeatureRuleInterface
 type nodeFeatureRules struct {
-	*gentype.ClientWithList[*nfdv1alpha1.NodeFeatureRule, *nfdv1alpha1.NodeFeatureRuleList]
+	*gentype.ClientWithListAndApply[*nfdv1alpha1.NodeFeatureRule, *nfdv1alpha1.NodeFeatureRuleList, *applyconfigurationnfdv1alpha1.NodeFeatureRuleApplyConfiguration]
 }
 
 // newNodeFeatureRules returns a NodeFeatureRules
 func newNodeFeatureRules(c *NfdV1alpha1Client) *nodeFeatureRules {
 	return &nodeFeatureRules{
-		gentype.NewClientWithList[*nfdv1alpha1.NodeFeatureRule, *nfdv1alpha1.NodeFeatureRuleList](
+		gentype.NewClientWithListAndApply[*nfdv1alpha1.NodeFeatureRule, *nfdv1alpha1.NodeFeatureRuleList, *applyconfigurationnfdv1alpha1.NodeFeatureRuleApplyConfiguration](
 			"nodefeaturerules",
 			c.RESTClient(),
 			scheme.ParameterCodec,

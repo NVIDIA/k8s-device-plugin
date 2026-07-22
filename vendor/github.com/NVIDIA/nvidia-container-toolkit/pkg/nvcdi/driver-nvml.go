@@ -41,12 +41,7 @@ func (l *nvcdilib) newDriverVersionDiscoverer() (discover.Discover, error) {
 		return nil, fmt.Errorf("failed to determine driver version (%q): %w", version, err)
 	}
 
-	libcudasoParentDirPath, err := l.driver.GetDriverLibDirectory()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get libcuda.so parent path: %w", err)
-	}
-
-	libraries, err := l.NewDriverLibraryDiscoverer(version, libcudasoParentDirPath)
+	libraries, err := l.NewDriverLibraryDiscoverer(version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create discoverer for driver libraries: %v", err)
 	}
@@ -81,10 +76,14 @@ func (l *nvcdilib) newIPCDiscoverer() (discover.Discover, error) {
 }
 
 // NewDriverLibraryDiscoverer creates a discoverer for the libraries associated with the specified driver version.
-func (l *nvcdilib) NewDriverLibraryDiscoverer(version string, libcudaSoParentDirPath string) (discover.Discover, error) {
+func (l *nvcdilib) NewDriverLibraryDiscoverer(version string) (discover.Discover, error) {
 	versionSuffixLibraryMounts, err := l.getVersionSuffixDriverLibraryMounts(version)
 	if err != nil {
 		return nil, err
+	}
+	legacyNVVMLibraryMounts, err := l.getLegacyNVVMLibraryMounts()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get legacy nvvm library mounts: %w", err)
 	}
 	explicitLibraryMounts, err := l.getExplicitDriverLibraryMounts()
 	if err != nil {
@@ -93,6 +92,7 @@ func (l *nvcdilib) NewDriverLibraryDiscoverer(version string, libcudaSoParentDir
 
 	libraries := discover.Merge(
 		versionSuffixLibraryMounts,
+		legacyNVVMLibraryMounts,
 		explicitLibraryMounts,
 	)
 
@@ -116,13 +116,13 @@ func (l *nvcdilib) NewDriverLibraryDiscoverer(version string, libcudaSoParentDir
 	disableDeviceNodeModification := l.hookCreator.Create(DisableDeviceNodeModificationHook)
 	discoverers = append(discoverers, disableDeviceNodeModification)
 
-	driverLibDirectory, err := l.driver.GetDriverLibDirectory()
+	driverLibDirectories, err := l.driver.GetDriverLibDirectories()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get libcuda.so parent directory path: %w", err)
 	}
 	environmentVariable := &discover.EnvVar{
 		Name:  "NVIDIA_CTK_LIBCUDA_DIR",
-		Value: driverLibDirectory,
+		Value: strings.Join(driverLibDirectories, string(filepath.ListSeparator)),
 	}
 	discoverers = append(discoverers, environmentVariable)
 
@@ -186,6 +186,25 @@ func (l *nvcdilib) getExplicitDriverLibraryMounts() (discover.Discover, error) {
 
 	return mounts, nil
 
+}
+
+func (l *nvcdilib) getLegacyNVVMLibraryMounts() (discover.Discover, error) {
+	legacyNVMMLibrary := []string{
+		"libnvidia-nvvm70.so.*",
+	}
+
+	driverLibraryLocator, err := l.driver.DriverLibraryLocator()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get driver library locator: %w", err)
+	}
+	mounts := discover.NewMounts(
+		l.logger,
+		driverLibraryLocator,
+		l.driver.Root,
+		legacyNVMMLibrary,
+	)
+
+	return mounts, nil
 }
 
 func getUTSRelease() (string, error) {
