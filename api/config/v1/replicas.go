@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"k8s.io/klog/v2"
 )
 
 // ReplicatedResources defines generic options for replicating devices.
@@ -33,36 +32,27 @@ type ReplicatedResources struct {
 	Resources                  []ReplicatedResource `json:"resources,omitempty"                  yaml:"resources,omitempty"`
 }
 
-func (rrs *ReplicatedResources) disableResoureRenaming(id string) {
+// applyDefaults fills in default values for entries in rrs.Resources, leaving
+// any user-supplied Rename or Devices selection in place. A nil receiver is a
+// no-op.
+//
+// Two defaults are applied:
+//   - If RenameByDefault is true and an entry has no explicit Rename, the
+//     entry's Rename is set to the default shared name for its Name.
+//   - If an entry leaves Devices unset (no All / Count / List), Devices.All
+//     is set to true so that the entry replicates every matching device.
+func (rrs *ReplicatedResources) applyDefaults() {
 	if rrs == nil {
 		return
 	}
-	renameByDefault := rrs.RenameByDefault
-	setsNonDefaultRename := false
-	setsDevices := false
 	for i, r := range rrs.Resources {
-		if !renameByDefault && r.Rename != "" {
-			setsNonDefaultRename = true
-			rrs.Resources[i].Rename = ""
-		}
-		if renameByDefault && r.Rename != r.Name.DefaultSharedRename() {
-			setsNonDefaultRename = true
+		if rrs.RenameByDefault && r.Rename == "" {
 			rrs.Resources[i].Rename = r.Name.DefaultSharedRename()
 		}
-		if !r.Devices.All {
-			setsDevices = true
+		if !r.Devices.All && r.Devices.Count == 0 && len(r.Devices.List) == 0 {
 			rrs.Resources[i].Devices.All = true
-			rrs.Resources[i].Devices.Count = 0
-			rrs.Resources[i].Devices.List = nil
 		}
 	}
-	if setsNonDefaultRename {
-		klog.Warningf("Setting the 'rename' field in sharing.%s.resources is not yet supported in the config. Ignoring...", id)
-	}
-	if setsDevices {
-		klog.Warningf("Customizing the 'devices' field in sharing.%s.resources is not yet supported in the config. Ignoring...", id)
-	}
-
 }
 
 func (rrs *ReplicatedResources) isReplicated() bool {
