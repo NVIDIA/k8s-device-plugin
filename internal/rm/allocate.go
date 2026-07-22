@@ -37,7 +37,7 @@ func (rc *replicaCount) allocated() int {
 // replicaComparator decides whether the physical GPU represented by i should
 // be preferred over the one represented by j when greedily selecting the next
 // device to allocate.
-type replicaComparator func(i, j *replicaCount) bool
+type replicaComparator func(i, j *gpuAllocState) bool
 
 // allocationComparators maps each allocation policy to the comparator that
 // implements it. All policies share the same greedy selection loop
@@ -45,13 +45,27 @@ type replicaComparator func(i, j *replicaCount) bool
 var allocationComparators = map[string]replicaComparator{
 	// distributed prefers GPUs with the fewest allocated replicas to spread
 	// workload evenly across physical GPUs.
-	spec.AllocationPolicyDistributed: func(i, j *replicaCount) bool {
-		return i.allocated() < j.allocated()
+	spec.AllocationPolicyDistributed: func(i, j *gpuAllocState) bool {
+		if i.count.allocated() != j.count.allocated() {
+			return i.count.allocated() < j.count.allocated()
+		}
+		return i.pickedFrom < j.pickedFrom
 	},
 	// packed prefers GPUs with the most allocated replicas to consolidate
 	// workloads onto fewer physical GPUs.
-	spec.AllocationPolicyPacked: func(i, j *replicaCount) bool {
-		return i.allocated() > j.allocated()
+	spec.AllocationPolicyPacked: func(i, j *gpuAllocState) bool {
+		if i.count.allocated() != j.count.allocated() {
+			return i.count.allocated() > j.count.allocated()
+		}
+		return i.pickedFrom < j.pickedFrom
+	},
+	// spread prefers GPUs the current allocation has touched least, to span
+	// distinct physical GPUs.
+	spec.AllocationPolicySpread: func(i, j *gpuAllocState) bool {
+		if i.pickedFrom != j.pickedFrom {
+			return i.pickedFrom < j.pickedFrom
+		}
+		return i.count.allocated() < j.count.allocated()
 	},
 }
 
@@ -102,9 +116,8 @@ type gpuAllocState struct {
 	replicas   []string      // remaining annotated-ID candidates for this GPU
 }
 
-// gpuPriorityQueue is a heap of *gpuAllocState whose ordering defers to the
-// policy comparator on allocated() and falls back to pickedFrom for the
-// tie-break so equal-allocated GPUs rotate rather than concentrating on one.
+// gpuPriorityQueue is a heap of *gpuAllocState whose ordering is determined by
+// the policy comparator.
 type gpuPriorityQueue struct {
 	items     []*gpuAllocState
 	preferred replicaComparator
@@ -112,11 +125,7 @@ type gpuPriorityQueue struct {
 
 func (q *gpuPriorityQueue) Len() int { return len(q.items) }
 func (q *gpuPriorityQueue) Less(i, j int) bool {
-	a, b := q.items[i], q.items[j]
-	if a.count.allocated() != b.count.allocated() {
-		return q.preferred(a.count, b.count)
-	}
-	return a.pickedFrom < b.pickedFrom
+	return q.preferred(q.items[i], q.items[j])
 }
 func (q *gpuPriorityQueue) Swap(i, j int) { q.items[i], q.items[j] = q.items[j], q.items[i] }
 func (q *gpuPriorityQueue) Push(x any)    { q.items = append(q.items, x.(*gpuAllocState)) }
