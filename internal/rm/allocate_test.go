@@ -405,8 +405,8 @@ func TestPackedVsDistributedContrast(t *testing.T) {
 // the comparator implementing it, and that unknown or empty policies fall
 // back to the default distributed comparator.
 func TestComparatorForPolicy(t *testing.T) {
-	moreAllocated := &replicaCount{total: 4, available: 1} // 3 allocated
-	lessAllocated := &replicaCount{total: 4, available: 3} // 1 allocated
+	moreAllocated := &gpuAllocState{count: &replicaCount{total: 4, available: 1}} // 3 allocated
+	lessAllocated := &gpuAllocState{count: &replicaCount{total: 4, available: 3}} // 1 allocated
 
 	testCases := []struct {
 		description string
@@ -424,6 +424,11 @@ func TestComparatorForPolicy(t *testing.T) {
 			description:                "packed prefers GPU with more allocated replicas",
 			policy:                     spec.AllocationPolicyPacked,
 			expectPrefersLessAllocated: false,
+		},
+		{
+			description:                "spread with equal pickedFrom falls back to less allocated",
+			policy:                     spec.AllocationPolicySpread,
+			expectPrefersLessAllocated: true,
 		},
 		{
 			description:                "empty policy falls back to distributed",
@@ -447,24 +452,50 @@ func TestComparatorForPolicy(t *testing.T) {
 	}
 }
 
+// TestSpreadPrefersUntouchedGPU pins spread's defining behavior: given equal
+// (or even unequal) allocated counts, it always prefers the GPU the current
+// allocation has touched the least. This is what makes it maximize distinct
+// physical GPUs per pod.
+func TestSpreadPrefersUntouchedGPU(t *testing.T) {
+	spread := comparatorForPolicy(spec.AllocationPolicySpread)
+
+	// Even when GPU A has strictly less allocated capacity, spread still
+	// prefers GPU B if the current allocation has picked from A already.
+	touched := &gpuAllocState{count: &replicaCount{total: 8, available: 6}, pickedFrom: 1}   // 2 allocated
+	untouched := &gpuAllocState{count: &replicaCount{total: 8, available: 3}, pickedFrom: 0} // 5 allocated
+	require.True(t, spread(untouched, touched), "spread must prefer the untouched GPU even when it has more allocated replicas")
+	require.False(t, spread(touched, untouched))
+}
+
 // TestComparatorsOrderSolelyByAllocated pins the invariant that every
 // allocation comparator orders physical GPUs solely by their allocated()
 // count. The tie-break in greedyAlloc depends on this: it treats equal
 // allocated counts as "the comparator has no preference" and falls back to
 // the pickedFrom rotation, so a comparator that distinguishes GPUs by
 // anything else would be silently ignored there.
+// TestComparatorsOrderSolelyByAllocated pins the invariant for the
+// allocated()-primary policies (distributed, packed): with matching
+// pickedFrom, they order GPUs solely by allocated(). The spread policy is
+// explicitly excluded — it primarily orders by pickedFrom by design; see
+// TestSpreadPrefersUntouchedGPU.
 func TestComparatorsOrderSolelyByAllocated(t *testing.T) {
-	for policy, preferred := range allocationComparators {
+	allocatedPrimaryPolicies := []string{
+		spec.AllocationPolicyDistributed,
+		spec.AllocationPolicyPacked,
+	}
+	for _, policy := range allocatedPrimaryPolicies {
+		preferred := allocationComparators[policy]
 		t.Run(policy, func(t *testing.T) {
 			// Equal allocated counts with different total/available shapes
-			// must rank equal so the tie-break applies.
-			a := &replicaCount{total: 8, available: 6} // 2 allocated
-			b := &replicaCount{total: 4, available: 2} // 2 allocated
+			// must rank equal (when pickedFrom is also equal) so the
+			// greedyAlloc tie-break applies.
+			a := &gpuAllocState{count: &replicaCount{total: 8, available: 6}} // 2 allocated
+			b := &gpuAllocState{count: &replicaCount{total: 4, available: 2}} // 2 allocated
 			require.False(t, preferred(a, b), "GPUs with equal allocated counts must rank equal")
 			require.False(t, preferred(b, a), "GPUs with equal allocated counts must rank equal")
 
 			// Different allocated counts must be strictly ordered.
-			c := &replicaCount{total: 8, available: 5} // 3 allocated
+			c := &gpuAllocState{count: &replicaCount{total: 8, available: 5}} // 3 allocated
 			require.NotEqual(t, preferred(a, c), preferred(c, a), "GPUs with different allocated counts must be strictly ordered")
 		})
 	}
@@ -537,4 +568,137 @@ func TestFullGPUNodeIgnoresAllocationPolicy(t *testing.T) {
 		replicatedAvailable := getDeviceIDs(replicatedDevices)
 		require.True(t, AnnotatedIDs(replicatedAvailable).AnyHasAnnotations(), "replicated device IDs should have annotations")
 	})
+}
+
+func TestSpreadAlloc(t *testing.T) {
+	testCases := []struct {
+		description string
+		gpuIDs      []string
+		replicas    int
+		available   []string // if nil, use all devices
+		required    []string
+		size        int
+		expectError bool
+		validate    func(t *testing.T, allocated []string, allDevices Devices)
+	}{
+		{
+			description: "2 GPUs, 4 replicas each, allocate 2 — should spread across distinct GPUs",
+			gpuIDs:      []string{"gpu0", "gpu1"},
+			replicas:    4,
+			required:    []string{},
+			size:        2,
+			validate: func(t *testing.T, allocated []string, _ Devices) {
+				counts := countPerGPU(allocated)
+				require.Len(t, allocated, 2)
+				require.Equal(t, 1, counts["gpu0"], "spread should pick one from each GPU")
+				require.Equal(t, 1, counts["gpu1"], "spread should pick one from each GPU")
+			},
+		},
+		{
+			description: "3 GPUs, 4 replicas each, allocate 3 — should spread across all 3 GPUs",
+			gpuIDs:      []string{"gpu0", "gpu1", "gpu2"},
+			replicas:    4,
+			required:    []string{},
+			size:        3,
+			validate: func(t *testing.T, allocated []string, _ Devices) {
+				counts := countPerGPU(allocated)
+				require.Len(t, allocated, 3)
+				require.Equal(t, 1, counts["gpu0"])
+				require.Equal(t, 1, counts["gpu1"])
+				require.Equal(t, 1, counts["gpu2"])
+			},
+		},
+		{
+			description: "3 GPUs, 4 replicas each, allocate 6 — should hit each GPU twice",
+			gpuIDs:      []string{"gpu0", "gpu1", "gpu2"},
+			replicas:    4,
+			required:    []string{},
+			size:        6,
+			validate: func(t *testing.T, allocated []string, _ Devices) {
+				counts := countPerGPU(allocated)
+				require.Len(t, allocated, 6)
+				require.Equal(t, 2, counts["gpu0"])
+				require.Equal(t, 2, counts["gpu1"])
+				require.Equal(t, 2, counts["gpu2"])
+			},
+		},
+		{
+			description: "allocate 1 from single GPU — trivial case",
+			gpuIDs:      []string{"gpu0"},
+			replicas:    4,
+			required:    []string{},
+			size:        1,
+			validate: func(t *testing.T, allocated []string, _ Devices) {
+				require.Len(t, allocated, 1)
+				counts := countPerGPU(allocated)
+				require.Equal(t, 1, counts["gpu0"])
+			},
+		},
+		{
+			description: "not enough devices — should return error",
+			gpuIDs:      []string{"gpu0"},
+			replicas:    2,
+			required:    []string{},
+			size:        5,
+			expectError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			devices := newTestDevices(tc.gpuIDs, tc.replicas)
+			available := tc.available
+			if available == nil {
+				available = getDeviceIDs(devices)
+			}
+
+			rm := resourceManager{
+				config:  &spec.Config{},
+				devices: devices,
+			}
+
+			allocated, err := rm.greedyAlloc(available, tc.required, tc.size, comparatorForPolicy(spec.AllocationPolicySpread))
+			if tc.expectError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			if tc.validate != nil {
+				tc.validate(t, allocated, devices)
+			}
+		})
+	}
+}
+
+// TestSpreadPrefersDistinctGPUsEvenWhenUnbalanced captures the scenario that
+// motivates the policy: with GPU-0 having fewer free slots than GPU-1, the
+// distributed policy consolidates a 2-slot request onto GPU-1 (whichever has
+// less allocated cluster-wide). Spread instead touches each physical GPU.
+func TestSpreadPrefersDistinctGPUsEvenWhenUnbalanced(t *testing.T) {
+	// GPU-0 has replicas=8, of which 5 are already allocated externally
+	// (only 3 free). GPU-1 has 8 replicas, 3 already allocated (5 free).
+	devices := newTestDevices([]string{"gpu0", "gpu1"}, 8)
+	// available = 3 slots on gpu0 + 5 slots on gpu1
+	available := []string{
+		"gpu0::5", "gpu0::6", "gpu0::7",
+		"gpu1::3", "gpu1::4", "gpu1::5", "gpu1::6", "gpu1::7",
+	}
+
+	rm := resourceManager{config: &spec.Config{}, devices: devices}
+
+	// A pod requesting 2 slots under spread must land 1 on each physical GPU
+	// even though gpu1 has more free capacity (distributed would concentrate
+	// both slots on gpu1).
+	allocated, err := rm.greedyAlloc(available, nil, 2, comparatorForPolicy(spec.AllocationPolicySpread))
+	require.NoError(t, err)
+	require.Len(t, allocated, 2)
+	counts := countPerGPU(allocated)
+	require.Equalf(t, 1, counts["gpu0"], "spread must include the less-free GPU; got: %v", counts)
+	require.Equalf(t, 1, counts["gpu1"], "spread must include the more-free GPU; got: %v", counts)
+
+	// Contrast: same setup under distributed concentrates on gpu1.
+	allocated, err = rm.greedyAlloc(available, nil, 2, comparatorForPolicy(spec.AllocationPolicyDistributed))
+	require.NoError(t, err)
+	distCounts := countPerGPU(allocated)
+	require.Equalf(t, 2, distCounts["gpu1"], "distributed should pick both from the less-loaded GPU; got: %v", distCounts)
 }
