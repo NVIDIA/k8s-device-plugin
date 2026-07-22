@@ -37,7 +37,7 @@ func (rc *replicaCount) allocated() int {
 // replicaComparator decides whether the physical GPU represented by i should
 // be preferred over the one represented by j when greedily selecting the next
 // device to allocate.
-type replicaComparator func(i, j *replicaCount) bool
+type replicaComparator func(i, j *gpuAllocState) bool
 
 // allocationComparators maps each allocation policy to the comparator that
 // implements it. All policies share the same greedy selection loop
@@ -45,13 +45,28 @@ type replicaComparator func(i, j *replicaCount) bool
 var allocationComparators = map[string]replicaComparator{
 	// distributed prefers GPUs with the fewest allocated replicas to spread
 	// workload evenly across physical GPUs.
-	spec.AllocationPolicyDistributed: func(i, j *replicaCount) bool {
-		return i.allocated() < j.allocated()
+	spec.AllocationPolicyDistributed: func(i, j *gpuAllocState) bool {
+		if i.count.allocated() != j.count.allocated() {
+			return i.count.allocated() < j.count.allocated()
+		}
+		return i.pickedFrom < j.pickedFrom
 	},
 	// packed prefers GPUs with the most allocated replicas to consolidate
 	// workloads onto fewer physical GPUs.
-	spec.AllocationPolicyPacked: func(i, j *replicaCount) bool {
-		return i.allocated() > j.allocated()
+	spec.AllocationPolicyPacked: func(i, j *gpuAllocState) bool {
+		if i.count.allocated() != j.count.allocated() {
+			return i.count.allocated() > j.count.allocated()
+		}
+		return i.pickedFrom < j.pickedFrom
+	},
+	// spread prefers GPUs the current allocation has touched least, to span
+	// distinct physical GPUs. touched() folds in required replicas so a GPU
+	// already pinned to this pod counts as picked from.
+	spec.AllocationPolicySpread: func(i, j *gpuAllocState) bool {
+		if i.touched() != j.touched() {
+			return i.touched() < j.touched()
+		}
+		return i.count.allocated() < j.count.allocated()
 	},
 }
 
@@ -97,14 +112,21 @@ func (r *resourceManager) prepareCandidates(available, required []string, size i
 // gpuAllocState is the per-physical-GPU bookkeeping the greedy allocator
 // tracks while it consumes candidates.
 type gpuAllocState struct {
-	count      *replicaCount // shared reference to this GPU's replicaCount
-	pickedFrom int           // slots picked from this GPU during this allocation
-	replicas   []string      // remaining annotated-ID candidates for this GPU
+	count            *replicaCount // shared reference to this GPU's replicaCount
+	pickedFrom       int           // slots picked from this GPU during this allocation
+	requiredReplicas int           // required replicas already pinned to this GPU
+	replicas         []string      // remaining annotated-ID candidates for this GPU
 }
 
-// gpuPriorityQueue is a heap of *gpuAllocState whose ordering defers to the
-// policy comparator on allocated() and falls back to pickedFrom for the
-// tie-break so equal-allocated GPUs rotate rather than concentrating on one.
+// touched reports how many slots this allocation has committed to the GPU,
+// counting both picks made so far and required replicas already pinned. Only
+// spread orders by this; distributed and packed tie-break on pickedFrom alone.
+func (s *gpuAllocState) touched() int {
+	return s.pickedFrom + s.requiredReplicas
+}
+
+// gpuPriorityQueue is a heap of *gpuAllocState whose ordering is determined by
+// the policy comparator.
 type gpuPriorityQueue struct {
 	items     []*gpuAllocState
 	preferred replicaComparator
@@ -112,11 +134,7 @@ type gpuPriorityQueue struct {
 
 func (q *gpuPriorityQueue) Len() int { return len(q.items) }
 func (q *gpuPriorityQueue) Less(i, j int) bool {
-	a, b := q.items[i], q.items[j]
-	if a.count.allocated() != b.count.allocated() {
-		return q.preferred(a.count, b.count)
-	}
-	return a.pickedFrom < b.pickedFrom
+	return q.preferred(q.items[i], q.items[j])
 }
 func (q *gpuPriorityQueue) Swap(i, j int) { q.items[i], q.items[j] = q.items[j], q.items[i] }
 func (q *gpuPriorityQueue) Push(x any)    { q.items = append(q.items, x.(*gpuAllocState)) }
@@ -149,6 +167,15 @@ func (r *resourceManager) greedyAlloc(available, required []string, size int, pr
 			byGPU[id] = item
 		}
 		item.replicas = append(item.replicas, c)
+	}
+
+	// Record required replicas per physical GPU. Only spread consults this (via
+	// touched()); it keeps spread from re-picking a GPU already pinned to the
+	// pod, while leaving distributed and packed unchanged.
+	for _, req := range required {
+		if item, ok := byGPU[AnnotatedID(req).GetID()]; ok {
+			item.requiredReplicas++
+		}
 	}
 
 	// Build the heap once. The comparator ranks GPUs on allocated() and the
