@@ -17,8 +17,8 @@
 package rm
 
 import (
+	"container/heap"
 	"fmt"
-	"sort"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
@@ -94,6 +94,39 @@ func (r *resourceManager) prepareCandidates(available, required []string, size i
 	return candidates, replicas, needed, nil
 }
 
+// gpuAllocState is the per-physical-GPU bookkeeping the greedy allocator
+// tracks while it consumes candidates.
+type gpuAllocState struct {
+	count      *replicaCount // shared reference to this GPU's replicaCount
+	pickedFrom int           // slots picked from this GPU during this allocation
+	replicas   []string      // remaining annotated-ID candidates for this GPU
+}
+
+// gpuPriorityQueue is a heap of *gpuAllocState whose ordering defers to the
+// policy comparator on allocated() and falls back to pickedFrom for the
+// tie-break so equal-allocated GPUs rotate rather than concentrating on one.
+type gpuPriorityQueue struct {
+	items     []*gpuAllocState
+	preferred replicaComparator
+}
+
+func (q *gpuPriorityQueue) Len() int { return len(q.items) }
+func (q *gpuPriorityQueue) Less(i, j int) bool {
+	a, b := q.items[i], q.items[j]
+	if a.count.allocated() != b.count.allocated() {
+		return q.preferred(a.count, b.count)
+	}
+	return a.pickedFrom < b.pickedFrom
+}
+func (q *gpuPriorityQueue) Swap(i, j int) { q.items[i], q.items[j] = q.items[j], q.items[i] }
+func (q *gpuPriorityQueue) Push(x any)    { q.items = append(q.items, x.(*gpuAllocState)) }
+func (q *gpuPriorityQueue) Pop() any {
+	n := len(q.items) - 1
+	x := q.items[n]
+	q.items = q.items[:n]
+	return x
+}
+
 // greedyAlloc returns a list of devices by repeatedly selecting the best
 // remaining candidate according to the supplied comparator. It takes into
 // account already allocated replicas so that consecutive allocations keep
@@ -104,35 +137,48 @@ func (r *resourceManager) greedyAlloc(available, required []string, size int, pr
 		return nil, err
 	}
 
-	// Track how many slots have already been picked from each physical device
-	// during this allocation. Used as the tie-break sort key below so that,
-	// when the comparator ranks two physical GPUs equally, the allocator
-	// rotates to a sibling device it has touched the least this round. This
-	// keeps the distributed policy spreading replicas across physical GPUs
-	// even when their allocated counts tie.
-	pickedFrom := make(map[string]int)
+	// Bucket candidates by their underlying physical GPU. Each gpuAllocState
+	// holds a shared *replicaCount so decrementing its available count also
+	// updates the map entry, keeping a single source of truth.
+	byGPU := make(map[string]*gpuAllocState)
+	for _, c := range candidates {
+		id := AnnotatedID(c).GetID()
+		item, ok := byGPU[id]
+		if !ok {
+			item = &gpuAllocState{count: replicas[id]}
+			byGPU[id] = item
+		}
+		item.replicas = append(item.replicas, c)
+	}
 
-	// Select devices one-by-one. The supplied comparator decides which
-	// physical GPU is preferred for the current policy. Comparators order
-	// solely by allocated() (see TestComparatorsOrderSolelyByAllocated), so
-	// equal allocated counts mean the comparator has no preference and the
-	// pickedFrom tie-break above applies.
-	var devices []string
+	// Build the heap once. The comparator ranks GPUs on allocated() and the
+	// pickedFrom tie-break rotates between equal-ranked ones so, e.g., the
+	// distributed policy keeps spreading replicas across physical GPUs even
+	// when their allocated counts tie.
+	pq := &gpuPriorityQueue{
+		items:     make([]*gpuAllocState, 0, len(byGPU)),
+		preferred: preferred,
+	}
+	for _, item := range byGPU {
+		pq.items = append(pq.items, item)
+	}
+	heap.Init(pq)
+
+	// Pop the best GPU, take one of its replicas, update counters, push back
+	// if any remain. Total cost is O(n log m) where n is `needed` and m is
+	// the number of distinct physical devices contributing candidates.
+	devices := make([]string, 0, needed)
 	for i := 0; i < needed; i++ {
-		sort.Slice(candidates, func(i, j int) bool {
-			iid := AnnotatedID(candidates[i]).GetID()
-			jid := AnnotatedID(candidates[j]).GetID()
-			ri, rj := replicas[iid], replicas[jid]
-			if ri.allocated() != rj.allocated() {
-				return preferred(ri, rj)
-			}
-			return pickedFrom[iid] < pickedFrom[jid]
-		})
-		id := AnnotatedID(candidates[0]).GetID()
-		pickedFrom[id]++
-		replicas[id].available--
-		devices = append(devices, candidates[0])
-		candidates = candidates[1:]
+		top := heap.Pop(pq).(*gpuAllocState)
+		last := len(top.replicas) - 1
+		pick := top.replicas[last]
+		top.replicas = top.replicas[:last]
+		top.count.available--
+		top.pickedFrom++
+		if len(top.replicas) > 0 {
+			heap.Push(pq, top)
+		}
+		devices = append(devices, pick)
 	}
 
 	return append(required, devices...), nil
