@@ -33,10 +33,37 @@ type ReplicatedResources struct {
 	Resources                  []ReplicatedResource `json:"resources,omitempty"                  yaml:"resources,omitempty"`
 }
 
+// mpsSharingID is the id value passed to disableResoureRenaming for the MPS
+// sharing path (see DisableResourceNamingInConfig).
+const mpsSharingID = "mps"
+
 func (rrs *ReplicatedResources) disableResoureRenaming(id string) {
 	if rrs == nil {
 		return
 	}
+
+	// The MPS control daemon can only apply a single active thread percentage
+	// per node, so per-GPU device selection and multiple rename targets are
+	// structurally unsupportable on the MPS path. Keep the historical
+	// behaviour: reset user-specified `rename` and `devices` fields.
+	if id == mpsSharingID {
+		rrs.resetRenameAndDevices(id)
+		return
+	}
+
+	// For time-slicing (and any future non-MPS sharing mode) there is no
+	// equivalent per-node constraint, so preserve user-specified `rename`
+	// and `devices` fields instead of resetting them. This enables per-UUID
+	// time-slicing, where only a subset of GPUs on a node is exposed under
+	// a renamed shared resource (e.g. nvidia.com/gpu.shared) while the
+	// remaining devices stay on the original resource name.
+	rrs.keepRenameAndDevices(id)
+}
+
+// resetRenameAndDevices restores the historical behaviour: clear any
+// user-specified `rename` field and force `Devices.All=true` on every entry,
+// emitting warnings that mirror the original messages.
+func (rrs *ReplicatedResources) resetRenameAndDevices(id string) {
 	renameByDefault := rrs.RenameByDefault
 	setsNonDefaultRename := false
 	setsDevices := false
@@ -62,7 +89,31 @@ func (rrs *ReplicatedResources) disableResoureRenaming(id string) {
 	if setsDevices {
 		klog.Warningf("Customizing the 'devices' field in sharing.%s.resources is not yet supported in the config. Ignoring...", id)
 	}
+}
 
+// keepRenameAndDevices preserves user-specified `rename` and `devices` fields,
+// emitting an informational warning so that the intent is visible in logs.
+func (rrs *ReplicatedResources) keepRenameAndDevices(id string) {
+	renameByDefault := rrs.RenameByDefault
+	setsNonDefaultRename := false
+	setsDevices := false
+	for _, r := range rrs.Resources {
+		if !renameByDefault && r.Rename != "" {
+			setsNonDefaultRename = true
+		}
+		if renameByDefault && r.Rename != r.Name.DefaultSharedRename() {
+			setsNonDefaultRename = true
+		}
+		if !r.Devices.All {
+			setsDevices = true
+		}
+	}
+	if setsNonDefaultRename {
+		klog.Warningf("sharing.%s.resources: keeping user-specified `rename` field (per-UUID time-slicing)", id)
+	}
+	if setsDevices {
+		klog.Warningf("sharing.%s.resources: keeping user-specified `devices` field (per-UUID time-slicing)", id)
+	}
 }
 
 func (rrs *ReplicatedResources) isReplicated() bool {
