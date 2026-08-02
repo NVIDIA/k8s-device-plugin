@@ -24,6 +24,10 @@ import (
 
 const (
 	ContainerRoot = Root("/mps")
+
+	// ReadyFile is the node-global marker created only after all MPS daemons
+	// finish initialization.
+	ReadyFile = ".ready"
 )
 
 // Root represents an MPS root.
