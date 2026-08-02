@@ -52,6 +52,12 @@ func (r Root) startedFile(resourceName spec.ResourceName) string {
 	return r.Path(string(resourceName), ".started")
 }
 
+// ReadyFilePath returns the node-global .ready file, created only after all MPS
+// daemons finish initialization.
+func (r Root) ReadyFilePath() string {
+	return r.Path(".ready")
+}
+
 // Path returns a path relative to the MPS root.
 func (r Root) Path(parts ...string) string {
 	pathparts := append([]string{string(r)}, parts...)
