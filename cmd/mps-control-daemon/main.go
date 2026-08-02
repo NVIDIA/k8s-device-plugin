@@ -205,6 +205,12 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 		klog.Info("No devices are configured for MPS sharing; Waiting indefinitely.")
 	}
 
+	// Clear any stale .ready before starting: /mps is a hostPath, so a marker
+	// from a previous run can survive a restart and signal readiness too early.
+	if err := os.Remove(mps.ContainerRoot.ReadyFilePath()); err != nil && !os.IsNotExist(err) {
+		return mpsDaemons, true, fmt.Errorf("failed to remove stale .ready file: %w", err)
+	}
+
 	// Loop through all MPS daemons and start them.
 	// If any daemon fails to start, all daemons are started again.
 	for _, mpsDaemon := range mpsDaemons {
@@ -213,7 +219,7 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 			return mpsDaemons, true, nil
 		}
 	}
-	readyFile, err := os.Create("/mps/.ready")
+	readyFile, err := os.Create(mps.ContainerRoot.ReadyFilePath())
 	if err != nil {
 		return mpsDaemons, true, fmt.Errorf("failed to create .ready file")
 	}
@@ -223,7 +229,7 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 }
 
 func stopDaemons(mpsDaemons ...*mps.Daemon) error {
-	if err := os.Remove("/mps/.ready"); err != nil {
+	if err := os.Remove(mps.ContainerRoot.ReadyFilePath()); err != nil {
 		klog.Warningf("Failed to remove .ready file: %v", err)
 	}
 	klog.Info("Stopping MPS daemons.")
