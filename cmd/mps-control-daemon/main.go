@@ -213,7 +213,7 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 			return mpsDaemons, true, nil
 		}
 	}
-	readyFile, err := os.Create("/mps/.ready")
+	readyFile, err := os.Create(mps.ContainerRoot.ReadyFilePath())
 	if err != nil {
 		return mpsDaemons, true, fmt.Errorf("failed to create .ready file")
 	}
@@ -223,7 +223,7 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 }
 
 func stopDaemons(mpsDaemons ...*mps.Daemon) error {
-	if err := os.Remove("/mps/.ready"); err != nil {
+	if err := os.Remove(mps.ContainerRoot.ReadyFilePath()); err != nil {
 		klog.Warningf("Failed to remove .ready file: %v", err)
 	}
 	klog.Info("Stopping MPS daemons.")
