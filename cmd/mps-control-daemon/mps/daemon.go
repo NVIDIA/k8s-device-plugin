@@ -18,12 +18,14 @@ package mps
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/opencontainers/selinux/go-selinux"
 	"k8s.io/klog/v2"
@@ -35,6 +37,11 @@ type computeMode string
 
 const (
 	mpsControlBin = "nvidia-cuda-mps-control"
+
+	// mpsControlWaitDelay bounds how long Wait blocks after the control process
+	// is killed (e.g. on context cancellation) before its I/O pipes are force
+	// closed, so a stuck command can't block the caller indefinitely.
+	mpsControlWaitDelay = 10 * time.Second
 
 	computeModeExclusiveProcess = computeMode("EXCLUSIVE_PROCESS")
 	computeModeDefault          = computeMode("DEFAULT")
@@ -200,20 +207,41 @@ func (d *Daemon) startedFile() string {
 	return d.root.startedFile(d.rm.Resource())
 }
 
-// AssertHealthy checks that the MPS control daemon is healthy.
-func (d *Daemon) AssertHealthy() error {
-	_, err := d.EchoPipeToControl("get_default_active_thread_percentage")
+// AssertHealthy checks that the MPS control daemon is healthy. The context
+// bounds the control command so a hung daemon can't block a caller (e.g. the
+// readiness poll) past cancellation.
+func (d *Daemon) AssertHealthy(ctx context.Context) error {
+	_, err := d.echoPipeToControl(ctx, "get_default_active_thread_percentage")
 	return err
+}
+
+// Ready reports whether the .ready file exists, i.e. the MPS daemons have
+// finished initialization. A stat error other than not-exist is returned.
+func (d *Daemon) Ready() (bool, error) {
+	_, err := os.Stat(d.root.Path(ReadyFile))
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // EchoPipeToControl sends the specified command to the MPS control daemon.
 func (d *Daemon) EchoPipeToControl(command string) (string, error) {
+	return d.echoPipeToControl(context.Background(), command)
+}
+
+// echoPipeToControl sends command to the MPS control daemon, bounded by ctx.
+func (d *Daemon) echoPipeToControl(ctx context.Context, command string) (string, error) {
 	var out bytes.Buffer
 	reader, writer := io.Pipe()
 	defer writer.Close()
 	defer reader.Close()
 
-	mpsDaemon := exec.Command(mpsControlBin)
+	mpsDaemon := exec.CommandContext(ctx, mpsControlBin)
+	mpsDaemon.WaitDelay = mpsControlWaitDelay
 	mpsDaemon.Env = append(mpsDaemon.Env, d.EnvVars().toSlice()...)
 
 	mpsDaemon.Stdin = reader
