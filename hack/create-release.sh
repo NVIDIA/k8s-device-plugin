@@ -38,7 +38,17 @@ echo "Creating draft release"
 HELM_PACKAGE_VERSION=${VERSION#v}
 echo "Uploading release artifacts"
 
+# THIRD_PARTY_NOTICES.md is attached as a release asset rather than copied into
+# the image: the notices may be distributed alongside the artifact, and this
+# keeps the image size unchanged. It is committed and the notices job in CI
+# proves it matches the tree, so it is uploaded as-is from the tagged commit.
+if [ ! -s THIRD_PARTY_NOTICES.md ]; then
+    echo "THIRD_PARTY_NOTICES.md is missing or empty at ${VERSION}" >&2
+    exit 1
+fi
+
 gh release upload ${VERSION} \
     ./nvidia-device-plugin-${HELM_PACKAGE_VERSION}.tgz \
     ./gpu-feature-discovery-${HELM_PACKAGE_VERSION}.tgz \
+    ./THIRD_PARTY_NOTICES.md \
     -R ${REPOSITORY}

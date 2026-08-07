@@ -7,6 +7,8 @@ deployments/helm/gpu-feature-discovery
 cmd/gpu-feature-discovery/gfd-test-loop
 e2e_logs
 bin
+# Scratch tree written by hack/generate-notices.sh.
+/.licenses-cache
 *.out
 *.log
 ginkgo.json
