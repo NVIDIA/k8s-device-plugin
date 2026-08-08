@@ -63,6 +63,24 @@ func TestDevice(t *testing.T) {
 			expectedMaxClients:     48,
 		},
 		{
+			description: "pre-volta single replica",
+			input: mpsDevice{
+				ComputeCapability: "7.0",
+				Replicas:          1,
+			},
+			expectedIsAtLeastVolta: false,
+			expectedMaxClients:     16,
+		},
+		{
+			description: "post-volta single replica",
+			input: mpsDevice{
+				ComputeCapability: "9.0",
+				Replicas:          1,
+			},
+			expectedIsAtLeastVolta: true,
+			expectedMaxClients:     48,
+		},
+		{
 			description: "pre-volta clients exceeded",
 			input: mpsDevice{
 				ComputeCapability: "7.0",
