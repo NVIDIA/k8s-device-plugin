@@ -124,6 +124,11 @@ func (d *PCIDevice) GetVendorSpecificCapability() ([]byte, error) {
 	var visited [256]byte
 	pos := GetByte(d.Config, PciCapabilityList)
 	for pos != 0 {
+		capHeaderEnd := int(pos) + int(PciCapabilityLength) + 1
+		if capHeaderEnd > len(d.Config) {
+			break
+		}
+
 		id := GetByte(d.Config, pos+PciCapabilityListID)
 		next := GetByte(d.Config, pos+PciCapabilityListNext)
 		length := GetByte(d.Config, pos+PciCapabilityLength)
@@ -137,7 +142,11 @@ func (d *PCIDevice) GetVendorSpecificCapability() ([]byte, error) {
 			break
 		}
 		if id == PciCapabilityVendorSpecificID {
-			capability := d.Config[pos+PciCapabilityListID : pos+PciCapabilityListID+length]
+			capEnd := int(pos) + int(PciCapabilityListID) + int(length)
+			if capEnd > len(d.Config) {
+				break
+			}
+			capability := d.Config[pos+PciCapabilityListID : capEnd]
 			return capability, nil
 		}
 
