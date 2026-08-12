@@ -30,7 +30,7 @@ CMDS := $(patsubst ./cmd/%/,%,$(sort $(dir $(wildcard ./cmd/*/))))
 CMD_TARGETS := $(patsubst %,cmd-%, $(CMDS))
 
 CHECK_TARGETS := lint
-MAKE_TARGETS := binaries build check fmt lint-internal test examples cmds coverage generate vendor check-modules $(CHECK_TARGETS)
+MAKE_TARGETS := binaries build check fmt lint-internal test examples cmds coverage generate vendor check-modules third-party-notices check-third-party-notices $(CHECK_TARGETS)
 
 TARGETS := $(MAKE_TARGETS) $(EXAMPLE_TARGETS) $(CMD_TARGETS)
 
@@ -113,6 +113,21 @@ vendor: mod-vendor
 
 check-modules: | mod-tidy mod-verify mod-vendor
 	git diff --quiet HEAD -- $$(find . -name go.mod -o -name go.sum -o -name vendor)
+
+DEVEL_DIR := $(CURDIR)/deployments/devel
+
+bin/go-licenses: $(DEVEL_DIR)/go.mod $(DEVEL_DIR)/go.sum
+	GOBIN=$(CURDIR)/bin go -C $(DEVEL_DIR) install -mod=readonly github.com/google/go-licenses/v2
+
+third-party-notices: bin/go-licenses
+	@bash hack/generate-third-party-notices.sh
+
+check-third-party-notices: third-party-notices
+	@echo "- Checking if THIRD_PARTY_NOTICES.md is up to date..."
+	@git ls-files --error-unmatch THIRD_PARTY_NOTICES.md >/dev/null 2>&1 \
+		|| { echo "ERROR: THIRD_PARTY_NOTICES.md is not tracked. Run 'make third-party-notices' and commit the result."; exit 1; }
+	@git diff --exit-code -- THIRD_PARTY_NOTICES.md \
+		|| { echo "ERROR: THIRD_PARTY_NOTICES.md is stale. Run 'make third-party-notices' and commit the change."; exit 1; }
 
 COVERAGE_FILE := coverage.out
 test: build cmds
