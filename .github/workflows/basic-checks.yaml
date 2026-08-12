@@ -35,3 +35,10 @@ jobs:
     uses: ./.github/workflows/code_scanning.yaml
     with:
       golang_version: ${{ needs.variables.outputs.golang_version }}
+
+  third-party-notices:
+    needs:
+    - variables
+    uses: ./.github/workflows/third-party-notices-check.yaml
+    with:
+      golang_version: ${{ needs.variables.outputs.golang_version }}
