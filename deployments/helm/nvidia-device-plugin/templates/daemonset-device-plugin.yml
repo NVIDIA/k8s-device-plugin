@@ -213,9 +213,9 @@ spec:
             mountPath: /dev/shm
           - name: mps-root
             mountPath: /mps
+        {{- end }}
           - name: cdi-root
             mountPath: /var/run/cdi
-        {{- end }}
         {{- if $options.hasConfigMap }}
           - name: available-configs
             mountPath: /available-configs
@@ -238,11 +238,11 @@ spec:
         - name: mps-shm
           hostPath:
             path: {{ .Values.mps.root }}/shm
+        {{- end }}
         - name: cdi-root
           hostPath:
             path: /var/run/cdi
             type: DirectoryOrCreate
-        {{- end }}
        {{- if typeIs "string" .Values.nvidiaDriverRoot }}
         - name: driver-root
           hostPath:
