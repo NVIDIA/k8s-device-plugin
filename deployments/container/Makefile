@@ -76,6 +76,7 @@ $(IMAGE_TARGETS): image-%:
 		--build-arg VERSION="$(VERSION)" \
 		--build-arg GIT_COMMIT="$(GIT_COMMIT)" \
 		--build-arg GOPROXY="$(GOPROXY)" \
+		--build-arg BUILD_TIMESTAMP="$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")" \
 		$(if $(LABEL_IMAGE_SOURCE),--label "org.opencontainers.image.source=$(LABEL_IMAGE_SOURCE)",) \
 		-f $(DOCKERFILE) \
 		$(CURDIR)

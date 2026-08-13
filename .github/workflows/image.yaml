@@ -48,7 +48,8 @@ jobs:
       - name: Build image
         env:
           IMAGE_NAME: ghcr.io/nvidia/k8s-device-plugin
-          VERSION: ${{ inputs.version }}-${{ matrix.arch }}
+          VERSION: ${{ inputs.version }}
+          IMAGE_TAG: ${{ inputs.version }}-${{ matrix.arch }}
           PUSH_ON_BUILD: true
           GOPROXY: ${{ steps.setup-go-proxy.outputs.goproxy-url }}
           DOCKER_BUILD_PLATFORM_OPTIONS: "--platform=linux/${{ matrix.arch }}"
