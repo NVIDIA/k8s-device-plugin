@@ -443,6 +443,16 @@ func signalProcess(f *Flags) error {
 	return nil
 }
 
+// cmdlineMatchesProcessTarget reports whether argv[0] matches the configured signal target.
+// The container command is often "mps-control-daemon" while PROCESS_TO_SIGNAL may be set to
+// "/usr/bin/mps-control-daemon"; compare basenames so shareProcessNamespace pods can signal.
+func cmdlineMatchesProcessTarget(argv0, target string) bool {
+	if argv0 == target {
+		return true
+	}
+	return filepath.Base(argv0) == filepath.Base(target)
+}
+
 func findPidToSignal(f *Flags) (int, error) {
 	procs, err := procfs.AllProcs()
 	if err != nil {
@@ -456,7 +466,7 @@ func findPidToSignal(f *Flags) (int, error) {
 		if len(cmdline) == 0 {
 			continue
 		}
-		if cmdline[0] == f.ProcessToSignal {
+		if cmdlineMatchesProcessTarget(cmdline[0], f.ProcessToSignal) {
 			return p.PID, nil
 		}
 	}
