@@ -12,7 +12,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/opencontainers/selinux v1.15.1
 	github.com/prometheus/procfs v0.21.1
-	github.com/sirupsen/logrus v1.9.4
+	github.com/sirupsen/logrus v1.10.0
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v2 v2.27.7
 	golang.org/x/mod v0.40.0
