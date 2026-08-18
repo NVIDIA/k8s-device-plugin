@@ -78,8 +78,13 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 	return config, nil
 }
 
-// DisableResourceNamingInConfig temporarily disable the resource renaming feature of the plugin.
-// This may be reenabled in a future release.
+// DisableResourceNamingInConfig disables the top-level resource renaming
+// feature (config.Resources.GPUs / config.Resources.MIGs) and applies
+// default values to the per-resource sharing entries.
+//
+// Per-entry Rename and Devices selection in Sharing.TimeSlicing and
+// Sharing.MPS are preserved as the user configured them; only unset fields
+// receive defaults.
 func DisableResourceNamingInConfig(config *Config) {
 	// Disable resource renaming through config.Resource
 	if len(config.Resources.GPUs) > 0 || len(config.Resources.MIGs) > 0 {
@@ -88,10 +93,9 @@ func DisableResourceNamingInConfig(config *Config) {
 	config.Resources.GPUs = nil
 	config.Resources.MIGs = nil
 
-	// Disable renaming / device selection in Sharing.TimeSlicing.Resources
-	config.Sharing.TimeSlicing.disableResoureRenaming("timeSlicing")
-	// Disable renaming / device selection in Sharing.MPS.Resources
-	config.Sharing.MPS.disableResoureRenaming("mps")
+	// Apply defaults (auto-rename, default Devices.All) to sharing entries.
+	config.Sharing.TimeSlicing.applyDefaults()
+	config.Sharing.MPS.applyDefaults()
 }
 
 // parseConfig parses a config file as either YAML of JSON and unmarshals it into a Config struct.
