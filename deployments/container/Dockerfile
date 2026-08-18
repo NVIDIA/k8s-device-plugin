@@ -65,6 +65,7 @@ ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 ARG VERSION="N/A"
 ARG GIT_COMMIT="unknown"
+ARG BUILD_TIMESTAMP
 
 LABEL io.k8s.display-name="NVIDIA Device Plugin"
 LABEL name="NVIDIA Device Plugin"
@@ -73,7 +74,17 @@ LABEL version=${VERSION}
 LABEL com.nvidia.git-commit=${GIT_COMMIT}
 LABEL release="N/A"
 LABEL summary="NVIDIA device plugin for Kubernetes"
-LABEL description="See summary"
+LABEL description="NVIDIA device plugin for Kubernetes"
+LABEL org.opencontainers.image.base.name="nvcr.io/nvidia/distroless/go"
+LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
+LABEL org.opencontainers.image.description="NVIDIA device plugin for Kubernetes"
+LABEL org.opencontainers.image.documentation="https://docs.nvidia.com/datacenter/cloud-native/gpu-operator"
+LABEL org.opencontainers.image.revision="${GIT_COMMIT}"
+LABEL org.opencontainers.image.source="https://github.com/NVIDIA/k8s-device-plugin.git"
+LABEL org.opencontainers.image.title="NVIDIA Device Plugin"
+LABEL org.opencontainers.image.url="https://catalog.ngc.nvidia.com/orgs/nvidia/containers/k8s-device-plugin"
+LABEL org.opencontainers.image.vendor="NVIDIA"
+LABEL org.opencontainers.image.version="${VERSION}"
 
 COPY LICENSE /licenses/
 
