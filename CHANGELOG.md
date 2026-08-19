@@ -1,5 +1,17 @@
 ## Changelog
 
+### v0.20.0
+- Add configurable packed/distributed allocation policy for replicated and MIG resources (#1621)
+- Prefer distinct physical GPUs when breaking distributed-allocation ties (#1788)
+- Fix MIG resource matching so profiles with suffixes such as `-me`, `+me.all`, and `+gfx` are exposed as separate Kubernetes resources (#1807)
+- Surface NVML errors when MIG device placement cannot be determined (#1899)
+- Add support for the Rubin architecture family (#1909)
+- Bump NVIDIA go-nvlib to v0.12.0 (#1911)
+- Update the Node Feature Discovery chart to v0.19.0 and use OCI artifacts (#1922)
+- Add third-party notices and a generator (#1950)
+- Bump NVIDIA Container Toolkit to v1.20.0 (#1958)
+- Add OCI standard image labels (#1961)
+
 ### v0.19.3
 - bump nvcr.io/nvidia/distroless/go to v4.0.8-dev (#1852)
 - revert default enablement of features mofed, gdrcopy and mofed (#1837)
