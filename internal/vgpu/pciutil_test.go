@@ -40,3 +40,23 @@ func TestGetVendorSpecificCapability(t *testing.T) {
 		}
 	}
 }
+
+func TestGetVendorSpecificCapabilityMalformedLength(t *testing.T) {
+	// A truncated config (or a device exposing a malformed vendor-specific
+	// capability record whose length field makes start+length exceed the
+	// buffer) must not panic. It should be skipped so a single bad device
+	// can't crash gpu-feature-discovery.
+	config := make([]byte, 256)
+	config[PciStatusByte] |= PciStatusCapabilityList
+	// Point the capability list at offset 224 and mark it vendor-specific.
+	config[PciCapabilityList] = 224
+	config[224+PciCapabilityListID] = PciCapabilityVendorSpecificID
+	config[224+PciCapabilityListNext] = 0
+	config[224+PciCapabilityLength] = 40
+	// 224 + 40 == 264 which is past the 256-byte buffer.
+
+	device := &PCIDevice{Address: "malformed", Config: config}
+	capability, err := device.GetVendorSpecificCapability()
+	require.NoError(t, err, "malformed capability length must not panic")
+	require.Nil(t, capability, "malformed capability record should be skipped")
+}
