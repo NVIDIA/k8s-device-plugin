@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/stretchr/testify/require"
@@ -406,6 +407,271 @@ func TestGetMigDeviceParts(t *testing.T) {
 			require.Equal(t, tc.expectedParent, parent)
 			require.Equal(t, tc.expectedGi, gi)
 			require.Equal(t, tc.expectedCi, ci)
+		})
+	}
+}
+
+// fakeHealthNvmlLib is a minimal nvml.Interface test double for driving checkHealth
+// without a real GPU; only the calls made by checkHealth are implemented.
+type fakeHealthNvmlLib struct {
+	nvml.Interface
+	eventSet *fakeEventSet
+}
+
+func (f *fakeHealthNvmlLib) Init() nvml.Return {
+	return nvml.SUCCESS
+}
+
+func (f *fakeHealthNvmlLib) Shutdown() nvml.Return {
+	return nvml.SUCCESS
+}
+
+func (f *fakeHealthNvmlLib) EventSetCreate() (nvml.EventSet, nvml.Return) {
+	return f.eventSet, nvml.SUCCESS
+}
+
+func (f *fakeHealthNvmlLib) DeviceGetHandleByUUID(string) (nvml.Device, nvml.Return) {
+	return &fakeGpuHandle{}, nvml.SUCCESS
+}
+
+// fakeGpuHandle is a minimal nvml.Device test double for the handle returned by
+// DeviceGetHandleByUUID; only the event-registration calls are implemented.
+type fakeGpuHandle struct {
+	nvml.Device
+}
+
+func (f *fakeGpuHandle) GetSupportedEventTypes() (uint64, nvml.Return) {
+	return ^uint64(0), nvml.SUCCESS
+}
+
+func (f *fakeGpuHandle) RegisterEvents(uint64, nvml.EventSet) nvml.Return {
+	return nvml.SUCCESS
+}
+
+// fakeEventDevice is a minimal nvml.Device test double for the device embedded in
+// a scripted nvml.EventData; only GetUUID is used by checkHealth.
+type fakeEventDevice struct {
+	nvml.Device
+	uuid string
+}
+
+func (f *fakeEventDevice) GetUUID() (string, nvml.Return) {
+	return f.uuid, nvml.SUCCESS
+}
+
+// fakeEventSet is a scripted nvml.EventSet test double: it returns the configured
+// events in order, and ERROR_TIMEOUT once they have all been consumed.
+type fakeEventSet struct {
+	nvml.EventSet
+	events []nvml.EventData
+	idx    int
+}
+
+func (f *fakeEventSet) Wait(uint32) (nvml.EventData, nvml.Return) {
+	if f.idx < len(f.events) {
+		e := f.events[f.idx]
+		f.idx++
+		return e, nvml.SUCCESS
+	}
+	return nvml.EventData{}, nvml.ERROR_TIMEOUT
+}
+
+func (f *fakeEventSet) Free() nvml.Return {
+	return nvml.SUCCESS
+}
+
+// fakeMigHealthNvmlLib is a fakeHealthNvmlLib whose MIG UUID lookups fail, so
+// that getMigDeviceParts falls back to parsing the legacy MIG UUID format.
+type fakeMigHealthNvmlLib struct {
+	fakeHealthNvmlLib
+}
+
+func (f *fakeMigHealthNvmlLib) DeviceGetHandleByUUID(uuid string) (nvml.Device, nvml.Return) {
+	if strings.HasPrefix(uuid, "MIG-") {
+		return nil, nvml.ERROR_NOT_SUPPORTED
+	}
+	return &fakeGpuHandle{}, nvml.SUCCESS
+}
+
+// TestCheckHealthMigXidFanout verifies that an Xid event on a parent GPU is
+// routed to the MIG devices it hosts: an instance-specific event marks only
+// the matching MIG device unhealthy, while a GPU-wide event marks all of them.
+func TestCheckHealthMigXidFanout(t *testing.T) {
+	t.Setenv(envDisableHealthChecks, "")
+	t.Setenv(envEnableHealthChecks, "")
+
+	parentUUID := "GPU-5c89852c-d268-c3f3-1b07-005d5ae1dc3f"
+	migGi3 := "MIG-" + parentUUID + "/3/0"
+	migGi5 := "MIG-" + parentUUID + "/5/0"
+
+	testCases := []struct {
+		description string
+		gi          uint32
+		ci          uint32
+		expected    []string
+	}{
+		{
+			description: "instance-specific event marks only the matching MIG device unhealthy",
+			gi:          3,
+			ci:          0,
+			expected:    []string{migGi3},
+		},
+		{
+			description: "GPU-wide event marks every MIG device on the parent unhealthy",
+			gi:          0xFFFFFFFF,
+			ci:          0xFFFFFFFF,
+			expected:    []string{migGi3, migGi5},
+		},
+		{
+			description: "event for an unknown instance marks nothing unhealthy",
+			gi:          9,
+			ci:          0,
+			expected:    nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			devices := make(Devices)
+			for _, id := range []string{migGi3, migGi5} {
+				devices[id] = &Device{
+					Device: pluginapi.Device{ID: id, Health: pluginapi.Healthy},
+					Index:  "0:0",
+				}
+			}
+
+			eventSet := &fakeEventSet{
+				events: []nvml.EventData{
+					{
+						Device:            &fakeEventDevice{uuid: parentUUID},
+						EventType:         nvml.EventTypeXidCriticalError,
+						EventData:         79,
+						GpuInstanceId:     tc.gi,
+						ComputeInstanceId: tc.ci,
+					},
+				},
+			}
+
+			r := &nvmlResourceManager{
+				resourceManager: resourceManager{devices: devices},
+				nvml:            &fakeMigHealthNvmlLib{fakeHealthNvmlLib{eventSet: eventSet}},
+			}
+
+			stop := make(chan interface{})
+			unhealthy := make(chan *Device, len(devices))
+			done := make(chan error, 1)
+			go func() {
+				done <- r.checkHealth(stop, devices, unhealthy)
+			}()
+
+			received := make(map[string]bool)
+			timeout := time.After(2 * time.Second)
+		collect:
+			for len(received) < len(tc.expected) {
+				select {
+				case d := <-unhealthy:
+					received[d.ID] = true
+				case <-timeout:
+					break collect
+				}
+			}
+			// Grace period to catch devices that should not have been reported.
+			select {
+			case d := <-unhealthy:
+				received[d.ID] = true
+			case <-time.After(100 * time.Millisecond):
+			}
+
+			close(stop)
+			require.NoError(t, <-done)
+
+			expected := make(map[string]bool)
+			for _, id := range tc.expected {
+				expected[id] = true
+			}
+			require.Equal(t, expected, received)
+		})
+	}
+}
+
+func TestCheckHealthReplicatedXidFanout(t *testing.T) {
+	t.Setenv(envDisableHealthChecks, "")
+	t.Setenv(envEnableHealthChecks, "")
+
+	uuid := "GPU-3a1f2c4e-8b2d-41a9-9c3f-1a2b3c4d5e6f"
+
+	newReplicatedDevices := func(replicas int) Devices {
+		devices := make(Devices)
+		for i := 0; i < replicas; i++ {
+			id := string(NewAnnotatedID(uuid, i))
+			devices[id] = &Device{
+				Device: pluginapi.Device{ID: id, Health: pluginapi.Healthy},
+				Index:  "0",
+			}
+		}
+		return devices
+	}
+
+	testCases := []struct {
+		description string
+		replicas    int
+	}{
+		{
+			description: "non-replicated device: the Xid event marks the single device unhealthy",
+			replicas:    1,
+		},
+		{
+			description: "replicated device: an Xid event on the shared physical GPU marks every replica unhealthy",
+			replicas:    4,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			devices := newReplicatedDevices(tc.replicas)
+
+			eventSet := &fakeEventSet{
+				events: []nvml.EventData{
+					{
+						Device:            &fakeEventDevice{uuid: uuid},
+						EventType:         nvml.EventTypeXidCriticalError,
+						EventData:         79,
+						GpuInstanceId:     0xFFFFFFFF,
+						ComputeInstanceId: 0xFFFFFFFF,
+					},
+				},
+			}
+
+			r := &nvmlResourceManager{
+				resourceManager: resourceManager{devices: devices},
+				nvml:            &fakeHealthNvmlLib{eventSet: eventSet},
+			}
+
+			stop := make(chan interface{})
+			unhealthy := make(chan *Device, len(devices))
+			done := make(chan error, 1)
+			go func() {
+				done <- r.checkHealth(stop, devices, unhealthy)
+			}()
+
+			received := make(map[string]bool)
+			timeout := time.After(2 * time.Second)
+			for len(received) < len(devices) {
+				select {
+				case d := <-unhealthy:
+					received[d.ID] = true
+				case <-timeout:
+					t.Fatalf("timed out waiting for %d unhealthy devices; received %d", len(devices), len(received))
+				}
+			}
+
+			close(stop)
+			require.NoError(t, <-done)
+
+			require.Len(t, received, len(devices))
+			for id := range devices {
+				require.True(t, received[id], "expected device %v to be marked unhealthy", id)
+			}
 		})
 	}
 }
