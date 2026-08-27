@@ -452,8 +452,7 @@ this repository's tests and build tooling are not redistributed and are not
 listed.
 
 Each dependency is listed with the version redistributed, and its Location
-links to the license file in that version's upstream repository — the same
-text reproduced below.
+links to the license file in that version's upstream repository.
 
 The `k8s-device-plugin` image uses `nvcr.io/nvidia/distroless/go` as a base
 image. All of the OSS packages and source included in this image can be found at
