@@ -1136,6 +1136,7 @@ See the [changelog](CHANGELOG.md)
 
 - You can report a bug by [filing a new issue](https://github.com/NVIDIA/k8s-device-plugin/issues/new)
 - You can contribute by opening a [pull request](https://help.github.com/articles/using-pull-requests/)
+- Contributions must adhere to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ### Versioning
 
