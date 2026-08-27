@@ -52,15 +52,30 @@ sha256_of_stdin() {
     fi
 }
 
+# Nothing may reach the hasher unless the fetch succeeded: hashing zero bytes
+# yields a fixed digest that would false-match an empty vendored file.
+# http_fetch_to_file retries the transient failures go.googlesource.com returns
+# under this loop, and fails fast on a 404, which is a real miss.
 remote_sha() {
-    local blob="$1" raw
+    local blob="$1" raw blob_tmp_file sha
     raw="$(raw_url_for "${blob}")"
     [[ -n "${raw}" ]] || return 1
-    if raw_is_base64 "${blob}"; then
-        curl -sfL --max-time 30 "${raw}" 2>/dev/null | base64_decode 2>/dev/null | sha256_of_stdin
-    else
-        curl -sfL --max-time 30 "${raw}" 2>/dev/null | sha256_of_stdin
+
+    blob_tmp_file="$(mktemp "${TMPDIR:-/tmp}/k8s-device-plugin-blob.XXXXXX")"
+    if ! http_fetch_to_file "${raw}" "${blob_tmp_file}"; then
+        rm -f "${blob_tmp_file}"
+        return 1
     fi
+
+    if raw_is_base64 "${blob}"; then
+        sha="$(base64_decode < "${blob_tmp_file}" | sha256_of_stdin)" || sha=""
+    else
+        sha="$(sha256_of_stdin < "${blob_tmp_file}")" || sha=""
+    fi
+    rm -f "${blob_tmp_file}"
+
+    [[ -n "${sha}" ]] || return 1
+    printf '%s' "${sha}"
 }
 
 repo_field() {

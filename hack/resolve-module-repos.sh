@@ -42,16 +42,20 @@ die() {
 }
 log() { printf '%s\n' "$*" >&2; }
 
-# Retries cover genuine network flakiness only. Absence of Origin is a real,
-# permanent property of older proxy cache entries, not a transient failure.
+# Body-as-string wrapper over the shared fetcher. An empty body is a failure
+# here but is NOT retried: absence of Origin is a real, permanent property of
+# older proxy cache entries, not transient flakiness.
 fetch_retry() {
-    local url="$1" attempt body
-    for attempt in 1 2 3; do
-        body="$(curl -sfL --max-time 30 "${url}" 2>/dev/null)" || body=""
-        [[ -n "${body}" ]] && { printf '%s' "${body}"; return 0; }
-        sleep $(( attempt * 2 ))
-    done
-    return 1
+    local url="$1" body_tmp_file body
+    body_tmp_file="$(mktemp "${TMPDIR:-/tmp}/k8s-device-plugin-fetch.XXXXXX")"
+    if ! http_fetch_to_file "${url}" "${body_tmp_file}"; then
+        rm -f "${body_tmp_file}"
+        return 1
+    fi
+    body="$(cat "${body_tmp_file}")"
+    rm -f "${body_tmp_file}"
+    [[ -n "${body}" ]] || return 1
+    printf '%s' "${body}"
 }
 
 origin_field() {

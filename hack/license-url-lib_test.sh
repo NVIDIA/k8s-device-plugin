@@ -88,4 +88,80 @@ assert_fails "github raw is not base64" raw_is_base64 https://github.com/a/b/blo
 
 assert_eq "hello" "$(printf 'aGVsbG8=' | base64_decode)" "base64_decode works on this host"
 
+# http_fetch_to_file's retry policy. curl and sleep are shadowed by shell
+# functions, so this exercises the real policy with no network and no delay.
+# The distinction under test is the load-bearing one: a 503 is retried, a 404
+# is a real miss and must cost exactly one request per candidate.
+#
+# The stub keeps its call count and status sequence in files, not variables:
+# http_fetch_to_file reads curl's output through command substitution, so the
+# stub runs in a subshell and any variable it set would be discarded.
+CURL_CALLS_FILE="$(mktemp)"
+CURL_SEQUENCE_FILE="$(mktemp)"
+FETCH_DESTINATION="$(mktemp)"
+trap 'rm -f "${CURL_CALLS_FILE}" "${CURL_SEQUENCE_FILE}" "${FETCH_DESTINATION}"' EXIT
+
+curl() {
+    local destination=""
+    while (( $# )); do
+        case "$1" in
+            --output) destination="$2"; shift 2 ;;
+            *) shift ;;
+        esac
+    done
+
+    printf '%s' "$(( $(cat "${CURL_CALLS_FILE}") + 1 ))" > "${CURL_CALLS_FILE}"
+
+    local sequence status
+    sequence="$(cat "${CURL_SEQUENCE_FILE}")"
+    status="${sequence%% *}"
+    case "${sequence}" in
+        *' '*) printf '%s' "${sequence#* }" > "${CURL_SEQUENCE_FILE}" ;;
+    esac
+
+    [[ -n "${destination}" ]] && printf 'stub-body' > "${destination}"
+    printf '%s' "${status}"
+    [[ "${status}" == "000" ]] && return 7
+    return 0
+}
+
+sleep() { :; }
+
+fetch_status=0
+fetch_case() {
+    printf '%s' "$1" > "${CURL_SEQUENCE_FILE}"
+    printf '0' > "${CURL_CALLS_FILE}"
+    HTTP_FETCH_LAST_HOST=""
+    fetch_status=0
+    http_fetch_to_file "https://example.test/LICENSE" "${FETCH_DESTINATION}" || fetch_status=$?
+}
+curl_calls() { cat "${CURL_CALLS_FILE}"; }
+
+fetch_case "200"
+assert_eq "0" "${fetch_status}" "200 succeeds"
+assert_eq "1" "$(curl_calls)" "200 costs one request"
+assert_eq "stub-body" "$(cat "${FETCH_DESTINATION}")" "200 writes the body to the destination"
+
+fetch_case "404"
+assert_eq "1" "${fetch_status}" "404 fails"
+assert_eq "1" "$(curl_calls)" "404 is not retried"
+
+fetch_case "503 200"
+assert_eq "0" "${fetch_status}" "503 then 200 succeeds"
+assert_eq "2" "$(curl_calls)" "503 is retried"
+
+fetch_case "429 200"
+assert_eq "0" "${fetch_status}" "429 then 200 succeeds"
+assert_eq "2" "$(curl_calls)" "429 is retried"
+
+fetch_case "000 200"
+assert_eq "0" "${fetch_status}" "transport failure then 200 succeeds"
+assert_eq "2" "$(curl_calls)" "transport failure is retried"
+
+fetch_case "503 503 503"
+assert_eq "1" "${fetch_status}" "persistent 503 fails"
+assert_eq "3" "$(curl_calls)" "persistent 503 stops at HTTP_FETCH_ATTEMPTS"
+
+unset -f curl sleep
+
 finish

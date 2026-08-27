@@ -14,9 +14,52 @@
 # limitations under the License.
 #
 
-# Pure string transforms shared by the resolvers and the notices generator.
-# No network and (except base64_decode, which reads stdin) no I/O, so every
-# rule here is testable offline.
+# Shared by the resolvers and the notices generator, in two parts.
+#
+# Everything below http_fetch_to_file is a pure string transform: no network
+# and (except base64_decode, which reads stdin) no I/O, so every rule is
+# testable offline. http_fetch_to_file itself is the one HTTP fetch both
+# resolvers use, kept here so there is a single retry and status policy.
+
+# The single HTTP fetch for both resolvers. Writes bytes to a file rather than
+# returning them: command substitution strips trailing newlines, which would
+# change the sha256 of every license file that ends in one.
+#
+# curl -f is deliberately not used here. It reports every failure as exit 22,
+# which cannot distinguish a retryable 503 from a permanent 404 -- and retrying
+# a genuine miss matters, because this drives a loop over several candidate
+# refs and paths per license file.
+HTTP_FETCH_ATTEMPTS="${HTTP_FETCH_ATTEMPTS:-3}"
+
+# Successive requests to one host are what trips a rate limiter, so pause
+# between them. go.googlesource.com returns 503 and 429 under the tight
+# per-file loop this drives; both were observed against golang.org/x and
+# google.golang.org/protobuf, and both succeeded on a later attempt.
+HTTP_FETCH_THROTTLE_SECONDS="${HTTP_FETCH_THROTTLE_SECONDS:-0.2}"
+HTTP_FETCH_LAST_HOST=""
+
+http_fetch_to_file() {
+    local url="$1" destination="$2" attempt status host
+
+    host="${url#*://}"
+    host="${host%%/*}"
+    [[ "${host}" == "${HTTP_FETCH_LAST_HOST}" ]] && sleep "${HTTP_FETCH_THROTTLE_SECONDS}"
+    HTTP_FETCH_LAST_HOST="${host}"
+
+    for (( attempt = 1; attempt <= HTTP_FETCH_ATTEMPTS; attempt++ )); do
+        status="$(curl -sL --max-time 30 --output "${destination}" \
+            --write-out '%{http_code}' "${url}" 2>/dev/null)" || status="000"
+        case "${status}" in
+            2*) return 0 ;;
+            # 000 is curl's own transport failure; the rest are server-side and
+            # temporary. Anything else (404, 401, 410) is a permanent answer.
+            ""|000|408|429|5*) ;;
+            *) return 1 ;;
+        esac
+        (( attempt < HTTP_FETCH_ATTEMPTS )) && sleep $(( attempt * 2 ))
+    done
+    return 1
+}
 
 # The module proxy case-encodes an uppercase letter as '!' plus its lowercase
 # form: github.com/NVIDIA -> github.com/!n!v!i!d!i!a. This MUST NOT be done with
