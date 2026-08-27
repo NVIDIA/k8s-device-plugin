@@ -447,14 +447,13 @@ the commands under `cmd/`, resolved as the union across every released image
 platform. The `nvidia-device-plugin`, `gpu-feature-discovery`,
 `mps-control-daemon` and `config-manager` commands ship in the
 `k8s-device-plugin` image. Go standard library packages are excluded; they are
-covered by the license of the Go distribution itself.
+covered by the license of the Go distribution itself. Modules used only by
+this repository's tests and build tooling are not redistributed and are not
+listed.
 
-Each dependency is listed with the version redistributed and a link to the
-license file in that version's upstream source. Every link was verified by
-fetching it and comparing its contents against the copy vendored here, so each
-one resolves to the same license text reproduced below. Modules that no command
-under `cmd/` links are not listed; those are vendored only for this module's own
-tests and build tooling.
+Each dependency is listed with the version redistributed, and its Location
+links to the license file in that version's upstream repository — the same
+text reproduced below.
 
 The `k8s-device-plugin` image uses `nvcr.io/nvidia/distroless/go` as a base
 image. All of the OSS packages and source included in this image can be found at
