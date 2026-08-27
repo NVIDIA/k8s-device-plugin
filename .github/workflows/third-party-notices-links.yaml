@@ -1,0 +1,62 @@
+# Copyright (c) NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Re-verifies every license URL against the vendored bytes. Links are proven
+# correct when written, but upstream can retag, rename or archive a repository
+# afterwards, and no offline gate can see that. This runs on a schedule rather
+# than per pull request so link rot does not block unrelated work.
+
+name: Third-Party Notices Link Check
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-links:
+    name: Re-verify license URLs against upstream
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Get Golang Version
+        id: golang_version
+        run: |
+          GOLANG_VERSION=$(./hack/golang-version.sh)
+          echo "Detected $GOLANG_VERSION"
+          echo "golang_version=${GOLANG_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Install Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ steps.golang_version.outputs.golang_version }}
+
+      - name: Re-verify every license URL
+        env:
+          URLS_OUTPUT: /tmp/license-urls-fresh.tsv
+        run: make bin/go-licenses && bash hack/verify-license-urls.sh
+
+      - name: Compare against the committed map
+        run: |
+          if ! diff -u <(LC_ALL=C grep -v '^#' hack/license-urls.tsv) \
+                       <(LC_ALL=C grep -v '^#' /tmp/license-urls-fresh.tsv); then
+            echo "::error::A license URL no longer serves the vendored bytes. Upstream may have retagged or moved."
+            exit 1
+          fi

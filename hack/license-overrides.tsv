@@ -1,0 +1,16 @@
+# Curated license identifiers for packages whose license file bundles more
+# than one license as a single document. go-licenses classifies such a file
+# as whichever license it scores highest and reports only that one, so the
+# reported identifier understates the terms even though the license text
+# reproduced in THIRD_PARTY_NOTICES.md already carries every license in full.
+#
+# Add a row here only when you have read the vendored license file yourself
+# and confirmed by eye which licenses it actually contains — do not derive
+# an entry by grepping license text for phrases, which cannot reliably tell
+# similar licenses apart (e.g. BSD-2-Clause vs BSD-3-Clause) and risks adding
+# a wrong claim to a legal document.
+#
+# package	license	reason
+go.yaml.in/yaml/v2	Apache-2.0 / MIT	ships LICENSE (Apache-2.0) and LICENSE.libyaml (MIT) as two files; go-licenses reports only the Apache-2.0 LICENSE
+go.yaml.in/yaml/v3	Apache-2.0 / MIT	single LICENSE file has a full-text MIT section plus a short-form Apache-2.0 grant; go-licenses reports only MIT
+gopkg.in/yaml.v3	Apache-2.0 / MIT	single LICENSE file has a full-text MIT section plus a short-form Apache-2.0 grant; go-licenses reports only MIT
