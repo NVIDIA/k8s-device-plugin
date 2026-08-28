@@ -21,9 +21,12 @@ import (
 	"path/filepath"
 	"testing"
 
+	"strings"
+
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 
 	"github.com/gruntwork-io/terratest/modules/helm"
 	"github.com/gruntwork-io/terratest/modules/logger"
@@ -124,6 +127,136 @@ func TestDevicePluginDaemonsetTemplateRenderedDeployment(t *testing.T) {
 			require.EqualValues(t, tc.expectedContainer.SecurityContext, devicePluginContainer.SecurityContext)
 		})
 	}
+}
+
+func TestRBACTemplatesNonOpenShift(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	namespaceName := "rbac-test-non-openshift"
+	options := &helm.Options{
+		KubectlOptions: k8s.NewKubectlOptions("", "", namespaceName),
+		Logger:         logger.Discard,
+	}
+
+	// ClusterRole should render without SCC rules
+	roleOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role.yml"})
+	var clusterRole rbacv1.ClusterRole
+	helm.UnmarshalK8SYaml(t, roleOutput, &clusterRole)
+	for _, rule := range clusterRole.Rules {
+		for _, group := range rule.APIGroups {
+			require.NotEqual(t, "security.openshift.io", group, "SCC rule should not be present on non-OpenShift")
+		}
+	}
+
+	// ClusterRoleBinding should render; no namespaced RoleBinding
+	bindingOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role-binding.yml"})
+	require.NotContains(t, bindingOutput, "kind: RoleBinding", "namespaced RoleBinding should not render on non-OpenShift")
+	var crb rbacv1.ClusterRoleBinding
+	helm.UnmarshalK8SYaml(t, bindingOutput, &crb)
+	require.Equal(t, "ClusterRoleBinding", crb.Kind)
+}
+
+func TestRBACTemplatesOpenShift(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	namespaceName := "rbac-test-openshift"
+	apiVersions := "--api-versions=security.openshift.io/v1/SecurityContextConstraints"
+	options := &helm.Options{
+		KubectlOptions: k8s.NewKubectlOptions("", "", namespaceName),
+		Logger:         logger.Discard,
+	}
+
+	// role.yml: should render ClusterRole with SCC rule + namespaced Role
+	roleOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role.yml"}, apiVersions)
+	roleDocs := splitYAMLDocuments(roleOutput)
+	require.Len(t, roleDocs, 2, "expected ClusterRole + namespaced Role")
+
+	var clusterRole rbacv1.ClusterRole
+	helm.UnmarshalK8SYaml(t, roleDocs[0], &clusterRole)
+	require.Equal(t, "ClusterRole", clusterRole.Kind)
+	requireHasSCCRule(t, clusterRole.Rules)
+
+	var role rbacv1.Role
+	helm.UnmarshalK8SYaml(t, roleDocs[1], &role)
+	require.Equal(t, "Role", role.Kind)
+	require.Equal(t, namespaceName, role.Namespace)
+	requireHasSCCRule(t, role.Rules)
+
+	// role-binding.yml: should render ClusterRoleBinding + namespaced RoleBinding
+	bindingOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role-binding.yml"}, apiVersions)
+	bindingDocs := splitYAMLDocuments(bindingOutput)
+	require.Len(t, bindingDocs, 2, "expected ClusterRoleBinding + namespaced RoleBinding")
+
+	var crb rbacv1.ClusterRoleBinding
+	helm.UnmarshalK8SYaml(t, bindingDocs[0], &crb)
+	require.Equal(t, "ClusterRoleBinding", crb.Kind)
+
+	var rb rbacv1.RoleBinding
+	helm.UnmarshalK8SYaml(t, bindingDocs[1], &rb)
+	require.Equal(t, "RoleBinding", rb.Kind)
+	require.Equal(t, namespaceName, rb.Namespace)
+	require.Equal(t, "Role", rb.RoleRef.Kind)
+}
+
+func TestRBACTemplatesOpenShiftWithGFD(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	namespaceName := "rbac-test-openshift-gfd"
+	apiVersions := "--api-versions=security.openshift.io/v1/SecurityContextConstraints"
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"gfd.enabled": "true",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", namespaceName),
+		Logger:         logger.Discard,
+	}
+
+	roleOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role.yml"}, apiVersions)
+	roleDocs := splitYAMLDocuments(roleOutput)
+	require.Len(t, roleDocs, 2)
+
+	var clusterRole rbacv1.ClusterRole
+	helm.UnmarshalK8SYaml(t, roleDocs[0], &clusterRole)
+	requireHasSCCRule(t, clusterRole.Rules)
+
+	hasNFD := false
+	for _, rule := range clusterRole.Rules {
+		for _, group := range rule.APIGroups {
+			if group == "nfd.k8s-sigs.io" {
+				hasNFD = true
+			}
+		}
+	}
+	require.True(t, hasNFD, "ClusterRole should include nfd.k8s-sigs.io rules when gfd is enabled")
+}
+
+func splitYAMLDocuments(output string) []string {
+	parts := strings.Split(output, "---")
+	var docs []string
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed != "" {
+			docs = append(docs, trimmed)
+		}
+	}
+	return docs
+}
+
+func requireHasSCCRule(t *testing.T, rules []rbacv1.PolicyRule) {
+	t.Helper()
+	for _, rule := range rules {
+		for _, group := range rule.APIGroups {
+			if group == "security.openshift.io" {
+				require.Contains(t, rule.Resources, "securitycontextconstraints")
+				require.Contains(t, rule.Verbs, "use")
+				return
+			}
+		}
+	}
+	t.Fatal("expected SCC rule with apiGroup security.openshift.io not found")
 }
 
 // prt returns a reference to whatever type is passed into it
