@@ -405,17 +405,17 @@ func updateSymlink(config string, f *Flags) (bool, error) {
 			return false, nil
 		}
 	} else if !os.IsNotExist(err) && !errors.Is(err, syscall.EINVAL) {
-		return false, fmt.Errorf("error reading symlink '%s': %v", f.ConfigFileDst, err)
+		return false, fmt.Errorf("error reading symlink %s: %w", f.ConfigFileDst, err)
 	}
 
 	err = os.Remove(f.ConfigFileDst)
 	if err != nil && !os.IsNotExist(err) {
-		return false, fmt.Errorf("error removing existing config: %v", err)
+		return false, fmt.Errorf("error removing existing config: %w", err)
 	}
 
 	err = os.Symlink(src, f.ConfigFileDst)
 	if err != nil {
-		return false, fmt.Errorf("error creating symlink: %v", err)
+		return false, fmt.Errorf("error creating symlink: %w", err)
 	}
 
 	return true, nil
