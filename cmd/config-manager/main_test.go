@@ -31,37 +31,37 @@ func newTestFlags(srcdir, dst string) *Flags {
 	}
 }
 
-func TestUpdateSymlinkDanglingDestination(t *testing.T) {
+func newSymlinkTestFixture(t *testing.T) (string, *Flags) {
 	srcdir := t.TempDir()
 	dst := filepath.Join(t.TempDir(), "config.yaml")
-	f := newTestFlags(srcdir, dst)
+	return srcdir, newTestFlags(srcdir, dst)
+}
 
-	testCases := []struct {
-		description string
-		config      string
-		wantChanged bool
-	}{
-		{
-			description: "create dangling symlink",
-			config:      "missing-config",
-			wantChanged: true,
-		},
-		{
-			description: "dangling symlink already pointing at config is a no operation",
-			config:      "missing-config",
-			wantChanged: false,
-		},
-	}
+func TestUpdateSymlinkDanglingDestination(t *testing.T) {
+	t.Run("create dangling symlink", func(t *testing.T) {
+		srcdir, f := newSymlinkTestFixture(t)
 
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			changed, err := updateSymlink(tc.config, f)
-			require.NoError(t, err)
-			require.Equal(t, tc.wantChanged, changed)
-		})
-	}
+		changed, err := updateSymlink("missing-config", f)
+		require.NoError(t, err)
+		require.True(t, changed)
 
-	link, err := os.Readlink(dst)
-	require.NoError(t, err)
-	require.Equal(t, filepath.Join(srcdir, "missing-config"), link)
+		link, err := os.Readlink(f.ConfigFileDst)
+		require.NoError(t, err)
+		require.Equal(t, filepath.Join(srcdir, "missing-config"), link)
+	})
+
+	t.Run("dangling symlink already pointing at config is a no operation", func(t *testing.T) {
+		srcdir, f := newSymlinkTestFixture(t)
+
+		_, err := updateSymlink("missing-config", f)
+		require.NoError(t, err)
+
+		changed, err := updateSymlink("missing-config", f)
+		require.NoError(t, err)
+		require.False(t, changed)
+
+		link, err := os.Readlink(f.ConfigFileDst)
+		require.NoError(t, err)
+		require.Equal(t, filepath.Join(srcdir, "missing-config"), link)
+	})
 }
