@@ -39,7 +39,7 @@ func (l *cudaLib) GetDevices() ([]Device, error) {
 	}
 
 	var devices []Device
-	for i := 0; i < count; i++ {
+	for i := range count {
 		d, r := cuda.DeviceGet(i)
 		if r != cuda.SUCCESS {
 			return nil, fmt.Errorf("failed to get CUDA device %v: %v", i, r)

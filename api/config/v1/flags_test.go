@@ -59,7 +59,7 @@ func TestUnmarshalFlags(t *testing.T) {
 			output: Flags{
 				CommandLineFlags{
 					GFD: &GFDCommandLineFlags{
-						SleepInterval: ptr(Duration(0)),
+						SleepInterval: new(Duration(0)),
 					},
 				},
 			},
@@ -73,7 +73,7 @@ func TestUnmarshalFlags(t *testing.T) {
 			output: Flags{
 				CommandLineFlags{
 					GFD: &GFDCommandLineFlags{
-						SleepInterval: ptr(Duration(0)),
+						SleepInterval: new(Duration(0)),
 					},
 				},
 			},
@@ -87,7 +87,7 @@ func TestUnmarshalFlags(t *testing.T) {
 			output: Flags{
 				CommandLineFlags{
 					GFD: &GFDCommandLineFlags{
-						SleepInterval: ptr(Duration(5)),
+						SleepInterval: new(Duration(5)),
 					},
 				},
 			},
@@ -186,7 +186,7 @@ func TestMarshalFlags(t *testing.T) {
 			input: Flags{
 				CommandLineFlags{
 					GFD: &GFDCommandLineFlags{
-						SleepInterval: ptr(Duration(0)),
+						SleepInterval: new(Duration(0)),
 					},
 				},
 			},
@@ -211,7 +211,7 @@ func TestMarshalFlags(t *testing.T) {
 			input: Flags{
 				CommandLineFlags{
 					GFD: &GFDCommandLineFlags{
-						SleepInterval: ptr(Duration(5)),
+						SleepInterval: new(Duration(5)),
 					},
 				},
 			},

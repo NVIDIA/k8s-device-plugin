@@ -32,7 +32,7 @@ func TestWslDeviceMapHasSingleAllDevice(t *testing.T) {
 	devices := make(DeviceMap)
 	resourceName := spec.ResourceName("nvidia.com/gpu")
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		index, info := newWslAllGPUsDevice(i, nil)
 		err := devices.setEntry(resourceName, index, info)
 		require.NoError(t, err)

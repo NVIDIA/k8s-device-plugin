@@ -35,7 +35,7 @@ type Device interface {
 	IsMigEnabled() (bool, error)
 	IsMigCapable() (bool, error)
 	GetMigDevices() ([]Device, error)
-	GetAttributes() (map[string]interface{}, error)
+	GetAttributes() (map[string]any, error)
 	GetName() (string, error)
 	GetTotalMemoryMiB() (uint64, error)
 	GetDeviceHandleFromMigDeviceHandle() (Device, error)

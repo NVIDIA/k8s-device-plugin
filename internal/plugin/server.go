@@ -62,7 +62,7 @@ type nvidiaDevicePlugin struct {
 	socket string
 	server *grpc.Server
 	health chan *rm.Device
-	stop   chan interface{}
+	stop   chan any
 
 	imexChannels imex.Channels
 
@@ -109,7 +109,7 @@ func getPluginSocketPath(resource spec.ResourceName) string {
 func (plugin *nvidiaDevicePlugin) initialize() {
 	plugin.server = grpc.NewServer([]grpc.ServerOption{}...)
 	plugin.health = make(chan *rm.Device)
-	plugin.stop = make(chan interface{})
+	plugin.stop = make(chan any)
 }
 
 func (plugin *nvidiaDevicePlugin) cleanup() {

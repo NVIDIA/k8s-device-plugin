@@ -33,12 +33,12 @@ type nvmlMigDevice struct {
 var _ Device = (*nvmlMigDevice)(nil)
 
 // GetAttributes is only supported for MIG devices.
-func (d nvmlMigDevice) GetAttributes() (map[string]interface{}, error) {
+func (d nvmlMigDevice) GetAttributes() (map[string]any, error) {
 	attributes, ret := d.MigDevice.GetAttributes()
 	if ret != nvml.SUCCESS {
 		return nil, ret
 	}
-	a := map[string]interface{}{
+	a := map[string]any{
 		"memory":          attributes.MemorySizeMB,
 		"multiprocessors": attributes.MultiprocessorCount,
 		"slices.gi":       attributes.GpuInstanceSliceCount,
@@ -118,7 +118,7 @@ func (d nvmlMigDevice) GetTotalMemoryMiB() (uint64, error) {
 	return total, nil
 }
 
-func totalMemory(attr map[string]interface{}) (uint64, error) {
+func totalMemory(attr map[string]any) (uint64, error) {
 	totalMemory, ok := attr["memory"]
 	if !ok {
 		return 0, fmt.Errorf("no 'memory' attribute available")
