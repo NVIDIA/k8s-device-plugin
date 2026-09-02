@@ -23,13 +23,6 @@ import (
 	cli "github.com/urfave/cli/v2"
 )
 
-// prt returns a reference to whatever type is passed into it
-//
-//go:fix inline
-func ptr[T any](x T) *T {
-	return new(x)
-}
-
 // updateFromCLIFlag conditionally updates the config flag at 'pflag' to the value of the CLI flag with name 'flagName'
 func updateFromCLIFlag[T any](pflag **T, c *cli.Context, flagName string) {
 	if c.IsSet(flagName) || *pflag == (*T)(nil) {
