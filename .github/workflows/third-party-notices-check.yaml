@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Regenerates THIRD_PARTY_NOTICES.md and fails if it differs from the committed
+# copy, so a dependency change cannot land without refreshed attribution. The
+# generator also fails when a license file has no verified URL in
+# hack/license-urls.tsv, which catches a bump that skipped
+# 'make third-party-notices-urls'. Link rot is caught separately by
+# third-party-notices-links.yaml.
 
 name: Third-Party Notices
 
