@@ -4,10 +4,10 @@ github.com/NVIDIA/go-gpuallocator v0.6.0 h1:2PA2swx59gJYREPkZNTGtyCP6Pnz3WEgnYsX
 github.com/NVIDIA/go-gpuallocator v0.6.0/go.mod h1:c+Yspg+/QxWOmoSQeuI48Z/7nS+mMPtxyj1NYUTwewY=
 github.com/NVIDIA/go-nvlib v0.12.0 h1:LICVlUGlDnpbwQv64rOZQn11xQae1J+c+dvH9CCi7jc=
 github.com/NVIDIA/go-nvlib v0.12.0/go.mod h1:J5M/QPIJJtaipjdONqevSnfgBlkW49uVWX5cFOoQpoA=
-github.com/NVIDIA/go-nvml v0.13.3-1 h1:P76U2h88OZSiMtdhRsJjSF5DXyXUqHIXKeDicVAaae0=
-github.com/NVIDIA/go-nvml v0.13.3-1/go.mod h1:ahi2psRYoa+wYUBIrZPRO+wJs9lcvMhxSSkjjvsJJNQ=
-github.com/NVIDIA/nvidia-container-toolkit v1.20.0 h1:RMOgXeDM7CdPOOLc18NCTitArQFqT2NUgUBB34JijDg=
-github.com/NVIDIA/nvidia-container-toolkit v1.20.0/go.mod h1:6otYPfCJdFX96mpi3WV58tyhjvwitYwVytHIifKbdcA=
+github.com/NVIDIA/go-nvml v0.13.3-1.0.20260814002628-7f946c0908a3 h1:r6oO3PV4w/DCEqY7EXbZsQCu5TGs2oM0owr1vWvQxHg=
+github.com/NVIDIA/go-nvml v0.13.3-1.0.20260814002628-7f946c0908a3/go.mod h1:ahi2psRYoa+wYUBIrZPRO+wJs9lcvMhxSSkjjvsJJNQ=
+github.com/NVIDIA/nvidia-container-toolkit v1.20.1-0.20260814081824-f3d5f234f4e6 h1:5s1fCE4Lpu/Wp/ltJYmrIdWRZQCSgbwUR2jFfUl4XOI=
+github.com/NVIDIA/nvidia-container-toolkit v1.20.1-0.20260814081824-f3d5f234f4e6/go.mod h1:Yn39rINeUanSXnNvaWT8NBSrN5HBEyn0LHHoOlYIUJE=
 github.com/blang/semver/v4 v4.0.0 h1:1PFHFE6yCCTv8C1TeyNNarDzntLi7wMI5i/pzqYIsAM=
 github.com/blang/semver/v4 v4.0.0/go.mod h1:IbckMUScFkM3pff0VJDNKRiT6TG/YpiHIM2yvyW5YoQ=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=

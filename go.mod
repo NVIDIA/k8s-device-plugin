@@ -5,8 +5,8 @@ go 1.26.0
 require (
 	github.com/NVIDIA/go-gpuallocator v0.6.0
 	github.com/NVIDIA/go-nvlib v0.12.0
-	github.com/NVIDIA/go-nvml v0.13.3-1
-	github.com/NVIDIA/nvidia-container-toolkit v1.20.0
+	github.com/NVIDIA/go-nvml v0.13.3-1.0.20260814002628-7f946c0908a3
+	github.com/NVIDIA/nvidia-container-toolkit v1.20.1-0.20260814081824-f3d5f234f4e6
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/google/renameio v1.0.1
 	github.com/google/uuid v1.6.0
