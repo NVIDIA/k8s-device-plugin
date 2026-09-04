@@ -142,7 +142,7 @@ spec:
           - name: SIGNAL
             value: "1"
           - name: PROCESS_TO_SIGNAL
-            value: "/usr/bin/mps-control-daemon"
+            value: "mps-control-daemon"
           volumeMounts:
             - name: available-configs
               mountPath: /available-configs
