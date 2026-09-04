@@ -30,7 +30,7 @@ func makeReplicatedDevices(t *testing.T, gpuToReplicas map[string]int) Devices {
 	t.Helper()
 	ds := make(Devices)
 	for gpu, n := range gpuToReplicas {
-		for i := 0; i < n; i++ {
+		for i := range n {
 			annotated := string(NewAnnotatedID(gpu, i))
 			ds[annotated] = &Device{
 				Device:   pluginapi.Device{ID: annotated},
@@ -47,7 +47,7 @@ func makeReplicatedDevices(t *testing.T, gpuToReplicas map[string]int) Devices {
 func newTestDevices(gpuIDs []string, replicas int) Devices {
 	devices := make(Devices)
 	for _, id := range gpuIDs {
-		for r := 0; r < replicas; r++ {
+		for r := range replicas {
 			annotatedID := string(NewAnnotatedID(id, r))
 			devices[annotatedID] = &Device{
 				Device: pluginapi.Device{
@@ -353,7 +353,7 @@ func TestDistributedAllocIsDefault(t *testing.T) {
 	available := getDeviceIDs(devices)
 
 	// Run distributed allocation multiple times to verify consistent behavior
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		rm := resourceManager{
 			config:  &spec.Config{},
 			devices: devices,

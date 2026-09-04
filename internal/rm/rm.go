@@ -44,14 +44,14 @@ type ResourceManager interface {
 	Devices() Devices
 	GetDevicePaths([]string) []string
 	GetPreferredAllocation(available, required []string, size int) ([]string, error)
-	CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error
+	CheckHealth(stop <-chan any, unhealthy chan<- *Device) error
 	ValidateRequest(AnnotatedIDs) error
 }
 
 var _ ResourceManager = (*resourceManager)(nil)
 
 // CheckHealth is disabled on the base resourceManager.
-func (r *resourceManager) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
+func (r *resourceManager) CheckHealth(stop <-chan any, unhealthy chan<- *Device) error {
 	return nil
 }
 

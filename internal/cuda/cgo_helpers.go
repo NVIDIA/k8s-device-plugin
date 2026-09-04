@@ -18,7 +18,7 @@ package cuda
 
 // clen return the length of a C string stored in a byte slice
 func clen(n []byte) int {
-	for i := 0; i < len(n); i++ {
+	for i := range n {
 		if n[i] == 0 {
 			return i
 		}

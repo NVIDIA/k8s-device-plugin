@@ -126,14 +126,14 @@ type resourceLabeler struct {
 
 // single creates a single label for the resource. The label key is
 // <fully-qualified-resource-name>.suffix
-func (rl resourceLabeler) single(suffix string, value interface{}) Labels {
-	return rl.labels(map[string]interface{}{suffix: value})
+func (rl resourceLabeler) single(suffix string, value any) Labels {
+	return rl.labels(map[string]any{suffix: value})
 
 }
 
 // labels creates a set of labels from the specified map for the resource.
 // Each key in the map corresponds to a label <fully-qualified-resource-name>.key
-func (rl resourceLabeler) labels(suffixValues map[string]interface{}) Labels {
+func (rl resourceLabeler) labels(suffixValues map[string]any) Labels {
 	labels := make(Labels)
 	for suffix, value := range suffixValues {
 		rl.updateLabel(labels, suffix, value)
@@ -144,7 +144,7 @@ func (rl resourceLabeler) labels(suffixValues map[string]interface{}) Labels {
 
 // updateLabel modifies the specified labels, updating <fully-qualified-resource-name>.suffix with
 // the provided value.
-func (rl resourceLabeler) updateLabel(labels Labels, suffix string, value interface{}) {
+func (rl resourceLabeler) updateLabel(labels Labels, suffix string, value any) {
 	key := rl.key(suffix)
 
 	labels[key] = fmt.Sprintf("%v", value)
@@ -163,7 +163,7 @@ func (rl resourceLabeler) baseLabeler(count int, parts ...string) Labeler {
 	if rl.sharing != nil && replicas > 1 {
 		strategy = rl.sharing.SharingStrategy()
 	}
-	rawLabels := map[string]interface{}{
+	rawLabels := map[string]any{
 		"product":          rl.getProductName(parts...),
 		"count":            count,
 		"replicas":         replicas,
@@ -272,7 +272,7 @@ func newArchitectureLabels(rl resourceLabeler, device resource.Device) (Labels, 
 
 	family := getArchFamily(computeMajor, computeMinor)
 
-	labels := rl.labels(map[string]interface{}{
+	labels := rl.labels(map[string]any{
 		"family":        family,
 		"compute.major": computeMajor,
 		"compute.minor": computeMinor,

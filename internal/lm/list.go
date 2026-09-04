@@ -16,7 +16,10 @@
 
 package lm
 
-import "fmt"
+import (
+	"fmt"
+	"maps"
+)
 
 // list represents a list of labelers that iself implements the Labeler interface.
 type list []Labeler
@@ -37,9 +40,7 @@ func (labelers list) Labels() (Labels, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error generating labels: %v", err)
 		}
-		for k, v := range labels {
-			allLabels[k] = v
-		}
+		maps.Copy(allLabels, labels)
 	}
 
 	return allLabels, nil

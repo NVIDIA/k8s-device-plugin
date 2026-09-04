@@ -88,7 +88,7 @@ func TestAllocate(t *testing.T) {
 					Flags: v1.Flags{
 						CommandLineFlags: v1.CommandLineFlags{
 							Plugin: &v1.PluginCommandLineFlags{
-								DeviceIDStrategy: ptr(v1.DeviceIDStrategyUUID),
+								DeviceIDStrategy: new(v1.DeviceIDStrategyUUID),
 							},
 						},
 					},
@@ -249,8 +249,4 @@ func TestCDIAllocateResponse(t *testing.T) {
 			require.EqualValues(t, &tc.expectedResponse, &response)
 		})
 	}
-}
-
-func ptr[T any](x T) *T {
-	return &x
 }

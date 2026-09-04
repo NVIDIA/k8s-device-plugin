@@ -268,17 +268,17 @@ func continuouslySyncConfigChanges(clientset *kubernetes.Clientset, config *Sync
 			ListerWatcher: listWatch,
 			ObjectType:    &v1.Node{},
 			Handler: cache.ResourceEventHandlerFuncs{
-				AddFunc: func(obj interface{}) {
+				AddFunc: func(obj any) {
 					config.Set(obj.(*v1.Node).Labels[f.NodeLabel])
 				},
-				UpdateFunc: func(oldObj, newObj interface{}) {
+				UpdateFunc: func(oldObj, newObj any) {
 					oldLabel := oldObj.(*v1.Node).Labels[f.NodeLabel]
 					newLabel := newObj.(*v1.Node).Labels[f.NodeLabel]
 					if oldLabel != newLabel {
 						config.Set(newLabel)
 					}
 				},
-				DeleteFunc: func(obj interface{}) {
+				DeleteFunc: func(obj any) {
 					oldLabel := obj.(*v1.Node).Labels[f.NodeLabel]
 					if oldLabel != "" {
 						config.Set("")
