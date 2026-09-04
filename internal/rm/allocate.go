@@ -168,7 +168,7 @@ func (r *resourceManager) greedyAlloc(available, required []string, size int, pr
 	// if any remain. Total cost is O(n log m) where n is `needed` and m is
 	// the number of distinct physical devices contributing candidates.
 	devices := make([]string, 0, needed)
-	for i := 0; i < needed; i++ {
+	for range needed {
 		top := heap.Pop(pq).(*gpuAllocState)
 		last := len(top.replicas) - 1
 		pick := top.replicas[last]
