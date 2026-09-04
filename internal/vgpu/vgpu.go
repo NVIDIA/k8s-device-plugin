@@ -40,7 +40,7 @@ type Info struct {
 
 const (
 	// VGPUCapabilityRecordStart indicates offset of beginning vGPU capability record
-	VGPUCapabilityRecordStart uint8 = 5
+	VGPUCapabilityRecordStart = 5
 	// HostDriverVersionLength indicates max length of driver version
 	HostDriverVersionLength = 10
 	// HostDriverBranchLength indicates max length of driver branch
@@ -111,38 +111,50 @@ func (d *Device) GetInfo() (*Info, error) {
 	}
 
 	// traverse vGPU vendor capability records until host driver version record(id: 0) is found
-	var hostDriverVersion string
-	var hostDriverBranch string
-	foundDriverVersionRecord := false
 	pos := VGPUCapabilityRecordStart
-	record := GetByte(d.vGPUCapability, VGPUCapabilityRecordStart)
-	for record != 0 && int(pos) < len(d.vGPUCapability) {
-		// find next record
-		recordLength := GetByte(d.vGPUCapability, pos+1)
+	for {
+		if pos >= len(d.vGPUCapability) {
+			return nil, fmt.Errorf("cannot find driver version record in vendor specific capability for device %s", d.pci.Address)
+		}
+
+		record := d.vGPUCapability[pos]
+		if record == 0 {
+			break
+		}
+
+		if len(d.vGPUCapability)-pos < 2 {
+			return nil, fmt.Errorf("truncated vendor capability record for device %s at offset %d", d.pci.Address, pos)
+		}
+
+		recordLength := int(d.vGPUCapability[pos+1])
+		if recordLength < 2 {
+			return nil, fmt.Errorf("invalid vendor capability record length %d for device %s at offset %d", recordLength, d.pci.Address, pos)
+		}
+		if recordLength > len(d.vGPUCapability)-pos {
+			return nil, fmt.Errorf("vendor capability record exceeds capability bounds for device %s at offset %d", d.pci.Address, pos)
+		}
+
 		pos += recordLength
-		record = GetByte(d.vGPUCapability, pos)
 	}
 
-	if record == 0 && int(pos+2+HostDriverVersionLength+HostDriverBranchLength) <= len(d.vGPUCapability) {
-		foundDriverVersionRecord = true
-		// found vGPU host driver version record type
-		// initialized at record data byte, i.e pos + 1(record id byte) + 1(record lengh byte)
-		i := pos + 2
-		// 10 bytes of driver version
-		for ; i < pos+2+HostDriverVersionLength; i++ {
-			hostDriverVersion += string(GetByte(d.vGPUCapability, i))
-		}
-		hostDriverVersion = strings.Trim(hostDriverVersion, "\x00")
-		// 10 bytes of driver branch
-		for ; i < pos+2+HostDriverVersionLength+HostDriverBranchLength; i++ {
-			hostDriverBranch += string(GetByte(d.vGPUCapability, i))
-		}
-		hostDriverBranch = strings.Trim(hostDriverBranch, "\x00")
+	driverRecordLength := 2 + HostDriverVersionLength + HostDriverBranchLength
+	if len(d.vGPUCapability)-pos < 2 {
+		return nil, fmt.Errorf("truncated driver version record in vendor specific capability for device %s", d.pci.Address)
 	}
 
-	if !foundDriverVersionRecord {
-		return nil, fmt.Errorf("cannot find driver version record in vendor specific capability for device %s", d.pci.Address)
+	recordLength := int(d.vGPUCapability[pos+1])
+	if recordLength < driverRecordLength {
+		return nil, fmt.Errorf("invalid driver version record length %d for device %s", recordLength, d.pci.Address)
 	}
+	if recordLength > len(d.vGPUCapability)-pos {
+		return nil, fmt.Errorf("driver version record exceeds capability bounds for device %s", d.pci.Address)
+	}
+
+	payloadStart := pos + 2
+	versionEnd := payloadStart + HostDriverVersionLength
+	branchEnd := versionEnd + HostDriverBranchLength
+	hostDriverVersion := strings.Trim(string(d.vGPUCapability[payloadStart:versionEnd]), "\x00")
+	hostDriverBranch := strings.Trim(string(d.vGPUCapability[versionEnd:branchEnd]), "\x00")
 
 	info := &Info{
 		HostDriverVersion: hostDriverVersion,
