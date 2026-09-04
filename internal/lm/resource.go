@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/validate/content"
 	"k8s.io/klog/v2"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
@@ -202,7 +203,43 @@ func (rl resourceLabeler) getProductName(parts ...string) string {
 	if rl.isShared() && !rl.isRenamed() {
 		strippedParts = append(strippedParts, "SHARED")
 	}
-	return strings.Join(strippedParts, "-")
+	return limitProductName(strippedParts)
+}
+
+// limitProductName joins the product name parts and keeps the result within the
+// Kubernetes label-value length limit. parts[0] is the GPU model; every part
+// after it (e.g. "MIG", the profile, "SHARED") is discriminating and preserved,
+// so only the model is truncated. The truncated value has any trailing
+// separator removed so it remains a valid label value.
+func limitProductName(parts []string) string {
+	full := strings.Join(parts, "-")
+	if len(full) <= content.LabelValueMaxLength {
+		return full
+	}
+
+	suffix := strings.Join(parts[1:], "-")
+	if suffix == "" {
+		return strings.TrimRight(truncate(parts[0], content.LabelValueMaxLength), "-._")
+	}
+
+	// The +1 accounts for the "-" that rejoins the model to the suffix.
+	maxModel := content.LabelValueMaxLength - (len(suffix) + 1)
+	if maxModel <= 0 {
+		// The non-model parts alone exceed the limit. This does not occur with
+		// real MIG profiles; truncate the whole value as a last resort.
+		return strings.TrimRight(truncate(full, content.LabelValueMaxLength), "-._")
+	}
+
+	model := strings.TrimRight(truncate(parts[0], maxModel), "-._")
+	return model + "-" + suffix
+}
+
+// truncate returns the first limit bytes of s.
+func truncate(s string, limit int) string {
+	if len(s) <= limit {
+		return s
+	}
+	return s[:limit]
 }
 
 func (rl resourceLabeler) getReplicas() int {
