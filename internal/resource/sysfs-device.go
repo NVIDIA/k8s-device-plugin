@@ -37,7 +37,7 @@ func (d vfioDevice) GetCudaComputeCapability() (int, int, error) {
 }
 
 // GetAttributes is only supported for MIG devices.
-func (d vfioDevice) GetAttributes() (map[string]interface{}, error) {
+func (d vfioDevice) GetAttributes() (map[string]any, error) {
 	return nil, fmt.Errorf("GetAttributes is not supported for non-MIG devices")
 }
 

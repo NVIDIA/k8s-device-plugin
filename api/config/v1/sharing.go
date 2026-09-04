@@ -19,7 +19,7 @@ package v1
 // Sharing encapsulates the set of sharing strategies that are supported.
 type Sharing struct {
 	// TimeSlicing defines the set of replicas to be made for timeSlicing available resources.
-	TimeSlicing ReplicatedResources `json:"timeSlicing,omitempty" yaml:"timeSlicing,omitempty"`
+	TimeSlicing ReplicatedResources `json:"timeSlicing" yaml:"timeSlicing,omitempty"`
 	// MPS defines the set of replicas to be shared using MPS
 	MPS *ReplicatedResources `json:"mps,omitempty"         yaml:"mps,omitempty"`
 }

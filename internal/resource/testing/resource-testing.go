@@ -18,6 +18,7 @@ package testing
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 )
@@ -65,9 +66,9 @@ func NewDeviceWithPCIClassMock(pciClass uint32) *DeviceMock {
 }
 
 // NewMigDevice creates a MIG devices with the specified attributes for testing
-func NewMigDevice(gi int, ci int, gb uint64, attributes ...map[string]interface{}) *resource.DeviceMock {
+func NewMigDevice(gi int, ci int, gb uint64, attributes ...map[string]any) *resource.DeviceMock {
 
-	defaultAttributes := map[string]interface{}{
+	defaultAttributes := map[string]any{
 		"memory":          gb,
 		"multiprocessors": 0,
 		"slices.gi":       gi,
@@ -79,14 +80,12 @@ func NewMigDevice(gi int, ci int, gb uint64, attributes ...map[string]interface{
 		"engines.ofa":     0,
 	}
 	for _, attr := range attributes {
-		for a, v := range attr {
-			defaultAttributes[a] = v
-		}
+		maps.Copy(defaultAttributes, attr)
 	}
 
 	return &resource.DeviceMock{
 		GetNameFunc:       func() (string, error) { return fmt.Sprintf("%dg.%dgb", gi, gb), nil },
-		GetAttributesFunc: func() (map[string]interface{}, error) { return defaultAttributes, nil },
+		GetAttributesFunc: func() (map[string]any, error) { return defaultAttributes, nil },
 	}
 }
 

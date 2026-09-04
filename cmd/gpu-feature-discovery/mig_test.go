@@ -31,14 +31,14 @@ func TestMigStrategyNone(t *testing.T) {
 	conf := &spec.Config{
 		Flags: spec.Flags{
 			CommandLineFlags: spec.CommandLineFlags{
-				MigStrategy:     ptr("none"),
-				FailOnInitError: ptr(true),
+				MigStrategy:     new("none"),
+				FailOnInitError: new(true),
 				GFD: &spec.GFDCommandLineFlags{
-					Oneshot:         ptr(true),
-					OutputFile:      ptr("./gfd-test-mig-none"),
-					SleepInterval:   ptr(spec.Duration(time.Second)),
-					NoTimestamp:     ptr(false),
-					MachineTypeFile: ptr(testMachineTypeFile),
+					Oneshot:         new(true),
+					OutputFile:      new("./gfd-test-mig-none"),
+					SleepInterval:   new(spec.Duration(time.Second)),
+					NoTimestamp:     new(false),
+					MachineTypeFile: new(testMachineTypeFile),
 				},
 			},
 		},
@@ -92,14 +92,14 @@ func TestMigStrategySingleForNoMigDevices(t *testing.T) {
 	conf := &spec.Config{
 		Flags: spec.Flags{
 			CommandLineFlags: spec.CommandLineFlags{
-				MigStrategy:     ptr("single"),
-				FailOnInitError: ptr(true),
+				MigStrategy:     new("single"),
+				FailOnInitError: new(true),
 				GFD: &spec.GFDCommandLineFlags{
-					Oneshot:         ptr(true),
-					OutputFile:      ptr("./gfd-test-mig-single-no-mig"),
-					SleepInterval:   ptr(spec.Duration(time.Second)),
-					NoTimestamp:     ptr(false),
-					MachineTypeFile: ptr(testMachineTypeFile),
+					Oneshot:         new(true),
+					OutputFile:      new("./gfd-test-mig-single-no-mig"),
+					SleepInterval:   new(spec.Duration(time.Second)),
+					NoTimestamp:     new(false),
+					MachineTypeFile: new(testMachineTypeFile),
 				},
 			},
 		},
@@ -160,14 +160,14 @@ func TestMigStrategySingleForMigDeviceMigDisabled(t *testing.T) {
 	conf := &spec.Config{
 		Flags: spec.Flags{
 			CommandLineFlags: spec.CommandLineFlags{
-				MigStrategy:     ptr("single"),
-				FailOnInitError: ptr(true),
+				MigStrategy:     new("single"),
+				FailOnInitError: new(true),
 				GFD: &spec.GFDCommandLineFlags{
-					Oneshot:         ptr(true),
-					OutputFile:      ptr("./gfd-test-mig-single-no-mig"),
-					SleepInterval:   ptr(spec.Duration(time.Second)),
-					NoTimestamp:     ptr(false),
-					MachineTypeFile: ptr(testMachineTypeFile),
+					Oneshot:         new(true),
+					OutputFile:      new("./gfd-test-mig-single-no-mig"),
+					SleepInterval:   new(spec.Duration(time.Second)),
+					NoTimestamp:     new(false),
+					MachineTypeFile: new(testMachineTypeFile),
 				},
 			},
 		},
@@ -228,14 +228,14 @@ func TestMigStrategySingle(t *testing.T) {
 	conf := &spec.Config{
 		Flags: spec.Flags{
 			CommandLineFlags: spec.CommandLineFlags{
-				MigStrategy:     ptr("single"),
-				FailOnInitError: ptr(true),
+				MigStrategy:     new("single"),
+				FailOnInitError: new(true),
 				GFD: &spec.GFDCommandLineFlags{
-					Oneshot:         ptr(true),
-					OutputFile:      ptr("./gfd-test-mig-single"),
-					SleepInterval:   ptr(spec.Duration(time.Second)),
-					NoTimestamp:     ptr(false),
-					MachineTypeFile: ptr(testMachineTypeFile),
+					Oneshot:         new(true),
+					OutputFile:      new("./gfd-test-mig-single"),
+					SleepInterval:   new(spec.Duration(time.Second)),
+					NoTimestamp:     new(false),
+					MachineTypeFile: new(testMachineTypeFile),
 				},
 			},
 		},
@@ -297,14 +297,14 @@ func TestMigStrategyMixed(t *testing.T) {
 	conf := &spec.Config{
 		Flags: spec.Flags{
 			CommandLineFlags: spec.CommandLineFlags{
-				MigStrategy:     ptr("mixed"),
-				FailOnInitError: ptr(true),
+				MigStrategy:     new("mixed"),
+				FailOnInitError: new(true),
 				GFD: &spec.GFDCommandLineFlags{
-					Oneshot:         ptr(true),
-					OutputFile:      ptr("./gfd-test-mig-mixed"),
-					SleepInterval:   ptr(spec.Duration(time.Second)),
-					NoTimestamp:     ptr(false),
-					MachineTypeFile: ptr(testMachineTypeFile),
+					Oneshot:         new(true),
+					OutputFile:      new("./gfd-test-mig-mixed"),
+					SleepInterval:   new(spec.Duration(time.Second)),
+					NoTimestamp:     new(false),
+					MachineTypeFile: new(testMachineTypeFile),
 				},
 			},
 		},
