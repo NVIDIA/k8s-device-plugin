@@ -19,9 +19,8 @@ package helm_test
 import (
 	"fmt"
 	"path/filepath"
-	"testing"
-
 	"strings"
+	"testing"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -222,15 +221,19 @@ func TestRBACTemplatesOpenShiftWithGFD(t *testing.T) {
 	helm.UnmarshalK8SYaml(t, roleDocs[0], &clusterRole)
 	requireHasSCCRule(t, clusterRole.Rules)
 
-	hasNFD := false
-	for _, rule := range clusterRole.Rules {
+	var nfdRule *rbacv1.PolicyRule
+	for i, rule := range clusterRole.Rules {
 		for _, group := range rule.APIGroups {
 			if group == "nfd.k8s-sigs.io" {
-				hasNFD = true
+				nfdRule = &clusterRole.Rules[i]
 			}
 		}
 	}
-	require.True(t, hasNFD, "ClusterRole should include nfd.k8s-sigs.io rules when gfd is enabled")
+	require.NotNil(t, nfdRule, "ClusterRole should include nfd.k8s-sigs.io rules when gfd is enabled")
+	require.Contains(t, nfdRule.Resources, "nodefeatures")
+	for _, verb := range []string{"get", "list", "watch", "create", "update"} {
+		require.Contains(t, nfdRule.Verbs, verb)
+	}
 }
 
 func splitYAMLDocuments(output string) []string {
@@ -251,6 +254,7 @@ func requireHasSCCRule(t *testing.T, rules []rbacv1.PolicyRule) {
 		for _, group := range rule.APIGroups {
 			if group == "security.openshift.io" {
 				require.Contains(t, rule.Resources, "securitycontextconstraints")
+				require.Contains(t, rule.ResourceNames, "privileged")
 				require.Contains(t, rule.Verbs, "use")
 				return
 			}
