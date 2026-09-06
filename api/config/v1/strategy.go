@@ -25,13 +25,24 @@ import (
 // be used when passing the device list to the container runtime.
 type DeviceListStrategies map[string]bool
 
-// NewDeviceListStrategies constructs a new DeviceListStrategy
+// supportedDeviceListStrategies lists every accepted strategy.
+var supportedDeviceListStrategies = []string{
+	DeviceListStrategyEnvVar,
+	DeviceListStrategyVolumeMounts,
+	DeviceListStrategyCDIAnnotations,
+	DeviceListStrategyCDICRI,
+}
+
+// NewDeviceListStrategies constructs a new DeviceListStrategy from the
+// requested strategies. At least one strategy is required.
 func NewDeviceListStrategies(strategies []string) (DeviceListStrategies, error) {
-	ret := map[string]bool{
-		DeviceListStrategyEnvVar:         false,
-		DeviceListStrategyVolumeMounts:   false,
-		DeviceListStrategyCDIAnnotations: false,
-		DeviceListStrategyCDICRI:         false,
+	if len(strategies) == 0 {
+		return nil, fmt.Errorf("no device list strategy specified; at least one of %v is required", supportedDeviceListStrategies)
+	}
+
+	ret := make(map[string]bool, len(supportedDeviceListStrategies))
+	for _, s := range supportedDeviceListStrategies {
+		ret[s] = false
 	}
 	for _, s := range strategies {
 		if _, ok := ret[s]; !ok {
