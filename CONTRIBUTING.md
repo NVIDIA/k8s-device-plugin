@@ -1,7 +1,18 @@
 # Contribute to the NVIDIA Kubernetes Device Plugin
 
-Want to hack on the NVIDIA Kubernetes Device plugin Project? Awesome!
-We only require you to sign your work, the below section describes this!
+To file feature requests, bugs, or questions, submit an issue at https://github.com/NVIDIA/k8s-device-plugin/issues
+
+To contribute to the project, file a Pull Request at https://github.com/NVIDIA/k8s-device-plugin/pulls.
+Contributions do not require explicit contributor license agreements (CLA), but we expect
+contributors to sign their work.
+
+Before beginning implementation or opening a Pull Request for a significant change, first open an
+issue describing the problem or proposal. A significant change includes, but is not limited to,
+architectural changes, new features, breaking changes to API or behavior, and non-trivial bug fixes.
+
+Pull Requests require an approving review from a maintainer, and all required status checks must
+pass, before they can be merged.
+The approval / decision-making process is documented in [GOVERNANCE.md](GOVERNANCE.md)
 
 All contributions must adhere to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
