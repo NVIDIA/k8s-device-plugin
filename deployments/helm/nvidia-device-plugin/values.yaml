@@ -113,6 +113,14 @@ devicePlugin:
   # This can be useful in non-overlay network environments (e.g., AWS, Azure, GCP)
   # to avoid unnecessary IP allocation for daemon pods.
   # enableHostNetwork: false
+  containers:
+    main:
+      # env vars specific to the main container of the device plugin DaemonSet
+      env:
+      - name: NVIDIA_VISIBLE_DEVICES
+        value: "all"
+      - name: NVIDIA_DRIVER_CAPABILITIES
+        value: "compute,utility"
 
 gfd:
   enabled: false
