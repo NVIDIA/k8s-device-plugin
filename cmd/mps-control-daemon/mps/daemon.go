@@ -206,6 +206,16 @@ func (d *Daemon) AssertHealthy() error {
 	return err
 }
 
+// Ready returns true once the MPS daemons have signalled that initialization
+// has completed by creating the node-global .ready file under the MPS root.
+// AssertHealthy only proves the control pipe is responsive, which happens
+// before per-device memory limits and thread percentages are applied; Ready
+// gates on the full configuration being in place.
+func (d *Daemon) Ready() bool {
+	_, err := os.Stat(d.root.ReadyFilePath())
+	return err == nil
+}
+
 // EchoPipeToControl sends the specified command to the MPS control daemon.
 func (d *Daemon) EchoPipeToControl(command string) (string, error) {
 	var out bytes.Buffer
