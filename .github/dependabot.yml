@@ -47,7 +47,7 @@ updates:
 
 # The release branch(es):
   - package-ecosystem: "gomod"
-    target-branch: release-0.19
+    target-branch: release-0.20
     directories:
     - "/"
     # We don't update development or test dependencies on release branches
@@ -76,7 +76,7 @@ updates:
         - k8s.io/klog/*
 
   - package-ecosystem: "docker"
-    target-branch: release-0.19
+    target-branch: release-0.20
     directories:
     # CUDA image
     - "/deployments/container"
@@ -96,7 +96,7 @@ updates:
     - maintenance
 
   - package-ecosystem: "github-actions"
-    target-branch: release-0.19
+    target-branch: release-0.20
     directory: "/"
     schedule:
       interval: "weekly"
@@ -105,7 +105,7 @@ updates:
     - dependencies
     - maintenance
 
-  # Github actions need to be gh-pages branches.
+  # GitHub Actions need to be gh-pages branches.
   - package-ecosystem: "github-actions"
     target-branch: gh-pages
     directory: "/"
