@@ -6,7 +6,7 @@ require (
 	github.com/gruntwork-io/terratest v0.47.2
 	github.com/mittwald/go-helm-client v0.13.2
 	github.com/onsi/ginkgo/v2 v2.32.1
-	github.com/onsi/gomega v1.42.1
+	github.com/onsi/gomega v1.43.0
 	github.com/stretchr/testify v1.12.0
 	helm.sh/helm/v4 v4.2.4
 	k8s.io/api v0.36.3
