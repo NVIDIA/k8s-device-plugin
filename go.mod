@@ -26,8 +26,8 @@ require (
 	sigs.k8s.io/node-feature-discovery v0.19.0
 	sigs.k8s.io/node-feature-discovery/api/nfd v0.19.0
 	sigs.k8s.io/yaml v1.6.0
-	tags.cncf.io/container-device-interface v1.1.0
-	tags.cncf.io/container-device-interface/specs-go v1.1.0
+	tags.cncf.io/container-device-interface v1.1.1
+	tags.cncf.io/container-device-interface/specs-go v1.1.1
 )
 
 require (
@@ -45,7 +45,6 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/moby/sys/capability v0.4.0 // indirect
 	github.com/moby/sys/devices v0.1.0 // indirect
 	github.com/moby/sys/mountinfo v0.7.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -54,7 +53,6 @@ require (
 	github.com/opencontainers/cgroups v0.0.7 // indirect
 	github.com/opencontainers/runc v1.5.0 // indirect
 	github.com/opencontainers/runtime-spec v1.3.0 // indirect
-	github.com/opencontainers/runtime-tools v0.9.1-0.20251114084447-edf4cb3d2116 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
