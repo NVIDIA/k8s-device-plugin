@@ -167,36 +167,24 @@ func TestRBACTemplatesOpenShift(t *testing.T) {
 		Logger:         logger.Discard,
 	}
 
-	// role.yml: should render ClusterRole with SCC rule + namespaced Role
+	// role.yml: should render only a ClusterRole with the SCC rule (no namespaced Role)
 	roleOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role.yml"}, apiVersions)
 	roleDocs := splitYAMLDocuments(roleOutput)
-	require.Len(t, roleDocs, 2, "expected ClusterRole + namespaced Role")
+	require.Len(t, roleDocs, 1, "expected only a ClusterRole")
 
 	var clusterRole rbacv1.ClusterRole
 	helm.UnmarshalK8SYaml(t, roleDocs[0], &clusterRole)
 	require.Equal(t, "ClusterRole", clusterRole.Kind)
 	requireHasSCCRule(t, clusterRole.Rules)
 
-	var role rbacv1.Role
-	helm.UnmarshalK8SYaml(t, roleDocs[1], &role)
-	require.Equal(t, "Role", role.Kind)
-	require.Equal(t, namespaceName, role.Namespace)
-	requireHasSCCRule(t, role.Rules)
-
-	// role-binding.yml: should render ClusterRoleBinding + namespaced RoleBinding
+	// role-binding.yml: should render only a ClusterRoleBinding (no namespaced RoleBinding)
 	bindingOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role-binding.yml"}, apiVersions)
 	bindingDocs := splitYAMLDocuments(bindingOutput)
-	require.Len(t, bindingDocs, 2, "expected ClusterRoleBinding + namespaced RoleBinding")
+	require.Len(t, bindingDocs, 1, "expected only a ClusterRoleBinding")
 
 	var crb rbacv1.ClusterRoleBinding
 	helm.UnmarshalK8SYaml(t, bindingDocs[0], &crb)
 	require.Equal(t, "ClusterRoleBinding", crb.Kind)
-
-	var rb rbacv1.RoleBinding
-	helm.UnmarshalK8SYaml(t, bindingDocs[1], &rb)
-	require.Equal(t, "RoleBinding", rb.Kind)
-	require.Equal(t, namespaceName, rb.Namespace)
-	require.Equal(t, "Role", rb.RoleRef.Kind)
 }
 
 func TestRBACTemplatesOpenShiftWithGFD(t *testing.T) {
@@ -215,7 +203,7 @@ func TestRBACTemplatesOpenShiftWithGFD(t *testing.T) {
 
 	roleOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role.yml"}, apiVersions)
 	roleDocs := splitYAMLDocuments(roleOutput)
-	require.Len(t, roleDocs, 2)
+	require.Len(t, roleDocs, 1)
 
 	var clusterRole rbacv1.ClusterRole
 	helm.UnmarshalK8SYaml(t, roleDocs[0], &clusterRole)
