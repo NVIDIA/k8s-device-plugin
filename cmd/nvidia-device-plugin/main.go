@@ -219,6 +219,7 @@ func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 		switch *config.Flags.Plugin.SharedDevicesAllocationPolicy {
 		case spec.AllocationPolicyDistributed:
 		case spec.AllocationPolicyPacked:
+		case spec.AllocationPolicySpread:
 		default:
 			return fmt.Errorf("invalid --shared-devices-allocation-policy option: %s", *config.Flags.Plugin.SharedDevicesAllocationPolicy)
 		}
