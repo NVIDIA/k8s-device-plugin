@@ -8,6 +8,7 @@ require (
 	github.com/NVIDIA/go-nvml v0.13.4-0
 	github.com/NVIDIA/nvidia-container-toolkit v1.20.1-0.20260914195404-24761af0847d
 	github.com/fsnotify/fsnotify v1.10.1
+	github.com/go-logr/logr v1.4.3
 	github.com/google/renameio v1.0.1
 	github.com/google/uuid v1.6.0
 	github.com/opencontainers/selinux v1.15.1
@@ -37,7 +38,6 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
-	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.20.4 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
