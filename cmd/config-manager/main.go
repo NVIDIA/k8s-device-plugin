@@ -17,6 +17,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -267,17 +268,17 @@ func continuouslySyncConfigChanges(clientset *kubernetes.Clientset, config *Sync
 			ListerWatcher: listWatch,
 			ObjectType:    &v1.Node{},
 			Handler: cache.ResourceEventHandlerFuncs{
-				AddFunc: func(obj interface{}) {
+				AddFunc: func(obj any) {
 					config.Set(obj.(*v1.Node).Labels[f.NodeLabel])
 				},
-				UpdateFunc: func(oldObj, newObj interface{}) {
+				UpdateFunc: func(oldObj, newObj any) {
 					oldLabel := oldObj.(*v1.Node).Labels[f.NodeLabel]
 					newLabel := newObj.(*v1.Node).Labels[f.NodeLabel]
 					if oldLabel != newLabel {
 						config.Set(newLabel)
 					}
 				},
-				DeleteFunc: func(obj interface{}) {
+				DeleteFunc: func(obj any) {
 					oldLabel := obj.(*v1.Node).Labels[f.NodeLabel]
 					if oldLabel != "" {
 						config.Set("")
@@ -398,34 +399,23 @@ func updateSymlink(config string, f *Flags) (bool, error) {
 		src = filepath.Join(f.ConfigFileSrcdir, config)
 	}
 
-	exists, err := fileExists(f.ConfigFileDst)
-	if err != nil {
-		return false, fmt.Errorf("error checking if file '%s' exists: %v", f.ConfigFileDst, err)
-	}
-	if exists {
-		srcRealpath, err := filepath.EvalSymlinks(src)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating realpath of '%v': %v", src, err)
-		}
-
-		dstRealpath, err := filepath.EvalSymlinks(f.ConfigFileDst)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating realpath of '%v': %v", f.ConfigFileDst, err)
-		}
-
-		if srcRealpath == dstRealpath {
+	current, err := os.Readlink(f.ConfigFileDst)
+	if err == nil {
+		if current == src {
 			return false, nil
 		}
+	} else if !os.IsNotExist(err) && !errors.Is(err, syscall.EINVAL) {
+		return false, fmt.Errorf("error reading symlink %s: %w", f.ConfigFileDst, err)
+	}
 
-		err = os.Remove(f.ConfigFileDst)
-		if err != nil {
-			return false, fmt.Errorf("error removing existing config: %v", err)
-		}
+	err = os.Remove(f.ConfigFileDst)
+	if err != nil && !os.IsNotExist(err) {
+		return false, fmt.Errorf("error removing existing config: %w", err)
 	}
 
 	err = os.Symlink(src, f.ConfigFileDst)
 	if err != nil {
-		return false, fmt.Errorf("error creating symlink: %v", err)
+		return false, fmt.Errorf("error creating symlink: %w", err)
 	}
 
 	return true, nil
@@ -461,17 +451,6 @@ func findPidToSignal(f *Flags) (int, error) {
 		}
 	}
 	return -1, fmt.Errorf("no process found")
-}
-
-func fileExists(filename string) (bool, error) {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return !info.IsDir(), nil
 }
 
 func getConfigFileNameMap(f *Flags) (map[string]bool, error) {

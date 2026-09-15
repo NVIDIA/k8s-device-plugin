@@ -179,7 +179,7 @@ func TestMigStrategyNoneLabels(t *testing.T) {
 			config := spec.Config{
 				Flags: spec.Flags{
 					CommandLineFlags: spec.CommandLineFlags{
-						MigStrategy: ptr(MigStrategyNone),
+						MigStrategy: new(MigStrategyNone),
 					},
 				},
 				Sharing: spec.Sharing{
@@ -275,7 +275,7 @@ func TestMigStrategySingleLabels(t *testing.T) {
 			description: "multiple mig-enabled devices returns mig labels",
 			devices: []resource.Device{
 				rt.NewMigEnabledDevice(
-					rt.NewMigDevice(1, 2, 100, map[string]interface{}{
+					rt.NewMigDevice(1, 2, 100, map[string]any{
 						"multiprocessors": 12,
 						"engines.copy":    13,
 						"engines.decoder": 14,
@@ -285,7 +285,7 @@ func TestMigStrategySingleLabels(t *testing.T) {
 					}),
 				),
 				rt.NewMigEnabledDevice(
-					rt.NewMigDevice(1, 2, 100, map[string]interface{}{
+					rt.NewMigDevice(1, 2, 100, map[string]any{
 						"multiprocessors": 12,
 						"engines.copy":    13,
 						"engines.decoder": 14,
@@ -397,7 +397,7 @@ func TestMigStrategySingleLabels(t *testing.T) {
 			config := spec.Config{
 				Flags: spec.Flags{
 					CommandLineFlags: spec.CommandLineFlags{
-						MigStrategy: ptr(MigStrategySingle),
+						MigStrategy: new(MigStrategySingle),
 					},
 				},
 			}
@@ -414,9 +414,4 @@ func TestMigStrategySingleLabels(t *testing.T) {
 			require.EqualValues(t, tc.expectedLabels, labels)
 		})
 	}
-}
-
-// prt returns a reference to whatever type is passed into it
-func ptr[T any](x T) *T {
-	return &x
 }

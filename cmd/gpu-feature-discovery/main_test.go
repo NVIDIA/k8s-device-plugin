@@ -37,11 +37,6 @@ type testConfig struct {
 
 var cfg *testConfig
 
-// prt returns a reference to whatever type is passed into it
-func ptr[T any](x T) *T {
-	return &x
-}
-
 func TestMain(m *testing.M) {
 	// TEST SETUP
 	// Determine the module root and the test binary path
@@ -99,14 +94,14 @@ func TestRunOneshot(t *testing.T) {
 	conf := &spec.Config{
 		Flags: spec.Flags{
 			CommandLineFlags: spec.CommandLineFlags{
-				MigStrategy:     ptr("none"),
-				FailOnInitError: ptr(true),
+				MigStrategy:     new("none"),
+				FailOnInitError: new(true),
 				GFD: &spec.GFDCommandLineFlags{
-					Oneshot:         ptr(true),
-					OutputFile:      ptr("./gfd-test-oneshot"),
-					SleepInterval:   ptr(spec.Duration(time.Second)),
-					NoTimestamp:     ptr(false),
-					MachineTypeFile: ptr(testMachineTypeFile),
+					Oneshot:         new(true),
+					OutputFile:      new("./gfd-test-oneshot"),
+					SleepInterval:   new(spec.Duration(time.Second)),
+					NoTimestamp:     new(false),
+					MachineTypeFile: new(testMachineTypeFile),
 				},
 			},
 		},
@@ -156,14 +151,14 @@ func TestRunInfiniteSleep(t *testing.T) {
 	conf := &spec.Config{
 		Flags: spec.Flags{
 			CommandLineFlags: spec.CommandLineFlags{
-				MigStrategy:     ptr("none"),
-				FailOnInitError: ptr(true),
+				MigStrategy:     new("none"),
+				FailOnInitError: new(true),
 				GFD: &spec.GFDCommandLineFlags{
-					Oneshot:         ptr(false),
-					OutputFile:      ptr("./gfd-test-infinite-sleep"),
-					SleepInterval:   ptr(spec.Duration(math.MaxInt64)),
-					NoTimestamp:     ptr(false),
-					MachineTypeFile: ptr(testMachineTypeFile),
+					Oneshot:         new(false),
+					OutputFile:      new("./gfd-test-infinite-sleep"),
+					SleepInterval:   new(spec.Duration(math.MaxInt64)),
+					NoTimestamp:     new(false),
+					MachineTypeFile: new(testMachineTypeFile),
 				},
 			},
 		},
@@ -227,14 +222,14 @@ func TestRunWithNoTimestamp(t *testing.T) {
 	conf := &spec.Config{
 		Flags: spec.Flags{
 			CommandLineFlags: spec.CommandLineFlags{
-				MigStrategy:     ptr("none"),
-				FailOnInitError: ptr(true),
+				MigStrategy:     new("none"),
+				FailOnInitError: new(true),
 				GFD: &spec.GFDCommandLineFlags{
-					Oneshot:         ptr(true),
-					OutputFile:      ptr("./gfd-test-with-no-timestamp"),
-					SleepInterval:   ptr(spec.Duration(time.Second)),
-					NoTimestamp:     ptr(true),
-					MachineTypeFile: ptr(testMachineTypeFile),
+					Oneshot:         new(true),
+					OutputFile:      new("./gfd-test-with-no-timestamp"),
+					SleepInterval:   new(spec.Duration(time.Second)),
+					NoTimestamp:     new(true),
+					MachineTypeFile: new(testMachineTypeFile),
 				},
 			},
 		},
@@ -286,15 +281,15 @@ func TestRunSleep(t *testing.T) {
 	conf := &spec.Config{
 		Flags: spec.Flags{
 			CommandLineFlags: spec.CommandLineFlags{
-				MigStrategy:             ptr("none"),
-				FailOnInitError:         ptr(true),
-				DeviceDiscoveryStrategy: ptr("auto"),
+				MigStrategy:             new("none"),
+				FailOnInitError:         new(true),
+				DeviceDiscoveryStrategy: new("auto"),
 				GFD: &spec.GFDCommandLineFlags{
-					Oneshot:         ptr(false),
-					OutputFile:      ptr("./gfd-test-loop"),
-					SleepInterval:   ptr(spec.Duration(time.Second)),
-					NoTimestamp:     ptr(false),
-					MachineTypeFile: ptr(testMachineTypeFile),
+					Oneshot:         new(false),
+					OutputFile:      new("./gfd-test-loop"),
+					SleepInterval:   new(spec.Duration(time.Second)),
+					NoTimestamp:     new(false),
+					MachineTypeFile: new(testMachineTypeFile),
 				},
 			},
 		},
@@ -459,14 +454,14 @@ func TestFailOnNVMLInitError(t *testing.T) {
 			conf := &spec.Config{
 				Flags: spec.Flags{
 					CommandLineFlags: spec.CommandLineFlags{
-						MigStrategy:     ptr(tc.migStrategy),
-						FailOnInitError: ptr(tc.failOnInitError),
+						MigStrategy:     new(tc.migStrategy),
+						FailOnInitError: new(tc.failOnInitError),
 						GFD: &spec.GFDCommandLineFlags{
-							Oneshot:         ptr(true),
-							OutputFile:      ptr(outputFile),
-							SleepInterval:   ptr(spec.Duration(500 * time.Millisecond)),
-							NoTimestamp:     ptr(false),
-							MachineTypeFile: ptr(testMachineTypeFile),
+							Oneshot:         new(true),
+							OutputFile:      new(outputFile),
+							SleepInterval:   new(spec.Duration(500 * time.Millisecond)),
+							NoTimestamp:     new(false),
+							MachineTypeFile: new(testMachineTypeFile),
 						},
 					},
 				},
@@ -497,8 +492,8 @@ func TestFailOnNVMLInitError(t *testing.T) {
 func buildLabelMapFromOutput(output []byte) (map[string]string, error) {
 	labels := make(map[string]string)
 
-	lines := strings.Split(strings.TrimRight(string(output), "\n"), "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(strings.TrimRight(string(output), "\n"), "\n")
+	for line := range lines {
 		split := strings.Split(line, "=")
 		if len(split) != 2 {
 			return nil, fmt.Errorf("unexpected format in line: '%v'", line)
@@ -522,12 +517,12 @@ func checkResult(result []byte, expectedOutputPath string, isVGPU bool) error {
 	}
 
 	var expectedRegexps []*regexp.Regexp
-	for _, line := range strings.Split(strings.TrimRight(string(expected), "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.TrimRight(string(expected), "\n"), "\n") {
 		expectedRegexps = append(expectedRegexps, regexp.MustCompile(line))
 	}
 
 LOOP:
-	for _, line := range strings.Split(strings.TrimRight(string(result), "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.TrimRight(string(result), "\n"), "\n") {
 		if isVGPU {
 			if !strings.Contains(line, "vgpu") {
 				// ignore other labels when vgpu file is specified

@@ -72,3 +72,86 @@ func TestVGPUGetInfo(t *testing.T) {
 		}
 	}
 }
+
+func TestVGPUGetInfoRejectsMalformedRecords(t *testing.T) {
+	tests := []struct {
+		name       string
+		capability []byte
+		err        string
+	}{
+		{
+			name:       "missing record",
+			capability: []byte{0x09, 0x00, 0x05, 0x56, 0x46},
+			err:        "cannot find driver version record",
+		},
+		{
+			name:       "truncated record header",
+			capability: []byte{0x09, 0x00, 0x06, 0x56, 0x46, 0x01},
+			err:        "truncated vendor capability record",
+		},
+		{
+			name:       "zero-length record",
+			capability: []byte{0x09, 0x00, 0x07, 0x56, 0x46, 0x01, 0x00},
+			err:        "invalid vendor capability record length 0",
+		},
+		{
+			name:       "record shorter than header",
+			capability: []byte{0x09, 0x00, 0x07, 0x56, 0x46, 0x01, 0x01},
+			err:        "invalid vendor capability record length 1",
+		},
+		{
+			name:       "record exceeds capability",
+			capability: []byte{0x09, 0x00, 0x07, 0x56, 0x46, 0x01, 0xff},
+			err:        "vendor capability record exceeds capability bounds",
+		},
+		{
+			name:       "truncated driver record header",
+			capability: []byte{0x09, 0x00, 0x06, 0x56, 0x46, 0x00},
+			err:        "truncated driver version record",
+		},
+		{
+			name:       "driver record shorter than payload",
+			capability: []byte{0x09, 0x00, 0x07, 0x56, 0x46, 0x00, 0x02},
+			err:        "invalid driver version record length 2",
+		},
+		{
+			name:       "driver record exceeds capability",
+			capability: []byte{0x09, 0x00, 0x07, 0x56, 0x46, 0x00, 0x16},
+			err:        "driver version record exceeds capability bounds",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			device := &Device{
+				pci:            &PCIDevice{Address: "malformed"},
+				vGPUCapability: tc.capability,
+			}
+
+			info, err := device.GetInfo()
+
+			require.ErrorContains(t, err, tc.err)
+			require.Nil(t, info)
+		})
+	}
+}
+
+func TestVGPUGetInfoSkipsUnknownRecords(t *testing.T) {
+	capability := make([]byte, 30)
+	copy(capability, []byte{0x09, 0x00, 0x1e, 0x56, 0x46})
+	copy(capability[5:], []byte{0x01, 0x03, 0xff})
+	copy(capability[8:], []byte{0x00, 0x16})
+	copy(capability[10:], []byte("460.16"))
+	copy(capability[20:], []byte("r460_00"))
+
+	device := &Device{
+		pci:            &PCIDevice{Address: "vgpu"},
+		vGPUCapability: capability,
+	}
+
+	info, err := device.GetInfo()
+
+	require.NoError(t, err)
+	require.Equal(t, "460.16", info.HostDriverVersion)
+	require.Equal(t, "r460_00", info.HostDriverBranch)
+}

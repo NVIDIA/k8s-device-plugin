@@ -33,7 +33,7 @@ func NewCudaDevice(d cuda.Device) Device {
 }
 
 // GetAttributes is unsupported for CUDA devices
-func (d *cudaDevice) GetAttributes() (map[string]interface{}, error) {
+func (d *cudaDevice) GetAttributes() (map[string]any, error) {
 	return nil, fmt.Errorf("GetAttributes is not supported for CUDA devices")
 }
 
