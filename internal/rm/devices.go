@@ -234,6 +234,16 @@ func (d *Device) GetUUID() string {
 	return AnnotatedID(d.ID).GetID()
 }
 
+// PhysicalGPUKey returns a key for the physical GPU backing id, grouping MIG
+// instances by parent (Device.Index prefix "<gpu>:<mig>") and others by UUID.
+func (ds Devices) PhysicalGPUKey(id string) string {
+	if d := ds.GetByID(id); d != nil && d.IsMigDevice() {
+		parent, _, _ := strings.Cut(d.Index, ":")
+		return "mig-parent:" + parent
+	}
+	return AnnotatedID(id).GetID()
+}
+
 // NewAnnotatedID creates a new AnnotatedID from an ID and a replica number.
 func NewAnnotatedID(id string, replica int) AnnotatedID {
 	return AnnotatedID(fmt.Sprintf("%s::%d", id, replica))
