@@ -105,6 +105,99 @@ func TestDistributedAlloc_PartiallyAllocated_DistributesAcrossDistinctGPUs(t *te
 		counts)
 }
 
+func TestDistributedAlloc_MIG_SpansDistinctPhysicalGPUs(t *testing.T) {
+	// GPU 0 has two idle MIG instances; GPU 1 has one time-sliced instance with
+	// a replica already in use. Keyed by parent, distributed avoids busier GPU 0.
+	devices := Devices{
+		"MIG-0-0::0": {Device: pluginapi.Device{ID: "MIG-0-0::0", Health: pluginapi.Healthy}, Index: "0:0", Replicas: 1},
+		"MIG-0-1::0": {Device: pluginapi.Device{ID: "MIG-0-1::0", Health: pluginapi.Healthy}, Index: "0:1", Replicas: 1},
+		"MIG-1-0::0": {Device: pluginapi.Device{ID: "MIG-1-0::0", Health: pluginapi.Healthy}, Index: "1:0", Replicas: 2},
+		"MIG-1-0::1": {Device: pluginapi.Device{ID: "MIG-1-0::1", Health: pluginapi.Healthy}, Index: "1:0", Replicas: 2},
+	}
+	r := &resourceManager{devices: devices}
+
+	// MIG-1-0::1 is omitted from available, i.e. already allocated.
+	available := []string{"MIG-0-0::0", "MIG-0-1::0", "MIG-1-0::0"}
+
+	allocated, err := r.greedyAlloc(available, nil, 2, comparatorForPolicy(spec.AllocationPolicyDistributed))
+	require.NoError(t, err)
+	require.Len(t, allocated, 2)
+
+	// Independent ground-truth mapping (not PhysicalGPUKey, which is under test).
+	parentByDevice := map[string]string{
+		"MIG-0-0::0": "0",
+		"MIG-0-1::0": "0",
+		"MIG-1-0::0": "1",
+	}
+	counts := make(map[string]int)
+	for _, id := range allocated {
+		counts[parentByDevice[id]]++
+	}
+	require.Equalf(t, map[string]int{"0": 1, "1": 1}, counts,
+		"expected one slot from each physical GPU, not two MIG instances of one card; got %v", allocated)
+}
+
+func TestPackedAlloc_MIG_ConsolidatesOnLargerParent(t *testing.T) {
+	// Parent "0" has one MIG instance, parent "1" has three. A request for 3
+	// under packed must land entirely on parent "1" (which can satisfy it alone)
+	// rather than taking parent "0" first and spilling across both GPUs.
+	devices := Devices{
+		"MIG-0-0::0": {Device: pluginapi.Device{ID: "MIG-0-0::0", Health: pluginapi.Healthy}, Index: "0:0", Replicas: 1},
+		"MIG-1-0::0": {Device: pluginapi.Device{ID: "MIG-1-0::0", Health: pluginapi.Healthy}, Index: "1:0", Replicas: 1},
+		"MIG-1-1::0": {Device: pluginapi.Device{ID: "MIG-1-1::0", Health: pluginapi.Healthy}, Index: "1:1", Replicas: 1},
+		"MIG-1-2::0": {Device: pluginapi.Device{ID: "MIG-1-2::0", Health: pluginapi.Healthy}, Index: "1:2", Replicas: 1},
+	}
+	r := &resourceManager{devices: devices}
+	available := []string{"MIG-0-0::0", "MIG-1-0::0", "MIG-1-1::0", "MIG-1-2::0"}
+
+	allocated, err := r.greedyAlloc(available, nil, 3, comparatorForPolicy(spec.AllocationPolicyPacked))
+	require.NoError(t, err)
+	require.Len(t, allocated, 3)
+
+	parentByDevice := map[string]string{
+		"MIG-0-0::0": "0",
+		"MIG-1-0::0": "1", "MIG-1-1::0": "1", "MIG-1-2::0": "1",
+	}
+	counts := make(map[string]int)
+	for _, id := range allocated {
+		counts[parentByDevice[id]]++
+	}
+	require.Equalf(t, map[string]int{"1": 3}, counts,
+		"packed should consolidate on the parent that can satisfy the request alone; got %v", allocated)
+}
+
+func TestPackedComparatorPrefersMoreCapacity(t *testing.T) {
+	packed := allocationComparators[spec.AllocationPolicyPacked]
+	// Equal allocated(): the GPU with more remaining candidates is preferred so
+	// a request consolidates onto a GPU that can satisfy it.
+	more := &gpuAllocState{count: &replicaCount{total: 3, available: 3}, replicas: []string{"a", "b", "c"}}
+	fewer := &gpuAllocState{count: &replicaCount{total: 1, available: 1}, replicas: []string{"d"}}
+	require.True(t, packed(more, fewer), "packed should prefer the GPU with more remaining capacity")
+	require.False(t, packed(fewer, more))
+}
+
+func TestGreedyAllocMIGIsDeterministic(t *testing.T) {
+	// MIG instances of one parent share a bucket; the pick must be stable across
+	// calls despite random map iteration order.
+	devices := Devices{
+		"MIG-0-0::0": {Device: pluginapi.Device{ID: "MIG-0-0::0", Health: pluginapi.Healthy}, Index: "0:0", Replicas: 1},
+		"MIG-0-1::0": {Device: pluginapi.Device{ID: "MIG-0-1::0", Health: pluginapi.Healthy}, Index: "0:1", Replicas: 1},
+		"MIG-0-2::0": {Device: pluginapi.Device{ID: "MIG-0-2::0", Health: pluginapi.Healthy}, Index: "0:2", Replicas: 1},
+		"MIG-1-0::0": {Device: pluginapi.Device{ID: "MIG-1-0::0", Health: pluginapi.Healthy}, Index: "1:0", Replicas: 1},
+		"MIG-1-1::0": {Device: pluginapi.Device{ID: "MIG-1-1::0", Health: pluginapi.Healthy}, Index: "1:1", Replicas: 1},
+	}
+	r := &resourceManager{devices: devices}
+	available := []string{"MIG-0-0::0", "MIG-0-1::0", "MIG-0-2::0", "MIG-1-0::0", "MIG-1-1::0"}
+
+	first, err := r.greedyAlloc(available, nil, 2, comparatorForPolicy(spec.AllocationPolicyDistributed))
+	require.NoError(t, err)
+	for range 20 {
+		got, err := r.greedyAlloc(available, nil, 2, comparatorForPolicy(spec.AllocationPolicyDistributed))
+		require.NoError(t, err)
+		require.Equal(t, first, got, "greedyAlloc must be deterministic across calls")
+	}
+}
+
 func TestDistributedAlloc(t *testing.T) {
 	testCases := []struct {
 		description string
@@ -463,9 +556,10 @@ func TestSpreadPrefersUntouchedGPU(t *testing.T) {
 	require.False(t, spread(touched, untouched))
 }
 
-// TestComparatorsOrderSolelyByAllocated: distributed and packed order solely by
-// allocated() when pickedFrom is equal. spread is excluded (it orders by
-// pickedFrom first — see TestSpreadPrefersUntouchedGPU).
+// TestComparatorsOrderSolelyByAllocated: with the later tie-breaks held equal
+// (pickedFrom, and for packed remaining capacity), distributed and packed order
+// by allocated(). spread is excluded (it orders by touched() first — see
+// TestSpreadPrefersUntouchedGPU).
 func TestComparatorsOrderSolelyByAllocated(t *testing.T) {
 	allocatedPrimaryPolicies := []string{
 		spec.AllocationPolicyDistributed,
@@ -474,9 +568,9 @@ func TestComparatorsOrderSolelyByAllocated(t *testing.T) {
 	for _, policy := range allocatedPrimaryPolicies {
 		preferred := allocationComparators[policy]
 		t.Run(policy, func(t *testing.T) {
-			// Equal allocated counts with different total/available shapes
-			// must rank equal (when pickedFrom is also equal) so the
-			// greedyAlloc tie-break applies.
+			// Equal allocated counts must rank equal when the later tie-breaks
+			// (pickedFrom, and for packed remaining capacity) are also equal, so
+			// the greedyAlloc tie-break applies. Both states have nil replicas.
 			a := &gpuAllocState{count: &replicaCount{total: 8, available: 6}} // 2 allocated
 			b := &gpuAllocState{count: &replicaCount{total: 4, available: 2}} // 2 allocated
 			require.False(t, preferred(a, b), "GPUs with equal allocated counts must rank equal")
