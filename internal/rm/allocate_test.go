@@ -105,6 +105,38 @@ func TestDistributedAlloc_PartiallyAllocated_DistributesAcrossDistinctGPUs(t *te
 		counts)
 }
 
+func TestDistributedAlloc_MIG_SpansDistinctPhysicalGPUs(t *testing.T) {
+	// GPU 0 has two idle MIG instances; GPU 1 has one time-sliced instance with
+	// a replica already in use. Keyed by parent, distributed avoids busier GPU 0.
+	devices := Devices{
+		"MIG-0-0::0": {Device: pluginapi.Device{ID: "MIG-0-0::0", Health: pluginapi.Healthy}, Index: "0:0", Replicas: 1},
+		"MIG-0-1::0": {Device: pluginapi.Device{ID: "MIG-0-1::0", Health: pluginapi.Healthy}, Index: "0:1", Replicas: 1},
+		"MIG-1-0::0": {Device: pluginapi.Device{ID: "MIG-1-0::0", Health: pluginapi.Healthy}, Index: "1:0", Replicas: 2},
+		"MIG-1-0::1": {Device: pluginapi.Device{ID: "MIG-1-0::1", Health: pluginapi.Healthy}, Index: "1:0", Replicas: 2},
+	}
+	r := &resourceManager{devices: devices}
+
+	// MIG-1-0::1 is omitted from available, i.e. already allocated.
+	available := []string{"MIG-0-0::0", "MIG-0-1::0", "MIG-1-0::0"}
+
+	allocated, err := r.greedyAlloc(available, nil, 2, comparatorForPolicy(spec.AllocationPolicyDistributed))
+	require.NoError(t, err)
+	require.Len(t, allocated, 2)
+
+	// Independent ground-truth mapping (not PhysicalGPUKey, which is under test).
+	parentByDevice := map[string]string{
+		"MIG-0-0::0": "0",
+		"MIG-0-1::0": "0",
+		"MIG-1-0::0": "1",
+	}
+	counts := make(map[string]int)
+	for _, id := range allocated {
+		counts[parentByDevice[id]]++
+	}
+	require.Equalf(t, map[string]int{"0": 1, "1": 1}, counts,
+		"expected one slot from each physical GPU, not two MIG instances of one card; got %v", allocated)
+}
+
 func TestDistributedAlloc(t *testing.T) {
 	testCases := []struct {
 		description string
