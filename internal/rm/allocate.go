@@ -77,14 +77,14 @@ func (r *resourceManager) prepareCandidates(available, required []string, size i
 
 	replicas := make(map[string]*replicaCount)
 	for _, c := range candidates {
-		id := AnnotatedID(c).GetID()
+		id := r.devices.PhysicalGPUKey(c)
 		if _, exists := replicas[id]; !exists {
 			replicas[id] = &replicaCount{}
 		}
 		replicas[id].available++
 	}
 	for d := range r.devices {
-		id := AnnotatedID(d).GetID()
+		id := r.devices.PhysicalGPUKey(d)
 		if _, exists := replicas[id]; !exists {
 			continue
 		}
@@ -142,7 +142,7 @@ func (r *resourceManager) greedyAlloc(available, required []string, size int, pr
 	// updates the map entry, keeping a single source of truth.
 	byGPU := make(map[string]*gpuAllocState)
 	for _, c := range candidates {
-		id := AnnotatedID(c).GetID()
+		id := r.devices.PhysicalGPUKey(c)
 		item, ok := byGPU[id]
 		if !ok {
 			item = &gpuAllocState{count: replicas[id]}
