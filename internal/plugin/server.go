@@ -148,13 +148,13 @@ func (plugin *nvidiaDevicePlugin) Start(kubeletSocket string) error {
 	}
 	klog.Infof("Registered device plugin for '%s' with Kubelet", plugin.rm.Resource())
 
-	go func() {
+	go func(stop <-chan any, health chan<- *rm.Device) {
 		// TODO: add MPS health check
-		err := plugin.rm.CheckHealth(plugin.stop, plugin.health)
+		err := plugin.rm.CheckHealth(stop, health)
 		if err != nil {
-			klog.Errorf("Failed to start health check: %v; continuing with health checks disabled", err)
+			klog.Errorf("Failed to start health check: %v", err)
 		}
-	}()
+	}(plugin.stop, plugin.health)
 
 	return nil
 }
