@@ -45,7 +45,7 @@ func TestGetOwnerRefs(t *testing.T) {
 			expectError:      false,
 		},
 		{
-			description: "pod owned by DaemonSet returns two owner refs",
+			description: "pod owned by DaemonSet returns only DaemonSet owner ref",
 			podName:     "gfd-pod",
 			namespace:   "gpu-operator",
 			pod: &corev1.Pod{
@@ -63,7 +63,7 @@ func TestGetOwnerRefs(t *testing.T) {
 					},
 				},
 			},
-			expectedOwnerRef: 2,
+			expectedOwnerRef: 1,
 			expectError:      false,
 		},
 		{
@@ -131,19 +131,63 @@ func TestGetOwnerRefs(t *testing.T) {
 
 			require.Len(t, ownerRefs, tc.expectedOwnerRef)
 
-			if tc.expectedOwnerRef == 2 {
-				// Verify the DaemonSet owner ref is controller
+			if tc.expectedOwnerRef == 1 {
 				require.Equal(t, "DaemonSet", ownerRefs[0].Kind)
 				require.NotNil(t, ownerRefs[0].Controller)
 				require.True(t, *ownerRefs[0].Controller)
 				require.Equal(t, tc.pod.OwnerReferences[0].Name, ownerRefs[0].Name)
 				require.Equal(t, tc.pod.OwnerReferences[0].UID, ownerRefs[0].UID)
 
-				// Verify the Pod owner ref
-				require.Equal(t, "Pod", ownerRefs[1].Kind)
-				require.Equal(t, tc.pod.Name, ownerRefs[1].Name)
-				require.Equal(t, tc.pod.UID, ownerRefs[1].UID)
+				// Pod must not be an owner: re-adding it after a restart requires
+				// delete permission on the NodeFeature and causes CrashLoopBackOff.
+				for _, ref := range ownerRefs {
+					require.NotEqual(t, "Pod", ref.Kind)
+				}
 			}
 		})
 	}
+}
+
+// TestGetOwnerRefsStableAcrossPodRestart verifies that two successive GFD pods
+// owned by the same DaemonSet resolve to the same NodeFeature ownerRefs. That
+// stability avoids OwnerReferencesPermissionEnforcement rejecting an update that
+// would otherwise add a new Pod ownerRef after the previous pod was GC'd.
+func TestGetOwnerRefsStableAcrossPodRestart(t *testing.T) {
+	namespace := "gpu-operator"
+	dsRef := metav1.OwnerReference{
+		APIVersion: "apps/v1",
+		Kind:       "DaemonSet",
+		Name:       "gpu-feature-discovery",
+		UID:        types.UID("ds-uid-stable"),
+	}
+
+	oldPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "gpu-feature-discovery-aaaa",
+			Namespace:       namespace,
+			UID:             types.UID("pod-uid-old"),
+			OwnerReferences: []metav1.OwnerReference{dsRef},
+		},
+	}
+	newPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "gpu-feature-discovery-bbbb",
+			Namespace:       namespace,
+			UID:             types.UID("pod-uid-new"),
+			OwnerReferences: []metav1.OwnerReference{dsRef},
+		},
+	}
+
+	oldRefs, err := getOwnerReferences(context.Background(), fake.NewClientset(oldPod), namespace, oldPod.Name)
+	require.NoError(t, err)
+	newRefs, err := getOwnerReferences(context.Background(), fake.NewClientset(newPod), namespace, newPod.Name)
+	require.NoError(t, err)
+
+	require.Len(t, oldRefs, 1)
+	require.Len(t, newRefs, 1)
+	require.Equal(t, oldRefs[0].Kind, newRefs[0].Kind)
+	require.Equal(t, oldRefs[0].Name, newRefs[0].Name)
+	require.Equal(t, oldRefs[0].UID, newRefs[0].UID)
+	require.Equal(t, oldRefs[0].APIVersion, newRefs[0].APIVersion)
+	require.Equal(t, oldRefs[0].Controller, newRefs[0].Controller)
 }

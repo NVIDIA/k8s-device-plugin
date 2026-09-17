@@ -171,8 +171,12 @@ func (n *nodeFeatureObject) Output(labels Labels) error {
 	return nil
 }
 
-// getOwnerReferences returns owner references for the DaemonSet and Pod that owns this process.
-// This ensures NodeFeature CRs are garbage collected when the DaemonSet is deleted.
+// getOwnerReferences returns an owner reference for the DaemonSet that owns this process.
+// The DaemonSet controller reference is enough for garbage collection when GFD is
+// uninstalled. A Pod ownerRef is intentionally omitted: pods are ephemeral, and
+// re-adding a new Pod ownerRef on restart requires delete permission on the
+// NodeFeature (OwnerReferencesPermissionEnforcement), which GFD RBAC does not grant.
+// See NVIDIA/gpu-operator#2914.
 func getOwnerReferences(ctx context.Context, client kubernetes.Interface, namespace, podName string) ([]metav1.OwnerReference, error) {
 	if podName == "" {
 		klog.Info("Pod name not provided, skipping owner reference resolution")
@@ -205,12 +209,6 @@ func getOwnerReferences(ctx context.Context, client kubernetes.Interface, namesp
 			Name:       dsOwnerRef.Name,
 			UID:        dsOwnerRef.UID,
 			Controller: &controller,
-		},
-		{
-			APIVersion: "v1",
-			Kind:       "Pod",
-			Name:       pod.Name,
-			UID:        pod.UID,
 		},
 	}
 
