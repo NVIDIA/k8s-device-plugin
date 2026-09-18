@@ -12,7 +12,7 @@ rules:
   {{- if .Values.gfd.enabled }}
   - apiGroups: ["nfd.k8s-sigs.io"]
     resources: ["nodefeatures"]
-    verbs: ["get", "list", "watch", "create", "update"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get"]
