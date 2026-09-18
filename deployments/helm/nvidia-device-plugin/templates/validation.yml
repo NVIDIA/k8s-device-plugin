@@ -10,7 +10,7 @@
 {{- fail $error }}
 {{- end }}
 
-{{- if and (eq (include "nvidia-device-plugin.namespace" .) "default") ( eq .Values.namespaceOverride "") (not .Values.allowDefaultNamespace) }}
+{{- if and (eq (include "nvidia-device-plugin.namespace" .) "default") (not .Values.allowDefaultNamespace) }}
 {{- $error := "" }}
 {{- $error = printf "%s\nRunning in the 'default' namespace is not recommended." $error }}
 {{- $error = printf "%s\nSet 'allowDefaultNamespace=true' to bypass this error." $error }}
@@ -35,14 +35,5 @@
 {{- $error = printf "%s\nThe 'single' fallback will look to see if only a single config has been provided and make that the default." $error }}
 {{- $error = printf "%s\nThe 'empty' fallback will apply an empty config if none of the other fallbacks are successful." $error }}
 {{- $error = printf "%s\nFallbacks are attempted in order and the current set is %s." $error .Values.config.fallbackStrategies }}
-{{- fail $error }}
-{{- end }}
-
-{{- if and (eq .Release.Namespace "default") (not .Values.allowDefaultNamespace) }}
-{{- $error := "" }}
-{{- $error = printf "%s\nRunning in the 'default' namespace is not recommended." $error }}
-{{- $error = printf "%s\nSet 'allowDefaultNamespace=true' to bypass this error." $error }}
-{{- $error = printf "%s\nOtherwise, use --namespace (with --create-namespace as necessary) to run in a specific namespace." $error }}
-{{- $error = printf "%s\nSee: https://helm.sh/docs/helm/helm_install/#options" $error }}
 {{- fail $error }}
 {{- end }}
