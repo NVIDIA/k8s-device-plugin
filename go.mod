@@ -6,7 +6,7 @@ require (
 	github.com/NVIDIA/go-gpuallocator v0.6.0
 	github.com/NVIDIA/go-nvlib v0.12.0
 	github.com/NVIDIA/go-nvml v0.13.4-0
-	github.com/NVIDIA/nvidia-container-toolkit v1.20.1-0.20260914195404-24761af0847d
+	github.com/NVIDIA/nvidia-container-toolkit v1.20.1
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/google/renameio v1.0.1
 	github.com/google/uuid v1.6.0
@@ -15,7 +15,7 @@ require (
 	github.com/sirupsen/logrus v1.10.0
 	github.com/stretchr/testify v1.12.1
 	github.com/urfave/cli/v2 v2.27.7
-	golang.org/x/mod v0.40.0
+	golang.org/x/mod v0.41.0
 	google.golang.org/grpc v1.83.2
 	k8s.io/api v0.36.3
 	k8s.io/apimachinery v0.36.3
