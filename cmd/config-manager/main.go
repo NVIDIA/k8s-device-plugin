@@ -361,7 +361,7 @@ func updateConfigName(config string, f *Flags) (string, error) {
 	if f.DefaultConfig != "" {
 		klog.Infof("No value set. Selecting default name: %v", f.DefaultConfig)
 		if !files[f.DefaultConfig] {
-			return "", fmt.Errorf("specified config %v does not exist", config)
+			return "", fmt.Errorf("specified config %v does not exist", f.DefaultConfig)
 		}
 		return f.DefaultConfig, nil
 	}
