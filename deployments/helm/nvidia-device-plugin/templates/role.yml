@@ -9,6 +9,12 @@ rules:
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list", "watch"]
+  {{- if .Capabilities.APIVersions.Has "security.openshift.io/v1/SecurityContextConstraints" }}
+  - apiGroups: ["security.openshift.io"]
+    resourceNames: ["privileged"]
+    resources: ["securitycontextconstraints"]
+    verbs: ["use"]
+  {{- end }}
   {{- if .Values.gfd.enabled }}
   - apiGroups: ["nfd.k8s-sigs.io"]
     resources: ["nodefeatures"]
