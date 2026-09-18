@@ -25,13 +25,22 @@ import (
 // be used when passing the device list to the container runtime.
 type DeviceListStrategies map[string]bool
 
-// NewDeviceListStrategies constructs a new DeviceListStrategy
+var supportedDeviceListStrategies = []string{
+	DeviceListStrategyEnvVar,
+	DeviceListStrategyVolumeMounts,
+	DeviceListStrategyCDIAnnotations,
+	DeviceListStrategyCDICRI,
+}
+
+// NewDeviceListStrategies constructs a new DeviceListStrategy from at least one strategy.
 func NewDeviceListStrategies(strategies []string) (DeviceListStrategies, error) {
-	ret := map[string]bool{
-		DeviceListStrategyEnvVar:         false,
-		DeviceListStrategyVolumeMounts:   false,
-		DeviceListStrategyCDIAnnotations: false,
-		DeviceListStrategyCDICRI:         false,
+	if len(strategies) == 0 {
+		return nil, fmt.Errorf("no device list strategy specified; at least one of %v is required", supportedDeviceListStrategies)
+	}
+
+	ret := make(map[string]bool, len(supportedDeviceListStrategies))
+	for _, s := range supportedDeviceListStrategies {
+		ret[s] = false
 	}
 	for _, s := range strategies {
 		if _, ok := ret[s]; !ok {
@@ -58,8 +67,11 @@ func (s DeviceListStrategies) AnyCDIEnabled() bool {
 	return false
 }
 
-// AllCDIEnabled returns whether all strategies being used require CDI.
+// AllCDIEnabled returns whether at least one strategy is being used and all of them require CDI.
 func (s DeviceListStrategies) AllCDIEnabled() bool {
+	if !s.AnyCDIEnabled() {
+		return false
+	}
 	for k, v := range s {
 		if !strings.HasPrefix(k, "cdi-") && v {
 			return false
