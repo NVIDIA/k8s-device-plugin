@@ -65,3 +65,63 @@ func TestUpdateSymlinkDanglingDestination(t *testing.T) {
 		require.Equal(t, filepath.Join(srcdir, "missing-config"), link)
 	})
 }
+
+func TestUpdateConfigName(t *testing.T) {
+	testCases := []struct {
+		name           string
+		config         string
+		defaultConfig  string
+		expectedConfig string
+		expectedError  string
+	}{
+		{
+			name:          "missing default configuration",
+			defaultConfig: "missing-profile",
+			expectedError: "specified config missing-profile does not exist",
+		},
+		{
+			name:           "existing default configuration",
+			defaultConfig:  "default-profile",
+			expectedConfig: "default-profile",
+		},
+		{
+			name:           "node configuration overrides default",
+			config:         "node-profile",
+			defaultConfig:  "default-profile",
+			expectedConfig: "node-profile",
+		},
+		{
+			name:           "node configuration overrides missing default",
+			config:         "node-profile",
+			defaultConfig:  "missing-profile",
+			expectedConfig: "node-profile",
+		},
+		{
+			name:          "missing node configuration does not fall back to default",
+			config:        "missing-node-profile",
+			defaultConfig: "default-profile",
+			expectedError: "specified config missing-node-profile does not exist",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			srcdir := t.TempDir()
+			for _, name := range []string{"default-profile", "node-profile"} {
+				require.NoError(t, os.WriteFile(filepath.Join(srcdir, name), []byte("version: v1"), 0600))
+			}
+			f := &Flags{
+				ConfigFileSrcdir: srcdir,
+				DefaultConfig:    tc.defaultConfig,
+			}
+
+			config, err := updateConfigName(tc.config, f)
+			if tc.expectedError != "" {
+				require.EqualError(t, err, tc.expectedError)
+			} else {
+				require.NoError(t, err)
+			}
+			require.Equal(t, tc.expectedConfig, config)
+		})
+	}
+}
