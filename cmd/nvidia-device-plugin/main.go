@@ -145,7 +145,7 @@ func main() {
 		&cli.StringFlag{
 			Name:    "shared-devices-allocation-policy",
 			Value:   spec.AllocationPolicyDistributed,
-			Usage:   "the allocation policy for replicated and MIG resources:\n\t\t[distributed | packed]",
+			Usage:   "the allocation policy for replicated and MIG resources:\n\t\t[distributed | packed | spread]",
 			EnvVars: []string{"SHARED_DEVICES_ALLOCATION_POLICY"},
 		},
 		&cli.StringFlag{
@@ -219,6 +219,7 @@ func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 		switch *config.Flags.Plugin.SharedDevicesAllocationPolicy {
 		case spec.AllocationPolicyDistributed:
 		case spec.AllocationPolicyPacked:
+		case spec.AllocationPolicySpread:
 		default:
 			return fmt.Errorf("invalid --shared-devices-allocation-policy option: %s", *config.Flags.Plugin.SharedDevicesAllocationPolicy)
 		}

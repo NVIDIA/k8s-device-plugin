@@ -52,6 +52,7 @@ const (
 const (
 	AllocationPolicyDistributed = "distributed"
 	AllocationPolicyPacked      = "packed"
+	AllocationPolicySpread      = "spread"
 )
 
 // Constants related to generating CDI specifications
