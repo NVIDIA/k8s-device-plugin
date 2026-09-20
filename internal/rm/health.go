@@ -40,6 +40,29 @@ const (
 	envEnableHealthChecks = "DP_ENABLE_HEALTHCHECKS"
 )
 
+type placedDevice struct {
+	parentUUID string
+	device     *Device
+}
+
+func groupByParent(devices []placedDevice) map[string][]*Device {
+	grouped := make(map[string][]*Device)
+	for _, d := range devices {
+		grouped[d.parentUUID] = append(grouped[d.parentUUID], d.device)
+	}
+	return grouped
+}
+
+func matchesMigEvent(deviceGI, deviceCI, eventGI, eventCI uint32) bool {
+	if eventGI != 0xFFFFFFFF && deviceGI != eventGI {
+		return false
+	}
+	if eventCI != 0xFFFFFFFF && deviceCI != eventCI {
+		return false
+	}
+	return true
+}
+
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
 func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devices, unhealthy chan<- *Device) error {
 	xids := getDisabledHealthCheckXids()
@@ -71,7 +94,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		_ = eventSet.Free()
 	}()
 
-	parentToDeviceMap := make(map[string][]*Device)
+	placedDevices := make([]placedDevice, 0, len(devices))
 	deviceIDToGiMap := make(map[string]uint32)
 	deviceIDToCiMap := make(map[string]uint32)
 
@@ -85,7 +108,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		}
 		deviceIDToGiMap[d.ID] = gi
 		deviceIDToCiMap[d.ID] = ci
-		parentToDeviceMap[uuid] = append(parentToDeviceMap[uuid], d)
+		placedDevices = append(placedDevices, placedDevice{parentUUID: uuid, device: d})
 
 		gpu, ret := r.nvml.DeviceGetHandleByUUID(uuid)
 		if ret != nvml.SUCCESS {
@@ -110,6 +133,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 			unhealthy <- d
 		}
 	}
+	parentToDeviceMap := groupByParent(placedDevices)
 
 	for {
 		select {
@@ -161,10 +185,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 			if d.IsMigDevice() {
 				gi := deviceIDToGiMap[d.ID]
 				ci := deviceIDToCiMap[d.ID]
-				if e.GpuInstanceId != 0xFFFFFFFF && gi != e.GpuInstanceId {
-					continue
-				}
-				if e.ComputeInstanceId != 0xFFFFFFFF && ci != e.ComputeInstanceId {
+				if !matchesMigEvent(gi, ci, e.GpuInstanceId, e.ComputeInstanceId) {
 					continue
 				}
 				klog.Infof("Event for mig device %v (gi=%v, ci=%v)", d.ID, gi, ci)
