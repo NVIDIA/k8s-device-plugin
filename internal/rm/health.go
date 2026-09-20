@@ -158,10 +158,13 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		}
 
 		for _, d := range ds {
-			if d.IsMigDevice() && e.GpuInstanceId != 0xFFFFFFFF && e.ComputeInstanceId != 0xFFFFFFFF {
+			if d.IsMigDevice() {
 				gi := deviceIDToGiMap[d.ID]
 				ci := deviceIDToCiMap[d.ID]
-				if gi != e.GpuInstanceId || ci != e.ComputeInstanceId {
+				if e.GpuInstanceId != 0xFFFFFFFF && gi != e.GpuInstanceId {
+					continue
+				}
+				if e.ComputeInstanceId != 0xFFFFFFFF && ci != e.ComputeInstanceId {
 					continue
 				}
 				klog.Infof("Event for mig device %v (gi=%v, ci=%v)", d.ID, gi, ci)

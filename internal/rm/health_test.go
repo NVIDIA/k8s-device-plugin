@@ -502,7 +502,7 @@ func TestCheckHealthMigXidFanout(t *testing.T) {
 
 	parentUUID := "GPU-5c89852c-d268-c3f3-1b07-005d5ae1dc3f"
 	migGi3 := "MIG-" + parentUUID + "/3/0"
-	migGi5 := "MIG-" + parentUUID + "/5/0"
+	migGi5 := "MIG-" + parentUUID + "/5/1"
 
 	testCases := []struct {
 		description string
@@ -513,6 +513,18 @@ func TestCheckHealthMigXidFanout(t *testing.T) {
 		{
 			description: "instance-specific event marks only the matching MIG device unhealthy",
 			gi:          3,
+			ci:          0,
+			expected:    []string{migGi3},
+		},
+		{
+			description: "event with only a GI ID marks only devices in the matching GI unhealthy",
+			gi:          3,
+			ci:          0xFFFFFFFF,
+			expected:    []string{migGi3},
+		},
+		{
+			description: "event with only a CI ID marks only devices with the matching CI unhealthy",
+			gi:          0xFFFFFFFF,
 			ci:          0,
 			expected:    []string{migGi3},
 		},
