@@ -109,31 +109,39 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan interface{}, devices Devic
 		deviceIDToGiMap[d.ID] = gi
 		deviceIDToCiMap[d.ID] = ci
 		placedDevices = append(placedDevices, placedDevice{parentUUID: uuid, device: d})
+	}
+	parentToDeviceMap := groupByParent(placedDevices)
 
-		gpu, ret := r.nvml.DeviceGetHandleByUUID(uuid)
+	for parentUUID, d := range parentToDeviceMap {
+		gpu, ret := r.nvml.DeviceGetHandleByUUID(parentUUID)
 		if ret != nvml.SUCCESS {
 			klog.Infof("unable to get device handle from UUID: %v; marking it as unhealthy", ret)
-			unhealthy <- d
+			for _, d := range d {
+				unhealthy <- d
+			}
 			continue
 		}
 
 		supportedEvents, ret := gpu.GetSupportedEventTypes()
 		if ret != nvml.SUCCESS {
-			klog.Infof("unable to determine the supported events for %v: %v; marking it as unhealthy", d.ID, ret)
-			unhealthy <- d
+			klog.Infof("unable to determine the supported events for %v: %v; marking it as unhealthy", parentUUID, ret)
+			for _, d := range d {
+				unhealthy <- d
+			}
 			continue
 		}
 
 		ret = gpu.RegisterEvents(eventMask&supportedEvents, eventSet)
 		switch {
 		case ret == nvml.ERROR_NOT_SUPPORTED:
-			klog.Warningf("Device %v is too old to support healthchecking.", d.ID)
+			klog.Warningf("Device %v is too old to support healthchecking.", parentUUID)
 		case ret != nvml.SUCCESS:
-			klog.Infof("Marking device %v as unhealthy: %v", d.ID, ret)
-			unhealthy <- d
+			klog.Infof("Marking device %v as unhealthy: %v", parentUUID, ret)
+			for _, d := range d {
+				unhealthy <- d
+			}
 		}
 	}
-	parentToDeviceMap := groupByParent(placedDevices)
 
 	for {
 		select {
