@@ -1,5 +1,17 @@
 ## Changelog
 
+### v0.20.1
+- Add NodeFeature CR delete privileges (#2049)
+- Include component-specific DaemonSet selector labels to avoid selector overlap (#1716)
+- Validate vGPU capability record lengths (#1994)
+- Go Modernize changes (#1996)
+- Replace per-iteration sort in greedyAlloc with a min-heap (#1826)
+- Handle dangling symlink in config-manager updateSymlink (#1982)
+- Bump nvidia-container-toolkit to v1.20.1 (#2046)
+- Bump go-nvml to v0.13.4-0 (#2013)
+- Bump nvidia/distroless/go to v4.1.4 (#2029)
+- Guard GFD PCI vendor capability parsing against bad lengths (#2027)
+
 ### v0.20.0
 - Add configurable packed/distributed allocation policy for replicated and MIG resources (#1621)
 - Prefer distinct physical GPUs when breaking distributed-allocation ties (#1788)
