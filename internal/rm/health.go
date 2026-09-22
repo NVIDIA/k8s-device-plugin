@@ -40,6 +40,25 @@ const (
 	envEnableHealthChecks = "DP_ENABLE_HEALTHCHECKS"
 )
 
+type placedDevice struct {
+	parentUUID string
+	device     *Device
+}
+
+func groupByParent(devices []placedDevice) map[string][]*Device {
+	grouped := make(map[string][]*Device)
+	for _, d := range devices {
+		grouped[d.parentUUID] = append(grouped[d.parentUUID], d.device)
+	}
+	return grouped
+}
+
+func matchesMigEvent(deviceGI, deviceCI, eventGI, eventCI uint32) bool {
+	giMatches := eventGI == nvml.GPU_INSTANCE_ID_ANY || deviceGI == eventGI
+	ciMatches := eventCI == nvml.COMPUTE_INSTANCE_ID_ANY || deviceCI == eventCI
+	return giMatches && ciMatches
+}
+
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
 func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhealthy chan<- *Device) error {
 	xids := getDisabledHealthCheckXids()
@@ -71,7 +90,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhe
 		_ = eventSet.Free()
 	}()
 
-	parentToDeviceMap := make(map[string]*Device)
+	placedDevices := make([]placedDevice, 0, len(devices))
 	deviceIDToGiMap := make(map[string]uint32)
 	deviceIDToCiMap := make(map[string]uint32)
 
@@ -85,7 +104,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhe
 		}
 		deviceIDToGiMap[d.ID] = gi
 		deviceIDToCiMap[d.ID] = ci
-		parentToDeviceMap[uuid] = d
+		placedDevices = append(placedDevices, placedDevice{parentUUID: uuid, device: d})
 
 		gpu, ret := r.nvml.DeviceGetHandleByUUID(uuid)
 		if ret != nvml.SUCCESS {
@@ -110,6 +129,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhe
 			unhealthy <- d
 		}
 	}
+	parentToDeviceMap := groupByParent(placedDevices)
 
 	for {
 		select {
@@ -151,23 +171,25 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhe
 			continue
 		}
 
-		d, exists := parentToDeviceMap[eventUUID]
+		ds, exists := parentToDeviceMap[eventUUID]
 		if !exists {
 			klog.Infof("Ignoring event for unexpected device: %v", eventUUID)
 			continue
 		}
 
-		if d.IsMigDevice() && e.GpuInstanceId != 0xFFFFFFFF && e.ComputeInstanceId != 0xFFFFFFFF {
-			gi := deviceIDToGiMap[d.ID]
-			ci := deviceIDToCiMap[d.ID]
-			if gi != e.GpuInstanceId || ci != e.ComputeInstanceId {
-				continue
+		for _, d := range ds {
+			if d.IsMigDevice() {
+				gi := deviceIDToGiMap[d.ID]
+				ci := deviceIDToCiMap[d.ID]
+				if !matchesMigEvent(gi, ci, e.GpuInstanceId, e.ComputeInstanceId) {
+					continue
+				}
+				klog.Infof("Event for mig device %v (gi=%v, ci=%v)", d.ID, gi, ci)
 			}
-			klog.Infof("Event for mig device %v (gi=%v, ci=%v)", d.ID, gi, ci)
-		}
 
-		klog.Infof("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
-		unhealthy <- d
+			klog.Infof("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
+			unhealthy <- d
+		}
 	}
 }
 
