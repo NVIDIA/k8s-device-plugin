@@ -2,8 +2,26 @@ apiVersion: v1
 entries:
   gpu-feature-discovery:
   - apiVersion: v2
+    appVersion: 0.20.1
+    created: "2026-09-22T20:01:10.990004515Z"
+    dependencies:
+    - alias: nfd
+      condition: nfd.enabled,gfd.enabled
+      name: node-feature-discovery
+      repository: oci://registry.k8s.io/nfd/charts
+      version: 0.19.0
+    description: A Helm chart for gpu-feature-discovery on Kubernetes
+    digest: 8a88903967f297507502c1cd2b7dad372c7ef9cf57d08f1744f881cbaa5e465a
+    home: https://github.com/NVIDIA/k8s-device-plugin
+    kubeVersion: '>= 1.10.0-0'
+    name: gpu-feature-discovery
+    type: application
+    urls:
+    - https://nvidia.github.io/k8s-device-plugin/stable/gpu-feature-discovery-0.20.1.tgz
+    version: 0.20.1
+  - apiVersion: v2
     appVersion: 0.20.0
-    created: "2026-08-20T00:03:34.815271267Z"
+    created: "2026-09-22T20:01:10.985977767Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -21,7 +39,7 @@ entries:
     version: 0.20.0
   - apiVersion: v2
     appVersion: 0.19.3
-    created: "2026-08-20T00:03:34.810800051Z"
+    created: "2026-09-22T20:01:10.982790278Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -39,7 +57,7 @@ entries:
     version: 0.19.3
   - apiVersion: v2
     appVersion: 0.19.2
-    created: "2026-08-20T00:03:34.809156667Z"
+    created: "2026-09-22T20:01:10.980557467Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -57,7 +75,7 @@ entries:
     version: 0.19.2
   - apiVersion: v2
     appVersion: 0.19.1
-    created: "2026-08-20T00:03:34.807480112Z"
+    created: "2026-09-22T20:01:10.979109403Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -75,7 +93,7 @@ entries:
     version: 0.19.1
   - apiVersion: v2
     appVersion: 0.19.0
-    created: "2026-08-20T00:03:34.805010692Z"
+    created: "2026-09-22T20:01:10.977708533Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -93,7 +111,7 @@ entries:
     version: 0.19.0
   - apiVersion: v2
     appVersion: 0.18.2
-    created: "2026-08-20T00:03:34.803370976Z"
+    created: "2026-09-22T20:01:10.976275999Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -111,7 +129,7 @@ entries:
     version: 0.18.2
   - apiVersion: v2
     appVersion: 0.18.1
-    created: "2026-08-20T00:03:34.801725399Z"
+    created: "2026-09-22T20:01:10.973986049Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -129,7 +147,7 @@ entries:
     version: 0.18.1
   - apiVersion: v2
     appVersion: 0.18.0
-    created: "2026-08-20T00:03:34.799947113Z"
+    created: "2026-09-22T20:01:10.972545678Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -147,7 +165,7 @@ entries:
     version: 0.18.0
   - apiVersion: v2
     appVersion: 0.17.4
-    created: "2026-08-20T00:03:34.797188474Z"
+    created: "2026-09-22T20:01:10.971153093Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -165,7 +183,7 @@ entries:
     version: 0.17.4
   - apiVersion: v2
     appVersion: 0.17.3
-    created: "2026-08-20T00:03:34.795661698Z"
+    created: "2026-09-22T20:01:10.969842565Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -183,7 +201,7 @@ entries:
     version: 0.17.3
   - apiVersion: v2
     appVersion: 0.17.2
-    created: "2026-08-20T00:03:34.793987187Z"
+    created: "2026-09-22T20:01:10.967772925Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -201,7 +219,7 @@ entries:
     version: 0.17.2
   - apiVersion: v2
     appVersion: 0.17.1
-    created: "2026-08-20T00:03:34.792448178Z"
+    created: "2026-09-22T20:01:10.966470512Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -219,7 +237,7 @@ entries:
     version: 0.17.1
   - apiVersion: v2
     appVersion: 0.17.0
-    created: "2026-08-20T00:03:34.790072838Z"
+    created: "2026-09-22T20:01:10.965168412Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -237,7 +255,7 @@ entries:
     version: 0.17.0
   - apiVersion: v2
     appVersion: 0.17.0-rc.1
-    created: "2026-08-20T00:03:34.788587118Z"
+    created: "2026-09-22T20:01:10.963869243Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -255,7 +273,7 @@ entries:
     version: 0.17.0-rc.1
   - apiVersion: v2
     appVersion: 0.16.2
-    created: "2026-08-20T00:03:34.787113442Z"
+    created: "2026-09-22T20:01:10.961818276Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -273,7 +291,7 @@ entries:
     version: 0.16.2
   - apiVersion: v2
     appVersion: 0.16.1
-    created: "2026-08-20T00:03:34.785577288Z"
+    created: "2026-09-22T20:01:10.960573798Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -291,7 +309,7 @@ entries:
     version: 0.16.1
   - apiVersion: v2
     appVersion: 0.16.0
-    created: "2026-08-20T00:03:34.783092666Z"
+    created: "2026-09-22T20:01:10.959330017Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -309,7 +327,7 @@ entries:
     version: 0.16.0
   - apiVersion: v2
     appVersion: 0.16.0-rc.1
-    created: "2026-08-20T00:03:34.781579034Z"
+    created: "2026-09-22T20:01:10.957980612Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -327,7 +345,7 @@ entries:
     version: 0.16.0-rc.1
   - apiVersion: v2
     appVersion: 0.15.1
-    created: "2026-08-20T00:03:34.780054232Z"
+    created: "2026-09-22T20:01:10.955800193Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -345,7 +363,7 @@ entries:
     version: 0.15.1
   - apiVersion: v2
     appVersion: 0.15.0
-    created: "2026-08-20T00:03:34.778515093Z"
+    created: "2026-09-22T20:01:10.954511604Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -363,7 +381,7 @@ entries:
     version: 0.15.0
   - apiVersion: v2
     appVersion: 0.15.0-rc.2
-    created: "2026-08-20T00:03:34.776177827Z"
+    created: "2026-09-22T20:01:10.953248122Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -381,7 +399,7 @@ entries:
     version: 0.15.0-rc.2
   - apiVersion: v2
     appVersion: 0.15.0-rc.1
-    created: "2026-08-20T00:03:34.774697368Z"
+    created: "2026-09-22T20:01:10.951931489Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -399,8 +417,26 @@ entries:
     version: 0.15.0-rc.1
   nvidia-device-plugin:
   - apiVersion: v2
+    appVersion: 0.20.1
+    created: "2026-09-22T20:01:11.05546297Z"
+    dependencies:
+    - alias: nfd
+      condition: nfd.enabled,gfd.enabled
+      name: node-feature-discovery
+      repository: oci://registry.k8s.io/nfd/charts
+      version: 0.19.0
+    description: A Helm chart for the nvidia-device-plugin on Kubernetes
+    digest: b705142f03ac17906bfcface9319e2f7b9a570d2af7f04f23252723ce2c0bb8e
+    home: https://github.com/NVIDIA/k8s-device-plugin
+    kubeVersion: '>= 1.10.0-0'
+    name: nvidia-device-plugin
+    type: application
+    urls:
+    - https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.20.1.tgz
+    version: 0.20.1
+  - apiVersion: v2
     appVersion: 0.20.0
-    created: "2026-08-20T00:03:34.887352651Z"
+    created: "2026-09-22T20:01:11.051558292Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -418,7 +454,7 @@ entries:
     version: 0.20.0
   - apiVersion: v2
     appVersion: 0.19.3
-    created: "2026-08-20T00:03:34.88243895Z"
+    created: "2026-09-22T20:01:11.04816063Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -436,7 +472,7 @@ entries:
     version: 0.19.3
   - apiVersion: v2
     appVersion: 0.19.2
-    created: "2026-08-20T00:03:34.880793112Z"
+    created: "2026-09-22T20:01:11.045944554Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -454,7 +490,7 @@ entries:
     version: 0.19.2
   - apiVersion: v2
     appVersion: 0.19.1
-    created: "2026-08-20T00:03:34.87909656Z"
+    created: "2026-09-22T20:01:11.044567392Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -472,7 +508,7 @@ entries:
     version: 0.19.1
   - apiVersion: v2
     appVersion: 0.19.0
-    created: "2026-08-20T00:03:34.876575679Z"
+    created: "2026-09-22T20:01:11.043137795Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -490,7 +526,7 @@ entries:
     version: 0.19.0
   - apiVersion: v2
     appVersion: 0.18.2
-    created: "2026-08-20T00:03:34.87492876Z"
+    created: "2026-09-22T20:01:11.041689265Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -508,7 +544,7 @@ entries:
     version: 0.18.2
   - apiVersion: v2
     appVersion: 0.18.1
-    created: "2026-08-20T00:03:34.873256051Z"
+    created: "2026-09-22T20:01:11.039517862Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -526,7 +562,7 @@ entries:
     version: 0.18.1
   - apiVersion: v2
     appVersion: 0.18.0
-    created: "2026-08-20T00:03:34.871064971Z"
+    created: "2026-09-22T20:01:11.038134567Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -544,7 +580,7 @@ entries:
     version: 0.18.0
   - apiVersion: v2
     appVersion: 0.17.4
-    created: "2026-08-20T00:03:34.869264205Z"
+    created: "2026-09-22T20:01:11.03674744Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -562,7 +598,7 @@ entries:
     version: 0.17.4
   - apiVersion: v2
     appVersion: 0.17.3
-    created: "2026-08-20T00:03:34.867801788Z"
+    created: "2026-09-22T20:01:11.03541684Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -580,7 +616,7 @@ entries:
     version: 0.17.3
   - apiVersion: v2
     appVersion: 0.17.2
-    created: "2026-08-20T00:03:34.866304658Z"
+    created: "2026-09-22T20:01:11.033192087Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -598,7 +634,7 @@ entries:
     version: 0.17.2
   - apiVersion: v2
     appVersion: 0.17.1
-    created: "2026-08-20T00:03:34.864767483Z"
+    created: "2026-09-22T20:01:11.031973571Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -616,7 +652,7 @@ entries:
     version: 0.17.1
   - apiVersion: v2
     appVersion: 0.17.0
-    created: "2026-08-20T00:03:34.862482387Z"
+    created: "2026-09-22T20:01:11.030747503Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -634,7 +670,7 @@ entries:
     version: 0.17.0
   - apiVersion: v2
     appVersion: 0.17.0-rc.1
-    created: "2026-08-20T00:03:34.861022375Z"
+    created: "2026-09-22T20:01:11.029501527Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -652,7 +688,7 @@ entries:
     version: 0.17.0-rc.1
   - apiVersion: v2
     appVersion: 0.16.2
-    created: "2026-08-20T00:03:34.859518743Z"
+    created: "2026-09-22T20:01:11.027927Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -670,7 +706,7 @@ entries:
     version: 0.16.2
   - apiVersion: v2
     appVersion: 0.16.1
-    created: "2026-08-20T00:03:34.85804187Z"
+    created: "2026-09-22T20:01:11.026267274Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -688,7 +724,7 @@ entries:
     version: 0.16.1
   - apiVersion: v2
     appVersion: 0.16.0
-    created: "2026-08-20T00:03:34.856227444Z"
+    created: "2026-09-22T20:01:11.025045655Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -706,7 +742,7 @@ entries:
     version: 0.16.0
   - apiVersion: v2
     appVersion: 0.16.0-rc.1
-    created: "2026-08-20T00:03:34.854249918Z"
+    created: "2026-09-22T20:01:11.023779026Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -724,7 +760,7 @@ entries:
     version: 0.16.0-rc.1
   - apiVersion: v2
     appVersion: 0.15.1
-    created: "2026-08-20T00:03:34.852696893Z"
+    created: "2026-09-22T20:01:11.022497055Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -742,7 +778,7 @@ entries:
     version: 0.15.1
   - apiVersion: v2
     appVersion: 0.15.0
-    created: "2026-08-20T00:03:34.851185115Z"
+    created: "2026-09-22T20:01:11.020828452Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -760,7 +796,7 @@ entries:
     version: 0.15.0
   - apiVersion: v2
     appVersion: 0.15.0-rc.2
-    created: "2026-08-20T00:03:34.849717218Z"
+    created: "2026-09-22T20:01:11.019297535Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -778,7 +814,7 @@ entries:
     version: 0.15.0-rc.2
   - apiVersion: v2
     appVersion: 0.15.0-rc.1
-    created: "2026-08-20T00:03:34.848047293Z"
+    created: "2026-09-22T20:01:11.01807982Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -796,7 +832,7 @@ entries:
     version: 0.15.0-rc.1
   - apiVersion: v2
     appVersion: 0.14.5
-    created: "2026-08-20T00:03:34.84613024Z"
+    created: "2026-09-22T20:01:11.016890378Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -819,7 +855,7 @@ entries:
     version: 0.14.5
   - apiVersion: v2
     appVersion: 0.14.4
-    created: "2026-08-20T00:03:34.844685907Z"
+    created: "2026-09-22T20:01:11.015668123Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -842,7 +878,7 @@ entries:
     version: 0.14.4
   - apiVersion: v2
     appVersion: 0.14.3
-    created: "2026-08-20T00:03:34.843262654Z"
+    created: "2026-09-22T20:01:11.013770422Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -865,7 +901,7 @@ entries:
     version: 0.14.3
   - apiVersion: v2
     appVersion: 0.14.2
-    created: "2026-08-20T00:03:34.841851554Z"
+    created: "2026-09-22T20:01:11.0126055Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -888,7 +924,7 @@ entries:
     version: 0.14.2
   - apiVersion: v2
     appVersion: 0.14.1
-    created: "2026-08-20T00:03:34.840245901Z"
+    created: "2026-09-22T20:01:11.011390157Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -911,7 +947,7 @@ entries:
     version: 0.14.1
   - apiVersion: v2
     appVersion: 0.14.0
-    created: "2026-08-20T00:03:34.838036652Z"
+    created: "2026-09-22T20:01:11.010216255Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -934,7 +970,7 @@ entries:
     version: 0.14.0
   - apiVersion: v2
     appVersion: 0.14.0-rc.3
-    created: "2026-08-20T00:03:34.836631092Z"
+    created: "2026-09-22T20:01:11.008865263Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -957,7 +993,7 @@ entries:
     version: 0.14.0-rc.3
   - apiVersion: v2
     appVersion: 0.14.0-rc.2
-    created: "2026-08-20T00:03:34.835233768Z"
+    created: "2026-09-22T20:01:11.006719022Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -980,7 +1016,7 @@ entries:
     version: 0.14.0-rc.2
   - apiVersion: v2
     appVersion: 0.14.0-rc.1
-    created: "2026-08-20T00:03:34.833828067Z"
+    created: "2026-09-22T20:01:11.005443163Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -1003,7 +1039,7 @@ entries:
     version: 0.14.0-rc.1
   - apiVersion: v2
     appVersion: 0.13.0
-    created: "2026-08-20T00:03:34.832379126Z"
+    created: "2026-09-22T20:01:11.004281484Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -1026,7 +1062,7 @@ entries:
     version: 0.13.0
   - apiVersion: v2
     appVersion: 0.13.0-rc.3
-    created: "2026-08-20T00:03:34.830307478Z"
+    created: "2026-09-22T20:01:11.003183392Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -1049,7 +1085,7 @@ entries:
     version: 0.13.0-rc.3
   - apiVersion: v2
     appVersion: 0.13.0-rc.2
-    created: "2026-08-20T00:03:34.828911556Z"
+    created: "2026-09-22T20:01:11.001985398Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -1072,7 +1108,7 @@ entries:
     version: 0.13.0-rc.2
   - apiVersion: v2
     appVersion: 0.13.0-rc.1
-    created: "2026-08-20T00:03:34.82763683Z"
+    created: "2026-09-22T20:01:11.000207564Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -1095,7 +1131,7 @@ entries:
     version: 0.13.0-rc.1
   - apiVersion: v2
     appVersion: 0.12.3
-    created: "2026-08-20T00:03:34.826007694Z"
+    created: "2026-09-22T20:01:10.999172154Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -1118,7 +1154,7 @@ entries:
     version: 0.12.3
   - apiVersion: v2
     appVersion: 0.12.2
-    created: "2026-08-20T00:03:34.82460561Z"
+    created: "2026-09-22T20:01:10.998133076Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -1141,7 +1177,7 @@ entries:
     version: 0.12.2
   - apiVersion: v2
     appVersion: 0.12.1
-    created: "2026-08-20T00:03:34.823358055Z"
+    created: "2026-09-22T20:01:10.997087141Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -1164,7 +1200,7 @@ entries:
     version: 0.12.1
   - apiVersion: v2
     appVersion: 0.12.0
-    created: "2026-08-20T00:03:34.82165154Z"
+    created: "2026-09-22T20:01:10.995797112Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -1187,7 +1223,7 @@ entries:
     version: 0.12.0
   - apiVersion: v2
     appVersion: 0.12.0-rc.6
-    created: "2026-08-20T00:03:34.820171191Z"
+    created: "2026-09-22T20:01:10.994010761Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -1210,7 +1246,7 @@ entries:
     version: 0.12.0-rc.6
   - apiVersion: v2
     appVersion: 0.12.0-rc.5
-    created: "2026-08-20T00:03:34.818936219Z"
+    created: "2026-09-22T20:01:10.992990997Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -1233,7 +1269,7 @@ entries:
     version: 0.12.0-rc.5
   - apiVersion: v2
     appVersion: 0.12.0-rc.4
-    created: "2026-08-20T00:03:34.8177459Z"
+    created: "2026-09-22T20:01:10.991963586Z"
     dependencies:
     - alias: nfd
       condition: nfd.enabled,gfd.enabled
@@ -1256,7 +1292,7 @@ entries:
     version: 0.12.0-rc.4
   - apiVersion: v2
     appVersion: 0.12.0-rc.3
-    created: "2026-08-20T00:03:34.816556342Z"
+    created: "2026-09-22T20:01:10.990973976Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 8fade18fc4f11b43e0690211fdbaf7b4fd81862a6824267c6ed5cbbf4f11a8a7
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1268,7 +1304,7 @@ entries:
     version: 0.12.0-rc.3
   - apiVersion: v2
     appVersion: 0.12.0-rc.2
-    created: "2026-08-20T00:03:34.816311586Z"
+    created: "2026-09-22T20:01:10.990793709Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: b5d6ee330ee18a1102a26ff43df7ec6dce5d354d1757b9e9d8e790cc4bb4688b
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1280,7 +1316,7 @@ entries:
     version: 0.12.0-rc.2
   - apiVersion: v2
     appVersion: 0.12.0-rc.1
-    created: "2026-08-20T00:03:34.816061911Z"
+    created: "2026-09-22T20:01:10.990608377Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 5c617c9c829bea516bb7a5db2baf591d34bebb58e79fbead06f3f974cfb7ba86
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1292,7 +1328,7 @@ entries:
     version: 0.12.0-rc.1
   - apiVersion: v2
     appVersion: 0.11.0
-    created: "2026-08-20T00:03:34.815813788Z"
+    created: "2026-09-22T20:01:10.990428275Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 0a6c5c4a1d7753625d9cda0de7994ce9dbd683846bfb4c9ca8b0bbeb5cf98c4b
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1304,7 +1340,7 @@ entries:
     version: 0.11.0
   - apiVersion: v2
     appVersion: 0.10.0
-    created: "2026-08-20T00:03:34.815543925Z"
+    created: "2026-09-22T20:01:10.990245134Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 2875296daa3b2d82019115131faad5939e1b7564739ca4f15ff6f31babf2b2ba
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1316,7 +1352,7 @@ entries:
     version: 0.10.0
   - apiVersion: v2
     appVersion: 0.9.0
-    created: "2026-08-20T00:03:34.891435673Z"
+    created: "2026-09-22T20:01:11.058205817Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 84988d3baa300487a2dc8e43fe2fb52a8587c82391b33bf9ce18ce577a6926c5
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1328,7 +1364,7 @@ entries:
     version: 0.9.0
   - apiVersion: v2
     appVersion: 0.8.2
-    created: "2026-08-20T00:03:34.891143798Z"
+    created: "2026-09-22T20:01:11.058038697Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 688a0d373716cbe7992d00c469e7deb68d13f86fb6b9151e58952af77c542e51
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1340,7 +1376,7 @@ entries:
     version: 0.8.2
   - apiVersion: v2
     appVersion: 0.8.1
-    created: "2026-08-20T00:03:34.89086046Z"
+    created: "2026-09-22T20:01:11.057869932Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: b401a983702d654919944306069ad0c9e934b17bf71c4b2403a7b20a270bb79c
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1352,7 +1388,7 @@ entries:
     version: 0.8.1
   - apiVersion: v2
     appVersion: 0.8.0
-    created: "2026-08-20T00:03:34.890562505Z"
+    created: "2026-09-22T20:01:11.057703299Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: f1bda480b34cc3cd11436e64ef9e05e61ef4275bc4def1f0ee4353a8c5738e90
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1364,7 +1400,7 @@ entries:
     version: 0.8.0
   - apiVersion: v2
     appVersion: 0.7.3
-    created: "2026-08-20T00:03:34.890314703Z"
+    created: "2026-09-22T20:01:11.057542479Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: dfbad87e2bb96b07fb7d954feaa75b31f9fa6094cdf79629cdd06b059d73579c
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1376,7 +1412,7 @@ entries:
     version: 0.7.3
   - apiVersion: v2
     appVersion: 0.7.2
-    created: "2026-08-20T00:03:34.890062623Z"
+    created: "2026-09-22T20:01:11.057380299Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 96baf5b857113497c3d9cf607af15d9baeb6eda7e3301eeb9617c065df0b2121
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1388,7 +1424,7 @@ entries:
     version: 0.7.2
   - apiVersion: v2
     appVersion: 0.7.1
-    created: "2026-08-20T00:03:34.889820071Z"
+    created: "2026-09-22T20:01:11.057221588Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: db847545cfa603f55b79284933f6d44a1193aeedc37c85e861dbe62d9b344a49
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1400,7 +1436,7 @@ entries:
     version: 0.7.1
   - apiVersion: v2
     appVersion: 0.7.0
-    created: "2026-08-20T00:03:34.889560858Z"
+    created: "2026-09-22T20:01:11.057061693Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 4e982ffc0fbca6b5ee2cb20ec6c88b30bc27f8ef7fdf1481b8f345b34f53d1a0
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1412,7 +1448,7 @@ entries:
     version: 0.7.0
   - apiVersion: v2
     appVersion: 0.7.0-rc.8
-    created: "2026-08-20T00:03:34.889338874Z"
+    created: "2026-09-22T20:01:11.056891686Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 7c8ffd37565d6395a288fc51d6a8af4f57cd23b571656e8c82ab1ca84924acbe
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1424,7 +1460,7 @@ entries:
     version: 0.7.0-rc.8
   - apiVersion: v2
     appVersion: 0.7.0-rc.7
-    created: "2026-08-20T00:03:34.889119084Z"
+    created: "2026-09-22T20:01:11.056733031Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 457b324725f8ad68b609110c74b2eac363d8521d17f1db470636c7b059d2c3e7
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1436,7 +1472,7 @@ entries:
     version: 0.7.0-rc.7
   - apiVersion: v2
     appVersion: 0.7.0-rc.6
-    created: "2026-08-20T00:03:34.888895237Z"
+    created: "2026-09-22T20:01:11.056574202Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: ef40df5dbe87c10860741db634fe30236bea12e5f9d1ccfcd0084307bcd89545
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1448,7 +1484,7 @@ entries:
     version: 0.7.0-rc.6
   - apiVersion: v2
     appVersion: 0.7.0-rc.5
-    created: "2026-08-20T00:03:34.888645762Z"
+    created: "2026-09-22T20:01:11.056413838Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: f0697e1ea997a32b32b80e1269fb0520fa09e30d77f8b7299d46faeb43fc299a
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1460,7 +1496,7 @@ entries:
     version: 0.7.0-rc.5
   - apiVersion: v2
     appVersion: 0.7.0-rc.4
-    created: "2026-08-20T00:03:34.888420472Z"
+    created: "2026-09-22T20:01:11.056251376Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: ff0e44aa17572f586fac1b7fc483c0a6664490f76802e5739f3116ea4d8d19d0
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1472,7 +1508,7 @@ entries:
     version: 0.7.0-rc.4
   - apiVersion: v2
     appVersion: 0.7.0-rc.3
-    created: "2026-08-20T00:03:34.888197677Z"
+    created: "2026-09-22T20:01:11.056087024Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: aedd1691a082b089998d7b4a699997373a9af51cb25a542da347412d27319191
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1484,7 +1520,7 @@ entries:
     version: 0.7.0-rc.3
   - apiVersion: v2
     appVersion: 0.7.0-rc.2
-    created: "2026-08-20T00:03:34.887980552Z"
+    created: "2026-09-22T20:01:11.055919899Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: d61cfe352a5fdebb656636a1b78d81661eb9425c4fb00f2f0dadd9a1d4edebca
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1496,7 +1532,7 @@ entries:
     version: 0.7.0-rc.2
   - apiVersion: v2
     appVersion: 0.7.0-rc.1
-    created: "2026-08-20T00:03:34.887760712Z"
+    created: "2026-09-22T20:01:11.05576159Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 4ec5ce800641292bae9c49e0cd0c564829864f09371a498e4765e8545be8d1e5
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1508,7 +1544,7 @@ entries:
     version: 0.7.0-rc.1
   - apiVersion: v2
     appVersion: 0.6.0
-    created: "2026-08-20T00:03:34.887548286Z"
+    created: "2026-09-22T20:01:11.055620116Z"
     description: A Helm chart for the nvidia-device-plugin on Kubernetes
     digest: 9e41b02c88844890c5f4b78a6d0beaeb936b478116172bb015381ccf32f6057a
     home: https://github.com/NVIDIA/k8s-device-plugin
@@ -1518,4 +1554,4 @@ entries:
     urls:
     - https://nvidia.github.io/k8s-device-plugin/stable/nvidia-device-plugin-0.6.0.tgz
     version: 0.6.0
-generated: "2026-08-20T00:03:34.773017597Z"
+generated: "2026-09-22T20:01:10.949509006Z"
