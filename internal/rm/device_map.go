@@ -299,6 +299,12 @@ func updateDeviceMapWithReplicas(replicatedResources *spec.ReplicatedResources, 
 		}
 	}
 
+	// selectedIDs unions the device IDs claimed by every entry per source
+	// resource. Entries may share a Name (to give different GPUs different
+	// replica counts), so leftovers must be computed against the union, not
+	// one entry at a time.
+	selectedIDs := make(map[spec.ResourceName][]string)
+
 	// Walk shared Resources and update devices in the device map as appropriate.
 	for _, resource := range replicatedResources.Resources {
 		r := resource
@@ -311,11 +317,7 @@ func updateDeviceMapWithReplicas(replicatedResources *spec.ReplicatedResources, 
 		if len(ids) == 0 {
 			continue
 		}
-
-		// Add any devices we don't want replicated directly into the device map.
-		for _, d := range oDevices[r.Name].Difference(oDevices[r.Name].Subset(ids)) {
-			devices.insert(r.Name, d)
-		}
+		selectedIDs[r.Name] = append(selectedIDs[r.Name], ids...)
 
 		// Create replicated devices add them to the device map.
 		// Rename the resource for replicated devices as requested.
@@ -341,6 +343,15 @@ func updateDeviceMapWithReplicas(replicatedResources *spec.ReplicatedResources, 
 				}
 				devices.insert(name, &replicatedDevice)
 			}
+		}
+	}
+
+	// Add unselected devices back under their source name, computed once against
+	// the union of all selections so entries sharing a Name don't re-add each
+	// other's devices.
+	for name, ids := range selectedIDs {
+		for _, d := range oDevices[name].Difference(oDevices[name].Subset(ids)) {
+			devices.insert(name, d)
 		}
 	}
 
