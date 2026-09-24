@@ -1,0 +1,124 @@
+name: MicroShift CI
+
+on:
+  push:
+    branches:
+      - "feature/*"
+
+jobs:
+  helm-tests:
+    name: Helm Template Tests
+    runs-on: [self-hosted, microshift]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.6'
+
+      - name: Run helm template tests
+        run: make test-helm
+
+  microshift-gpu:
+    name: MicroShift GPU Verification
+    runs-on: [self-hosted, microshift]
+    needs: helm-tests
+    env:
+      NAMESPACE: nvidia-device-plugin
+      HELM_CHART: ./deployments/helm/nvidia-device-plugin
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Check MicroShift is ready
+        run: |
+          kubectl get nodes
+          kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded | grep -v NAMESPACE || true
+
+      - name: Uninstall previous release
+        run: |
+          helm uninstall nvidia-device-plugin -n "$NAMESPACE" --wait 2>/dev/null || true
+
+      - name: Create namespace with PSS labels
+        run: |
+          kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | \
+            kubectl apply -f -
+          kubectl label namespace "$NAMESPACE" \
+            pod-security.kubernetes.io/enforce=privileged \
+            --overwrite
+
+      - name: Install chart
+        run: |
+          helm install nvidia-device-plugin "$HELM_CHART" \
+            --namespace "$NAMESPACE" \
+            --set compatWithCPUManager=true \
+            --wait \
+            --timeout 120s
+
+      - name: Verify RBAC resources
+        run: |
+          echo "--- ClusterRole (should NOT have SCC rule) ---"
+          kubectl get clusterrole -l app.kubernetes.io/instance=nvidia-device-plugin -o yaml | \
+            grep -A5 'security.openshift.io' && echo "FAIL: SCC rule found in ClusterRole" && exit 1 || \
+            echo "OK: no SCC rule in ClusterRole"
+
+          echo "--- Namespaced Role (should have SCC rule) ---"
+          kubectl get role -n "$NAMESPACE" -l app.kubernetes.io/instance=nvidia-device-plugin -o yaml | \
+            grep -q 'security.openshift.io' && echo "OK: SCC rule in namespaced Role" || \
+            { echo "FAIL: SCC rule missing from namespaced Role"; exit 1; }
+
+          echo "--- RoleBinding ---"
+          kubectl get rolebinding -n "$NAMESPACE" -l app.kubernetes.io/instance=nvidia-device-plugin -o yaml | \
+            grep -q 'kind: Role' && echo "OK: RoleBinding references Role" || \
+            { echo "FAIL: RoleBinding missing or wrong"; exit 1; }
+
+      - name: Wait for DaemonSet rollout
+        run: |
+          kubectl rollout status daemonset -n "$NAMESPACE" \
+            -l app.kubernetes.io/instance=nvidia-device-plugin \
+            --timeout=120s
+
+      - name: Verify pods running with correct SCC
+        run: |
+          echo "--- Pod status ---"
+          kubectl get pods -n "$NAMESPACE" -o wide
+
+          echo "--- SCC annotation ---"
+          SCC=$(kubectl get pods -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.annotations.openshift\.io/scc}')
+          echo "Pod SCC: $SCC"
+          if [ "$SCC" != "privileged" ]; then
+            echo "FAIL: expected SCC 'privileged', got '$SCC'"
+            exit 1
+          fi
+          echo "OK: pod running with privileged SCC"
+
+      - name: Verify GPU resources advertised
+        run: |
+          echo "--- Node GPU capacity ---"
+          kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}nvidia.com/gpu={.status.capacity.nvidia\.com/gpu}{"\n"}{end}'
+
+          GPU_COUNT=$(kubectl get nodes -o jsonpath='{.items[0].status.capacity.nvidia\.com/gpu}' 2>/dev/null || echo "0")
+          if [ "$GPU_COUNT" = "0" ] || [ -z "$GPU_COUNT" ]; then
+            echo "WARNING: no nvidia.com/gpu capacity reported on node (GPU may not be present)"
+          else
+            echo "OK: $GPU_COUNT GPU(s) advertised"
+          fi
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "=== DaemonSet ==="
+          kubectl describe daemonset -n "$NAMESPACE" || true
+          echo "=== Pods ==="
+          kubectl describe pods -n "$NAMESPACE" || true
+          echo "=== Pod Logs ==="
+          kubectl logs -n "$NAMESPACE" -l app.kubernetes.io/instance=nvidia-device-plugin --tail=100 || true
+          echo "=== Events ==="
+          kubectl get events -n "$NAMESPACE" --sort-by='.lastTimestamp' || true
+
+      - name: Cleanup
+        if: always()
+        run: |
+          helm uninstall nvidia-device-plugin -n "$NAMESPACE" --wait 2>/dev/null || true
