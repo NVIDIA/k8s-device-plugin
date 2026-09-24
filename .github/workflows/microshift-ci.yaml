@@ -37,9 +37,12 @@ jobs:
           kubectl get nodes
           kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded | grep -v NAMESPACE || true
 
-      - name: Uninstall previous release
+      - name: Uninstall previous releases
         run: |
-          helm uninstall nvidia-device-plugin -n "$NAMESPACE" --wait 2>/dev/null || true
+          for release in $(helm list -n "$NAMESPACE" -q 2>/dev/null); do
+            echo "Removing release: $release"
+            helm uninstall "$release" -n "$NAMESPACE" --wait || true
+          done
 
       - name: Create namespace with PSS labels
         run: |
@@ -85,14 +88,21 @@ jobs:
           echo "--- Pod status ---"
           kubectl get pods -n "$NAMESPACE" -o wide
 
-          echo "--- SCC annotation ---"
-          SCC=$(kubectl get pods -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.annotations.openshift\.io/scc}')
-          echo "Pod SCC: $SCC"
+          echo "--- SCC annotations (all pods) ---"
+          kubectl get pods -n "$NAMESPACE" \
+            -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.annotations.openshift\.io/scc}{"\n"}{end}'
+
+          echo "--- Device plugin pod SCC ---"
+          SCC=$(kubectl get pods -n "$NAMESPACE" \
+            -l app.kubernetes.io/instance=nvidia-device-plugin \
+            -l app.kubernetes.io/name=nvidia-device-plugin \
+            -o jsonpath='{.items[0].metadata.annotations.openshift\.io/scc}')
+          echo "Device plugin pod SCC: $SCC"
           if [ "$SCC" != "privileged" ]; then
             echo "FAIL: expected SCC 'privileged', got '$SCC'"
             exit 1
           fi
-          echo "OK: pod running with privileged SCC"
+          echo "OK: device plugin pod running with privileged SCC"
 
       - name: Verify GPU resources advertised
         run: |
@@ -121,4 +131,6 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          helm uninstall nvidia-device-plugin -n "$NAMESPACE" --wait 2>/dev/null || true
+          for release in $(helm list -n "$NAMESPACE" -q 2>/dev/null); do
+            helm uninstall "$release" -n "$NAMESPACE" --wait || true
+          done
