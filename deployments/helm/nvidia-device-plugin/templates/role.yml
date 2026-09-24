@@ -1,22 +1,22 @@
+{{- if .Values.gfd.enabled }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "nvidia-device-plugin.fullname" . }}-role
+  name: {{ include "nvidia-device-plugin.fullname" . }}-cluster-role
   labels:
     {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
 rules:
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list", "watch"]
-  {{- if .Values.gfd.enabled }}
   - apiGroups: ["nfd.k8s-sigs.io"]
     resources: ["nodefeatures"]
     verbs: ["get", "list", "watch", "create", "update"]
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get"]
-  {{- end }}
+{{- end }}
 {{- if .Capabilities.APIVersions.Has "security.openshift.io/v1/SecurityContextConstraints" }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
