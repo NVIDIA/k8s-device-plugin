@@ -172,7 +172,65 @@ func TestRBACTemplatesNonOpenShiftWithGFD(t *testing.T) {
 		}
 	}
 
+	// With GFD: ClusterRole should include NFD and pod rules
+	var hasNFD, hasPods bool
+	for _, rule := range clusterRole.Rules {
+		for _, group := range rule.APIGroups {
+			if group == "nfd.k8s-sigs.io" {
+				hasNFD = true
+			}
+		}
+		for _, res := range rule.Resources {
+			if res == "pods" {
+				hasPods = true
+			}
+		}
+	}
+	require.True(t, hasNFD, "ClusterRole should include NFD rules with GFD enabled")
+	require.True(t, hasPods, "ClusterRole should include pod rules with GFD enabled")
+
 	// Only ClusterRoleBinding, no RoleBinding
+	bindingOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role-binding.yml"})
+	bindingDocs := splitYAMLDocuments(bindingOutput)
+	require.Len(t, bindingDocs, 1, "expected only ClusterRoleBinding")
+
+	var crb rbacv1.ClusterRoleBinding
+	helm.UnmarshalK8SYaml(t, bindingDocs[0], &crb)
+	require.Equal(t, "ClusterRoleBinding", crb.Kind)
+}
+
+func TestRBACTemplatesNonOpenShiftWithConfigMap(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	namespaceName := "rbac-test-non-openshift-configmap"
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"config.default": "default",
+			"config.map.default": "version: v1\nflags:\n  migStrategy: none",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", namespaceName),
+		Logger:         logger.Discard,
+	}
+
+	// With ConfigMap but no GFD: ClusterRole should exist with only node rules
+	roleOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role.yml"})
+	roleDocs := splitYAMLDocuments(roleOutput)
+	require.Len(t, roleDocs, 1, "expected ClusterRole for config-manager")
+
+	var clusterRole rbacv1.ClusterRole
+	helm.UnmarshalK8SYaml(t, roleDocs[0], &clusterRole)
+
+	require.Len(t, clusterRole.Rules, 1, "expected only node rules without GFD")
+	require.Contains(t, clusterRole.Rules[0].Resources, "nodes")
+
+	for _, rule := range clusterRole.Rules {
+		for _, group := range rule.APIGroups {
+			require.NotEqual(t, "nfd.k8s-sigs.io", group, "NFD rules should not be present without GFD")
+		}
+	}
+
+	// ClusterRoleBinding should exist
 	bindingOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role-binding.yml"})
 	bindingDocs := splitYAMLDocuments(bindingOutput)
 	require.Len(t, bindingDocs, 1, "expected only ClusterRoleBinding")

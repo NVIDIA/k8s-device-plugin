@@ -184,10 +184,134 @@ jobs:
           echo "=== Events ==="
           kubectl get events -n "$NAMESPACE" --sort-by='.lastTimestamp' || true
 
+  microshift-configmap:
+    name: ConfigMap Config (no GFD)
+    runs-on: [self-hosted, microshift]
+    needs: microshift-base
+    env:
+      NAMESPACE: nvidia-device-plugin
+      HELM_CHART: ./deployments/helm/nvidia-device-plugin
+      RELEASE: nvidia-device-plugin
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Upgrade to enable ConfigMap-based config
+        run: |
+          helm upgrade "$RELEASE" "$HELM_CHART" \
+            --namespace "$NAMESPACE" \
+            --set compatWithCPUManager=true \
+            --set config.default=default \
+            --set-string config.map.default="version: v1" \
+            --wait \
+            --timeout 120s
+
+      - name: Verify ClusterRole exists for config-manager
+        run: |
+          echo "--- ClusterRole (should exist for config-manager node watching) ---"
+          kubectl get clusterrole -l app.kubernetes.io/instance="$RELEASE" -o yaml | \
+            grep -q 'nodes' && echo "OK: ClusterRole has node rules" || \
+            { echo "FAIL: ClusterRole missing or no node rules"; exit 1; }
+
+          echo "--- ClusterRole must NOT have NFD rules (GFD not enabled) ---"
+          if kubectl get clusterrole -l app.kubernetes.io/instance="$RELEASE" -o yaml | grep -q 'nfd.k8s-sigs.io'; then
+            echo "FAIL: NFD rules should not be in ClusterRole without GFD"
+            exit 1
+          fi
+          echo "OK: no NFD rules in ClusterRole"
+
+      - name: Verify config-manager sidecar is running
+        run: |
+          kubectl rollout status daemonset -n "$NAMESPACE" \
+            -l app.kubernetes.io/instance="$RELEASE" \
+            --timeout=120s
+
+          echo "--- Checking for config-manager sidecar ---"
+          CONTAINERS=$(kubectl get pods -n "$NAMESPACE" \
+            -l app.kubernetes.io/instance="$RELEASE" \
+            -l app.kubernetes.io/name=nvidia-device-plugin \
+            -o jsonpath='{.items[0].spec.containers[*].name}')
+          echo "Containers: $CONTAINERS"
+          echo "$CONTAINERS" | grep -q "nvidia-device-plugin-sidecar" || \
+            { echo "FAIL: config-manager sidecar not found"; exit 1; }
+          echo "OK: config-manager sidecar is running"
+
+      - name: Verify GPU resources advertised
+        run: |
+          for i in $(seq 1 30); do
+            GPU_COUNT=$(kubectl get nodes -o jsonpath='{.items[0].status.capacity.nvidia\.com/gpu}' 2>/dev/null || echo "0")
+            if [ -n "$GPU_COUNT" ] && [ "$GPU_COUNT" != "0" ]; then
+              break
+            fi
+            echo "Attempt $i/30: waiting 2s..."
+            sleep 2
+          done
+
+          kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}nvidia.com/gpu={.status.capacity.nvidia\.com/gpu}{"\n"}{end}'
+
+          if [ "$GPU_COUNT" = "0" ] || [ -z "$GPU_COUNT" ]; then
+            echo "WARNING: no nvidia.com/gpu capacity reported after 60s"
+          else
+            echo "OK: $GPU_COUNT GPU(s) advertised"
+          fi
+
+      - name: Run CUDA vectorAdd test
+        run: |
+          kubectl run test-cuda-workload \
+            --namespace="$NAMESPACE" \
+            --image=nvcr.io/nvidia/k8s/cuda-sample:vectoradd-cuda11.7.1-ubi8 \
+            --restart=Never \
+            --overrides='{
+              "spec": {
+                "containers": [{
+                  "name": "cuda-vector-add",
+                  "image": "nvcr.io/nvidia/k8s/cuda-sample:vectoradd-cuda11.7.1-ubi8",
+                  "resources": {
+                    "limits": {"nvidia.com/gpu": "1"}
+                  },
+                  "securityContext": {
+                    "allowPrivilegeEscalation": false,
+                    "capabilities": {"drop": ["ALL"]},
+                    "runAsNonRoot": true,
+                    "seccompProfile": {"type": "RuntimeDefault"}
+                  }
+                }]
+              }
+            }'
+
+          echo "Waiting for CUDA test pod to complete..."
+          kubectl wait --for=condition=Ready=false --timeout=120s \
+            pod/test-cuda-workload -n "$NAMESPACE" || true
+          kubectl wait --for=jsonpath='{.status.phase}'=Succeeded --timeout=120s \
+            pod/test-cuda-workload -n "$NAMESPACE"
+
+          echo "--- CUDA test output ---"
+          kubectl logs test-cuda-workload -n "$NAMESPACE"
+          kubectl logs test-cuda-workload -n "$NAMESPACE" | grep -q "Test PASSED" || \
+            { echo "FAIL: CUDA vectorAdd did not pass"; exit 1; }
+          echo "OK: CUDA workload completed successfully"
+
+          kubectl delete pod test-cuda-workload -n "$NAMESPACE"
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "=== DaemonSet ==="
+          kubectl describe daemonset -n "$NAMESPACE" || true
+          echo "=== Pods ==="
+          kubectl describe pods -n "$NAMESPACE" || true
+          echo "=== Pod Logs ==="
+          kubectl logs -n "$NAMESPACE" -l app.kubernetes.io/instance="$RELEASE" --tail=100 || true
+          echo "=== CUDA test pod ==="
+          kubectl describe pod test-cuda-workload -n "$NAMESPACE" 2>/dev/null || true
+          kubectl logs test-cuda-workload -n "$NAMESPACE" 2>/dev/null || true
+          echo "=== Events ==="
+          kubectl get events -n "$NAMESPACE" --sort-by='.lastTimestamp' || true
+
   microshift-gfd:
     name: Install with GFD
     runs-on: [self-hosted, microshift]
-    needs: microshift-base
+    needs: microshift-configmap
     env:
       NAMESPACE: nvidia-device-plugin
       HELM_CHART: ./deployments/helm/nvidia-device-plugin
