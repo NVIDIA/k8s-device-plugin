@@ -276,6 +276,12 @@ func TestRBACTemplatesOpenShiftWithGFD(t *testing.T) {
 	require.Equal(t, "RoleBinding", rb.Kind)
 	require.Equal(t, namespaceName, rb.Namespace)
 	require.Equal(t, "Role", rb.RoleRef.Kind)
+	require.Len(t, rb.Subjects, 2, "RoleBinding should include device plugin and NFD worker service accounts")
+	var saNames []string
+	for _, s := range rb.Subjects {
+		saNames = append(saNames, s.Name)
+	}
+	require.Contains(t, saNames, "nvidia-device-plugin-node-feature-discovery-worker")
 }
 
 func splitYAMLDocuments(output string) []string {

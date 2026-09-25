@@ -32,4 +32,9 @@ subjects:
   - kind: ServiceAccount
     name: {{ include "nvidia-device-plugin.fullname" . }}-service-account
     namespace: {{ include "nvidia-device-plugin.namespace" . }}
+  {{- if .Values.gfd.enabled }}
+  - kind: ServiceAccount
+    name: {{ include "nvidia-device-plugin.fullname" . }}-node-feature-discovery-worker
+    namespace: {{ include "nvidia-device-plugin.namespace" . }}
+  {{- end }}
 {{- end }}
