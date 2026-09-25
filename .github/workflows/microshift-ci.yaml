@@ -162,7 +162,7 @@ jobs:
             --set compatWithCPUManager=true \
             --set gfd.enabled=true \
             --wait \
-            --timeout 120s
+            --timeout 300s
 
       - name: Verify ClusterRole exists with GFD
         run: |
