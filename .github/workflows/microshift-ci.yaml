@@ -108,12 +108,21 @@ jobs:
 
       - name: Verify GPU resources advertised
         run: |
+          echo "--- Waiting for GPU capacity on node ---"
+          for i in $(seq 1 30); do
+            GPU_COUNT=$(kubectl get nodes -o jsonpath='{.items[0].status.capacity.nvidia\.com/gpu}' 2>/dev/null || echo "0")
+            if [ -n "$GPU_COUNT" ] && [ "$GPU_COUNT" != "0" ]; then
+              break
+            fi
+            echo "Attempt $i/30: nvidia.com/gpu not yet reported, waiting 2s..."
+            sleep 2
+          done
+
           echo "--- Node GPU capacity ---"
           kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}nvidia.com/gpu={.status.capacity.nvidia\.com/gpu}{"\n"}{end}'
 
-          GPU_COUNT=$(kubectl get nodes -o jsonpath='{.items[0].status.capacity.nvidia\.com/gpu}' 2>/dev/null || echo "0")
           if [ "$GPU_COUNT" = "0" ] || [ -z "$GPU_COUNT" ]; then
-            echo "WARNING: no nvidia.com/gpu capacity reported on node (GPU may not be present)"
+            echo "WARNING: no nvidia.com/gpu capacity reported after 60s (GPU may not be present)"
           else
             echo "OK: $GPU_COUNT GPU(s) advertised"
           fi
