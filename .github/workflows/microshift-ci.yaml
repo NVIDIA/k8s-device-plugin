@@ -131,6 +131,44 @@ jobs:
             echo "OK: $GPU_COUNT GPU(s) advertised"
           fi
 
+      - name: Run CUDA vectorAdd test
+        run: |
+          kubectl run test-cuda-workload \
+            --namespace="$NAMESPACE" \
+            --image=nvcr.io/nvidia/k8s/cuda-sample:vectoradd-cuda11.7.1-ubi8 \
+            --restart=Never \
+            --overrides='{
+              "spec": {
+                "containers": [{
+                  "name": "cuda-vector-add",
+                  "image": "nvcr.io/nvidia/k8s/cuda-sample:vectoradd-cuda11.7.1-ubi8",
+                  "resources": {
+                    "limits": {"nvidia.com/gpu": "1"}
+                  },
+                  "securityContext": {
+                    "allowPrivilegeEscalation": false,
+                    "capabilities": {"drop": ["ALL"]},
+                    "runAsNonRoot": true,
+                    "seccompProfile": {"type": "RuntimeDefault"}
+                  }
+                }]
+              }
+            }'
+
+          echo "Waiting for CUDA test pod to complete..."
+          kubectl wait --for=condition=Ready=false --timeout=120s \
+            pod/test-cuda-workload -n "$NAMESPACE" || true
+          kubectl wait --for=jsonpath='{.status.phase}'=Succeeded --timeout=120s \
+            pod/test-cuda-workload -n "$NAMESPACE"
+
+          echo "--- CUDA test output ---"
+          kubectl logs test-cuda-workload -n "$NAMESPACE"
+          kubectl logs test-cuda-workload -n "$NAMESPACE" | grep -q "Test PASSED" || \
+            { echo "FAIL: CUDA vectorAdd did not pass"; exit 1; }
+          echo "OK: CUDA workload completed successfully"
+
+          kubectl delete pod test-cuda-workload -n "$NAMESPACE"
+
       - name: Collect logs on failure
         if: failure()
         run: |
@@ -140,6 +178,9 @@ jobs:
           kubectl describe pods -n "$NAMESPACE" || true
           echo "=== Pod Logs ==="
           kubectl logs -n "$NAMESPACE" -l app.kubernetes.io/instance="$RELEASE" --tail=100 || true
+          echo "=== CUDA test pod ==="
+          kubectl describe pod test-cuda-workload -n "$NAMESPACE" 2>/dev/null || true
+          kubectl logs test-cuda-workload -n "$NAMESPACE" 2>/dev/null || true
           echo "=== Events ==="
           kubectl get events -n "$NAMESPACE" --sort-by='.lastTimestamp' || true
 
@@ -231,6 +272,44 @@ jobs:
             echo "OK: $GPU_COUNT GPU(s) advertised"
           fi
 
+      - name: Run CUDA vectorAdd test
+        run: |
+          kubectl run test-cuda-workload \
+            --namespace="$NAMESPACE" \
+            --image=nvcr.io/nvidia/k8s/cuda-sample:vectoradd-cuda11.7.1-ubi8 \
+            --restart=Never \
+            --overrides='{
+              "spec": {
+                "containers": [{
+                  "name": "cuda-vector-add",
+                  "image": "nvcr.io/nvidia/k8s/cuda-sample:vectoradd-cuda11.7.1-ubi8",
+                  "resources": {
+                    "limits": {"nvidia.com/gpu": "1"}
+                  },
+                  "securityContext": {
+                    "allowPrivilegeEscalation": false,
+                    "capabilities": {"drop": ["ALL"]},
+                    "runAsNonRoot": true,
+                    "seccompProfile": {"type": "RuntimeDefault"}
+                  }
+                }]
+              }
+            }'
+
+          echo "Waiting for CUDA test pod to complete..."
+          kubectl wait --for=condition=Ready=false --timeout=120s \
+            pod/test-cuda-workload -n "$NAMESPACE" || true
+          kubectl wait --for=jsonpath='{.status.phase}'=Succeeded --timeout=120s \
+            pod/test-cuda-workload -n "$NAMESPACE"
+
+          echo "--- CUDA test output ---"
+          kubectl logs test-cuda-workload -n "$NAMESPACE"
+          kubectl logs test-cuda-workload -n "$NAMESPACE" | grep -q "Test PASSED" || \
+            { echo "FAIL: CUDA vectorAdd did not pass"; exit 1; }
+          echo "OK: CUDA workload completed successfully"
+
+          kubectl delete pod test-cuda-workload -n "$NAMESPACE"
+
       - name: Collect logs on failure
         if: failure()
         run: |
@@ -240,5 +319,8 @@ jobs:
           kubectl describe pods -n "$NAMESPACE" || true
           echo "=== Pod Logs ==="
           kubectl logs -n "$NAMESPACE" -l app.kubernetes.io/instance="$RELEASE" --tail=100 || true
+          echo "=== CUDA test pod ==="
+          kubectl describe pod test-cuda-workload -n "$NAMESPACE" 2>/dev/null || true
+          kubectl logs test-cuda-workload -n "$NAMESPACE" 2>/dev/null || true
           echo "=== Events ==="
           kubectl get events -n "$NAMESPACE" --sort-by='.lastTimestamp' || true
