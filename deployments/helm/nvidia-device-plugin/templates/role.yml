@@ -1,8 +1,9 @@
+{{- if or .Values.gfd.enabled (eq (include "nvidia-device-plugin.hasConfigMap" .) "true") }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "nvidia-device-plugin.fullname" . }}-role
+  name: {{ include "nvidia-device-plugin.fullname" . }}-cluster-role
   labels:
     {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
 rules:
@@ -17,3 +18,19 @@ rules:
     resources: ["pods"]
     verbs: ["get"]
   {{- end }}
+{{- end }}
+{{- if .Capabilities.APIVersions.Has "security.openshift.io/v1/SecurityContextConstraints" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "nvidia-device-plugin.fullname" . }}-role
+  namespace: {{ include "nvidia-device-plugin.namespace" . }}
+  labels:
+    {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["security.openshift.io"]
+    resourceNames: ["privileged"]
+    resources: ["securitycontextconstraints"]
+    verbs: ["use"]
+{{- end }}
