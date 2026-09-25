@@ -199,21 +199,21 @@ func TestRBACTemplatesNonOpenShiftWithGFD(t *testing.T) {
 	require.Equal(t, "ClusterRoleBinding", crb.Kind)
 }
 
-func TestRBACTemplatesNonOpenShiftWithConfigMap(t *testing.T) {
+func TestRBACTemplatesNonOpenShiftWithTimeSlicing(t *testing.T) {
 	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
 	require.NoError(t, err)
 
-	namespaceName := "rbac-test-non-openshift-configmap"
+	namespaceName := "rbac-test-non-openshift-timeslicing"
 	options := &helm.Options{
 		SetValues: map[string]string{
-			"config.default": "default",
-			"config.map.default": "version: v1\nflags:\n  migStrategy: none",
+			"config.default":         "timeslicing",
+			"config.map.timeslicing": "version: v1\nsharing:\n  timeSlicing:\n    resources:\n      - name: nvidia.com/gpu\n        replicas: 10",
 		},
 		KubectlOptions: k8s.NewKubectlOptions("", "", namespaceName),
 		Logger:         logger.Discard,
 	}
 
-	// With ConfigMap but no GFD: ClusterRole should exist with only node rules
+	// With time-slicing ConfigMap but no GFD: ClusterRole should exist with only node rules
 	roleOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role.yml"})
 	roleDocs := splitYAMLDocuments(roleOutput)
 	require.Len(t, roleDocs, 1, "expected ClusterRole for config-manager")
