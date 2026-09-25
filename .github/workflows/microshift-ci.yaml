@@ -21,13 +21,14 @@ jobs:
       - name: Run helm template tests
         run: make test-helm
 
-  microshift-gpu:
-    name: MicroShift GPU Verification
+  microshift-base:
+    name: Base Install (no GFD)
     runs-on: [self-hosted, microshift]
     needs: helm-tests
     env:
       NAMESPACE: nvidia-device-plugin
       HELM_CHART: ./deployments/helm/nvidia-device-plugin
+      RELEASE: nvidia-device-plugin
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -52,51 +53,54 @@ jobs:
             pod-security.kubernetes.io/enforce=privileged \
             --overwrite
 
-      - name: Install chart
+      - name: Install chart (base, no GFD)
         run: |
-          helm install nvidia-device-plugin "$HELM_CHART" \
+          helm install "$RELEASE" "$HELM_CHART" \
             --namespace "$NAMESPACE" \
             --set compatWithCPUManager=true \
             --wait \
             --timeout 120s
 
-      - name: Verify RBAC resources
+      - name: Verify no ClusterRole without GFD
         run: |
-          echo "--- ClusterRole (should NOT exist without GFD) ---"
-          if kubectl get clusterrole -l app.kubernetes.io/instance=nvidia-device-plugin 2>/dev/null | grep -q nvidia; then
+          echo "--- ClusterRole (should NOT exist) ---"
+          if kubectl get clusterrole -l app.kubernetes.io/instance="$RELEASE" 2>/dev/null | grep -q nvidia; then
             echo "FAIL: ClusterRole should not exist without gfd.enabled"
+            kubectl get clusterrole -l app.kubernetes.io/instance="$RELEASE" -o yaml
             exit 1
           fi
-          echo "OK: no ClusterRole without GFD"
+          echo "OK: no ClusterRole created"
 
-          echo "--- Namespaced Role (should have SCC rule) ---"
-          kubectl get role -n "$NAMESPACE" -l app.kubernetes.io/instance=nvidia-device-plugin -o yaml | \
+          echo "--- ClusterRoleBinding (should NOT exist) ---"
+          if kubectl get clusterrolebinding -l app.kubernetes.io/instance="$RELEASE" 2>/dev/null | grep -q nvidia; then
+            echo "FAIL: ClusterRoleBinding should not exist without gfd.enabled"
+            exit 1
+          fi
+          echo "OK: no ClusterRoleBinding created"
+
+      - name: Verify namespaced Role has SCC rule
+        run: |
+          echo "--- Namespaced Role ---"
+          kubectl get role -n "$NAMESPACE" -l app.kubernetes.io/instance="$RELEASE" -o yaml | \
             grep -q 'security.openshift.io' && echo "OK: SCC rule in namespaced Role" || \
             { echo "FAIL: SCC rule missing from namespaced Role"; exit 1; }
 
           echo "--- RoleBinding ---"
-          kubectl get rolebinding -n "$NAMESPACE" -l app.kubernetes.io/instance=nvidia-device-plugin -o yaml | \
+          kubectl get rolebinding -n "$NAMESPACE" -l app.kubernetes.io/instance="$RELEASE" -o yaml | \
             grep -q 'kind: Role' && echo "OK: RoleBinding references Role" || \
             { echo "FAIL: RoleBinding missing or wrong"; exit 1; }
 
       - name: Wait for DaemonSet rollout
         run: |
           kubectl rollout status daemonset -n "$NAMESPACE" \
-            -l app.kubernetes.io/instance=nvidia-device-plugin \
+            -l app.kubernetes.io/instance="$RELEASE" \
             --timeout=120s
 
       - name: Verify pods running with correct SCC
         run: |
-          echo "--- Pod status ---"
-          kubectl get pods -n "$NAMESPACE" -o wide
-
-          echo "--- SCC annotations (all pods) ---"
-          kubectl get pods -n "$NAMESPACE" \
-            -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.annotations.openshift\.io/scc}{"\n"}{end}'
-
           echo "--- Device plugin pod SCC ---"
           SCC=$(kubectl get pods -n "$NAMESPACE" \
-            -l app.kubernetes.io/instance=nvidia-device-plugin \
+            -l app.kubernetes.io/instance="$RELEASE" \
             -l app.kubernetes.io/name=nvidia-device-plugin \
             -o jsonpath='{.items[0].metadata.annotations.openshift\.io/scc}')
           echo "Device plugin pod SCC: $SCC"
@@ -135,13 +139,106 @@ jobs:
           echo "=== Pods ==="
           kubectl describe pods -n "$NAMESPACE" || true
           echo "=== Pod Logs ==="
-          kubectl logs -n "$NAMESPACE" -l app.kubernetes.io/instance=nvidia-device-plugin --tail=100 || true
+          kubectl logs -n "$NAMESPACE" -l app.kubernetes.io/instance="$RELEASE" --tail=100 || true
           echo "=== Events ==="
           kubectl get events -n "$NAMESPACE" --sort-by='.lastTimestamp' || true
 
-      - name: Cleanup
-        if: always()
+  microshift-gfd:
+    name: Install with GFD
+    runs-on: [self-hosted, microshift]
+    needs: microshift-base
+    env:
+      NAMESPACE: nvidia-device-plugin
+      HELM_CHART: ./deployments/helm/nvidia-device-plugin
+      RELEASE: nvidia-device-plugin
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Upgrade to enable GFD
         run: |
-          for release in $(helm list -n "$NAMESPACE" -q 2>/dev/null); do
-            helm uninstall "$release" -n "$NAMESPACE" --wait || true
+          helm upgrade "$RELEASE" "$HELM_CHART" \
+            --namespace "$NAMESPACE" \
+            --set compatWithCPUManager=true \
+            --set gfd.enabled=true \
+            --wait \
+            --timeout 120s
+
+      - name: Verify ClusterRole exists with GFD
+        run: |
+          echo "--- ClusterRole (should exist with node/NFD rules) ---"
+          kubectl get clusterrole -l app.kubernetes.io/instance="$RELEASE" -o yaml | \
+            grep -q 'nodes' && echo "OK: ClusterRole has node rules" || \
+            { echo "FAIL: ClusterRole missing or no node rules"; exit 1; }
+
+          kubectl get clusterrole -l app.kubernetes.io/instance="$RELEASE" -o yaml | \
+            grep -q 'nfd.k8s-sigs.io' && echo "OK: ClusterRole has NFD rules" || \
+            { echo "FAIL: ClusterRole missing NFD rules"; exit 1; }
+
+          echo "--- ClusterRole must NOT have SCC rule ---"
+          if kubectl get clusterrole -l app.kubernetes.io/instance="$RELEASE" -o yaml | grep -q 'security.openshift.io'; then
+            echo "FAIL: SCC rule should not be in ClusterRole"
+            exit 1
+          fi
+          echo "OK: SCC rule not in ClusterRole"
+
+          echo "--- ClusterRoleBinding ---"
+          kubectl get clusterrolebinding -l app.kubernetes.io/instance="$RELEASE" -o yaml | \
+            grep -q 'kind: ClusterRole' && echo "OK: ClusterRoleBinding exists" || \
+            { echo "FAIL: ClusterRoleBinding missing"; exit 1; }
+
+      - name: Verify namespaced Role still has SCC rule
+        run: |
+          kubectl get role -n "$NAMESPACE" -l app.kubernetes.io/instance="$RELEASE" -o yaml | \
+            grep -q 'security.openshift.io' && echo "OK: SCC rule still in namespaced Role" || \
+            { echo "FAIL: SCC rule missing from namespaced Role"; exit 1; }
+
+      - name: Wait for DaemonSet rollout
+        run: |
+          kubectl rollout status daemonset -n "$NAMESPACE" \
+            -l app.kubernetes.io/instance="$RELEASE" \
+            --timeout=120s
+
+      - name: Verify pods running with correct SCC
+        run: |
+          SCC=$(kubectl get pods -n "$NAMESPACE" \
+            -l app.kubernetes.io/instance="$RELEASE" \
+            -l app.kubernetes.io/name=nvidia-device-plugin \
+            -o jsonpath='{.items[0].metadata.annotations.openshift\.io/scc}')
+          echo "Device plugin pod SCC: $SCC"
+          if [ "$SCC" != "privileged" ]; then
+            echo "FAIL: expected SCC 'privileged', got '$SCC'"
+            exit 1
+          fi
+          echo "OK: device plugin pod running with privileged SCC"
+
+      - name: Verify GPU resources advertised
+        run: |
+          for i in $(seq 1 30); do
+            GPU_COUNT=$(kubectl get nodes -o jsonpath='{.items[0].status.capacity.nvidia\.com/gpu}' 2>/dev/null || echo "0")
+            if [ -n "$GPU_COUNT" ] && [ "$GPU_COUNT" != "0" ]; then
+              break
+            fi
+            echo "Attempt $i/30: waiting 2s..."
+            sleep 2
           done
+
+          kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}nvidia.com/gpu={.status.capacity.nvidia\.com/gpu}{"\n"}{end}'
+
+          if [ "$GPU_COUNT" = "0" ] || [ -z "$GPU_COUNT" ]; then
+            echo "WARNING: no nvidia.com/gpu capacity reported after 60s"
+          else
+            echo "OK: $GPU_COUNT GPU(s) advertised"
+          fi
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "=== DaemonSet ==="
+          kubectl describe daemonset -n "$NAMESPACE" || true
+          echo "=== Pods ==="
+          kubectl describe pods -n "$NAMESPACE" || true
+          echo "=== Pod Logs ==="
+          kubectl logs -n "$NAMESPACE" -l app.kubernetes.io/instance="$RELEASE" --tail=100 || true
+          echo "=== Events ==="
+          kubectl get events -n "$NAMESPACE" --sort-by='.lastTimestamp' || true
