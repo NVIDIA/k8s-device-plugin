@@ -371,9 +371,9 @@ the GPU memory and runs in the same fault-domain as of all the others (meaning
 if one workload crashes, they all do).
 
 In the case of MPS, a control daemon is used to manage access to the shared GPU.
-In contrast to time-slicing, MPS does space partitioning and allows memory and
-compute resources to be explicitly partitioned and enforces these limits per
-workload.
+MPS sets a per-workload limit for pinned device memory and compute resources.
+These limits do not reserve memory for each workload, so a workload can still
+fail to allocate memory when other workloads use the GPU.
 
 With both time-slicing and MPS, the same sharing method is applied to all GPUs on
 a node. You cannot configure sharing on a per-GPU basis.
@@ -527,6 +527,7 @@ version: v1
 sharing:
   mps:
     renameByDefault: <bool>
+    memoryLimitFactor: <positive-number>
     resources:
     - name: <resource-name>
       replicas: <num-replicas>
@@ -536,12 +537,14 @@ sharing:
 That is, for each named resource under `sharing.mps.resources`, a number
 of replicas can be specified for that resource type. As is the case with
 time-slicing, these replicas represent the number of shared accesses that will
-be granted for a GPU associated with that resource type. In contrast with
-time-slicing, the amount of memory allowed per client (i.e. per partition) is
-managed by the MPS control daemon and limited to an equal fraction of the total
-device memory. In addition to controlling the amount of memory that each client
-can consume, the MPS control daemon also limits the amount of compute capacity
-that can be consumed by a client.
+be granted for a GPU associated with that resource type. The MPS control daemon
+sets a pinned device memory limit for each client to an equal fraction of the
+device memory by default. `memoryLimitFactor` scales that per-client limit; its
+default is `1.0`, which preserves the existing equal-share limit. Values above
+`1.0` allow clients to use more than their equal share when other clients are
+idle. The limit for one client is capped at the device's total memory, and
+effective limits are logged when the MPS daemon starts. If clients use their
+larger limits at the same time, GPU memory allocations can fail.
 
 If `renameByDefault=true`, then each resource will be advertised under the name
 `<resource-name>.shared` instead of simply `<resource-name>`.
@@ -552,6 +555,7 @@ For example:
 version: v1
 sharing:
   mps:
+    memoryLimitFactor: 1.5
     resources:
     - name: nvidia.com/gpu
       replicas: 10
