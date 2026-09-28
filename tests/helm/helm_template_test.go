@@ -126,6 +126,53 @@ func TestDevicePluginDaemonsetTemplateRenderedDeployment(t *testing.T) {
 	}
 }
 
+func TestMPSControlDaemonProcessToSignalMatchesCommand(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"config.name": "test-config",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", "k8s-device-plugin-test"),
+		Logger:         logger.Discard,
+	}
+
+	output := helm.RenderTemplate(
+		t,
+		options,
+		helmChartPath,
+		"nvidia-device-plugin",
+		[]string{"templates/daemonset-mps-control-daemon.yml"},
+	)
+
+	var daemonset appsv1.DaemonSet
+	helm.UnmarshalK8SYaml(t, output, &daemonset)
+
+	var configManager, mpsControlDaemon *v1.Container
+	for i := range daemonset.Spec.Template.Spec.Containers {
+		container := &daemonset.Spec.Template.Spec.Containers[i]
+		switch container.Name {
+		case "mps-control-daemon-sidecar":
+			configManager = container
+		case "mps-control-daemon-ctr":
+			mpsControlDaemon = container
+		}
+	}
+	require.NotNil(t, configManager)
+	require.NotNil(t, mpsControlDaemon)
+	require.NotEmpty(t, mpsControlDaemon.Command)
+
+	var processToSignal string
+	for _, env := range configManager.Env {
+		if env.Name == "PROCESS_TO_SIGNAL" {
+			processToSignal = env.Value
+			break
+		}
+	}
+	require.Equal(t, mpsControlDaemon.Command[0], processToSignal)
+}
+
 // prt returns a reference to whatever type is passed into it
 func ptr[T any](x T) *T {
 	return &x
