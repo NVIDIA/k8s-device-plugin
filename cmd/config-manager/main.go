@@ -241,7 +241,10 @@ func start(c *cli.Context, f *Flags) error {
 
 	config := NewSyncableConfig(f)
 
-	stop := continuouslySyncConfigChanges(clientset, config, f)
+	stop, err := continuouslySyncConfigChanges(clientset, config, f)
+	if err != nil {
+		return err
+	}
 	defer close(stop)
 
 	for {
@@ -255,13 +258,20 @@ func start(c *cli.Context, f *Flags) error {
 	}
 }
 
-func continuouslySyncConfigChanges(clientset *kubernetes.Clientset, config *SyncableConfig, f *Flags) chan struct{} {
+func continuouslySyncConfigChanges(clientset *kubernetes.Clientset, config *SyncableConfig, f *Flags) (chan struct{}, error) {
 	listWatch := cache.NewListWatchFromClient(
 		clientset.CoreV1().RESTClient(),
 		ResourceNodes,
 		v1.NamespaceAll,
 		fields.OneTermEqualSelector("metadata.name", f.NodeName),
 	)
+
+	// HasSynced becomes true even when the initial LIST returned no matching node, so it
+	// alone does not prove the node was observed. Track the node's first observation and
+	// wait for it as well: Get() must not read the zero value and select the default
+	// config before the node's label has been seen (#2066).
+	observed := make(chan struct{})
+	var observedOnce sync.Once
 
 	_, controller := cache.NewInformerWithOptions(
 		cache.InformerOptions{
@@ -270,6 +280,7 @@ func continuouslySyncConfigChanges(clientset *kubernetes.Clientset, config *Sync
 			Handler: cache.ResourceEventHandlerFuncs{
 				AddFunc: func(obj any) {
 					config.Set(obj.(*v1.Node).Labels[f.NodeLabel])
+					observedOnce.Do(func() { close(observed) })
 				},
 				UpdateFunc: func(oldObj, newObj any) {
 					oldLabel := oldObj.(*v1.Node).Labels[f.NodeLabel]
@@ -291,7 +302,16 @@ func continuouslySyncConfigChanges(clientset *kubernetes.Clientset, config *Sync
 
 	stop := make(chan struct{})
 	go controller.Run(stop)
-	return stop
+	// The main loop calls Get() as soon as this returns, and Get() only blocks on
+	// a subsequent change. Wait for the initial LIST and for the node itself to be
+	// observed so the first Get() sees the node's label instead of the empty value
+	// from before the sync (see #2066).
+	if !cache.WaitForCacheSync(stop, controller.HasSynced) {
+		close(stop)
+		return nil, fmt.Errorf("error waiting for node informer to sync")
+	}
+	<-observed
+	return stop, nil
 }
 
 func updateConfig(config string, f *Flags) error {
