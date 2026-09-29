@@ -65,3 +65,61 @@ func TestUpdateSymlinkDanglingDestination(t *testing.T) {
 		require.Equal(t, filepath.Join(srcdir, "missing-config"), link)
 	})
 }
+
+func TestCmdlineMatchesProcessTarget(t *testing.T) {
+	testCases := []struct {
+		description   string
+		argv0         string
+		target        string
+		expectedMatch bool
+	}{
+		{
+			description:   "identical bare names",
+			argv0:         "mps-control-daemon",
+			target:        "mps-control-daemon",
+			expectedMatch: true,
+		},
+		{
+			description:   "identical absolute paths",
+			argv0:         "/usr/bin/mps-control-daemon",
+			target:        "/usr/bin/mps-control-daemon",
+			expectedMatch: true,
+		},
+		{
+			description:   "bare argv0 matches absolute target",
+			argv0:         "mps-control-daemon",
+			target:        "/usr/bin/mps-control-daemon",
+			expectedMatch: true,
+		},
+		{
+			description:   "absolute argv0 matches bare target",
+			argv0:         "/usr/bin/mps-control-daemon",
+			target:        "mps-control-daemon",
+			expectedMatch: true,
+		},
+		{
+			description:   "different directories with the same basename",
+			argv0:         "/usr/local/bin/mps-control-daemon",
+			target:        "/usr/bin/mps-control-daemon",
+			expectedMatch: true,
+		},
+		{
+			description:   "different basenames",
+			argv0:         "/usr/bin/nvidia-device-plugin",
+			target:        "/usr/bin/mps-control-daemon",
+			expectedMatch: false,
+		},
+		{
+			description:   "basename is a prefix of the target",
+			argv0:         "mps-control",
+			target:        "mps-control-daemon",
+			expectedMatch: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			require.Equal(t, tc.expectedMatch, cmdlineMatchesProcessTarget(tc.argv0, tc.target))
+		})
+	}
+}
