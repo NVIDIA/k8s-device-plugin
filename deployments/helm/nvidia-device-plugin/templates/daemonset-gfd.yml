@@ -101,6 +101,10 @@ spec:
             mountPath: /available-configs
           - name: config
             mountPath: /config
+        {{- with (default (dict) .Values.configManager).resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
       {{- end }}
       containers:
       {{- if $options.hasConfigMap }}
@@ -139,6 +143,10 @@ spec:
             mountPath: /config
         securityContext:
           {{- include "gpu-feature-discovery.securityContext" . | nindent 10 }}
+        {{- with (default (dict) .Values.configManager).resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
       {{- end }}
       - image: {{ include "nvidia-device-plugin.fullimage" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -198,7 +206,7 @@ spec:
         {{- end }}
           - name: config
             mountPath: /config
-        {{- with .Values.resources }}
+        {{- with (.Values.gfd.resources | default .Values.resources) }}
         resources:
           {{- toYaml . | nindent 10 }}
         {{- end }}
