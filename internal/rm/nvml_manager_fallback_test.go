@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/stretchr/testify/require"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
@@ -58,6 +59,44 @@ func (l fakeLostGPUNvmlLib) DeviceGetHandleByIndex(index int) (nvml.Device, nvml
 		return nil, nvml.ERROR_GPU_IS_LOST
 	}
 	return fakeGPUHandle{uuid: l.uuids[index]}, nvml.SUCCESS
+}
+
+// fakeLostNVLinkGPUHandle is an nvml.Device test double for a GPU that has
+// fallen off the bus while the plugin's NVML session still serves a handle for
+// it: its identifying properties are readable, but querying the NVLink state
+// fails. Handles for healthy devices report no NVLink support, as consumer GPUs
+// do.
+type fakeLostNVLinkGPUHandle struct {
+	fakeGPUHandle
+	lost bool
+}
+
+func (h fakeLostNVLinkGPUHandle) GetTopologyCommonAncestor(nvml.Device) (nvml.GpuTopologyLevel, nvml.Return) {
+	return nvml.TOPOLOGY_SYSTEM, nvml.SUCCESS
+}
+
+func (h fakeLostNVLinkGPUHandle) GetNvLinkState(int) (nvml.EnableState, nvml.Return) {
+	if h.lost {
+		return nvml.FEATURE_DISABLED, nvml.ERROR_GPU_IS_LOST
+	}
+	return nvml.FEATURE_DISABLED, nvml.ERROR_NOT_SUPPORTED
+}
+
+// fakeLostNVLinkNvmlLib serves a handle for every device, including the one that
+// has fallen off the bus. An empty UUID marks such a device.
+type fakeLostNVLinkNvmlLib struct {
+	fakeLostGPUNvmlLib
+}
+
+func (l fakeLostNVLinkNvmlLib) DeviceGetHandleByIndex(index int) (nvml.Device, nvml.Return) {
+	if index < 0 || index >= len(l.uuids) {
+		return nil, nvml.ERROR_INVALID_ARGUMENT
+	}
+	uuid, lost := l.uuids[index], false
+	if uuid == "" {
+		uuid, lost = fmt.Sprintf("GPU-lost-%d", index), true
+	}
+	return fakeLostNVLinkGPUHandle{fakeGPUHandle: fakeGPUHandle{uuid: uuid}, lost: lost}, nvml.SUCCESS
 }
 
 // newLostGPUResourceManager returns a resource manager for a node with the
@@ -149,6 +188,58 @@ func TestAlignedAllocFallsBackWhenDeviceLinkInfoUnavailable(t *testing.T) {
 
 		_, err := r.getPreferredAllocation(healthy, nil, len(healthy)+1)
 		require.Error(t, err)
+	})
+}
+
+// newLostNVLinkResourceManager is newLostGPUResourceManager for the case where
+// the handle for the lost device is still served and link discovery instead
+// fails while querying its NVLink state.
+func newLostNVLinkResourceManager(t *testing.T, uuids []string) (*nvmlResourceManager, []string) {
+	t.Helper()
+
+	r, healthy := newLostGPUResourceManager(t, uuids)
+	r.nvml = fakeLostNVLinkNvmlLib{fakeLostGPUNvmlLib{uuids: uuids}}
+
+	return r, healthy
+}
+
+// TestAlignedAllocFallsBackWhenNVLinkStateUnavailable covers the variant seen in
+// the field, where the handle lookup for the lost device succeeds and discovery
+// fails later, on a pairwise NVLink state query. The allocation must be
+// preserved there too.
+func TestAlignedAllocFallsBackWhenNVLinkStateUnavailable(t *testing.T) {
+	// The device at index 1 has fallen off the bus, as in the reported trace.
+	uuids := []string{"GPU-aaa", "", "GPU-ccc", "GPU-ddd"}
+
+	// The fallback covers every error from the discovery call, so pin down which
+	// one this case produces: the allocations below would also pass if discovery
+	// failed at an earlier step, such as the handle lookup.
+	t.Run("discovery fails while querying the NVLink state of a pair", func(t *testing.T) {
+		r, _ := newLostNVLinkResourceManager(t, uuids)
+
+		_, err := gpuallocator.NewDevices(gpuallocator.WithNvmlLib(r.nvml))
+		require.ErrorContains(t, err, "error getting NVLink for devices (1, 0)")
+		require.ErrorContains(t, err, nvml.ERROR_GPU_IS_LOST.Error())
+	})
+
+	t.Run("a single device is allocated from the healthy devices", func(t *testing.T) {
+		r, healthy := newLostNVLinkResourceManager(t, uuids)
+
+		require.True(t, r.Devices().AlignedAllocationSupported())
+		require.False(t, AnnotatedIDs(healthy).AnyHasAnnotations())
+
+		allocated, err := r.getPreferredAllocation(healthy, nil, 1)
+		require.NoError(t, err)
+		require.Len(t, allocated, 1)
+		require.Subset(t, healthy, allocated)
+	})
+
+	t.Run("the device that has fallen off the bus is never allocated", func(t *testing.T) {
+		r, healthy := newLostNVLinkResourceManager(t, uuids)
+
+		allocated, err := r.getPreferredAllocation(healthy, nil, len(healthy))
+		require.NoError(t, err)
+		require.ElementsMatch(t, healthy, allocated)
 	})
 }
 
