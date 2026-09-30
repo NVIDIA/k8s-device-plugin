@@ -22,7 +22,7 @@ var _ deviceInfo = (*wslAllGPUsDevice)(nil)
 
 // GetUUID returns "all" to represent all GPUs accessible via /dev/dxg on WSL.
 func (d wslAllGPUsDevice) GetUUID() (string, error) {
-	return "all", nil
+	return allDevices, nil
 }
 
 // GetPaths returns the WSL GPU device path.

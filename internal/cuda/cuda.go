@@ -166,9 +166,9 @@ func cuDeviceTotalMem(bytes *uint64, dev Device) Result {
 }
 
 // cuDeviceGetName function as declared in cuda.h
-func cuDeviceGetName(name *byte, len int32, dev Device) Result {
+func cuDeviceGetName(name *byte, length int32, dev Device) Result {
 	cName := (*C.char)(unsafe.Pointer(name))
-	cLen := (C.int)(len)
+	cLen := (C.int)(length)
 	cDev := (C.CUdevice)(dev)
 	_ret := C.cuDeviceGetName(cName, cLen, cDev)
 

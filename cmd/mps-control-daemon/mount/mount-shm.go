@@ -41,7 +41,7 @@ func NewCommand() *cli.Command {
 }
 
 // mountShm creates a tmpfs mount at /mps/shm to be used by the mps control daemon.
-func mountShm(c *cli.Context) error {
+func mountShm(_ *cli.Context) error {
 	mountExecutable, err := exec.LookPath("mount")
 	if err != nil {
 		return fmt.Errorf("error finding 'mount' executable: %w", err)

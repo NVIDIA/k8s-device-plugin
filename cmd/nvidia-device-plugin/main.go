@@ -40,6 +40,13 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
 )
 
+const (
+	// deviceDiscoveryStrategyAuto selects the device discovery strategy based on the detected platform.
+	deviceDiscoveryStrategyAuto = "auto"
+	// deviceDiscoveryStrategyNVML uses NVML to discover devices.
+	deviceDiscoveryStrategyNVML = "nvml"
+)
+
 type options struct {
 	flags           []cli.Flag
 	configFile      string
@@ -150,7 +157,7 @@ func main() {
 		},
 		&cli.StringFlag{
 			Name:    "device-discovery-strategy",
-			Value:   "auto",
+			Value:   deviceDiscoveryStrategyAuto,
 			Usage:   "the strategy to use to discover devices: 'auto', 'nvml', or 'tegra'",
 			EnvVars: []string{"DEVICE_DISCOVERY_STRATEGY"},
 		},
@@ -235,8 +242,8 @@ func validateFlags(infolib nvinfo.Interface, config *spec.Config) error {
 	}
 
 	switch *config.Flags.DeviceDiscoveryStrategy {
-	case "auto":
-	case "nvml":
+	case deviceDiscoveryStrategyAuto:
+	case deviceDiscoveryStrategyNVML:
 	case "tegra":
 	default:
 		return fmt.Errorf("invalid --device-discovery-strategy option %v", *config.Flags.DeviceDiscoveryStrategy)
