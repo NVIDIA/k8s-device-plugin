@@ -106,7 +106,11 @@ CUresult CUDAAPI cuDriverGetVersion(int *driverVersion);
 CUresult CUDAAPI cuDeviceGet(CUdevice *device, int ordinal);
 CUresult CUDAAPI cuDeviceGetAttribute(int *pi, CUdevice_attribute attrib, CUdevice dev);
 CUresult CUDAAPI cuDeviceGetCount(int *count);
-CUresult CUDAAPI cuDeviceTotalMem(size_t *bytes, CUdevice dev);
+// cuda.h defines cuDeviceTotalMem as cuDeviceTotalMem_v2. The unversioned symbol
+// exported by libcuda is the pre-CUDA-3.2 API that writes an `unsigned int` and
+// saturates at UINT_MAX, so it must not be used on devices with more than 4 GiB
+// of memory. Declare the versioned entry point explicitly.
+CUresult CUDAAPI cuDeviceTotalMem_v2(size_t *bytes, CUdevice dev);
 CUresult CUDAAPI cuDeviceGetName(char *name, int len, CUdevice dev);
 */
 import "C"
@@ -160,7 +164,7 @@ func cuDriverGetVersion(version *int32) Result {
 func cuDeviceTotalMem(bytes *uint64, dev Device) Result {
 	cBytes := (*C.size_t)(unsafe.Pointer(bytes))
 	cDev := (C.CUdevice)(dev)
-	_ret := C.cuDeviceTotalMem(cBytes, cDev)
+	_ret := C.cuDeviceTotalMem_v2(cBytes, cDev)
 
 	return Result(_ret)
 }
