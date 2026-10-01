@@ -18,6 +18,8 @@ package plugin
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
@@ -25,6 +27,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	cdiapi "tags.cncf.io/container-device-interface/pkg/cdi"
@@ -46,6 +49,9 @@ const (
 	deviceListEnvVar                          = "NVIDIA_VISIBLE_DEVICES"
 	deviceListAsVolumeMountsHostPath          = "/dev/null"
 	deviceListAsVolumeMountsContainerPathRoot = "/var/run/nvidia-container-devices"
+
+	// Length of session ID in socket names
+	sessionIDBytes = 4
 )
 
 // nvidiaDevicePlugin implements the Kubernetes device plugin API
@@ -89,7 +95,7 @@ func (o *options) devicePluginForResource(ctx context.Context, resourceManager r
 
 		mps: mpsOptions,
 
-		socket: getPluginSocketPath(resourceManager.Resource()),
+		socket: getPluginSocketPath(resourceManager.Resource(), o.sessionID),
 		// These will be reinitialized every
 		// time the plugin server is restarted.
 		server: nil,
@@ -99,11 +105,60 @@ func (o *options) devicePluginForResource(ctx context.Context, resourceManager r
 	return &plugin, nil
 }
 
+// Returns a random session ID shared by sockets of all plugins started together
+func NewSessionID() (string, error) {
+	b := make([]byte, sessionIDBytes)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("failed to generate session ID: %w", err)
+	}
+	return hex.EncodeToString(b), nil
+}
+
 // getPluginSocketPath returns the socket to use for the specified resource.
-func getPluginSocketPath(resource spec.ResourceName) string {
+func getPluginSocketPath(resource spec.ResourceName, sessionID string) string {
+	return filepath.Join(pluginapi.DevicePluginPath, getPluginName(resource)+"-"+sessionID) + ".sock"
+}
+
+func getPluginName(resource spec.ResourceName) string {
 	_, name := resource.Split()
-	pluginName := "nvidia-" + name
-	return filepath.Join(pluginapi.DevicePluginPath, pluginName) + ".sock"
+	return "nvidia-" + name
+}
+
+// Removes sockets left behind by earlier sessions of the same resource left
+// behind without calling Stop (eg after a crash). Removes sockets that do not
+// contain the current session ID after verifying they have no connections.
+func removeStaleSockets(dir string, pluginName string, current string) {
+	patterns := []string{
+		filepath.Join(dir, pluginName+"-"+strings.Repeat("?", 2*sessionIDBytes)+".sock"),
+	}
+	for _, pattern := range patterns {
+		matches, err := filepath.Glob(pattern)
+		if err != nil {
+			klog.Warningf("Failed to search for stale sockets matching %s: %v", pattern, err)
+			continue
+		}
+		for _, socket := range matches {
+			if socket == current || !isStaleSocket(socket) {
+				continue
+			}
+			if err := os.Remove(socket); err != nil && !os.IsNotExist(err) {
+				klog.Warningf("Failed to remove stale socket %s: %v", socket, err)
+				continue
+			}
+			klog.Infof("Removed stale socket %s", socket)
+		}
+	}
+}
+
+// Reports if anything is listening on the socket: a proxy to check if it is
+// a running plugin's socket.
+func isStaleSocket(socket string) bool {
+	conn, err := net.DialTimeout("unix", socket, time.Second)
+	if err == nil {
+		conn.Close()
+		return false
+	}
+	return errors.Is(err, syscall.ECONNREFUSED)
 }
 
 func (plugin *nvidiaDevicePlugin) initialize() {
@@ -175,7 +230,7 @@ func (plugin *nvidiaDevicePlugin) Stop() error {
 
 // Serve starts the gRPC server of the device plugin.
 func (plugin *nvidiaDevicePlugin) Serve() error {
-	os.Remove(plugin.socket)
+	removeStaleSockets(filepath.Dir(plugin.socket), getPluginName(plugin.rm.Resource()), plugin.socket)
 	sock, err := net.Listen("unix", plugin.socket)
 	if err != nil {
 		return err

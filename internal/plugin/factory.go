@@ -45,6 +45,8 @@ type options struct {
 	deviceDiscoveryStrategy string
 
 	imexChannels imex.Channels
+
+	sessionID string
 }
 
 // New a new set of plugins with the supplied options.
@@ -69,6 +71,10 @@ func New(ctx context.Context, infolib info.Interface, nvmllib nvml.Interface, de
 
 	if o.deviceDiscoveryStrategy == "" {
 		return nil, fmt.Errorf("device discovery strategy not set")
+	}
+
+	if o.sessionID == "" {
+		return nil, fmt.Errorf("session ID not set")
 	}
 
 	resourceManagers, err := o.getResourceManagers()
