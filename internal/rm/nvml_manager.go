@@ -30,7 +30,8 @@ import (
 
 type nvmlResourceManager struct {
 	resourceManager
-	nvml nvml.Interface
+	nvml    nvml.Interface
+	watcher *healthWatcher
 }
 
 var _ ResourceManager = (*nvmlResourceManager)(nil)
@@ -55,6 +56,7 @@ func NewNVMLResourceManagers(infolib info.Interface, nvmllib nvml.Interface, dev
 		return nil, fmt.Errorf("error building device map: %v", err)
 	}
 
+	watcher := newHealthWatcher()
 	var rms []ResourceManager
 	for resourceName, devices := range deviceMap {
 		if len(devices) == 0 {
@@ -75,6 +77,7 @@ func NewNVMLResourceManagers(infolib info.Interface, nvmllib nvml.Interface, dev
 			rm = &nvmlResourceManager{
 				resourceManager: resources,
 				nvml:            nvmllib,
+				watcher:         watcher,
 			}
 		}
 
