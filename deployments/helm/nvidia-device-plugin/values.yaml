@@ -37,6 +37,8 @@ gdrcopyEnabled: null
 gdsEnabled: null
 mofedEnabled: null
 deviceDiscoveryStrategy: null
+# Leave unset to inherit the binary's built-in default log verbosity of 0.
+logVerbosity: null
 
 nameOverride: ""
 fullnameOverride: ""

@@ -33,6 +33,8 @@ func updateFromCLIFlag[T any](pflag **T, c *cli.Context, flagName string) {
 			*flag = new(c.StringSlice(flagName))
 		case **bool:
 			*flag = new(c.Bool(flagName))
+		case **int:
+			*flag = new(c.Int(flagName))
 		case **Duration:
 			if gf, ok := c.Generic(flagName).(*DurationValue); ok && gf.Value != nil {
 				*flag = gf.Value
@@ -64,6 +66,7 @@ type CommandLineFlags struct {
 	DeviceDiscoveryStrategy *string                 `json:"deviceDiscoveryStrategy"    yaml:"deviceDiscoveryStrategy"`
 	Plugin                  *PluginCommandLineFlags `json:"plugin,omitempty"           yaml:"plugin,omitempty"`
 	GFD                     *GFDCommandLineFlags    `json:"gfd,omitempty"              yaml:"gfd,omitempty"`
+	LogVerbosity            *int                    `json:"logVerbosity"               yaml:"logVerbosity"`
 }
 
 // PluginCommandLineFlags holds the list of command line flags specific to the device plugin.
@@ -135,6 +138,8 @@ func (f *Flags) UpdateFromCLIFlags(c *cli.Context, flags []cli.Flag) {
 				updateFromCLIFlag(&f.UseNodeFeatureAPI, c, n)
 			case "device-discovery-strategy":
 				updateFromCLIFlag(&f.DeviceDiscoveryStrategy, c, n)
+			case "log-verbosity":
+				updateFromCLIFlag(&f.LogVerbosity, c, n)
 			}
 			// Plugin specific flags
 			if f.Plugin == nil {
