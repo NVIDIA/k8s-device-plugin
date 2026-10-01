@@ -18,6 +18,7 @@ package helm_test
 
 import (
 	"fmt"
+	"maps"
 	"path/filepath"
 	"testing"
 
@@ -122,6 +123,118 @@ func TestDevicePluginDaemonsetTemplateRenderedDeployment(t *testing.T) {
 
 			devicePluginContainer := deployment.Spec.Template.Spec.Containers[0]
 			require.EqualValues(t, tc.expectedContainer.SecurityContext, devicePluginContainer.SecurityContext)
+		})
+	}
+}
+
+func TestComponentResourcesTemplateRendered(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	templateFiles := []string{
+		"templates/daemonset-device-plugin.yml",
+		"templates/daemonset-gfd.yml",
+		"templates/daemonset-mps-control-daemon.yml",
+	}
+
+	testCases := []struct {
+		description string
+		options     map[string]string
+		// An empty memory limit means the container has no resources set.
+		expectedMemoryLimitByContainer map[string]string
+	}{
+		{
+			description: "top-level resources apply to main containers only",
+			options: map[string]string{
+				"resources.limits.memory": "1Gi",
+			},
+			expectedMemoryLimitByContainer: map[string]string{
+				"nvidia-device-plugin-init":     "",
+				"nvidia-device-plugin-sidecar":  "",
+				"nvidia-device-plugin-ctr":      "1Gi",
+				"gpu-feature-discovery-init":    "",
+				"gpu-feature-discovery-sidecar": "",
+				"gpu-feature-discovery-ctr":     "1Gi",
+				"mps-control-daemon-mounts":     "1Gi",
+				"mps-control-daemon-init":       "",
+				"mps-control-daemon-sidecar":    "",
+				"mps-control-daemon-ctr":        "1Gi",
+			},
+		},
+		{
+			description: "values reused from a release without configManager",
+			options: map[string]string{
+				"configManager":           "null",
+				"resources.limits.memory": "1Gi",
+			},
+			expectedMemoryLimitByContainer: map[string]string{
+				"nvidia-device-plugin-init":     "",
+				"nvidia-device-plugin-sidecar":  "",
+				"nvidia-device-plugin-ctr":      "1Gi",
+				"gpu-feature-discovery-init":    "",
+				"gpu-feature-discovery-sidecar": "",
+				"gpu-feature-discovery-ctr":     "1Gi",
+				"mps-control-daemon-mounts":     "1Gi",
+				"mps-control-daemon-init":       "",
+				"mps-control-daemon-sidecar":    "",
+				"mps-control-daemon-ctr":        "1Gi",
+			},
+		},
+		{
+			description: "component resources override top-level resources",
+			options: map[string]string{
+				"resources.limits.memory":               "1Gi",
+				"devicePlugin.resources.limits.memory":  "3Gi",
+				"gfd.resources.limits.memory":           "2Gi",
+				"mps.resources.limits.memory":           "4Gi",
+				"configManager.resources.limits.memory": "64Mi",
+			},
+			expectedMemoryLimitByContainer: map[string]string{
+				"nvidia-device-plugin-init":     "64Mi",
+				"nvidia-device-plugin-sidecar":  "64Mi",
+				"nvidia-device-plugin-ctr":      "3Gi",
+				"gpu-feature-discovery-init":    "64Mi",
+				"gpu-feature-discovery-sidecar": "64Mi",
+				"gpu-feature-discovery-ctr":     "2Gi",
+				"mps-control-daemon-mounts":     "4Gi",
+				"mps-control-daemon-init":       "64Mi",
+				"mps-control-daemon-sidecar":    "64Mi",
+				"mps-control-daemon-ctr":        "4Gi",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			setValues := map[string]string{
+				"config.name": "external-config",
+				"gfd.enabled": "true",
+			}
+			maps.Copy(setValues, tc.options)
+			options := &helm.Options{
+				SetValues:      setValues,
+				KubectlOptions: k8s.NewKubectlOptions("", "", "k8s-device-plugin-test"),
+				Logger:         logger.Discard,
+			}
+
+			memoryLimitByContainer := make(map[string]string)
+			for _, templateFile := range templateFiles {
+				output := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{templateFile})
+
+				var daemonset appsv1.DaemonSet
+				helm.UnmarshalK8SYaml(t, output, &daemonset)
+
+				podSpec := daemonset.Spec.Template.Spec
+				for _, container := range append(podSpec.InitContainers, podSpec.Containers...) {
+					memoryLimit := ""
+					if limit, ok := container.Resources.Limits[v1.ResourceMemory]; ok {
+						memoryLimit = limit.String()
+					}
+					memoryLimitByContainer[container.Name] = memoryLimit
+				}
+			}
+
+			require.Equal(t, tc.expectedMemoryLimitByContainer, memoryLimitByContainer)
 		})
 	}
 }

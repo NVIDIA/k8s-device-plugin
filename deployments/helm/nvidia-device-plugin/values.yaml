@@ -66,6 +66,9 @@ podAnnotations: {}
 podSecurityContext: {}
 securityContext: {}
 
+# resources is the default for the main containers of each component, including
+# the MPS mount init container. devicePlugin.resources, gfd.resources, and
+# mps.resources override it per component; an empty override inherits this value.
 resources: {}
 nodeSelector: {}
 affinity:
@@ -109,6 +112,7 @@ runtimeClassName: null
 
 devicePlugin:
   enabled: true
+  resources: {}
   # enableHostNetwork when set to true runs the pod with hostNetwork: true.
   # This can be useful in non-overlay network environments (e.g., AWS, Azure, GCP)
   # to avoid unnecessary IP allocation for daemon pods.
@@ -125,6 +129,7 @@ gfd:
     # vgpu info on a host.
     # TODO: This should be optional and detected automatically.
     privileged: true
+  resources: {}
   # enableHostNetwork when set to true runs the pod with hostNetwork: true.
   # This can be useful in non-overlay network environments (e.g., AWS, Azure, GCP)
   # to avoid unnecessary IP allocation for daemon pods.
@@ -171,11 +176,17 @@ mps:
   # recommended that you enable this option.
   # NOTE: HostPID and ShareProcessNamespace cannot both be set to true
   enableHostPID: true
+  resources: {}
   # enableHostNetwork when set to true runs the pod with hostNetwork: true.
   # This can be useful in non-overlay network environments (e.g., AWS, Azure, GCP)
   # to avoid unnecessary IP allocation for daemon pods.
   # enableHostNetwork: false
 
+# configManager configures the config-manager init and sidecar containers that
+# are added to each component when a ConfigMap is used. These containers do
+# not inherit the top-level resources.
+configManager:
+  resources: {}
 
 cdi:
   # nvidiaHookPath specifies the path to the nvidia-cdi-hook or nvidia-ctk executables on the host.
