@@ -1026,6 +1026,12 @@ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
 and the `--version` flag to `helm upgrade -i` if this is a pre-release
 version (e.g. `<version>-rc.1`). Full releases will be listed without this.
 
+#### Setting extra environment variables on the device plugin main container
+
+`devicePlugin.extraEnvs` sets additional environment variables passed to the
+main container of the device plugin.
+It may also be used to overwrite other environment variables.
+
 ### Deploying via `helm install` with a direct URL to the `helm` package
 
 If you prefer not to install from the `nvidia-device-plugin` `helm` repo, you can

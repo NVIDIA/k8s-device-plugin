@@ -114,6 +114,12 @@ devicePlugin:
   # to avoid unnecessary IP allocation for daemon pods.
   # enableHostNetwork: false
 
+  # Additional environment variables passed to the main container
+  # of the device plugin. This is templated to the end of the
+  # 'env' array of the container such that it may be used to overwrite
+  # other environment variables.
+  extraEnvs: []
+
 gfd:
   enabled: false
   nameOverride: gpu-feature-discovery
