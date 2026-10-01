@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -29,7 +30,10 @@ import (
 	cli "github.com/urfave/cli/v2"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
@@ -80,10 +84,11 @@ type Flags struct {
 // Multiple calls to Set() do not queue, meaning that only calls to Get() made
 // *before* a call to Set() will be notified.
 type SyncableConfig struct {
-	cond     *sync.Cond
-	mutex    sync.Mutex
-	current  string
-	lastRead *string
+	cond        *sync.Cond
+	mutex       sync.Mutex
+	current     string
+	lastRead    *string
+	initialized bool // set once the informer has observed the node's label
 }
 
 // NewSyncableConfig creates a new SyncableConfig
@@ -99,6 +104,7 @@ func (m *SyncableConfig) Set(value string) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m.current = value
+	m.initialized = true
 	m.cond.Broadcast()
 }
 
@@ -107,6 +113,12 @@ func (m *SyncableConfig) Set(value string) {
 func (m *SyncableConfig) Get() string {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
+	// Block until the informer has observed the node at least once: the first
+	// Get() must return the node's actual label value, not the empty zero
+	// value from before the cache synced (see #2066).
+	for !m.initialized {
+		m.cond.Wait()
+	}
 	if m.lastRead != nil && *m.lastRead == m.current {
 		m.cond.Wait()
 	}
@@ -255,13 +267,17 @@ func start(c *cli.Context, f *Flags) error {
 	}
 }
 
-func continuouslySyncConfigChanges(clientset *kubernetes.Clientset, config *SyncableConfig, f *Flags) chan struct{} {
-	listWatch := cache.NewListWatchFromClient(
-		clientset.CoreV1().RESTClient(),
-		ResourceNodes,
-		v1.NamespaceAll,
-		fields.OneTermEqualSelector("metadata.name", f.NodeName),
-	)
+func continuouslySyncConfigChanges(clientset kubernetes.Interface, config *SyncableConfig, f *Flags) chan struct{} {
+	listWatch := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.FieldSelector = fields.OneTermEqualSelector("metadata.name", f.NodeName).String()
+			return clientset.CoreV1().Nodes().List(context.TODO(), options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			options.FieldSelector = fields.OneTermEqualSelector("metadata.name", f.NodeName).String()
+			return clientset.CoreV1().Nodes().Watch(context.TODO(), options)
+		},
+	}
 
 	_, controller := cache.NewInformerWithOptions(
 		cache.InformerOptions{
@@ -291,6 +307,8 @@ func continuouslySyncConfigChanges(clientset *kubernetes.Clientset, config *Sync
 
 	stop := make(chan struct{})
 	go controller.Run(stop)
+	// The first Get() blocks until the informer observes the node (SyncableConfig
+	// initialized gate), which only happens after the cache has synced (see #2066).
 	return stop
 }
 
