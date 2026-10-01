@@ -187,8 +187,10 @@ spec:
         {{- end }}
           - name: NVIDIA_VISIBLE_DEVICES
             value: all
+        {{- if .Values.nvidiaDriverCapabilities }}
           - name: NVIDIA_DRIVER_CAPABILITIES
-            value: compute,utility
+            value: {{ .Values.nvidiaDriverCapabilities }}
+        {{- end }}
           securityContext:
             privileged: true
           volumeMounts:
