@@ -45,6 +45,8 @@ type options struct {
 	deviceDiscoveryStrategy string
 
 	imexChannels imex.Channels
+
+	sessionID string
 }
 
 // New a new set of plugins with the supplied options.
@@ -70,6 +72,13 @@ func New(ctx context.Context, infolib info.Interface, nvmllib nvml.Interface, de
 	if o.deviceDiscoveryStrategy == "" {
 		return nil, fmt.Errorf("device discovery strategy not set")
 	}
+
+	sessionID, err := NewSessionID()
+	if err != nil {
+		return nil, fmt.Errorf("unable to generate session ID: %w", err)
+	}
+	o.sessionID = sessionID
+	klog.Infof("Creating plugins for session %s.", sessionID)
 
 	resourceManagers, err := o.getResourceManagers()
 	if err != nil {
