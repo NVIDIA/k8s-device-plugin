@@ -239,6 +239,83 @@ func TestComponentResourcesTemplateRendered(t *testing.T) {
 	}
 }
 
+func TestDevicePluginDaemonsetNvidiaDriverCapabilities(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	testCases := []struct {
+		description                   string
+		nvidiaDriverCapabilitiesJSON  string
+		expectedDriverCapabilitiesEnv *v1.EnvVar
+		expectedErrorSubstring        string
+	}{
+		{
+			description:                   "default",
+			expectedDriverCapabilitiesEnv: &v1.EnvVar{Name: "NVIDIA_DRIVER_CAPABILITIES", Value: "compute,utility"},
+		},
+		{
+			description:                   "string",
+			nvidiaDriverCapabilitiesJSON:  `"all"`,
+			expectedDriverCapabilitiesEnv: &v1.EnvVar{Name: "NVIDIA_DRIVER_CAPABILITIES", Value: "all"},
+		},
+		{
+			description:                  "null omits the variable",
+			nvidiaDriverCapabilitiesJSON: "null",
+		},
+		{
+			description:                  "empty string omits the variable",
+			nvidiaDriverCapabilitiesJSON: `""`,
+		},
+		{
+			description:                  "boolean is rejected",
+			nvidiaDriverCapabilitiesJSON: "true",
+			expectedErrorSubstring:       "Value 'nvidiaDriverCapabilities' must be a string, got bool: true",
+		},
+		{
+			description:                  "number is rejected",
+			nvidiaDriverCapabilitiesJSON: "1",
+			expectedErrorSubstring:       "Value 'nvidiaDriverCapabilities' must be a string",
+		},
+		{
+			description:                  "list is rejected",
+			nvidiaDriverCapabilitiesJSON: `["compute","utility"]`,
+			expectedErrorSubstring:       "Value 'nvidiaDriverCapabilities' must be a string, got slice: [compute utility]",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			options := &helm.Options{
+				KubectlOptions: k8s.NewKubectlOptions("", "", "k8s-device-plugin-test"),
+				Logger:         logger.Discard,
+			}
+			if tc.nvidiaDriverCapabilitiesJSON != "" {
+				options.SetJsonValues = map[string]string{"nvidiaDriverCapabilities": tc.nvidiaDriverCapabilitiesJSON}
+			}
+
+			// validation.yml is evaluated even when only the daemonset is selected for output.
+			output, err := helm.RenderTemplateE(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/daemonset-device-plugin.yml"})
+			if tc.expectedErrorSubstring != "" {
+				require.ErrorContains(t, err, tc.expectedErrorSubstring)
+				return
+			}
+			require.NoError(t, err)
+
+			var daemonset appsv1.DaemonSet
+			helm.UnmarshalK8SYaml(t, output, &daemonset)
+			require.Len(t, daemonset.Spec.Template.Spec.Containers, 1)
+
+			var driverCapabilitiesEnv *v1.EnvVar
+			for _, env := range daemonset.Spec.Template.Spec.Containers[0].Env {
+				if env.Name == "NVIDIA_DRIVER_CAPABILITIES" {
+					driverCapabilitiesEnv = &env
+				}
+			}
+			require.Equal(t, tc.expectedDriverCapabilitiesEnv, driverCapabilitiesEnv)
+		})
+	}
+}
+
 // prt returns a reference to whatever type is passed into it
 func ptr[T any](x T) *T {
 	return &x

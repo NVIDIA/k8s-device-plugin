@@ -46,3 +46,10 @@
 {{- $error = printf "%s\nSee: https://helm.sh/docs/helm/helm_install/#options" $error }}
 {{- fail $error }}
 {{- end }}
+
+{{- if not (or (kindIs "invalid" .Values.nvidiaDriverCapabilities) (typeIs "string" .Values.nvidiaDriverCapabilities)) }}
+{{- $error := "" }}
+{{- $error = printf "%s\nValue 'nvidiaDriverCapabilities' must be a string, got %s: %v" $error (kindOf .Values.nvidiaDriverCapabilities) .Values.nvidiaDriverCapabilities }}
+{{- $error = printf "%s\nSet it to a comma-separated list of capabilities such as \"compute,utility\" or \"all\", or to null to leave it unset." $error }}
+{{- fail $error }}
+{{- end }}
