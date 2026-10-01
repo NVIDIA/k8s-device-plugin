@@ -406,7 +406,7 @@ func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) 
 		}
 
 		// Start the gRPC server for plugin p and connect it with the kubelet.
-		if err := p.Start(o.kubeletSocket); err != nil {
+		if err := p.Start(c.Context, o.kubeletSocket); err != nil {
 			klog.Errorf("Failed to start plugin: %v", err)
 			return plugins, true, nil
 		}

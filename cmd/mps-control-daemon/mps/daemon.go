@@ -206,6 +206,19 @@ func (d *Daemon) AssertHealthy() error {
 	return err
 }
 
+// Ready reports whether the .ready file exists, i.e. the MPS daemons have
+// finished initialization. A stat error other than not-exist is returned.
+func (d *Daemon) Ready() (bool, error) {
+	_, err := os.Stat(d.root.ReadyFilePath())
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // EchoPipeToControl sends the specified command to the MPS control daemon.
 func (d *Daemon) EchoPipeToControl(command string) (string, error) {
 	var out bytes.Buffer
