@@ -126,6 +126,80 @@ func TestDevicePluginDaemonsetTemplateRenderedDeployment(t *testing.T) {
 	}
 }
 
+func TestDevicePluginNamespaceValidation(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	testCases := []struct {
+		description       string
+		releaseNamespace  string
+		namespaceOverride string
+		expectedNamespace string
+	}{
+		{
+			description:       "default release without override",
+			releaseNamespace:  "default",
+			expectedNamespace: "default",
+		},
+		{
+			description:       "non-default release without override",
+			releaseNamespace:  "gpu-system",
+			expectedNamespace: "gpu-system",
+		},
+		{
+			description:       "override default release with non-default namespace",
+			releaseNamespace:  "default",
+			namespaceOverride: "gpu-system",
+			expectedNamespace: "gpu-system",
+		},
+		{
+			description:       "override non-default release with default namespace",
+			releaseNamespace:  "gpu-system",
+			namespaceOverride: "default",
+			expectedNamespace: "default",
+		},
+		{
+			description:       "override default release with default namespace",
+			releaseNamespace:  "default",
+			namespaceOverride: "default",
+			expectedNamespace: "default",
+		},
+		{
+			description:       "override non-default release with another namespace",
+			releaseNamespace:  "gpu-system",
+			namespaceOverride: "device-plugin",
+			expectedNamespace: "device-plugin",
+		},
+	}
+
+	for _, tc := range testCases {
+		for _, allowDefaultNamespace := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/allowDefaultNamespace=%t", tc.description, allowDefaultNamespace), func(t *testing.T) {
+				options := &helm.Options{
+					SetValues: map[string]string{
+						"namespaceOverride":     tc.namespaceOverride,
+						"allowDefaultNamespace": fmt.Sprint(allowDefaultNamespace),
+					},
+					KubectlOptions: k8s.NewKubectlOptions("", "", tc.releaseNamespace),
+					Logger:         logger.Discard,
+				}
+
+				output, err := helm.RenderTemplateE(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/daemonset-device-plugin.yml"})
+				if tc.expectedNamespace == "default" && !allowDefaultNamespace {
+					require.ErrorContains(t, err, "Running in the 'default' namespace is not recommended.")
+					require.ErrorContains(t, err, "Set 'allowDefaultNamespace=true' to bypass this error.")
+					return
+				}
+				require.NoError(t, err)
+
+				var daemonSet appsv1.DaemonSet
+				helm.UnmarshalK8SYaml(t, output, &daemonSet)
+				require.Equal(t, tc.expectedNamespace, daemonSet.Namespace)
+			})
+		}
+	}
+}
+
 // prt returns a reference to whatever type is passed into it
 func ptr[T any](x T) *T {
 	return &x
