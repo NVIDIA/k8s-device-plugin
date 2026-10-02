@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"maps"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -555,6 +556,86 @@ func TestRBACTemplatesOpenShiftGFDWithoutNFD(t *testing.T) {
 	helm.UnmarshalK8SYaml(t, bindingDocs[1], &rb)
 	require.Len(t, rb.Subjects, 1, "RoleBinding should only include device plugin SA when nfd.enabled=false")
 	require.Equal(t, "nvidia-device-plugin-service-account", rb.Subjects[0].Name)
+}
+
+// TestRBACNFDWorkerServiceAccountMatchesSubchart renders the whole chart, including the
+// NFD subchart, and asserts the SCC RoleBinding names a ServiceAccount that is actually
+// created. The release name deliberately differs from the chart name, because that is
+// where this chart's fullname and the subchart's fullname diverge. RBAC accepts subjects
+// that do not exist, so this mismatch would otherwise fail silently at runtime.
+func TestRBACNFDWorkerServiceAccountMatchesSubchart(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	releaseName := "my-gpu"
+	namespaceName := "rbac-test-nfd-sa-name"
+	apiVersions := "--api-versions=security.openshift.io/v1/SecurityContextConstraints"
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"gfd.enabled": "true",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", namespaceName),
+		Logger:         logger.Discard,
+	}
+
+	output := helm.RenderTemplate(t, options, helmChartPath, releaseName, nil, apiVersions)
+
+	serviceAccounts := map[string]bool{}
+	var sccBinding *rbacv1.RoleBinding
+	for _, doc := range splitManifestDocuments(output) {
+		var probe struct {
+			Kind     string `json:"kind"`
+			Metadata struct {
+				Name string `json:"name"`
+			} `json:"metadata"`
+		}
+		helm.UnmarshalK8SYaml(t, doc, &probe)
+
+		switch {
+		case probe.Kind == "ServiceAccount":
+			serviceAccounts[probe.Metadata.Name] = true
+		case probe.Kind == "RoleBinding" && strings.HasSuffix(probe.Metadata.Name, "-scc-role-binding"):
+			var rb rbacv1.RoleBinding
+			helm.UnmarshalK8SYaml(t, doc, &rb)
+			sccBinding = &rb
+		}
+	}
+
+	require.NotNil(t, sccBinding, "SCC RoleBinding was not rendered")
+	require.NotEmpty(t, serviceAccounts, "no ServiceAccounts rendered; subchart may not have loaded")
+
+	var workerSubject string
+	for _, s := range sccBinding.Subjects {
+		if strings.HasSuffix(s.Name, "-worker") {
+			workerSubject = s.Name
+		}
+	}
+	require.NotEmpty(t, workerSubject, "SCC RoleBinding should bind the NFD worker ServiceAccount")
+	require.True(t, serviceAccounts[workerSubject],
+		"SCC RoleBinding references ServiceAccount %q, which no template creates; rendered ServiceAccounts: %v",
+		workerSubject, keysOf(serviceAccounts))
+}
+
+func keysOf(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// splitManifestDocuments splits a multi-document manifest on document separators only,
+// so that a "---" appearing inside a value does not truncate the surrounding document.
+func splitManifestDocuments(output string) []string {
+	var docs []string
+	for _, p := range strings.Split("\n"+output, "\n---") {
+		trimmed := strings.TrimSpace(p)
+		if strings.Contains(trimmed, "apiVersion:") {
+			docs = append(docs, trimmed)
+		}
+	}
+	return docs
 }
 
 func splitYAMLDocuments(output string) []string {

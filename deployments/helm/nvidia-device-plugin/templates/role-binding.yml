@@ -34,7 +34,7 @@ subjects:
     namespace: {{ include "nvidia-device-plugin.namespace" . }}
   {{- if and .Values.gfd.enabled (eq (include "nvidia-device-plugin.nfdEnabled" .) "true") }}
   - kind: ServiceAccount
-    name: {{ include "nvidia-device-plugin.fullname" . }}-node-feature-discovery-worker
+    name: {{ include "nvidia-device-plugin.nfdWorkerServiceAccountName" . }}
     namespace: {{ include "nvidia-device-plugin.namespace" . }}
   {{- end }}
 {{- end }}
