@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -48,6 +49,8 @@ const (
 // thread limits are set for the devices that the resource makes available.
 type Daemon struct {
 	rm rm.ResourceManager
+	// memoryLimitFactor scales the equal share of pinned device memory assigned to each replica.
+	memoryLimitFactor float64
 	// root represents the root at which the files and folders controlled by the
 	// daemon are created. These include the log and pipe directories.
 	root Root
@@ -55,11 +58,17 @@ type Daemon struct {
 	logTailer *tailer
 }
 
-// NewDaemon creates an MPS daemon instance.
+// NewDaemon creates an MPS daemon instance with the default memory limit factor.
 func NewDaemon(rm rm.ResourceManager, root Root) *Daemon {
+	return NewDaemonWithMemoryLimitFactor(rm, root, 1)
+}
+
+// NewDaemonWithMemoryLimitFactor creates an MPS daemon instance with a custom memory limit factor.
+func NewDaemonWithMemoryLimitFactor(rm rm.ResourceManager, root Root, memoryLimitFactor float64) *Daemon {
 	return &Daemon{
-		rm:   rm,
-		root: root,
+		rm:                rm,
+		root:              root,
+		memoryLimitFactor: memoryLimitFactor,
 	}
 }
 
@@ -117,6 +126,7 @@ func (d *Daemon) Start() error {
 	}
 
 	for index, limit := range d.perDevicePinnedDeviceMemoryLimits() {
+		klog.InfoS("Setting MPS pinned memory limit", "device", index, "limit", limit)
 		_, err := d.EchoPipeToControl(fmt.Sprintf("set_default_device_pinned_mem_limit %s %s", index, limit))
 		if err != nil {
 			return fmt.Errorf("error setting pinned memory limit for device %v: %w", index, err)
@@ -251,9 +261,13 @@ func (d *Daemon) setComputeMode(mode computeMode) error {
 
 // perDevicePinnedMemoryLimits returns the pinned memory limits for each device.
 func (m *Daemon) perDevicePinnedDeviceMemoryLimits() map[string]string {
+	return perDevicePinnedDeviceMemoryLimits(m.Devices(), m.memoryLimitFactor)
+}
+
+func perDevicePinnedDeviceMemoryLimits(devices rm.Devices, memoryLimitFactor float64) map[string]string {
 	totalMemoryInBytesPerDevice := make(map[string]uint64)
 	replicasPerDevice := make(map[string]uint64)
-	for _, device := range m.Devices() {
+	for _, device := range devices {
 		index := device.Index
 		totalMemoryInBytesPerDevice[index] = device.TotalMemory
 		replicasPerDevice[index] += 1
@@ -265,7 +279,10 @@ func (m *Daemon) perDevicePinnedDeviceMemoryLimits() map[string]string {
 			continue
 		}
 		replicas := replicasPerDevice[index]
-		limits[index] = fmt.Sprintf("%vM", totalMemory/replicas/1024/1024)
+		totalMemoryMiB := totalMemory / 1024 / 1024
+		perReplicaMemoryMiB := totalMemory / replicas / 1024 / 1024
+		limitMiB := math.Min(float64(perReplicaMemoryMiB)*memoryLimitFactor, float64(totalMemoryMiB))
+		limits[index] = fmt.Sprintf("%vM", uint64(limitMiB))
 	}
 	return limits
 }

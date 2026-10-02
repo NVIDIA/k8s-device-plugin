@@ -69,10 +69,20 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 		config.Flags.NvidiaDevRoot = config.Flags.NvidiaDriverRoot
 	}
 
+	if config.Sharing.TimeSlicing.MemoryLimitFactor != nil {
+		return nil, fmt.Errorf("memoryLimitFactor is only supported for MPS sharing")
+	}
+
 	// Preserve the historical MPS behavior unless the config explicitly relaxes it.
-	if config.Sharing.MPS != nil && config.Sharing.MPS.FailRequestsGreaterThanOne == nil {
-		t := true
-		config.Sharing.MPS.FailRequestsGreaterThanOne = &t
+	if config.Sharing.MPS != nil {
+		if config.Sharing.MPS.FailRequestsGreaterThanOne == nil {
+			t := true
+			config.Sharing.MPS.FailRequestsGreaterThanOne = &t
+		}
+		if config.Sharing.MPS.MemoryLimitFactor == nil {
+			factor := 1.0
+			config.Sharing.MPS.MemoryLimitFactor = &factor
+		}
 	}
 
 	return config, nil
