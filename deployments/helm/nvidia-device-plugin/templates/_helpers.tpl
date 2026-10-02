@@ -218,6 +218,24 @@ Check if there is a ConfigMap in use or not
 {{- end }}
 
 {{/*
+Check if the cluster is OpenShift (has SecurityContextConstraints API)
+*/}}
+{{- define "nvidia-device-plugin.isOpenShift" -}}
+{{- .Capabilities.APIVersions.Has "security.openshift.io/v1/SecurityContextConstraints" -}}
+{{- end -}}
+
+{{/*
+Check if the NFD subchart is enabled (mirrors Chart.yaml condition: nfd.enabled,gfd.enabled)
+*/}}
+{{- define "nvidia-device-plugin.nfdEnabled" -}}
+{{- if hasKey .Values.nfd "enabled" -}}
+  {{- .Values.nfd.enabled -}}
+{{- else -}}
+  {{- .Values.gfd.enabled -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Get the name of the default configuration
 */}}
 {{- define "nvidia-device-plugin.hasDefaultConfig" -}}
