@@ -204,6 +204,32 @@ func TestGetDisabledHealthCheckXids(t *testing.T) {
 				555: false,
 			},
 		},
+		{
+			description:         "enabled overrides disabled is all",
+			disabled:            "all",
+			enabled:             "79",
+			expectedAllDisabled: false,
+			expectedContents: disabledXIDs{
+				0:   true,
+				13:  true,
+				31:  true,
+				43:  true,
+				45:  true,
+				68:  true,
+				79:  false,
+				109: true,
+			},
+			expectedDisabled: map[uint64]bool{
+				13:  true,
+				31:  true,
+				43:  true,
+				45:  true,
+				68:  true,
+				79:  false,
+				109: true,
+				555: true,
+			},
+		},
 	}
 
 	for _, tc := range testCases {
