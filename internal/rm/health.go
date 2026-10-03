@@ -19,6 +19,7 @@ package rm
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -80,7 +81,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhe
 		}
 	}()
 
-	klog.Infof("Ignoring the following XIDs for health checks: %v", xids)
+	klog.Infof("Ignoring the following XIDs for health checks: %v", xids.ignored())
 
 	eventSet, ret := r.nvml.EventSetCreate()
 	if ret != nvml.SUCCESS {
@@ -226,6 +227,20 @@ func (h disabledXIDs) IsDisabled(xid uint64) bool {
 		return disabled
 	}
 	return h.IsAllDisabled()
+}
+
+// ignored returns the sorted list of XIDs that are ignored for health checks.
+// The map also holds explicitly enabled XIDs and the allXIDs sentinel, so
+// printing it directly would list XIDs that are not actually ignored.
+func (h disabledXIDs) ignored() []uint64 {
+	var ignored []uint64
+	for xid := range h {
+		if xid != allXIDs && h.IsDisabled(xid) {
+			ignored = append(ignored, xid)
+		}
+	}
+	slices.Sort(ignored)
+	return ignored
 }
 
 // getDisabledHealthCheckXids returns the XIDs that should be ignored.

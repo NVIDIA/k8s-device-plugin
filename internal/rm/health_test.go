@@ -89,6 +89,7 @@ func TestGetDisabledHealthCheckXids(t *testing.T) {
 		expectedAllDisabled bool
 		expectedContents    disabledXIDs
 		expectedDisabled    map[uint64]bool
+		expectedIgnored     []uint64
 	}{
 		{
 			description:         "empty envvars are default disabled",
@@ -109,6 +110,7 @@ func TestGetDisabledHealthCheckXids(t *testing.T) {
 				68:  true,
 				109: true,
 			},
+			expectedIgnored: []uint64{13, 31, 43, 45, 68, 109},
 		},
 		{
 			description:         "disabled is all",
@@ -132,6 +134,7 @@ func TestGetDisabledHealthCheckXids(t *testing.T) {
 				109: true,
 				555: true,
 			},
+			expectedIgnored: []uint64{13, 31, 43, 45, 68, 109},
 		},
 		{
 			description:         "disabled is xids",
@@ -155,6 +158,7 @@ func TestGetDisabledHealthCheckXids(t *testing.T) {
 				109: true,
 				555: true,
 			},
+			expectedIgnored: []uint64{13, 31, 43, 45, 68, 109},
 		},
 		{
 			description:         "enabled is all",
@@ -203,6 +207,30 @@ func TestGetDisabledHealthCheckXids(t *testing.T) {
 				109: true,
 				555: false,
 			},
+			expectedIgnored: []uint64{13, 31, 43, 45, 68, 109},
+		},
+		{
+			description:         "enabled overrides default ignored",
+			enabled:             "31",
+			expectedAllDisabled: false,
+			expectedContents: disabledXIDs{
+				13:  true,
+				31:  false,
+				43:  true,
+				45:  true,
+				68:  true,
+				109: true,
+			},
+			expectedDisabled: map[uint64]bool{
+				13:  true,
+				31:  false,
+				43:  true,
+				45:  true,
+				68:  true,
+				109: true,
+				555: false,
+			},
+			expectedIgnored: []uint64{13, 43, 45, 68, 109},
 		},
 	}
 
@@ -220,6 +248,7 @@ func TestGetDisabledHealthCheckXids(t *testing.T) {
 				disabled[xid] = xids.IsDisabled(xid)
 			}
 			require.Equal(t, tc.expectedDisabled, disabled)
+			require.Equal(t, tc.expectedIgnored, xids.ignored())
 		})
 	}
 }
