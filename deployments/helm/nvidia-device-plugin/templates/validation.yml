@@ -53,3 +53,18 @@
 {{- $error = printf "%s\nSet it to a comma-separated list of capabilities such as \"compute,utility\" or \"all\", or to null to leave it unset." $error }}
 {{- fail $error }}
 {{- end }}
+
+{{- if not (or (kindIs "invalid" .Values.sharedDevicesAllocationPolicy) (typeIs "string" .Values.sharedDevicesAllocationPolicy)) }}
+{{- $error := "" }}
+{{- $error = printf "%s\nValue 'sharedDevicesAllocationPolicy' must be a string, got %s: %v" $error (kindOf .Values.sharedDevicesAllocationPolicy) .Values.sharedDevicesAllocationPolicy }}
+{{- $error = printf "%s\nSet it to \"distributed\", \"packed\", or \"spread\", or to null to leave it unset." $error }}
+{{- fail $error }}
+{{- end }}
+
+{{- if and (typeIs "string" .Values.sharedDevicesAllocationPolicy) (not (empty .Values.sharedDevicesAllocationPolicy)) }}
+{{- if not (has .Values.sharedDevicesAllocationPolicy (list "distributed" "packed" "spread")) }}
+{{- $error := "" }}
+{{- $error = printf "%s\nInvalid 'sharedDevicesAllocationPolicy': %s. Valid values are \"distributed\", \"packed\", or \"spread\"." $error .Values.sharedDevicesAllocationPolicy }}
+{{- fail $error }}
+{{- end }}
+{{- end }}

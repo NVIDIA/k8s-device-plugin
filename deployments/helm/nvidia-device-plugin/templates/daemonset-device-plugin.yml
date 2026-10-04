@@ -213,6 +213,10 @@ spec:
           - name: DEVICE_DISCOVERY_STRATEGY
             value: {{ .Values.deviceDiscoveryStrategy }}
         {{- end }}
+        {{- if .Values.sharedDevicesAllocationPolicy }}
+          - name: SHARED_DEVICES_ALLOCATION_POLICY
+            value: {{ .Values.sharedDevicesAllocationPolicy }}
+        {{- end }}
           - name: NVIDIA_VISIBLE_DEVICES
             value: all
         {{- if .Values.nvidiaDriverCapabilities }}
