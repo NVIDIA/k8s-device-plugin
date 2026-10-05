@@ -67,6 +67,12 @@ func (r root) tryResolveLibrary(libraryName string) string {
 		if err != nil {
 			continue
 		}
+		// EvalSymlinks succeeds for directories too, so a directory named after
+		// the library in an earlier search path would shadow the real one.
+		info, err := os.Stat(resolved)
+		if err != nil || !info.Mode().IsRegular() {
+			continue
+		}
 		return resolved
 	}
 
