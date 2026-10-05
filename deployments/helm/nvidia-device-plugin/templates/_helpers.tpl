@@ -218,6 +218,55 @@ Check if there is a ConfigMap in use or not
 {{- end }}
 
 {{/*
+Check if the cluster is OpenShift (has SecurityContextConstraints API)
+*/}}
+{{- define "nvidia-device-plugin.isOpenShift" -}}
+{{- .Capabilities.APIVersions.Has "security.openshift.io/v1/SecurityContextConstraints" -}}
+{{- end -}}
+
+{{/*
+Check if the NFD subchart is enabled (mirrors Chart.yaml condition: nfd.enabled,gfd.enabled)
+*/}}
+{{- define "nvidia-device-plugin.nfdEnabled" -}}
+{{- if hasKey .Values.nfd "enabled" -}}
+  {{- .Values.nfd.enabled -}}
+{{- else -}}
+  {{- .Values.gfd.enabled -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Name of the ServiceAccount the NFD subchart creates for nfd-worker.
+
+This replicates node-feature-discovery.worker.serviceAccountName from the subchart
+rather than appending a suffix to this chart's fullname: the two charts resolve
+their fullname independently, so a concatenated name only matches for the default
+release name. A RoleBinding naming a ServiceAccount that does not exist is accepted
+by the API server, so a mismatch fails silently.
+*/}}
+{{- define "nvidia-device-plugin.nfdWorkerServiceAccountName" -}}
+{{- $nfd := .Values.nfd | default dict -}}
+{{- $worker := $nfd.worker | default dict -}}
+{{- $serviceAccount := $worker.serviceAccount | default dict -}}
+{{- if $serviceAccount.name -}}
+  {{- $serviceAccount.name -}}
+{{- else -}}
+  {{- $fullname := "" -}}
+  {{- if $nfd.fullnameOverride -}}
+    {{- $fullname = $nfd.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+  {{- else -}}
+    {{- $name := default "node-feature-discovery" $nfd.nameOverride -}}
+    {{- if contains $name .Release.Name -}}
+      {{- $fullname = .Release.Name | trunc 63 | trimSuffix "-" -}}
+    {{- else -}}
+      {{- $fullname = printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+    {{- end -}}
+  {{- end -}}
+  {{- printf "%s-worker" $fullname -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Get the name of the default configuration
 */}}
 {{- define "nvidia-device-plugin.hasDefaultConfig" -}}
