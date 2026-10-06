@@ -316,7 +316,97 @@ func TestDevicePluginDaemonsetNvidiaDriverCapabilities(t *testing.T) {
 	}
 }
 
-// prt returns a reference to whatever type is passed into it
+func TestDevicePluginDaemonsetSharedDevicesAllocationPolicy(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	testCases := []struct {
+		description                 string
+		allocationPolicyJSON        string
+		expectedAllocationPolicyEnv *v1.EnvVar
+		expectedErrorSubstring      string
+	}{
+		{
+			description: "default",
+		},
+		{
+			description:                 "distributed",
+			allocationPolicyJSON:        `"distributed"`,
+			expectedAllocationPolicyEnv: &v1.EnvVar{Name: "SHARED_DEVICES_ALLOCATION_POLICY", Value: "distributed"},
+		},
+		{
+			description:                 "packed",
+			allocationPolicyJSON:        `"packed"`,
+			expectedAllocationPolicyEnv: &v1.EnvVar{Name: "SHARED_DEVICES_ALLOCATION_POLICY", Value: "packed"},
+		},
+		{
+			description:                 "spread",
+			allocationPolicyJSON:        `"spread"`,
+			expectedAllocationPolicyEnv: &v1.EnvVar{Name: "SHARED_DEVICES_ALLOCATION_POLICY", Value: "spread"},
+		},
+		{
+			description:          "null omits the variable",
+			allocationPolicyJSON: "null",
+		},
+		{
+			description:          "empty string omits the variable",
+			allocationPolicyJSON: `""`,
+		},
+		{
+			description:            "invalid string is rejected",
+			allocationPolicyJSON:   `"unknown"`,
+			expectedErrorSubstring: "Invalid 'sharedDevicesAllocationPolicy': unknown",
+		},
+		{
+			description:            "boolean is rejected",
+			allocationPolicyJSON:   "true",
+			expectedErrorSubstring: "Value 'sharedDevicesAllocationPolicy' must be a string, got bool: true",
+		},
+		{
+			description:            "number is rejected",
+			allocationPolicyJSON:   "1",
+			expectedErrorSubstring: "Value 'sharedDevicesAllocationPolicy' must be a string",
+		},
+		{
+			description:            "list is rejected",
+			allocationPolicyJSON:   `["spread"]`,
+			expectedErrorSubstring: "Value 'sharedDevicesAllocationPolicy' must be a string, got slice: [spread]",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			options := &helm.Options{
+				KubectlOptions: k8s.NewKubectlOptions("", "", "k8s-device-plugin-test"),
+				Logger:         logger.Discard,
+			}
+			if tc.allocationPolicyJSON != "" {
+				options.SetJsonValues = map[string]string{"sharedDevicesAllocationPolicy": tc.allocationPolicyJSON}
+			}
+
+			output, err := helm.RenderTemplateE(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/daemonset-device-plugin.yml"})
+			if tc.expectedErrorSubstring != "" {
+				require.ErrorContains(t, err, tc.expectedErrorSubstring)
+				return
+			}
+			require.NoError(t, err)
+
+			var daemonset appsv1.DaemonSet
+			helm.UnmarshalK8SYaml(t, output, &daemonset)
+			require.Len(t, daemonset.Spec.Template.Spec.Containers, 1)
+
+			var policyEnv *v1.EnvVar
+			for _, env := range daemonset.Spec.Template.Spec.Containers[0].Env {
+				if env.Name == "SHARED_DEVICES_ALLOCATION_POLICY" {
+					policyEnv = &env
+				}
+			}
+			require.Equal(t, tc.expectedAllocationPolicyEnv, policyEnv)
+		})
+	}
+}
+
+// ptr returns a reference to whatever type is passed into it
 func ptr[T any](x T) *T {
 	return &x
 }

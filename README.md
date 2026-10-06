@@ -871,6 +871,9 @@ These values are as follows:
       [uuid | index] (default "uuid")
   nvidiaDriverRoot:
       the root path for the NVIDIA driver installation (typical values are '/' or '/run/nvidia/driver')
+  sharedDevicesAllocationPolicy:
+      the allocation policy for replicated and MIG resources
+      [distributed | packed | spread] (default "distributed")
 ```
 
 **Note:**  There is no value that directly maps to the `PASS_DEVICE_SPECS`
