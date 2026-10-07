@@ -405,7 +405,7 @@ github.com/mitchellh/hashstructure
 # github.com/mitchellh/reflectwalk v1.0.2
 ## explicit
 github.com/mitchellh/reflectwalk
-# github.com/mittwald/go-helm-client v0.13.2
+# github.com/mittwald/go-helm-client v0.13.3
 ## explicit; go 1.26.3
 github.com/mittwald/go-helm-client
 github.com/mittwald/go-helm-client/values

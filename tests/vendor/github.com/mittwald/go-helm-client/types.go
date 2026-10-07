@@ -176,6 +176,11 @@ type ChartSpec struct {
 	// ForceReplace causes server-side apply to force conflicts ("Overwrite value, become sole manager")
 	// +optional
 	ForceConflicts bool `json:"forceConflicts,omitempty"`
+	// TakeOwnership ignores the check for helm annotations and adopts existing
+	// cluster resources into the release (helm --take-ownership).
+	// Applies to install and upgrade.
+	// +optional
+	TakeOwnership bool `json:"takeOwnership,omitempty"`
 	// ResetValues indicates whether to reset the values.yaml file during installation.
 	// +optional
 	ResetValues bool `json:"resetValues,omitempty"`
