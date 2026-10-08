@@ -71,7 +71,7 @@ var _ = Describe("GPU Device Plugin", Ordered, Label("gpu", "e2e", "device-plugi
 			"devicePlugin.enabled=true",
 			// We need to make affinity null, if not deploying NFD/GFD
 			// test will fail if not run on a GPU node
-			"affinity=",
+			"affinity=null",
 		},
 	}
 

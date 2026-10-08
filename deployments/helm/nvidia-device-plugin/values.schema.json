@@ -1,0 +1,434 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "affinity": {
+      "anyOf": [
+        {
+          "type": "object"
+        },
+        {
+          "const": ""
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "allowDefaultNamespace": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "cdi": {
+      "type": "object",
+      "properties": {
+        "featureFlags": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nvidiaHookPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "compatWithCPUManager": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "componentSelectorLabels": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "enabled": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fallbackStrategies": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "map": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "configManager": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "resources": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      }
+    },
+    "deviceDiscoveryStrategy": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "deviceIDStrategy": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "deviceListStrategy": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "devicePlugin": {
+      "type": "object",
+      "properties": {
+        "enableHostNetwork": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "enabled": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "resources": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      }
+    },
+    "failOnInitError": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "fullnameOverride": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "gdrcopyEnabled": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "gdsEnabled": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "gfd": {
+      "type": "object",
+      "properties": {
+        "enableHostNetwork": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "enabled": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "nameOverride": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "namespaceOverride": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "noTimestamp": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "resources": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "securityContext": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "sleepInterval": {
+          "type": [
+            "string",
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "properties": {
+        "pullPolicy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "repository": {
+          "type": "string"
+        },
+        "tag": {
+          "type": [
+            "string",
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "imagePullSecrets": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "migStrategy": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "mofedEnabled": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "mps": {
+      "type": "object",
+      "properties": {
+        "enableHostNetwork": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "enableHostPID": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "resources": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "root": {
+          "type": "string"
+        }
+      }
+    },
+    "nameOverride": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "namespaceOverride": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "nodeSelector": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "nvidiaDevRoot": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "nvidiaDriverCapabilities": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "nvidiaDriverRoot": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "podAnnotations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "podSecurityContext": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "priorityClassName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "resources": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "runtimeClassName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "securityContext": {
+      "type": "object"
+    },
+    "selectorLabelsOverride": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "tolerations": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "properties": {
+          "effect": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "operator": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tolerationSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "updateStrategy": {
+      "type": [
+        "object",
+        "null"
+      ]
+    }
+  }
+}
