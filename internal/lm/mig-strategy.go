@@ -18,6 +18,7 @@ package lm
 
 import (
 	"fmt"
+	"strconv"
 
 	"k8s.io/klog/v2"
 
@@ -75,6 +76,21 @@ func NewResourceLabeler(manager resource.Manager, config *spec.Config) (Labeler,
 
 	return labelers, nil
 
+}
+
+// newMigDisabledCountLabeler creates a labeler that reports the number of GPUs on the node that
+// do not have MIG enabled, the GPUs still usable as whole GPUs.
+func newMigDisabledCountLabeler(deviceInfo *mig.DeviceInfo) (Labeler, error) {
+	migDisabledDevices, err := deviceInfo.GetDevicesWithMigDisabled()
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve list of non-MIG-enabled devices: %v", err)
+	}
+
+	labels := Labels{
+		fullGPUResourceName + ".count.mig-disabled": strconv.Itoa(len(migDisabledDevices)),
+	}
+
+	return labels, nil
 }
 
 // MigDeviceCounts maintains a count of unique MIG device types across all GPUs on a node
@@ -293,7 +309,22 @@ func newMigStrategyMixedLabeler(manager resource.Manager, config *spec.Config) (
 		resources[name] = resource
 	}
 
-	return newMIGDeviceLabelers(resources, config)
+	migDeviceLabelers, err := newMIGDeviceLabelers(resources, config)
+	if err != nil {
+		return nil, err
+	}
+
+	// Under this strategy MIG-enabled GPUs are excluded from the nvidia.com/gpu resource while
+	// MIG-disabled GPUs are not, so we report how many GPUs remain usable as whole GPUs.
+	migDisabledCountLabeler, err := newMigDisabledCountLabeler(deviceInfo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct MIG-disabled count labeler: %v", err)
+	}
+
+	return Merge(
+		migDeviceLabelers,
+		migDisabledCountLabeler,
+	), nil
 }
 
 func newMIGDeviceLabelers(resources map[string]migResource, config *spec.Config) (Labeler, error) {
