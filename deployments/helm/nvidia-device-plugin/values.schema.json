@@ -264,6 +264,13 @@
         }
       }
     },
+    "logVerbosity": {
+      "type": [
+        "string",
+        "integer",
+        "null"
+      ]
+    },
     "migStrategy": {
       "type": [
         "string",
