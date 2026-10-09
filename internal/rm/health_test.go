@@ -19,11 +19,15 @@ package rm
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/stretchr/testify/require"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 func TestNewHealthCheckXIDs(t *testing.T) {
@@ -492,4 +496,248 @@ func TestMatchesMigEvent(t *testing.T) {
 			require.Equal(t, tc.expected, matchesMigEvent(tc.deviceGI, tc.deviceCI, tc.eventGI, tc.eventCI))
 		})
 	}
+}
+
+func TestCheckHealthSharesEventSetAcrossMixedMIGProfiles(t *testing.T) {
+	var inFlight, maxInFlight atomic.Int32
+	eventSet := &healthEventSetStub{
+		waitFn: func(uint32) (nvml.EventData, nvml.Return) {
+			n := inFlight.Add(1)
+			for {
+				old := maxInFlight.Load()
+				if n <= old || maxInFlight.CompareAndSwap(old, n) {
+					break
+				}
+			}
+			time.Sleep(20 * time.Millisecond)
+			inFlight.Add(-1)
+			return nvml.EventData{}, nvml.ERROR_TIMEOUT
+		},
+	}
+
+	parentUUID := "GPU-P"
+	var registerCount atomic.Int32
+	parent := &healthGPUStub{uuid: parentUUID, registerCount: &registerCount}
+	nvmlStub := &healthNvmlStub{
+		devices: map[string]nvml.Device{
+			parentUUID: parent,
+			"MIG-4g":   &healthMigStub{parent: parent, gi: 1, ci: 0},
+			"MIG-3g":   &healthMigStub{parent: parent, gi: 2, ci: 0},
+		},
+		newEventSet: func() nvml.EventSet { return eventSet },
+	}
+	watch := newHealthWatch()
+
+	stop4g := startHealth(t, newTestHealthResourceManager(nvmlStub, watch, "nvidia.com/mig-4g.47gb"),
+		Devices{"MIG-4g": migDevice("MIG-4g", "0:0")}, make(chan *Device, 1))
+	stop3g := startHealth(t, newTestHealthResourceManager(nvmlStub, watch, "nvidia.com/mig-3g.47gb"),
+		Devices{"MIG-3g": migDevice("MIG-3g", "0:1")}, make(chan *Device, 1))
+	time.Sleep(50 * time.Millisecond)
+	stop4g()
+	stop3g()
+
+	require.Equal(t, int32(1), nvmlStub.eventSetCreates.Load(), "mixed MIG plugins must share one event set")
+	require.Equal(t, int32(1), registerCount.Load(), "the parent GPU must be registered once")
+	require.Equal(t, int32(1), maxInFlight.Load(), "a shared waiter must not overlap nvmlEventSetWait")
+}
+
+func TestCheckHealthDispatchesXidToMatchingMIGDevice(t *testing.T) {
+	parentUUID := "GPU-P"
+	ready := make(chan struct{})
+	var sent atomic.Bool
+	eventSet := &healthEventSetStub{
+		waitFn: func(uint32) (nvml.EventData, nvml.Return) {
+			select {
+			case <-ready:
+			case <-time.After(10 * time.Millisecond):
+				return nvml.EventData{}, nvml.ERROR_TIMEOUT
+			}
+			if sent.CompareAndSwap(false, true) {
+				return nvml.EventData{
+					Device:            &healthGPUStub{uuid: parentUUID},
+					EventType:         nvml.EventTypeXidCriticalError,
+					EventData:         79,
+					GpuInstanceId:     1,
+					ComputeInstanceId: 0,
+				}, nvml.SUCCESS
+			}
+			time.Sleep(10 * time.Millisecond)
+			return nvml.EventData{}, nvml.ERROR_TIMEOUT
+		},
+	}
+
+	parent := &healthGPUStub{uuid: parentUUID}
+	nvmlStub := &healthNvmlStub{
+		devices: map[string]nvml.Device{
+			parentUUID: parent,
+			"MIG-4g":   &healthMigStub{parent: parent, gi: 1, ci: 0},
+			"MIG-3g":   &healthMigStub{parent: parent, gi: 2, ci: 0},
+		},
+		newEventSet: func() nvml.EventSet { return eventSet },
+	}
+	watch := newHealthWatch()
+
+	unhealthy4g := make(chan *Device, 1)
+	unhealthy3g := make(chan *Device, 1)
+	stop4g := startHealth(t, newTestHealthResourceManager(nvmlStub, watch, "nvidia.com/mig-4g.47gb"),
+		Devices{"MIG-4g": migDevice("MIG-4g", "0:0")}, unhealthy4g)
+	stop3g := startHealth(t, newTestHealthResourceManager(nvmlStub, watch, "nvidia.com/mig-3g.47gb"),
+		Devices{"MIG-3g": migDevice("MIG-3g", "0:1")}, unhealthy3g)
+	defer stop4g()
+	defer stop3g()
+
+	require.Eventually(t, func() bool {
+		watch.mu.Lock()
+		defer watch.mu.Unlock()
+		return len(watch.subs) == 2
+	}, time.Second, 5*time.Millisecond)
+
+	close(ready)
+
+	select {
+	case d := <-unhealthy4g:
+		require.Equal(t, "MIG-4g", d.ID)
+	case <-time.After(time.Second):
+		t.Fatal("matching MIG device was not marked unhealthy")
+	}
+	select {
+	case d := <-unhealthy3g:
+		t.Fatalf("non-matching MIG device was marked unhealthy: %s", d.ID)
+	default:
+	}
+}
+
+func testHealthConfig() *spec.Config {
+	fail := true
+	return &spec.Config{
+		Flags: spec.Flags{
+			CommandLineFlags: spec.CommandLineFlags{
+				FailOnInitError: &fail,
+			},
+		},
+	}
+}
+
+func newTestHealthResourceManager(nvmllib nvml.Interface, watch *healthWatch, resource spec.ResourceName) *nvmlResourceManager {
+	return &nvmlResourceManager{
+		resourceManager: resourceManager{
+			config:   testHealthConfig(),
+			resource: resource,
+		},
+		nvml:  nvmllib,
+		watch: watch,
+	}
+}
+
+func startHealth(t *testing.T, r *nvmlResourceManager, devices Devices, unhealthy chan<- *Device) func() {
+	t.Helper()
+	stop := make(chan any)
+	done := make(chan error, 1)
+	go func() {
+		done <- r.checkHealth(stop, devices, unhealthy)
+	}()
+	return func() {
+		close(stop)
+		select {
+		case err := <-done:
+			require.NoError(t, err)
+		case <-time.After(2 * time.Second):
+			t.Fatal("checkHealth did not return")
+		}
+	}
+}
+
+func migDevice(id, index string) *Device {
+	return &Device{
+		Device: pluginapi.Device{ID: id},
+		Index:  index,
+	}
+}
+
+type healthEventSetStub struct {
+	nvml.EventSet
+	waitFn    func(uint32) (nvml.EventData, nvml.Return)
+	freeCount atomic.Int32
+}
+
+func (e *healthEventSetStub) Wait(timeout uint32) (nvml.EventData, nvml.Return) {
+	if e.waitFn != nil {
+		return e.waitFn(timeout)
+	}
+	return nvml.EventData{}, nvml.ERROR_TIMEOUT
+}
+
+func (e *healthEventSetStub) Free() nvml.Return {
+	e.freeCount.Add(1)
+	return nvml.SUCCESS
+}
+
+type healthGPUStub struct {
+	nvml.Device
+	uuid          string
+	registerCount *atomic.Int32
+	registerRet   nvml.Return
+}
+
+func (g *healthGPUStub) GetSupportedEventTypes() (uint64, nvml.Return) {
+	return uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError), nvml.SUCCESS
+}
+
+func (g *healthGPUStub) RegisterEvents(uint64, nvml.EventSet) nvml.Return {
+	if g.registerCount != nil {
+		g.registerCount.Add(1)
+	}
+	if g.registerRet != nvml.SUCCESS {
+		return g.registerRet
+	}
+	return nvml.SUCCESS
+}
+
+func (g *healthGPUStub) GetUUID() (string, nvml.Return) {
+	return g.uuid, nvml.SUCCESS
+}
+
+type healthMigStub struct {
+	nvml.Device
+	parent *healthGPUStub
+	gi     int
+	ci     int
+}
+
+func (m *healthMigStub) GetDeviceHandleFromMigDeviceHandle() (nvml.Device, nvml.Return) {
+	return m.parent, nvml.SUCCESS
+}
+
+func (m *healthMigStub) GetGpuInstanceId() (int, nvml.Return) {
+	return m.gi, nvml.SUCCESS
+}
+
+func (m *healthMigStub) GetComputeInstanceId() (int, nvml.Return) {
+	return m.ci, nvml.SUCCESS
+}
+
+type healthNvmlStub struct {
+	nvml.Interface
+	devices         map[string]nvml.Device
+	newEventSet     func() nvml.EventSet
+	eventSetCreates atomic.Int32
+}
+
+func (n *healthNvmlStub) Init() nvml.Return { return nvml.SUCCESS }
+
+func (n *healthNvmlStub) Shutdown() nvml.Return { return nvml.SUCCESS }
+
+func (n *healthNvmlStub) EventSetCreate() (nvml.EventSet, nvml.Return) {
+	n.eventSetCreates.Add(1)
+	if n.newEventSet != nil {
+		return n.newEventSet(), nvml.SUCCESS
+	}
+	return &healthEventSetStub{}, nvml.SUCCESS
+}
+
+func (n *healthNvmlStub) DeviceGetHandleByUUID(uuid string) (nvml.Device, nvml.Return) {
+	if d, ok := n.devices[uuid]; ok {
+		return d, nvml.SUCCESS
+	}
+	return nil, nvml.ERROR_NOT_FOUND
 }
