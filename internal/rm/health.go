@@ -68,6 +68,8 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhe
 
 	ret := r.nvml.Init()
 	if ret != nvml.SUCCESS {
+		klog.Errorf("Failed to initialize NVML for health checks: %v; marking all devices as unhealthy", ret)
+		reportUnhealthyDevices(stop, devices, unhealthy)
 		if *r.config.Flags.FailOnInitError {
 			return fmt.Errorf("failed to initialize NVML: %v", ret)
 		}
@@ -84,6 +86,8 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhe
 
 	eventSet, ret := r.nvml.EventSetCreate()
 	if ret != nvml.SUCCESS {
+		klog.Errorf("Failed to create event set for health checks: %v; marking all devices as unhealthy", ret)
+		reportUnhealthyDevices(stop, devices, unhealthy)
 		return fmt.Errorf("failed to create event set: %v", ret)
 	}
 	defer func() {
@@ -189,6 +193,18 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhe
 
 			klog.Infof("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
 			unhealthy <- d
+		}
+	}
+}
+
+// reportUnhealthyDevices reports devices whose health cannot be monitored.
+// Stop must release the sender if ListAndWatch is no longer receiving updates.
+func reportUnhealthyDevices(stop <-chan any, devices Devices, unhealthy chan<- *Device) {
+	for _, d := range devices {
+		select {
+		case <-stop:
+			return
+		case unhealthy <- d:
 		}
 	}
 }
