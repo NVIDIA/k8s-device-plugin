@@ -296,10 +296,13 @@ func (s *ReplicatedDevices) UnmarshalJSON(b []byte) error {
 		// For each item in the list check its format and convert it to a string (if necessary)
 		result := make([]ReplicatedDeviceRef, len(slice))
 		for i, s := range slice {
-			// Match a uint as a GPU index and convert it to a string
-			var index uint64
-			if err = json.Unmarshal(s, &index); err == nil {
-				result[i] = ReplicatedDeviceRef(strconv.FormatUint(index, 10))
+			// Match a uint as a GPU index and convert it to a string.
+			// The pointer is what keeps the null literal out: encoding/json
+			// unmarshals it into a non-pointer as a no-op and reports no error,
+			// so a null entry would otherwise be taken for index 0.
+			var index *uint64
+			if err = json.Unmarshal(s, &index); err == nil && index != nil {
+				result[i] = ReplicatedDeviceRef(strconv.FormatUint(*index, 10))
 				continue
 			}
 			// Match strings as valid entries if they are GPU indices, MIG indices, or UUIDs
@@ -311,8 +314,10 @@ func (s *ReplicatedDevices) UnmarshalJSON(b []byte) error {
 					continue
 				}
 			}
-			// Treat any other entries as errors
-			return fmt.Errorf("unsupported type for device in devices list: %v, %T", item, item)
+			// Treat any other entries as errors, naming the entry itself the way
+			// the spec-level error below does. item is still the zero value
+			// whenever the string above failed to unmarshal.
+			return fmt.Errorf("unsupported entry in devices list: %v", string(s))
 		}
 		s.List = result
 		return nil
