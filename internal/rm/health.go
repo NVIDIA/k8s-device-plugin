@@ -204,13 +204,21 @@ type disabledXIDs map[uint64]bool
 // These are considered if all XIDs have been disabled AND no other XIDs have
 // been explcitly enabled.
 func (h disabledXIDs) IsAllDisabled() bool {
-	if allDisabled, ok := h[allXIDs]; ok {
-		return allDisabled
+	if allDisabled, ok := h[allXIDs]; !ok || !allDisabled {
+		// At this point we wither have explicitly disabled XIDs or explicitly
+		// enabled XIDs. Since ANY XID that's not specified is assumed enabled, we
+		// return here.
+		return false
 	}
-	// At this point we wither have explicitly disabled XIDs or explicitly
-	// enabled XIDs. Since ANY XID that's not specified is assumed enabled, we
-	// return here.
-	return false
+	// An XID the caller enabled explicitly is still checked for, even with
+	// every other one disabled, so the health checks as a whole are not off.
+	// getDisabledHealthCheckXids records such an XID as a false entry.
+	for xid, disabled := range h {
+		if xid != allXIDs && !disabled {
+			return false
+		}
+	}
+	return true
 }
 
 // IsDisabled checks whether the specified XID has been explicitly disalbled.
@@ -225,7 +233,10 @@ func (h disabledXIDs) IsDisabled(xid uint64) bool {
 	if disabled, ok := h[xid]; ok {
 		return disabled
 	}
-	return h.IsAllDisabled()
+	// An XID nobody named is disabled exactly when all XIDs are. Asking
+	// IsAllDisabled here would make such an XID checked for as soon as some
+	// other XID is enabled by name.
+	return h[allXIDs]
 }
 
 // getDisabledHealthCheckXids returns the XIDs that should be ignored.
