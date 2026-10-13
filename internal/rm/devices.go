@@ -257,6 +257,7 @@ func (r AnnotatedID) Split() (string, int) {
 	}
 	replica, err := strconv.ParseInt(split[1], 10, 0)
 	if err != nil {
+		klog.Warningf("Ignoring non-integer replica suffix %q on annotated ID %q", split[1], string(r))
 		return string(r), 0
 	}
 	return split[0], int(replica)
