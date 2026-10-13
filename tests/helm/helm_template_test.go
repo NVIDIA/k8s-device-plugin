@@ -731,12 +731,30 @@ func TestRBACTemplatesNonOpenShift(t *testing.T) {
 		Logger:         logger.Discard,
 	}
 
-	// Without GFD or OpenShift, no roles or bindings should render
-	_, err = helm.RenderTemplateE(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role.yml"})
-	require.Error(t, err, "role.yml should not render without GFD or OpenShift")
+	// Base install always renders the ClusterRole (nodes only) and ClusterRoleBinding.
+	roleOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role.yml"})
+	roleDocs := splitYAMLDocuments(roleOutput)
+	require.Len(t, roleDocs, 1, "expected only ClusterRole")
 
-	_, err = helm.RenderTemplateE(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role-binding.yml"})
-	require.Error(t, err, "role-binding.yml should not render without GFD or OpenShift")
+	var clusterRole rbacv1.ClusterRole
+	helm.UnmarshalK8SYaml(t, roleDocs[0], &clusterRole)
+	require.Equal(t, "ClusterRole", clusterRole.Kind)
+	require.Len(t, clusterRole.Rules, 1, "expected only node rules without GFD")
+	require.Contains(t, clusterRole.Rules[0].Resources, "nodes")
+	for _, rule := range clusterRole.Rules {
+		for _, group := range rule.APIGroups {
+			require.NotEqual(t, "security.openshift.io", group, "SCC rule should not be present on non-OpenShift")
+			require.NotEqual(t, "nfd.k8s-sigs.io", group, "NFD rules should not be present without GFD")
+		}
+	}
+
+	bindingOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role-binding.yml"})
+	bindingDocs := splitYAMLDocuments(bindingOutput)
+	require.Len(t, bindingDocs, 1, "expected only ClusterRoleBinding")
+
+	var crb rbacv1.ClusterRoleBinding
+	helm.UnmarshalK8SYaml(t, bindingDocs[0], &crb)
+	require.Equal(t, "ClusterRoleBinding", crb.Kind)
 }
 
 func TestRBACTemplatesNonOpenShiftWithGFD(t *testing.T) {
@@ -844,27 +862,41 @@ func TestRBACTemplatesOpenShift(t *testing.T) {
 		Logger:         logger.Discard,
 	}
 
-	// Without GFD: only namespaced Role with SCC rule (no ClusterRole)
+	// OpenShift base install: ClusterRole (nodes) + namespaced Role (SCC use)
 	roleOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role.yml"}, apiVersions)
 	roleDocs := splitYAMLDocuments(roleOutput)
-	require.Len(t, roleDocs, 1, "expected only namespaced Role")
+	require.Len(t, roleDocs, 2, "expected ClusterRole + namespaced Role")
+
+	var clusterRole rbacv1.ClusterRole
+	helm.UnmarshalK8SYaml(t, roleDocs[0], &clusterRole)
+	require.Equal(t, "ClusterRole", clusterRole.Kind)
+	for _, rule := range clusterRole.Rules {
+		for _, group := range rule.APIGroups {
+			require.NotEqual(t, "security.openshift.io", group, "SCC rule should not be in ClusterRole")
+		}
+	}
 
 	var role rbacv1.Role
-	helm.UnmarshalK8SYaml(t, roleDocs[0], &role)
+	helm.UnmarshalK8SYaml(t, roleDocs[1], &role)
 	require.Equal(t, "Role", role.Kind)
 	require.Equal(t, namespaceName, role.Namespace)
 	requireHasSCCRule(t, role.Rules)
 
-	// Only namespaced RoleBinding (no ClusterRoleBinding)
+	// ClusterRoleBinding + namespaced RoleBinding
 	bindingOutput := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/role-binding.yml"}, apiVersions)
 	bindingDocs := splitYAMLDocuments(bindingOutput)
-	require.Len(t, bindingDocs, 1, "expected only namespaced RoleBinding")
+	require.Len(t, bindingDocs, 2, "expected ClusterRoleBinding + namespaced RoleBinding")
+
+	var crb rbacv1.ClusterRoleBinding
+	helm.UnmarshalK8SYaml(t, bindingDocs[0], &crb)
+	require.Equal(t, "ClusterRoleBinding", crb.Kind)
 
 	var rb rbacv1.RoleBinding
-	helm.UnmarshalK8SYaml(t, bindingDocs[0], &rb)
+	helm.UnmarshalK8SYaml(t, bindingDocs[1], &rb)
 	require.Equal(t, "RoleBinding", rb.Kind)
 	require.Equal(t, namespaceName, rb.Namespace)
 	require.Equal(t, "Role", rb.RoleRef.Kind)
+	require.Len(t, rb.Subjects, 1, "RoleBinding should only include device plugin SA without GFD")
 }
 
 func TestRBACTemplatesOpenShiftWithGFD(t *testing.T) {
