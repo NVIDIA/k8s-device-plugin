@@ -82,7 +82,7 @@ type Flags struct {
 type SyncableConfig struct {
 	cond     *sync.Cond
 	mutex    sync.Mutex
-	current  string
+	current  *string
 	lastRead *string
 }
 
@@ -98,7 +98,7 @@ func NewSyncableConfig(f *Flags) *SyncableConfig {
 func (m *SyncableConfig) Set(value string) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	m.current = value
+	m.current = &value
 	m.cond.Broadcast()
 }
 
@@ -107,12 +107,19 @@ func (m *SyncableConfig) Set(value string) {
 func (m *SyncableConfig) Get() string {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	if m.lastRead != nil && *m.lastRead == m.current {
+	// A nil current means the informer has not observed the node yet: block so
+	// the first Get() returns the node's actual label value instead of the zero
+	// value from before the cache synced (see #2066). An observed empty value
+	// stays valid: a node without the label selects the default config.
+	for m.current == nil {
 		m.cond.Wait()
 	}
-	val := m.current
+	if m.lastRead != nil && *m.lastRead == *m.current {
+		m.cond.Wait()
+	}
+	val := *m.current
 	m.lastRead = &val
-	return *m.lastRead
+	return val
 }
 
 func main() {
