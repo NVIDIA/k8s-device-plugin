@@ -16,11 +16,15 @@
 
 package plugin
 
-import "github.com/NVIDIA/k8s-device-plugin/internal/rm"
+import (
+	"context"
+
+	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
+)
 
 // Interface defines the API for the plugin package
 type Interface interface {
 	Devices() rm.Devices
-	Start(string) error
+	Start(context.Context, string) error
 	Stop() error
 }

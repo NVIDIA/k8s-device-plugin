@@ -126,10 +126,10 @@ func (plugin *nvidiaDevicePlugin) Devices() rm.Devices {
 
 // Start starts the gRPC server, registers the device plugin with the Kubelet,
 // and starts the device healthchecks.
-func (plugin *nvidiaDevicePlugin) Start(kubeletSocket string) error {
+func (plugin *nvidiaDevicePlugin) Start(ctx context.Context, kubeletSocket string) error {
 	plugin.initialize()
 
-	if err := plugin.mps.waitForDaemon(); err != nil {
+	if err := plugin.mps.waitForDaemon(ctx); err != nil {
 		return fmt.Errorf("error waiting for MPS daemon: %w", err)
 	}
 
