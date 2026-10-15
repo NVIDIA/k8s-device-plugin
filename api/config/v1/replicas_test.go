@@ -120,9 +120,10 @@ func TestMarshalReplicatedDevices(t *testing.T) {
 
 func TestUnmarshalReplicatedDevices(t *testing.T) {
 	testCases := []struct {
-		input  string
-		output ReplicatedDevices
-		err    bool
+		input       string
+		output      ReplicatedDevices
+		err         bool
+		errContains string
 	}{
 		{
 			input: ``,
@@ -141,8 +142,34 @@ func TestUnmarshalReplicatedDevices(t *testing.T) {
 			err:   true,
 		},
 		{
-			input: `[-1]`,
-			err:   true,
+			input:       `[-1]`,
+			err:         true,
+			errContains: "-1",
+		},
+		{
+			input:       `[null]`,
+			err:         true,
+			errContains: "null",
+		},
+		{
+			input:       `[true]`,
+			err:         true,
+			errContains: "true",
+		},
+		{
+			input:       `[1.5]`,
+			err:         true,
+			errContains: "1.5",
+		},
+		{
+			input:       `[{"a": 1}]`,
+			err:         true,
+			errContains: `{"a": 1}`,
+		},
+		{
+			input:       `[0, null]`,
+			err:         true,
+			errContains: "null",
 		},
 		{
 			input: `["-1"]`,
@@ -232,6 +259,9 @@ func TestUnmarshalReplicatedDevices(t *testing.T) {
 			err := output.UnmarshalJSON([]byte(tc.input))
 			if tc.err {
 				require.Error(t, err)
+				if tc.errContains != "" {
+					require.ErrorContains(t, err, tc.errContains)
+				}
 				return
 			}
 			require.NoError(t, err)
