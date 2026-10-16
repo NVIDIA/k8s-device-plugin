@@ -213,7 +213,7 @@ For a similar list of labels generated or used by the device plugin, see [here](
 | nvidia.com/gfd.timestamp       | Integer    | Timestamp of the generated labels (optional)                                                                                                                                           | 1724632719     |
 | nvidia.com/gpu.compute.major   | Integer    | Major of the compute capabilities                                                                                                                                                      | 7              |
 | nvidia.com/gpu.compute.minor   | Integer    | Minor of the compute capabilities                                                                                                                                                      | 5              |
-| nvidia.com/gpu.count           | Integer    | Number of GPUs                                                                                                                                                                         | 2              |
+| nvidia.com/gpu.count           | Integer    | Number of physical GPUs installed on the node. Note that the `single` MIG strategy overrides this to report MIG devices instead; see below.                                             | 2              |
 | nvidia.com/gpu.family          | String     | Architecture family of the GPU                                                                                                                                                         | turing         |
 | nvidia.com/gpu.machine         | String     | Machine type. If in a public cloud provider, value may be set to the instance type.                                                                                                    | DGX-1          |
 | nvidia.com/gpu.memory          | Integer    | Memory of the GPU in mebibytes (MiB)                                                                                                                                                    | 15360          |
@@ -248,6 +248,11 @@ is partitioned into 7 equal sized MIG devices (56 total).
 | nvidia.com/gpu.engines.jpeg         | Integer    | Number of JPEG engines for MIG device    | 0                         |
 | nvidia.com/gpu.engines.ofa          | Integer    | Number of OfA engines for MIG device     | 0                         |
 
+> [!NOTE]
+> Under this strategy `nvidia.com/gpu.count` reports the number of MIG devices rather than the
+> number of physical GPUs. This overloading is legacy behaviour retained for compatibility and is
+> specific to the `single` strategy.
+
 ### MIG 'mixed' strategy
 
 With this strategy, a separate set of labels for each MIG device type is
@@ -261,6 +266,7 @@ e.g.  MIG_TYPE=mig-3g.20gb
 | Label Name                           | Value Type | Meaning                                  | Example        |
 | ------------------------------------ | ---------- | ---------------------------------------- | -------------- |
 | nvidia.com/mig.strategy              | String     | MIG strategy in use                      | mixed          |
+| nvidia.com/gpu.count.mig-disabled    | Integer    | Number of GPUs on the node that do not have MIG enabled, i.e. those still usable as whole GPUs. Only generated for this strategy; see [GPU counts](#gpu-counts). | 1 |
 | nvidia.com/MIG\_TYPE.count           | Integer    | Number of MIG devices of this type       | 2              |
 | nvidia.com/MIG\_TYPE.memory          | Integer    | Memory of MIG device type in megabytes (MB) | 10240          |
 | nvidia.com/MIG\_TYPE.multiprocessors | Integer    | Number of Multiprocessors for MIG device | 14             |
@@ -271,6 +277,39 @@ e.g.  MIG_TYPE=mig-3g.20gb
 | nvidia.com/MIG\_TYPE.engines.encoder | Integer    | Number of encoders for MIG device        | 1              |
 | nvidia.com/MIG\_TYPE.engines.jpeg    | Integer    | Number of JPEG engines for MIG device    | 0              |
 | nvidia.com/MIG\_TYPE.engines.ofa     | Integer    | Number of OfA engines for MIG device     | 0              |
+
+### GPU counts
+
+Under the `mixed` strategy a node carries three distinct counts, and they are expected to differ.
+Reading the wrong one is a common source of confusion, so each question maps to exactly one label:
+
+| If you want to know                             | Read                                | Example |
+| ----------------------------------------------- | ----------------------------------- | ------- |
+| How many physical GPUs are installed            | `nvidia.com/gpu.count`              | 8       |
+| How many GPUs remain usable as whole GPUs       | `nvidia.com/gpu.count.mig-disabled` | 1       |
+| How many instances of a given MIG profile exist | `nvidia.com/mig-<profile>.count`    | 14      |
+
+For example, on a node with 8 GPUs where 7 have been partitioned and 1 has been left whole:
+
+```
+nvidia.com/gpu.count=8
+nvidia.com/gpu.count.mig-disabled=1
+nvidia.com/mig-1g.10gb.count=14
+nvidia.com/mig-3g.40gb.count=5
+nvidia.com/mig-4g.40gb.count=5
+```
+
+This strategy excludes MIG-enabled GPUs from the `nvidia.com/gpu` resource.
+`nvidia.com/gpu.count.mig-disabled` reports the number of physical GPUs available as whole GPUs,
+before sharing replicas are applied. If sharing is configured, the `nvidia.com/gpu` capacity
+advertised on the node may be higher than this label value. Without sharing, the label is `1` in
+the example above, even though 8 GPUs are installed.
+
+> [!NOTE]
+> `nvidia.com/gpu.count.mig-disabled` is only generated for `mig.strategy=mixed`. It is not needed
+> for the other strategies: `single` requires every GPU on the node to share the same MIG state, so
+> the value would always be either `0` or `nvidia.com/gpu.count`, and `none` does not exclude
+> MIG-enabled GPUs from the `nvidia.com/gpu` resource at all.
 
 ## Deployment via `helm`
 
