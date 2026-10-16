@@ -18,6 +18,9 @@ package plugin
 
 import (
 	"context"
+	"net"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -249,4 +252,126 @@ func TestCDIAllocateResponse(t *testing.T) {
 			require.EqualValues(t, &tc.expectedResponse, &response)
 		})
 	}
+}
+
+func TestNewSessionID(t *testing.T) {
+	first, err := NewSessionID()
+	require.NoError(t, err)
+	require.Regexp(t, "^[0-9a-f]{8}$", first)
+
+	second, err := NewSessionID()
+	require.NoError(t, err)
+	require.NotEqual(t, first, second)
+}
+
+func TestGetPluginSocketPath(t *testing.T) {
+	testCases := []struct {
+		description string
+		resource    v1.ResourceName
+		expected    string
+	}{
+		{
+			description: "full GPU",
+			resource:    "nvidia.com/gpu",
+			expected:    filepath.Join(pluginapi.DevicePluginPath, "nvidia-gpu-3f9a1c07.sock"),
+		},
+		{
+			description: "MIG device",
+			resource:    "nvidia.com/mig-1g.10gb.me",
+			expected:    filepath.Join(pluginapi.DevicePluginPath, "nvidia-mig-1g.10gb.me-3f9a1c07.sock"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			require.Equal(t, tc.expected, getPluginSocketPath(tc.resource, "3f9a1c07"))
+		})
+	}
+}
+
+func TestRemoveStaleSockets(t *testing.T) {
+	testCases := []struct {
+		description string
+		pluginName  string
+		current     string
+		stale       []string
+		live        []string
+		expected    []string
+	}{
+		{
+			description: "stale sockets from earlier sessions are removed",
+			pluginName:  "nvidia-gpu",
+			current:     "nvidia-gpu-3f9a1c07.sock",
+			stale:       []string{"nvidia-gpu-a1b2c3d4.sock", "nvidia-gpu-e81b4f3a.sock"},
+		},
+		{
+			description: "live sockets are kept",
+			pluginName:  "nvidia-gpu",
+			current:     "nvidia-gpu-3f9a1c07.sock",
+			live:        []string{"nvidia-gpu-a1b2c3d4.sock"},
+			expected:    []string{"nvidia-gpu-a1b2c3d4.sock"},
+		},
+		{
+			description: "current socket is kept",
+			pluginName:  "nvidia-gpu",
+			current:     "nvidia-gpu-3f9a1c07.sock",
+			stale:       []string{"nvidia-gpu-3f9a1c07.sock"},
+			expected:    []string{"nvidia-gpu-3f9a1c07.sock"},
+		},
+		{
+			description: "sockets of other resources are kept",
+			pluginName:  "nvidia-mig-1g.10gb",
+			current:     "nvidia-mig-1g.10gb-3f9a1c07.sock",
+			stale: []string{
+				"nvidia-mig-1g.10gb.me-a1b2c3d4.sock",
+				"nvidia-mig-1g.10gb-a-a1b2c3d4.sock",
+				"nvidia-gpu-a1b2c3d4.sock",
+			},
+			expected: []string{
+				"nvidia-mig-1g.10gb.me-a1b2c3d4.sock",
+				"nvidia-mig-1g.10gb-a-a1b2c3d4.sock",
+				"nvidia-gpu-a1b2c3d4.sock",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			// t.TempDir() can exceed the length limit for unix socket paths on macOS.
+			dir, err := os.MkdirTemp("", "dp")
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = os.RemoveAll(dir) })
+
+			for _, name := range tc.stale {
+				createSocket(t, filepath.Join(dir, name), false)
+			}
+			for _, name := range tc.live {
+				createSocket(t, filepath.Join(dir, name), true)
+			}
+
+			removeStaleSockets(dir, tc.pluginName, filepath.Join(dir, tc.current))
+
+			entries, err := os.ReadDir(dir)
+			require.NoError(t, err)
+			var remaining []string
+			for _, entry := range entries {
+				remaining = append(remaining, entry.Name())
+			}
+			require.ElementsMatch(t, tc.expected, remaining)
+		})
+	}
+}
+
+// createSocket creates a unix socket at path. A live socket keeps listening
+// until the test ends, while a stale one is closed without being unlinked, as
+// happens when a plugin exits without calling Stop.
+func createSocket(t *testing.T, path string, live bool) {
+	listener, err := net.Listen("unix", path)
+	require.NoError(t, err)
+	if live {
+		t.Cleanup(func() { _ = listener.Close() })
+		return
+	}
+	listener.(*net.UnixListener).SetUnlinkOnClose(false)
+	require.NoError(t, listener.Close())
 }
