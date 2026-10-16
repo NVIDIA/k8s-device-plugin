@@ -92,10 +92,10 @@ func (device Device) GetAttribute(attribute DeviceAttribute) (int, Result) {
 
 // DeviceGetName returns the name of the specified device.
 func DeviceGetName(device Device) (string, Result) {
-	len := int32(96)
-	name := make([]byte, len)
+	length := int32(96)
+	name := make([]byte, length)
 
-	r := cuDeviceGetName(&name[0], len, device)
+	r := cuDeviceGetName(&name[0], length, device)
 
 	return string(name[:clen(name)]), r
 }

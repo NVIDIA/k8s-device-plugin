@@ -28,6 +28,9 @@ import (
 	nfdclientset "sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned"
 )
 
+// categoryKubernetesClient is the CLI flag category for Kubernetes client flags.
+const categoryKubernetesClient = "Kubernetes client:"
+
 type KubeClientConfig struct {
 	KubeConfig   string
 	KubeAPIQPS   float64
@@ -42,14 +45,14 @@ type ClientSets struct {
 func (k *KubeClientConfig) Flags() []cli.Flag {
 	flags := []cli.Flag{
 		&cli.StringFlag{
-			Category:    "Kubernetes client:",
+			Category:    categoryKubernetesClient,
 			Name:        "kubeconfig",
 			Usage:       "Absolute path to the `KUBECONFIG` file. Either this flag or the KUBECONFIG env variable need to be set if the driver is being run out of cluster.",
 			Destination: &k.KubeConfig,
 			EnvVars:     []string{"KUBECONFIG"},
 		},
 		&cli.Float64Flag{
-			Category:    "Kubernetes client:",
+			Category:    categoryKubernetesClient,
 			Name:        "kube-api-qps",
 			Usage:       "`QPS` to use while communicating with the Kubernetes apiserver.",
 			Value:       5,
@@ -57,7 +60,7 @@ func (k *KubeClientConfig) Flags() []cli.Flag {
 			EnvVars:     []string{"KUBE_API_QPS"},
 		},
 		&cli.IntFlag{
-			Category:    "Kubernetes client:",
+			Category:    categoryKubernetesClient,
 			Name:        "kube-api-burst",
 			Usage:       "`Burst` to use while communicating with the Kubernetes apiserver.",
 			Value:       10,

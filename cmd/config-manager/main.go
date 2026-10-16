@@ -87,7 +87,7 @@ type SyncableConfig struct {
 }
 
 // NewSyncableConfig creates a new SyncableConfig
-func NewSyncableConfig(f *Flags) *SyncableConfig {
+func NewSyncableConfig(_ *Flags) *SyncableConfig {
 	var m SyncableConfig
 	m.cond = sync.NewCond(&m.mutex)
 	return &m
@@ -212,7 +212,7 @@ func main() {
 	}
 }
 
-func validateFlags(c *cli.Context, f *Flags) error {
+func validateFlags(_ *cli.Context, f *Flags) error {
 	if f.NodeName == "" {
 		return fmt.Errorf("invalid <node-name>: must not be empty string")
 	}
@@ -228,7 +228,7 @@ func validateFlags(c *cli.Context, f *Flags) error {
 	return nil
 }
 
-func start(c *cli.Context, f *Flags) error {
+func start(_ *cli.Context, f *Flags) error {
 	kubeconfig, err := clientcmd.BuildConfigFromFlags("", f.Kubeconfig)
 	if err != nil {
 		return fmt.Errorf("error building kubernetes clientcmd config: %s", err)

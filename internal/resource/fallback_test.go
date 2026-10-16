@@ -37,7 +37,6 @@ func TestFallback(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		m := &ManagerMock{
 			InitFunc: func() error {
 				return tc.initError
@@ -57,6 +56,5 @@ func TestFallback(t *testing.T) {
 		} else {
 			require.EqualError(t, err, tc.shutdownError.Error())
 		}
-
 	}
 }

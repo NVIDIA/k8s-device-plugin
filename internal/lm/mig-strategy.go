@@ -74,7 +74,6 @@ func NewResourceLabeler(manager resource.Manager, config *spec.Config) (Labeler,
 	)
 
 	return labelers, nil
-
 }
 
 // MigDeviceCounts maintains a count of unique MIG device types across all GPUs on a node

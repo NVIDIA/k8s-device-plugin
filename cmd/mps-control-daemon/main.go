@@ -86,7 +86,7 @@ func main() {
 }
 
 // TODO: This needs to do similar validation to the plugin.
-func validateFlags(config *spec.Config) error {
+func validateFlags(_ *spec.Config) error {
 	return nil
 }
 

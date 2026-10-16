@@ -43,7 +43,7 @@ func (r Root) PipeDir(resourceName spec.ResourceName) string {
 
 // ShmDir returns the shm dir associated with the root.
 // Note that the shm dir is the same for all resources.
-func (r Root) ShmDir(resourceName spec.ResourceName) string {
+func (r Root) ShmDir(_ spec.ResourceName) string {
 	return r.Path("shm")
 }
 

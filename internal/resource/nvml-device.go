@@ -113,7 +113,7 @@ func (d nvmlDevice) GetFabricIDs() (string, string, error) {
 		return "", "", fmt.Errorf("invalid cluster UUID: %w", err)
 	}
 
-	cliqueId := fmt.Sprintf("%d", info.CliqueId)
+	cliqueID := fmt.Sprintf("%d", info.CliqueId)
 
-	return clusterUUID.String(), cliqueId, nil
+	return clusterUUID.String(), cliqueID, nil
 }

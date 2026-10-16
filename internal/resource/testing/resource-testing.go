@@ -67,7 +67,6 @@ func NewDeviceWithPCIClassMock(pciClass uint32) *DeviceMock {
 
 // NewMigDevice creates a MIG devices with the specified attributes for testing
 func NewMigDevice(gi int, ci int, gb uint64, attributes ...map[string]any) *resource.DeviceMock {
-
 	defaultAttributes := map[string]any{
 		"memory":          gb,
 		"multiprocessors": 0,

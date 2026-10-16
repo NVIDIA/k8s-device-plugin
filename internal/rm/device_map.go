@@ -136,7 +136,7 @@ func (b *deviceMapBuilder) buildGPUDeviceMap() (DeviceMap, error) {
 // buildMigDeviceMap builds a map of resource names to MIG devices
 func (b *deviceMapBuilder) buildMigDeviceMap() (DeviceMap, error) {
 	devices := make(DeviceMap)
-	err := b.VisitMigDevices(func(i int, d device.Device, j int, mig device.MigDevice) error {
+	err := b.VisitMigDevices(func(i int, _ device.Device, j int, mig device.MigDevice) error {
 		migProfile, err := mig.GetProfile()
 		if err != nil {
 			return fmt.Errorf("error getting MIG profile for MIG device at index '(%v, %v)': %v", i, j, err)
@@ -184,7 +184,7 @@ func (b *deviceMapBuilder) assertAllMigDevicesAreValid(uniform bool) error {
 	}
 
 	var previousAttributes *nvml.DeviceAttributes
-	return b.VisitMigDevices(func(i int, d device.Device, j int, m device.MigDevice) error {
+	return b.VisitMigDevices(func(_ int, _ device.Device, _ int, m device.MigDevice) error {
 		attrs, ret := m.GetAttributes()
 		if ret != nvml.SUCCESS {
 			return fmt.Errorf("error getting device attributes: %v", ret)

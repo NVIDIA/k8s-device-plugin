@@ -250,13 +250,13 @@ func (d *Daemon) setComputeMode(mode computeMode) error {
 }
 
 // perDevicePinnedMemoryLimits returns the pinned memory limits for each device.
-func (m *Daemon) perDevicePinnedDeviceMemoryLimits() map[string]string {
+func (d *Daemon) perDevicePinnedDeviceMemoryLimits() map[string]string {
 	totalMemoryInBytesPerDevice := make(map[string]uint64)
 	replicasPerDevice := make(map[string]uint64)
-	for _, device := range m.Devices() {
+	for _, device := range d.Devices() {
 		index := device.Index
 		totalMemoryInBytesPerDevice[index] = device.TotalMemory
-		replicasPerDevice[index] += 1
+		replicasPerDevice[index]++
 	}
 
 	limits := make(map[string]string)
@@ -270,11 +270,11 @@ func (m *Daemon) perDevicePinnedDeviceMemoryLimits() map[string]string {
 	return limits
 }
 
-func (m *Daemon) activeThreadPercentage() string {
-	if len(m.Devices()) == 0 {
+func (d *Daemon) activeThreadPercentage() string {
+	if len(d.Devices()) == 0 {
 		return ""
 	}
-	replicasPerDevice := len(m.Devices()) / len(m.Devices().GetUUIDs())
+	replicasPerDevice := len(d.Devices()) / len(d.Devices().GetUUIDs())
 
 	return fmt.Sprintf("%d", 100/replicasPerDevice)
 }

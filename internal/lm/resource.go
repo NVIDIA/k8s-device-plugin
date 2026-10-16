@@ -116,7 +116,6 @@ func newResourceLabeler(resourceName spec.ResourceName, config *spec.Config) res
 		resourceName: resourceName,
 		sharing:      sharing,
 	}
-
 }
 
 type resourceLabeler struct {
@@ -128,7 +127,6 @@ type resourceLabeler struct {
 // <fully-qualified-resource-name>.suffix
 func (rl resourceLabeler) single(suffix string, value any) Labels {
 	return rl.labels(map[string]any{suffix: value})
-
 }
 
 // labels creates a set of labels from the specified map for the resource.
