@@ -49,6 +49,36 @@ jobs:
       run: |
         git -C $HELM_REPO_PATH push https://${GITHUB_ACTOR}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} gh-pages
 
+  publish-oci-charts:
+    name: Push Helm charts to GHCR as OCI artifacts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - name: Install Helm
+      uses: azure/setup-helm@v5.0.1
+      with:
+        version: 3.14.4
+
+    - name: Download the release's chart packages
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ github.event.release.tag_name }}
+      run: gh release download "${TAG}" --repo "${GITHUB_REPOSITORY}" --pattern '*.tgz' --dir charts
+
+    - name: Push charts to ghcr.io
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        set -euo pipefail
+        echo "${GH_TOKEN}" | helm registry login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+        # OCI repository names must be lowercase: ghcr.io/nvidia/k8s-device-plugin/charts
+        registry="oci://ghcr.io/${GITHUB_REPOSITORY,,}/charts"
+        for chart in charts/*.tgz; do
+          helm push "${chart}" "${registry}"
+        done
+
   publish-helm-repo:
     uses: ./.github/workflows/deploy-to-pages.yaml
     secrets: inherit
