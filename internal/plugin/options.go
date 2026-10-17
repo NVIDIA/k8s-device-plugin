@@ -84,3 +84,12 @@ func WithDeviceDiscoveryStrategy(strategy string) Option {
 		m.deviceDiscoveryStrategy = strategy
 	}
 }
+
+// WithUniqueSocketFilenames appends a random suffix to each plugin socket so
+// a new pod can register without unlinking the socket the previous pod is
+// still serving.
+func WithUniqueSocketFilenames(enabled bool) Option {
+	return func(m *options) {
+		m.uniqueSocketFilenames = enabled
+	}
+}

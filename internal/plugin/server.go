@@ -76,6 +76,11 @@ func (o *options) devicePluginForResource(ctx context.Context, resourceManager r
 		return nil, err
 	}
 
+	socket, err := pluginSocketPath(resourceManager.Resource(), o.uniqueSocketFilenames)
+	if err != nil {
+		return nil, fmt.Errorf("build device plugin socket path: %w", err)
+	}
+
 	plugin := nvidiaDevicePlugin{
 		ctx:                  ctx,
 		rm:                   resourceManager,
@@ -89,7 +94,7 @@ func (o *options) devicePluginForResource(ctx context.Context, resourceManager r
 
 		mps: mpsOptions,
 
-		socket: getPluginSocketPath(resourceManager.Resource()),
+		socket: socket,
 		// These will be reinitialized every
 		// time the plugin server is restarted.
 		server: nil,
@@ -97,13 +102,6 @@ func (o *options) devicePluginForResource(ctx context.Context, resourceManager r
 		stop:   nil,
 	}
 	return &plugin, nil
-}
-
-// getPluginSocketPath returns the socket to use for the specified resource.
-func getPluginSocketPath(resource spec.ResourceName) string {
-	_, name := resource.Split()
-	pluginName := "nvidia-" + name
-	return filepath.Join(pluginapi.DevicePluginPath, pluginName) + ".sock"
 }
 
 func (plugin *nvidiaDevicePlugin) initialize() {
