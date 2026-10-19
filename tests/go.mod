@@ -15,7 +15,7 @@ require (
 	k8s.io/client-go v0.36.3
 	k8s.io/klog/v2 v2.140.0
 	sigs.k8s.io/node-feature-discovery v0.19.0
-	sigs.k8s.io/node-feature-discovery/api/nfd v0.19.0
+	sigs.k8s.io/node-feature-discovery/api/nfd v0.20.0
 	sigs.k8s.io/yaml v1.6.0
 )
 
