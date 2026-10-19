@@ -1290,7 +1290,7 @@ sigs.k8s.io/node-feature-discovery/api/generated/applyconfiguration/nfd/v1alpha1
 sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned
 sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned/scheme
 sigs.k8s.io/node-feature-discovery/api/generated/clientset/versioned/typed/nfd/v1alpha1
-# sigs.k8s.io/node-feature-discovery/api/nfd v0.19.0
+# sigs.k8s.io/node-feature-discovery/api/nfd v0.20.0
 ## explicit; go 1.25.0
 sigs.k8s.io/node-feature-discovery/api/nfd/v1alpha1
 # sigs.k8s.io/randfill v1.0.0
