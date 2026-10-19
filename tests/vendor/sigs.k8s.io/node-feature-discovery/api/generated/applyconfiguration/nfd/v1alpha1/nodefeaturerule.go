@@ -29,6 +29,7 @@ import (
 //
 // NodeFeatureRule resource specifies a configuration for feature-based
 // customization of node objects, such as node labeling.
+// NodeFeatureRule is cluster-scoped (short name `nfr`).
 type NodeFeatureRuleApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
