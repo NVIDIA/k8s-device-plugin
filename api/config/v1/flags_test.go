@@ -148,6 +148,16 @@ func TestUnmarshalFlags(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: `{
+				"logVerbosity": 2
+			}`,
+			output: Flags{
+				CommandLineFlags{
+					LogVerbosity: new(2),
+				},
+			},
+		},
 	}
 
 	for i, tc := range testCases {
@@ -255,6 +265,23 @@ func TestMarshalFlags(t *testing.T) {
 					"sleepInterval": "infinite",
 					"machineTypeFile": null
 				}
+			}`,
+		},
+		{
+			input: Flags{
+				CommandLineFlags{
+					LogVerbosity: new(2),
+				},
+			},
+			output: `{
+				"migStrategy": null,
+				"failOnInitError": null,
+				"gdrcopyEnabled": null,
+				"gdsEnabled": null,
+				"mofedEnabled": null,
+				"useNodeFeatureAPI": null,
+				"deviceDiscoveryStrategy": null,
+				"logVerbosity": 2
 			}`,
 		},
 	}

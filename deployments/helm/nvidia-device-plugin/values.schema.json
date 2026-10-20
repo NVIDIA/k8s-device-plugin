@@ -264,6 +264,14 @@
         }
       }
     },
+    "logVerbosity": {
+      "description": "klog verbosity threshold passed to the device plugin, GFD, and the MPS control daemon. Unset or 0 disables V(1)+ logs such as nvlib platform detection details. In GFD, 4 and 6 also enable client-go logs.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
     "migStrategy": {
       "type": [
         "string",

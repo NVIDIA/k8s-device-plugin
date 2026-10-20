@@ -55,6 +55,11 @@ mofedEnabled: null
 deviceDiscoveryStrategy: null
 # @schema type:[string, null]
 nvidiaDriverCapabilities: "compute,utility"
+# klog verbosity threshold passed to the device plugin, GFD, and the MPS control daemon.
+# Unset or 0 disables V(1)+ logs, including nvlib's platform detection details; 1 or
+# higher enables them. In GFD, values of 4 and 6 also enable client-go logs.
+# @schema type:[integer, null]; minimum: 0; description: klog verbosity threshold passed to the device plugin, GFD, and the MPS control daemon. Unset or 0 disables V(1)+ logs such as nvlib platform detection details. In GFD, 4 and 6 also enable client-go logs.
+logVerbosity: null
 
 # @schema nullable
 nameOverride: ""
