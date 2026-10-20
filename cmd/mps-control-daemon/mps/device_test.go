@@ -49,10 +49,27 @@ func TestDevice(t *testing.T) {
 		{
 			description: "pre-volta clients",
 			input: mpsDevice{
-				ComputeCapability: "7.0",
+				ComputeCapability: "6.1",
 			},
 			expectedIsAtLeastVolta: false,
 			expectedMaxClients:     16,
+		},
+		{
+			description: "volta clients",
+			input: mpsDevice{
+				ComputeCapability: "7.0",
+			},
+			expectedIsAtLeastVolta: true,
+			expectedMaxClients:     48,
+		},
+		{
+			description: "volta clients max",
+			input: mpsDevice{
+				ComputeCapability: "7.2",
+				Replicas:          48,
+			},
+			expectedIsAtLeastVolta: true,
+			expectedMaxClients:     48,
 		},
 		{
 			description: "post-volta clients",
@@ -65,7 +82,7 @@ func TestDevice(t *testing.T) {
 		{
 			description: "pre-volta clients exceeded",
 			input: mpsDevice{
-				ComputeCapability: "7.0",
+				ComputeCapability: "6.1",
 				Replicas:          29,
 			},
 			expectedIsAtLeastVolta: false,
@@ -85,7 +102,7 @@ func TestDevice(t *testing.T) {
 		{
 			description: "pre-volta clients max",
 			input: mpsDevice{
-				ComputeCapability: "7.0",
+				ComputeCapability: "6.1",
 				Replicas:          16,
 			},
 			expectedIsAtLeastVolta: false,
