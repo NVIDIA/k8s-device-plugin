@@ -165,14 +165,17 @@ func (d *Daemon) Stop() error {
 	}
 	klog.InfoS("Stopped MPS control daemon", "resource", d.rm.Resource())
 
-	err = d.logTailer.Stop()
-	klog.InfoS("Stopped log tailer", "resource", d.rm.Resource(), "error", err)
+	// The log tailer is only created once Start has got far enough to need it.
+	if d.logTailer != nil {
+		err = d.logTailer.Stop()
+		klog.InfoS("Stopped log tailer", "resource", d.rm.Resource(), "error", err)
+	}
 
 	if err := d.setComputeMode(computeModeDefault); err != nil {
 		return fmt.Errorf("error setting compute mode %v: %w", computeModeDefault, err)
 	}
 
-	if err := os.Remove(d.startedFile()); err != nil && err != os.ErrNotExist {
+	if err := os.Remove(d.startedFile()); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("failed to remove started file: %w", err)
 	}
 
