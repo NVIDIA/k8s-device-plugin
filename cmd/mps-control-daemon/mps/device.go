@@ -51,5 +51,5 @@ func (d *mpsDevice) maxClients() int {
 // isAtLeastVolta checks whether the specified device is a volta device or newer.
 func (d *mpsDevice) isAtLeastVolta() bool {
 	vCc := "v" + strings.TrimPrefix(d.ComputeCapability, "v")
-	return semver.Compare(semver.Canonical(vCc), semver.Canonical("v7.5")) >= 0
+	return semver.Compare(semver.Canonical(vCc), semver.Canonical("v7.0")) >= 0
 }
