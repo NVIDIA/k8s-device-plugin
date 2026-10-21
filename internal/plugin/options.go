@@ -84,3 +84,10 @@ func WithDeviceDiscoveryStrategy(strategy string) Option {
 		m.deviceDiscoveryStrategy = strategy
 	}
 }
+
+// WithSessionID sets the session ID embedded in the socket name of every plugin.
+func WithSessionID(sessionID string) Option {
+	return func(m *options) {
+		m.sessionID = sessionID
+	}
+}
