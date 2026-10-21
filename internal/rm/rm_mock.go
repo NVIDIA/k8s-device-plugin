@@ -19,7 +19,7 @@ var _ ResourceManager = &ResourceManagerMock{}
 //
 //		// make and configure a mocked ResourceManager
 //		mockedResourceManager := &ResourceManagerMock{
-//			CheckHealthFunc: func(stop <-chan interface{}, unhealthy chan<- *Device) error {
+//			CheckHealthFunc: func(stop <-chan any, health chan<- HealthEvent) error {
 //				panic("mock out the CheckHealth method")
 //			},
 //			DevicesFunc: func() Devices {
@@ -45,7 +45,7 @@ var _ ResourceManager = &ResourceManagerMock{}
 //	}
 type ResourceManagerMock struct {
 	// CheckHealthFunc mocks the CheckHealth method.
-	CheckHealthFunc func(stop <-chan interface{}, unhealthy chan<- *Device) error
+	CheckHealthFunc func(stop <-chan any, health chan<- HealthEvent) error
 
 	// DevicesFunc mocks the Devices method.
 	DevicesFunc func() Devices
@@ -67,9 +67,9 @@ type ResourceManagerMock struct {
 		// CheckHealth holds details about calls to the CheckHealth method.
 		CheckHealth []struct {
 			// Stop is the stop argument value.
-			Stop <-chan interface{}
-			// Unhealthy is the unhealthy argument value.
-			Unhealthy chan<- *Device
+			Stop <-chan any
+			// Health is the health argument value.
+			Health chan<- HealthEvent
 		}
 		// Devices holds details about calls to the Devices method.
 		Devices []struct {
@@ -106,13 +106,13 @@ type ResourceManagerMock struct {
 }
 
 // CheckHealth calls CheckHealthFunc.
-func (mock *ResourceManagerMock) CheckHealth(stop <-chan interface{}, unhealthy chan<- *Device) error {
+func (mock *ResourceManagerMock) CheckHealth(stop <-chan any, health chan<- HealthEvent) error {
 	callInfo := struct {
-		Stop      <-chan interface{}
-		Unhealthy chan<- *Device
+		Stop   <-chan any
+		Health chan<- HealthEvent
 	}{
-		Stop:      stop,
-		Unhealthy: unhealthy,
+		Stop:   stop,
+		Health: health,
 	}
 	mock.lockCheckHealth.Lock()
 	mock.calls.CheckHealth = append(mock.calls.CheckHealth, callInfo)
@@ -123,7 +123,7 @@ func (mock *ResourceManagerMock) CheckHealth(stop <-chan interface{}, unhealthy 
 		)
 		return errOut
 	}
-	return mock.CheckHealthFunc(stop, unhealthy)
+	return mock.CheckHealthFunc(stop, health)
 }
 
 // CheckHealthCalls gets all the calls that were made to CheckHealth.
@@ -131,12 +131,12 @@ func (mock *ResourceManagerMock) CheckHealth(stop <-chan interface{}, unhealthy 
 //
 //	len(mockedResourceManager.CheckHealthCalls())
 func (mock *ResourceManagerMock) CheckHealthCalls() []struct {
-	Stop      <-chan interface{}
-	Unhealthy chan<- *Device
+	Stop   <-chan any
+	Health chan<- HealthEvent
 } {
 	var calls []struct {
-		Stop      <-chan interface{}
-		Unhealthy chan<- *Device
+		Stop   <-chan any
+		Health chan<- HealthEvent
 	}
 	mock.lockCheckHealth.RLock()
 	calls = mock.calls.CheckHealth
