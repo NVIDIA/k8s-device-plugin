@@ -36,6 +36,13 @@ type resourceManager struct {
 	devices  Devices
 }
 
+// HealthEvent reports that a device should be advertised with the specified health.
+type HealthEvent struct {
+	Device *Device
+	// Health is one of pluginapi.Healthy or pluginapi.Unhealthy.
+	Health string
+}
+
 // ResourceManager provides an interface for listing a set of Devices and checking health on them
 //
 //go:generate moq -rm -fmt=goimports -stub -out rm_mock.go . ResourceManager
@@ -44,14 +51,14 @@ type ResourceManager interface {
 	Devices() Devices
 	GetDevicePaths([]string) []string
 	GetPreferredAllocation(available, required []string, size int) ([]string, error)
-	CheckHealth(stop <-chan any, unhealthy chan<- *Device) error
+	CheckHealth(stop <-chan any, health chan<- HealthEvent) error
 	ValidateRequest(AnnotatedIDs) error
 }
 
 var _ ResourceManager = (*resourceManager)(nil)
 
 // CheckHealth is disabled on the base resourceManager.
-func (r *resourceManager) CheckHealth(stop <-chan any, unhealthy chan<- *Device) error {
+func (r *resourceManager) CheckHealth(stop <-chan any, health chan<- HealthEvent) error {
 	return nil
 }
 
