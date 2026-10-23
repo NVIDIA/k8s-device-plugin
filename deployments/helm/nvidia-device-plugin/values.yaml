@@ -19,59 +19,92 @@
 #         migStrategy: mixed
 config:
   # ConfigMap name if pulling from an external ConfigMap
+  # @schema nullable
   name: ""
   # Set of named configs to build an integrated ConfigMap from
+  # @schema additionalProperties: {type: string}; nullable
   map: {}
   # Default config name within the ConfigMap
+  # @schema nullable
   default: ""
   # List of fallback strategies to attempt if no config is selected and no default is provided
+  # @schema nullable
   fallbackStrategies: ["named" , "single"]
 
+# @schema type:[boolean, null]
 compatWithCPUManager: null
+# @schema type:[string, null]
 migStrategy: null
+# @schema type:[boolean, null]
 failOnInitError: null
+# @schema type:[string, null]
 deviceListStrategy: null
+# @schema type:[string, null]
 deviceIDStrategy: null
+# @schema type:[string, null]
 nvidiaDriverRoot: null
+# @schema type:[string, null]
+nvidiaDevRoot: null
+# @schema type:[boolean, null]
 gdrcopyEnabled: null
+# @schema type:[boolean, null]
 gdsEnabled: null
+# @schema type:[boolean, null]
 mofedEnabled: null
+# @schema type:[string, null]
 deviceDiscoveryStrategy: null
+# @schema type:[string, null]
 nvidiaDriverCapabilities: "compute,utility"
 
+# @schema nullable
 nameOverride: ""
+# @schema nullable
 fullnameOverride: ""
+# @schema nullable
 namespaceOverride: ""
+# @schema additionalProperties: {type: string}; nullable
 selectorLabelsOverride: {}
+# @schema nullable
 componentSelectorLabels:
   # enabled controls whether DaemonSet selectors include app.kubernetes.io/component
   # to avoid overlap between device-plugin, gpu-feature-discovery, and mps-control-daemon.
   # NOTE: This is disabled by default for upgrade compatibility because DaemonSet
   # selectors are immutable and enabling this on an existing release requires
   # DaemonSet recreation.
+  # @schema nullable
   enabled: false
 
+# @schema nullable
 allowDefaultNamespace: false
 
+# @schema item: object; itemProperties: {name: {type: [string, "null"]}}; nullable
 imagePullSecrets: []
 image:
   repository: nvcr.io/nvidia/k8s-device-plugin
+  # @schema nullable
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
+  # @schema type:[string, integer, null]
   tag: ""
 
+# @schema skipProperties: true; nullable
 updateStrategy:
   type: RollingUpdate
 
+# @schema additionalProperties: {type: string}
 podAnnotations: {}
+# @schema nullable
 podSecurityContext: {}
 securityContext: {}
 
 # resources is the default for the main containers of each component, including
 # the MPS mount init container. devicePlugin.resources, gfd.resources, and
 # mps.resources override it per component; an empty override inherits this value.
+# @schema nullable
 resources: {}
+# @schema additionalProperties: {type: string}; nullable
 nodeSelector: {}
+# @schema anyOf: [{type: object}, {const: ""}, {type: "null"}]; skipProperties: true
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -94,6 +127,7 @@ affinity:
           operator: In
           values:
           - "true"
+# @schema item: object; itemProperties: {key: {type: [string, "null"]}, operator: {type: [string, "null"]}, value: {type: [string, "null"]}, effect: {type: [string, "null"]}, tolerationSeconds: {type: [integer, "null"]}}; nullable
 tolerations:
   # This toleration is deprecated. Kept here for backward compatibility
   # See https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
@@ -107,36 +141,50 @@ tolerations:
 # scheduler reserves resources for critical add-on pods so that they can
 # be rescheduled after a failure.
 # See https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/
+# @schema nullable
 priorityClassName: "system-node-critical"
 
+# @schema type:[string, null]
 runtimeClassName: null
 
 devicePlugin:
+  # @schema nullable
   enabled: true
+  # @schema nullable
   resources: {}
   # enableHostNetwork when set to true runs the pod with hostNetwork: true.
   # This can be useful in non-overlay network environments (e.g., AWS, Azure, GCP)
   # to avoid unnecessary IP allocation for daemon pods.
-  # enableHostNetwork: false
+  # @schema nullable
+  enableHostNetwork: false
 
 gfd:
+  # @schema nullable
   enabled: false
+  # @schema nullable
   nameOverride: gpu-feature-discovery
+  # @schema nullable
   namespaceOverride: ""
+  # @schema type:[boolean, null]
   noTimestamp: null
+  # @schema type:[string, integer, null]
   sleepInterval: null
+  # @schema skipProperties: true; nullable
   securityContext:
     # privileged access is required for the gpu-feature-discovery to access the
     # vgpu info on a host.
     # TODO: This should be optional and detected automatically.
     privileged: true
+  # @schema nullable
   resources: {}
   # enableHostNetwork when set to true runs the pod with hostNetwork: true.
   # This can be useful in non-overlay network environments (e.g., AWS, Azure, GCP)
   # to avoid unnecessary IP allocation for daemon pods.
-  # enableHostNetwork: false
+  # @schema nullable
+  enableHostNetwork: false
 
 # Helm dependency
+# @schema hidden
 nfd:
   nameOverride: node-feature-discovery
   master:
@@ -176,23 +224,30 @@ mps:
   # If the gpu driver is running in the host PID namespace, it is highly
   # recommended that you enable this option.
   # NOTE: HostPID and ShareProcessNamespace cannot both be set to true
+  # @schema nullable
   enableHostPID: true
+  # @schema nullable
   resources: {}
   # enableHostNetwork when set to true runs the pod with hostNetwork: true.
   # This can be useful in non-overlay network environments (e.g., AWS, Azure, GCP)
   # to avoid unnecessary IP allocation for daemon pods.
-  # enableHostNetwork: false
+  # @schema nullable
+  enableHostNetwork: false
 
 # configManager configures the config-manager init and sidecar containers that
 # are added to each component when a ConfigMap is used. These containers do
 # not inherit the top-level resources.
+# @schema nullable
 configManager:
+  # @schema nullable
   resources: {}
 
 cdi:
   # nvidiaHookPath specifies the path to the nvidia-cdi-hook or nvidia-ctk executables on the host.
   # This is required to ensure that the generated CDI specification refers to the correct CDI hooks.
+  # @schema type:[string, null]
   nvidiaHookPath: null
   # featureFlags allows CDI feature flags to be specified for CDI specification generation.
   # This is specified as a comma-separated list of strings.
+  # @schema type:[string, null]
   featureFlags: null

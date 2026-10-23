@@ -92,8 +92,16 @@ app.kubernetes.io/component: {{ .component }}
 Full image name with tag
 */}}
 {{- define "nvidia-device-plugin.fullimage" -}}
-{{- $tag := printf "v%s" .Chart.AppVersion }}
-{{- .Values.image.repository -}}:{{- .Values.image.tag | default $tag -}}
+{{- $imageTag := printf "v%s" .Chart.AppVersion }}
+{{- /* Not "default": it treats a numeric 0 tag as unset. Numbers from values files are float64 and would print 20260101 as 2.0260101e+07. */}}
+{{- if kindIs "string" .Values.image.tag }}
+{{- if .Values.image.tag }}
+{{- $imageTag = .Values.image.tag }}
+{{- end }}
+{{- else if not (kindIs "invalid" .Values.image.tag) }}
+{{- $imageTag = .Values.image.tag | int64 | toString }}
+{{- end }}
+{{- .Values.image.repository -}}:{{- $imageTag -}}
 {{- end }}
 
 {{/*

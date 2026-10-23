@@ -19,12 +19,15 @@ package helm_test
 import (
 	"fmt"
 	"maps"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/yaml"
 
 	"github.com/gruntwork-io/terratest/modules/helm"
 	"github.com/gruntwork-io/terratest/modules/logger"
@@ -247,7 +250,7 @@ func TestDevicePluginDaemonsetNvidiaDriverCapabilities(t *testing.T) {
 		description                   string
 		nvidiaDriverCapabilitiesJSON  string
 		expectedDriverCapabilitiesEnv *v1.EnvVar
-		expectedErrorSubstring        string
+		expectSchemaRejection         bool
 	}{
 		{
 			description:                   "default",
@@ -269,17 +272,17 @@ func TestDevicePluginDaemonsetNvidiaDriverCapabilities(t *testing.T) {
 		{
 			description:                  "boolean is rejected",
 			nvidiaDriverCapabilitiesJSON: "true",
-			expectedErrorSubstring:       "Value 'nvidiaDriverCapabilities' must be a string, got bool: true",
+			expectSchemaRejection:        true,
 		},
 		{
 			description:                  "number is rejected",
 			nvidiaDriverCapabilitiesJSON: "1",
-			expectedErrorSubstring:       "Value 'nvidiaDriverCapabilities' must be a string",
+			expectSchemaRejection:        true,
 		},
 		{
 			description:                  "list is rejected",
 			nvidiaDriverCapabilitiesJSON: `["compute","utility"]`,
-			expectedErrorSubstring:       "Value 'nvidiaDriverCapabilities' must be a string, got slice: [compute utility]",
+			expectSchemaRejection:        true,
 		},
 	}
 
@@ -293,10 +296,10 @@ func TestDevicePluginDaemonsetNvidiaDriverCapabilities(t *testing.T) {
 				options.SetJsonValues = map[string]string{"nvidiaDriverCapabilities": tc.nvidiaDriverCapabilitiesJSON}
 			}
 
-			// validation.yml is evaluated even when only the daemonset is selected for output.
+			// values.schema.json is enforced even when only the daemonset is selected for output.
 			output, err := helm.RenderTemplateE(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/daemonset-device-plugin.yml"})
-			if tc.expectedErrorSubstring != "" {
-				require.ErrorContains(t, err, tc.expectedErrorSubstring)
+			if tc.expectSchemaRejection {
+				requireSchemaRejection(t, err, "nvidiaDriverCapabilities")
 				return
 			}
 			require.NoError(t, err)
@@ -316,7 +319,405 @@ func TestDevicePluginDaemonsetNvidiaDriverCapabilities(t *testing.T) {
 	}
 }
 
-// prt returns a reference to whatever type is passed into it
+func TestDevicePluginDaemonsetNvidiaDevRoot(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	testCases := []struct {
+		description           string
+		options               map[string]string
+		expectedDevRootEnv    *v1.EnvVar
+		expectSchemaRejection bool
+	}{
+		{
+			description: "default",
+		},
+		{
+			description:        "string",
+			options:            map[string]string{"nvidiaDevRoot": "/dev-root"},
+			expectedDevRootEnv: &v1.EnvVar{Name: "NVIDIA_DEV_ROOT", Value: "/dev-root"},
+		},
+		{
+			description:           "number is rejected",
+			options:               map[string]string{"nvidiaDevRoot": "1"},
+			expectSchemaRejection: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			options := &helm.Options{
+				SetValues:      tc.options,
+				KubectlOptions: k8s.NewKubectlOptions("", "", "k8s-device-plugin-test"),
+				Logger:         logger.Discard,
+			}
+
+			output, err := helm.RenderTemplateE(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/daemonset-device-plugin.yml"})
+			if tc.expectSchemaRejection {
+				requireSchemaRejection(t, err, "nvidiaDevRoot")
+				return
+			}
+			require.NoError(t, err)
+
+			var daemonset appsv1.DaemonSet
+			helm.UnmarshalK8SYaml(t, output, &daemonset)
+			require.Len(t, daemonset.Spec.Template.Spec.Containers, 1)
+
+			var devRootEnv *v1.EnvVar
+			for _, env := range daemonset.Spec.Template.Spec.Containers[0].Env {
+				if env.Name == "NVIDIA_DEV_ROOT" {
+					devRootEnv = &env
+				}
+			}
+			require.Equal(t, tc.expectedDevRootEnv, devRootEnv)
+		})
+	}
+}
+
+func TestDevicePluginDaemonsetImageTag(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	chartYAML, err := os.ReadFile(filepath.Join(helmChartPath, "Chart.yaml"))
+	require.NoError(t, err)
+	var chartMetadata struct {
+		AppVersion string `json:"appVersion"`
+	}
+	require.NoError(t, yaml.Unmarshal(chartYAML, &chartMetadata))
+	defaultImage := "nvcr.io/nvidia/k8s-device-plugin:v" + chartMetadata.AppVersion
+
+	testCases := []struct {
+		description   string
+		options       map[string]string
+		jsonOptions   map[string]string
+		expectedImage string
+	}{
+		{
+			description:   "default",
+			expectedImage: defaultImage,
+		},
+		{
+			description:   "empty tag",
+			options:       map[string]string{"image.tag": ""},
+			expectedImage: defaultImage,
+		},
+		{
+			description:   "string tag",
+			options:       map[string]string{"image.tag": "v0.17.0"},
+			expectedImage: "nvcr.io/nvidia/k8s-device-plugin:v0.17.0",
+		},
+		{
+			// --set parses an all-digit tag as a number.
+			description:   "numeric tag",
+			options:       map[string]string{"image.tag": "123"},
+			expectedImage: "nvcr.io/nvidia/k8s-device-plugin:123",
+		},
+		{
+			description:   "zero tag",
+			options:       map[string]string{"image.tag": "0"},
+			expectedImage: "nvcr.io/nvidia/k8s-device-plugin:0",
+		},
+		{
+			// --set-json and values files load numbers as float64.
+			description:   "large numeric tag from JSON",
+			jsonOptions:   map[string]string{"image.tag": "20260101"},
+			expectedImage: "nvcr.io/nvidia/k8s-device-plugin:20260101",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			options := &helm.Options{
+				SetValues:      tc.options,
+				SetJsonValues:  tc.jsonOptions,
+				KubectlOptions: k8s.NewKubectlOptions("", "", "k8s-device-plugin-test"),
+				Logger:         logger.Discard,
+			}
+
+			output := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/daemonset-device-plugin.yml"})
+
+			var daemonset appsv1.DaemonSet
+			helm.UnmarshalK8SYaml(t, output, &daemonset)
+			require.Len(t, daemonset.Spec.Template.Spec.Containers, 1)
+			require.Equal(t, tc.expectedImage, daemonset.Spec.Template.Spec.Containers[0].Image)
+		})
+	}
+}
+
+func TestComponentHostNetworkTemplateRendered(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	templateFileByComponent := map[string]string{
+		"devicePlugin": "templates/daemonset-device-plugin.yml",
+		"gfd":          "templates/daemonset-gfd.yml",
+		"mps":          "templates/daemonset-mps-control-daemon.yml",
+	}
+
+	testCases := []struct {
+		description           string
+		setValue              string
+		setStringValue        string
+		expectedHostNetwork   bool
+		expectSchemaRejection bool
+	}{
+		{
+			description: "default",
+		},
+		{
+			description:         "true",
+			setValue:            "true",
+			expectedHostNetwork: true,
+		},
+		{
+			description:           "string is rejected",
+			setStringValue:        "false",
+			expectSchemaRejection: true,
+		},
+	}
+
+	for component, templateFile := range templateFileByComponent {
+		for _, tc := range testCases {
+			t.Run(component+"/"+tc.description, func(t *testing.T) {
+				hostNetworkKey := component + ".enableHostNetwork"
+				options := &helm.Options{
+					SetValues: map[string]string{
+						"config.name": "external-config",
+						"gfd.enabled": "true",
+					},
+					SetStrValues:   map[string]string{},
+					KubectlOptions: k8s.NewKubectlOptions("", "", "k8s-device-plugin-test"),
+					Logger:         logger.Discard,
+				}
+				if tc.setValue != "" {
+					options.SetValues[hostNetworkKey] = tc.setValue
+				}
+				if tc.setStringValue != "" {
+					options.SetStrValues[hostNetworkKey] = tc.setStringValue
+				}
+
+				output, err := helm.RenderTemplateE(t, options, helmChartPath, "nvidia-device-plugin", []string{templateFile})
+				if tc.expectSchemaRejection {
+					requireSchemaRejection(t, err, hostNetworkKey)
+					return
+				}
+				require.NoError(t, err)
+
+				var daemonset appsv1.DaemonSet
+				helm.UnmarshalK8SYaml(t, output, &daemonset)
+				require.Equal(t, tc.expectedHostNetwork, daemonset.Spec.Template.Spec.HostNetwork)
+			})
+		}
+	}
+}
+
+func TestStringMapValuesTemplateRendered(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	testCases := []struct {
+		description       string
+		options           map[string]string
+		stringOptions     map[string]string
+		jsonOptions       map[string]string
+		rejectedValuePath string
+		verifyDaemonSet   func(t *testing.T, daemonset appsv1.DaemonSet)
+	}{
+		{
+			description: "config.map entry as a YAML string",
+			jsonOptions: map[string]string{"config.map": `{"default": "version: v1"}`},
+			verifyDaemonSet: func(t *testing.T, daemonset appsv1.DaemonSet) {
+				require.Contains(t, daemonset.Spec.Template.Annotations, "checksum/config")
+			},
+		},
+		{
+			description:       "config.map entry that is not a YAML string is rejected",
+			jsonOptions:       map[string]string{"config.map": `{"default": {"version": "v1"}}`},
+			rejectedValuePath: "config.map.default",
+		},
+		{
+			description:   "quoted pod annotation",
+			stringOptions: map[string]string{"podAnnotations.example": "1"},
+			verifyDaemonSet: func(t *testing.T, daemonset appsv1.DaemonSet) {
+				require.Equal(t, map[string]string{"example": "1"}, daemonset.Spec.Template.Annotations)
+			},
+		},
+		{
+			description:       "numeric pod annotation is rejected",
+			options:           map[string]string{"podAnnotations.example": "1"},
+			rejectedValuePath: "podAnnotations.example",
+		},
+		{
+			description:   "quoted node selector",
+			stringOptions: map[string]string{"nodeSelector.example": "true"},
+			verifyDaemonSet: func(t *testing.T, daemonset appsv1.DaemonSet) {
+				require.Equal(t, map[string]string{"example": "true"}, daemonset.Spec.Template.Spec.NodeSelector)
+			},
+		},
+		{
+			description:       "boolean node selector is rejected",
+			options:           map[string]string{"nodeSelector.example": "true"},
+			rejectedValuePath: "nodeSelector.example",
+		},
+		{
+			description:   "quoted selector label override",
+			stringOptions: map[string]string{"selectorLabelsOverride.example": "1"},
+			verifyDaemonSet: func(t *testing.T, daemonset appsv1.DaemonSet) {
+				require.Equal(t, map[string]string{"example": "1"}, daemonset.Spec.Selector.MatchLabels)
+			},
+		},
+		{
+			description:       "numeric selector label override is rejected",
+			options:           map[string]string{"selectorLabelsOverride.example": "1"},
+			rejectedValuePath: "selectorLabelsOverride.example",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			options := &helm.Options{
+				SetValues:      tc.options,
+				SetStrValues:   tc.stringOptions,
+				SetJsonValues:  tc.jsonOptions,
+				KubectlOptions: k8s.NewKubectlOptions("", "", "k8s-device-plugin-test"),
+				Logger:         logger.Discard,
+			}
+
+			output, err := helm.RenderTemplateE(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/daemonset-device-plugin.yml"})
+			if tc.rejectedValuePath != "" {
+				requireSchemaRejection(t, err, tc.rejectedValuePath)
+				return
+			}
+			require.NoError(t, err)
+
+			var daemonset appsv1.DaemonSet
+			helm.UnmarshalK8SYaml(t, output, &daemonset)
+			tc.verifyDaemonSet(t, daemonset)
+		})
+	}
+}
+
+func TestImagePullSecretsTemplateRendered(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	testCases := []struct {
+		description              string
+		options                  map[string]string
+		jsonOptions              map[string]string
+		rejectedValuePath        string
+		expectedImagePullSecrets []v1.LocalObjectReference
+	}{
+		{
+			description:              "secret name",
+			options:                  map[string]string{"imagePullSecrets[0].name": "registry-secret"},
+			expectedImagePullSecrets: []v1.LocalObjectReference{{Name: "registry-secret"}},
+		},
+		{
+			// Kubernetes accepts entries without a name and the kubelet skips them.
+			description:              "empty entry",
+			jsonOptions:              map[string]string{"imagePullSecrets": "[{}]"},
+			expectedImagePullSecrets: []v1.LocalObjectReference{{}},
+		},
+		{
+			description:       "bare string is rejected",
+			options:           map[string]string{"imagePullSecrets[0]": "registry-secret"},
+			rejectedValuePath: "imagePullSecrets.0",
+		},
+		{
+			description:       "numeric name is rejected",
+			options:           map[string]string{"imagePullSecrets[0].name": "123"},
+			rejectedValuePath: "imagePullSecrets.0.name",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			options := &helm.Options{
+				SetValues:      tc.options,
+				SetJsonValues:  tc.jsonOptions,
+				KubectlOptions: k8s.NewKubectlOptions("", "", "k8s-device-plugin-test"),
+				Logger:         logger.Discard,
+			}
+
+			output, err := helm.RenderTemplateE(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/daemonset-device-plugin.yml"})
+			if tc.rejectedValuePath != "" {
+				requireSchemaRejection(t, err, tc.rejectedValuePath)
+				return
+			}
+			require.NoError(t, err)
+
+			var daemonset appsv1.DaemonSet
+			helm.UnmarshalK8SYaml(t, output, &daemonset)
+			require.Equal(t, tc.expectedImagePullSecrets, daemonset.Spec.Template.Spec.ImagePullSecrets)
+		})
+	}
+}
+
+func TestDevicePluginDaemonsetAffinityTemplateRendered(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	testCases := []struct {
+		description           string
+		options               map[string]string
+		expectedAffinity      bool
+		expectSchemaRejection bool
+	}{
+		{
+			description:      "default",
+			expectedAffinity: true,
+		},
+		{
+			description:      "null clears the default",
+			options:          map[string]string{"affinity": "null"},
+			expectedAffinity: false,
+		},
+		{
+			// Releases installed with --set affinity= store an empty string.
+			description:      "empty string clears the default",
+			options:          map[string]string{"affinity": ""},
+			expectedAffinity: false,
+		},
+		{
+			description:           "other string is rejected",
+			options:               map[string]string{"affinity": "gpu-nodes"},
+			expectSchemaRejection: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			options := &helm.Options{
+				SetValues:      tc.options,
+				KubectlOptions: k8s.NewKubectlOptions("", "", "k8s-device-plugin-test"),
+				Logger:         logger.Discard,
+			}
+
+			output, err := helm.RenderTemplateE(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/daemonset-device-plugin.yml"})
+			if tc.expectSchemaRejection {
+				requireSchemaRejection(t, err, "affinity")
+				return
+			}
+			require.NoError(t, err)
+
+			var daemonset appsv1.DaemonSet
+			helm.UnmarshalK8SYaml(t, output, &daemonset)
+			require.Equal(t, tc.expectedAffinity, daemonset.Spec.Template.Spec.Affinity != nil)
+		})
+	}
+}
+
+// Helm 3.18 switched JSON schema validators, so the error names a value as
+// "/devicePlugin/enableHostNetwork" from then on and as "devicePlugin.enableHostNetwork" before it.
+func requireSchemaRejection(t *testing.T, err error, valuePath string) {
+	t.Helper()
+	require.ErrorContains(t, err, "values don't meet the specifications of the schema")
+	jsonPointer := "/" + strings.ReplaceAll(valuePath, ".", "/")
+	require.Truef(t, strings.Contains(err.Error(), jsonPointer) || strings.Contains(err.Error(), valuePath+":"),
+		"schema error does not name %q: %v", valuePath, err)
+}
+
 func ptr[T any](x T) *T {
 	return &x
 }

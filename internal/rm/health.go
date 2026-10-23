@@ -105,31 +105,39 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhe
 		deviceIDToGiMap[d.ID] = gi
 		deviceIDToCiMap[d.ID] = ci
 		placedDevices = append(placedDevices, placedDevice{parentUUID: uuid, device: d})
+	}
+	parentToDeviceMap := groupByParent(placedDevices)
 
-		gpu, ret := r.nvml.DeviceGetHandleByUUID(uuid)
+	for parentUUID, subdevices := range parentToDeviceMap {
+		gpu, ret := r.nvml.DeviceGetHandleByUUID(parentUUID)
 		if ret != nvml.SUCCESS {
 			klog.Infof("unable to get device handle from UUID: %v; marking it as unhealthy", ret)
-			unhealthy <- d
+			for _, d := range subdevices {
+				unhealthy <- d
+			}
 			continue
 		}
 
 		supportedEvents, ret := gpu.GetSupportedEventTypes()
 		if ret != nvml.SUCCESS {
-			klog.Infof("unable to determine the supported events for %v: %v; marking it as unhealthy", d.ID, ret)
-			unhealthy <- d
+			klog.Infof("unable to determine the supported events for %v: %v; marking it as unhealthy", parentUUID, ret)
+			for _, d := range subdevices {
+				unhealthy <- d
+			}
 			continue
 		}
 
 		ret = gpu.RegisterEvents(eventMask&supportedEvents, eventSet)
 		switch {
 		case ret == nvml.ERROR_NOT_SUPPORTED:
-			klog.Warningf("Device %v is too old to support healthchecking.", d.ID)
+			klog.Warningf("Device %v is too old to support healthchecking.", parentUUID)
 		case ret != nvml.SUCCESS:
-			klog.Infof("Marking device %v as unhealthy: %v", d.ID, ret)
-			unhealthy <- d
+			klog.Infof("Marking device %v as unhealthy: %v", parentUUID, ret)
+			for _, d := range subdevices {
+				unhealthy <- d
+			}
 		}
 	}
-	parentToDeviceMap := groupByParent(placedDevices)
 
 	for {
 		select {
@@ -204,13 +212,21 @@ type disabledXIDs map[uint64]bool
 // These are considered if all XIDs have been disabled AND no other XIDs have
 // been explcitly enabled.
 func (h disabledXIDs) IsAllDisabled() bool {
-	if allDisabled, ok := h[allXIDs]; ok {
-		return allDisabled
+	if allDisabled, ok := h[allXIDs]; !ok || !allDisabled {
+		// At this point we wither have explicitly disabled XIDs or explicitly
+		// enabled XIDs. Since ANY XID that's not specified is assumed enabled, we
+		// return here.
+		return false
 	}
-	// At this point we wither have explicitly disabled XIDs or explicitly
-	// enabled XIDs. Since ANY XID that's not specified is assumed enabled, we
-	// return here.
-	return false
+	// An XID the caller enabled explicitly is still checked for, even with
+	// every other one disabled, so the health checks as a whole are not off.
+	// getDisabledHealthCheckXids records such an XID as a false entry.
+	for xid, disabled := range h {
+		if xid != allXIDs && !disabled {
+			return false
+		}
+	}
+	return true
 }
 
 // IsDisabled checks whether the specified XID has been explicitly disalbled.
@@ -225,7 +241,10 @@ func (h disabledXIDs) IsDisabled(xid uint64) bool {
 	if disabled, ok := h[xid]; ok {
 		return disabled
 	}
-	return h.IsAllDisabled()
+	// An XID nobody named is disabled exactly when all XIDs are. Asking
+	// IsAllDisabled here would make such an XID checked for as soon as some
+	// other XID is enabled by name.
+	return h[allXIDs]
 }
 
 // getDisabledHealthCheckXids returns the XIDs that should be ignored.

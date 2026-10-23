@@ -30,7 +30,7 @@ CMDS := $(patsubst ./cmd/%/,%,$(sort $(dir $(wildcard ./cmd/*/))))
 CMD_TARGETS := $(patsubst %,cmd-%, $(CMDS))
 
 CHECK_TARGETS := lint
-MAKE_TARGETS := binaries build check fmt lint-internal test examples cmds coverage generate vendor check-modules third-party-notices check-third-party-notices $(CHECK_TARGETS)
+MAKE_TARGETS := binaries build check fmt lint-internal test examples cmds coverage generate vendor check-modules third-party-notices check-third-party-notices helm-values-schema check-helm-values-schema lint-helm $(CHECK_TARGETS)
 
 TARGETS := $(MAKE_TARGETS) $(EXAMPLE_TARGETS) $(CMD_TARGETS)
 
@@ -128,6 +128,25 @@ check-third-party-notices: third-party-notices
 		|| { echo "ERROR: THIRD_PARTY_NOTICES.md is not tracked. Run 'make third-party-notices' and commit the result."; exit 1; }
 	@git diff --exit-code -- THIRD_PARTY_NOTICES.md \
 		|| { echo "ERROR: THIRD_PARTY_NOTICES.md is stale. Run 'make third-party-notices' and commit the change."; exit 1; }
+
+HELM_CHART_DIR := $(CURDIR)/deployments/helm/nvidia-device-plugin
+
+bin/helm-values-schema-json: $(DEVEL_DIR)/go.mod $(DEVEL_DIR)/go.sum
+	GOBIN=$(CURDIR)/bin go -C $(DEVEL_DIR) install -mod=readonly github.com/losisin/helm-values-schema-json/v2
+
+# Helm releases before 3.18 only validate against draft-07 schemas.
+helm-values-schema: bin/helm-values-schema-json
+	cd $(HELM_CHART_DIR) && $(CURDIR)/bin/helm-values-schema-json --draft 7 --indent 2 --values values.yaml --output values.schema.json
+
+check-helm-values-schema: helm-values-schema
+	@git ls-files --error-unmatch $(HELM_CHART_DIR)/values.schema.json >/dev/null 2>&1 \
+		|| { echo "ERROR: values.schema.json is not tracked. Run 'make helm-values-schema' and commit the result."; exit 1; }
+	@git diff --exit-code -- $(HELM_CHART_DIR)/values.schema.json \
+		|| { echo "ERROR: values.schema.json is stale. Run 'make helm-values-schema' and commit the change."; exit 1; }
+
+lint-helm:
+	helm lint --strict --namespace nvidia-device-plugin $(HELM_CHART_DIR)
+	helm lint --strict --namespace nvidia-device-plugin --set gfd.enabled=true $(HELM_CHART_DIR)
 
 COVERAGE_FILE := coverage.out
 test: build cmds

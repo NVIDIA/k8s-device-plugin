@@ -134,7 +134,7 @@ func (d nvmlMigDevice) GetPaths() ([]string, error) {
 
 	ciCapPath := fmt.Sprintf(nvidiaCapabilitiesPath+"/gpu%d/mig/gi%d/ci%d/access", minor, gi, ci)
 	if _, exists := capDevicePaths[ciCapPath]; !exists {
-		return nil, fmt.Errorf("missing MIG GPU instance capability path: %v", giCapPath)
+		return nil, fmt.Errorf("missing MIG compute instance capability path: %v", ciCapPath)
 	}
 
 	devicePaths := []string{
