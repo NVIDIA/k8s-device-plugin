@@ -45,6 +45,11 @@ type options struct {
 	deviceDiscoveryStrategy string
 
 	imexChannels imex.Channels
+
+	// uniqueSocketFilenames gives each plugin construction its own socket
+	// filename. The caller enables this only for a kubelet that tracks device
+	// plugins by socket path.
+	uniqueSocketFilenames bool
 }
 
 // New a new set of plugins with the supplied options.

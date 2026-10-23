@@ -41,11 +41,12 @@ import (
 )
 
 type options struct {
-	flags           []cli.Flag
-	configFile      string
-	kubeletSocket   string
-	cdiFeatureFlags cli.StringSlice
-	cdiDisableHooks cli.StringSlice
+	flags                 []cli.Flag
+	configFile            string
+	kubeletSocket         string
+	uniqueSocketFilenames string
+	cdiFeatureFlags       cli.StringSlice
+	cdiDisableHooks       cli.StringSlice
 }
 
 func main() {
@@ -171,6 +172,13 @@ func main() {
 			Usage:       "specify the socket for communicating with the kubelet; if this is empty, no connection with the kubelet is attempted",
 			Destination: &o.kubeletSocket,
 			EnvVars:     []string{"KUBELET_SOCKET"},
+		},
+		&cli.StringFlag{
+			Name:        "unique-socket-filenames",
+			Value:       "auto",
+			Usage:       "use a unique device-plugin socket filename so two pods can register during a surge: auto (kubelet 1.37+), true, or false",
+			Destination: &o.uniqueSocketFilenames,
+			EnvVars:     []string{"UNIQUE_SOCKET_FILENAMES"},
 		},
 		&cli.StringFlag{
 			Name:        "config-file",

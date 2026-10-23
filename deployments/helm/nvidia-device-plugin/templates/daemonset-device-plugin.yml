@@ -151,6 +151,10 @@ spec:
         name: nvidia-device-plugin-ctr
         command: ["nvidia-device-plugin"]
         env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
           - name: MPS_ROOT
             value: {{ .Values.mps.root }}
         {{- if typeIs "string" .Values.migStrategy }}

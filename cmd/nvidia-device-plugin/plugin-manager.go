@@ -77,6 +77,7 @@ func GetPlugins(ctx context.Context, infolib info.Interface, nvmllib nvml.Interf
 		plugin.WithFailOnInitError(*config.Flags.FailOnInitError),
 		plugin.WithImexChannels(imexChannels),
 		plugin.WithDeviceDiscoveryStrategy(resolvedStrategy),
+		plugin.WithUniqueSocketFilenames(uniqueSocketFilenamesEnabled(ctx, o.uniqueSocketFilenames)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create plugins: %w", err)

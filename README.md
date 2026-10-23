@@ -225,6 +225,7 @@ deploying the plugin via `helm`.
 | `--device-list-strategy` | `$DEVICE_LIST_STRATEGY` | `"envvar"`      |
 | `--device-id-strategy`   | `$DEVICE_ID_STRATEGY`   | `"uuid"`        |
 | `--config-file`          | `$CONFIG_FILE`          | `""`            |
+| `--unique-socket-filenames` | `$UNIQUE_SOCKET_FILENAMES` | `"auto"`     |
 
 ### As a configuration file
 
@@ -262,6 +263,17 @@ options outside of this section are shared.
   **Note:** With a `MIG_STRATEGY` of mixed, you will have additional resources
   available to you of the form `nvidia.com/mig-<slice_count>g.<memory_size>gb`
   that you can set in your pod spec to get access to a specific MIG device.
+
+**`UNIQUE_SOCKET_FILENAMES`**:
+  give each device-plugin start its own socket file so a DaemonSet surge can register the new pod before the old pod exits
+
+  `[auto | true | false] (default 'auto')`
+
+  Kubernetes 1.37 tracks a device plugin by its socket path. Two pods can both advertise `nvidia.com/gpu` only when they listen on different files. With one shared `nvidia-gpu.sock`, the new pod deletes that file and the kubelet treats the disconnect as the last plugin for the resource, so allocatable drops to 0 until the new pod's `ListAndWatch` lands.
+
+  `auto` reads `status.nodeInfo.kubeletVersion` from the Node named by `$NODE_NAME`. `v1.37` and newer (including a provider suffix such as `-eks-...`) uses a socket named `nvidia-<resource>-<8 hex>.sock`. Each start, including a `SIGHUP` restart, gets a new suffix. An older kubelet, a missing `NODE_NAME`, a forbidden Node `get`, or a version that cannot be parsed keeps `nvidia-<resource>.sock`. That fallback is required: on a kubelet older than 1.37, a new filename makes the previous socket's disconnect clear the new registration too.
+
+  The Helm chart sets `NODE_NAME` from the downward API. Its ServiceAccount can `get` nodes. The static manifest does not, so `auto` keeps the stable name there unless you set `--unique-socket-filenames=true` on a 1.37 cluster. This chart does not set DaemonSet `maxSurge`. A surge is what makes the two sockets overlap; without it the old pod is already gone before the new one listens, and the filename does not remove that gap. A long resource name is shortened so the path stays within 107 bytes. The plugin deletes only its own socket.
 
 **`FAIL_ON_INIT_ERROR`**:
   fail the plugin if an error is encountered during initialization, otherwise block indefinitely
