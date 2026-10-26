@@ -49,8 +49,8 @@ jobs:
       run: |
         git -C $HELM_REPO_PATH push https://${GITHUB_ACTOR}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} gh-pages
 
-  publish-oci-charts:
-    name: Push Helm charts to GHCR as OCI artifacts
+  publish-oci-chart:
+    name: Push the Helm chart to GHCR as an OCI artifact
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -61,23 +61,20 @@ jobs:
       with:
         version: 3.14.4
 
-    - name: Download the release's chart packages
+    - name: Check out repo
+      uses: actions/checkout@v7
+
+    - name: Package and push the nvidia-device-plugin chart
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         TAG: ${{ github.event.release.tag_name }}
-      run: gh release download "${TAG}" --repo "${GITHUB_REPOSITORY}" --pattern '*.tgz' --dir charts
-
-    - name: Push charts to ghcr.io
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         set -euo pipefail
+        version="${TAG#v}"
+        helm package deployments/helm/nvidia-device-plugin/ --version "${version}" --app-version "${version}"
         echo "${GH_TOKEN}" | helm registry login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
         # OCI repository names must be lowercase: ghcr.io/nvidia/k8s-device-plugin/charts
-        registry="oci://ghcr.io/${GITHUB_REPOSITORY,,}/charts"
-        for chart in charts/*.tgz; do
-          helm push "${chart}" "${registry}"
-        done
+        helm push "nvidia-device-plugin-${version}.tgz" "oci://ghcr.io/${GITHUB_REPOSITORY,,}/charts"
 
   publish-helm-repo:
     uses: ./.github/workflows/deploy-to-pages.yaml
