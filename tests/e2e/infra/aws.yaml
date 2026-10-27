@@ -16,6 +16,8 @@ spec:
   containerRuntime:
     install: true
     name: containerd
+    package:
+      version: "2.3.6"
   nvidiaDriver:
     install: true
   nvidiaContainerToolkit:
