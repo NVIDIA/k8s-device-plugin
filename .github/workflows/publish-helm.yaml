@@ -24,6 +24,9 @@ jobs:
   update-helm-charts:
     name: Update gh-pages branch helm charts and index
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     env:
       HELM_REPO_PATH: releases/helm-${{ github.event.release.tag_name }}/
     steps:
@@ -43,38 +46,13 @@ jobs:
       run: |
         git config user.name "Github Actions"
         git config user.email "no-reply@github.com"
-        ./hack/update-helm-index.sh --helm-repo-path $HELM_REPO_PATH --version ${{ github.event.release.tag_name }}
+        echo "${GH_TOKEN}" | helm registry login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+        # OCI repository names must be lowercase: ghcr.io/nvidia/k8s-device-plugin/charts
+        ./hack/update-helm-index.sh --helm-repo-path $HELM_REPO_PATH --version ${{ github.event.release.tag_name }} --oci-repo "oci://ghcr.io/${GITHUB_REPOSITORY,,}/charts"
 
     - name: Push updated Helm charts and index to gh-pages branch
       run: |
         git -C $HELM_REPO_PATH push https://${GITHUB_ACTOR}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} gh-pages
-
-  publish-oci-chart:
-    name: Push the Helm chart to GHCR as an OCI artifact
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-    - name: Install Helm
-      uses: azure/setup-helm@v5.0.1
-      with:
-        version: 3.14.4
-
-    - name: Check out repo
-      uses: actions/checkout@v7
-
-    - name: Package and push the nvidia-device-plugin chart
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        TAG: ${{ github.event.release.tag_name }}
-      run: |
-        set -euo pipefail
-        version="${TAG#v}"
-        helm package deployments/helm/nvidia-device-plugin/ --version "${version}" --app-version "${version}"
-        echo "${GH_TOKEN}" | helm registry login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
-        # OCI repository names must be lowercase: ghcr.io/nvidia/k8s-device-plugin/charts
-        helm push "nvidia-device-plugin-${version}.tgz" "oci://ghcr.io/${GITHUB_REPOSITORY,,}/charts"
 
   publish-helm-repo:
     uses: ./.github/workflows/deploy-to-pages.yaml
