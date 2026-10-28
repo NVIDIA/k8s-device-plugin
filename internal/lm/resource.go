@@ -270,7 +270,18 @@ func newArchitectureLabels(rl resourceLabeler, device resource.Device) (Labels, 
 		return make(Labels), nil
 	}
 
-	family := getArchFamily(computeMajor, computeMinor)
+	family, err := device.GetArchitecture()
+	if err == nil {
+		family = strings.ReplaceAll(family, " ", "-")
+		family = strings.ToLower(family)
+	} else {
+		klog.V(2).Infof("failed to get architecture of device: %v", err)
+	}
+
+	if err != nil || len(family) == 0 || family == "unknown" {
+		klog.V(2).Infof("falling back to inferring device architecture from CUDA compute capability")
+		family = getArchFamily(computeMajor, computeMinor)
+	}
 
 	labels := rl.labels(map[string]any{
 		"family":        family,

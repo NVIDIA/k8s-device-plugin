@@ -48,6 +48,7 @@ func NewDeviceMock(migEnabled bool) *DeviceMock {
 			}
 			return 8, 0, nil
 		},
+		GetArchitectureFunc:   func() (string, error) { return "Ampere", nil },
 		GetTotalMemoryMiBFunc: func() (uint64, error) { return uint64(300), nil },
 		IsFabricAttachedFunc:  func() (bool, error) { return false, nil },
 		IsMigEnabledFunc:      func() (bool, error) { return migEnabled, nil },
