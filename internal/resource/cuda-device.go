@@ -53,6 +53,11 @@ func (d *cudaDevice) GetCudaComputeCapability() (int, int, error) {
 	return major, minor, nil
 }
 
+// GetArchitecture is unsupported for CUDA devices
+func (d *cudaDevice) GetArchitecture() (string, error) {
+	return "", fmt.Errorf("GetArchitecture is unsupported for CUDA devices")
+}
+
 // GetDeviceHandleFromMigDeviceHandle is unsupported for CUDA devices
 func (d *cudaDevice) GetDeviceHandleFromMigDeviceHandle() (Device, error) {
 	return nil, fmt.Errorf("GetDeviceHandleFromMigDeviceHandle is unsupported for CUDA devices")

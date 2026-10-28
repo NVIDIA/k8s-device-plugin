@@ -92,6 +92,11 @@ func (d nvmlMigDevice) GetCudaComputeCapability() (int, int, error) {
 	return 0, 0, fmt.Errorf("GetCudaComputeCapability is not supported for MIG devices")
 }
 
+// GetArchitecture is not supported for MIG devices
+func (d nvmlMigDevice) GetArchitecture() (string, error) {
+	return "", fmt.Errorf("GetArchitecture is not supported for MIG devices")
+}
+
 // GetName returns the name of the nvmlMigDevice.
 // This is equal to the mig profile.
 func (d nvmlMigDevice) GetName() (string, error) {

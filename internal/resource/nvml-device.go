@@ -62,6 +62,16 @@ func (d nvmlDevice) GetCudaComputeCapability() (int, int, error) {
 	return major, minor, nil
 }
 
+// GetArchitecture returns the architecture family of the GPU device as a string
+func (d nvmlDevice) GetArchitecture() (string, error) {
+	arch, err := d.GetArchitectureAsString()
+	if err != nil {
+		return "", err
+	}
+
+	return arch, nil
+}
+
 // GetAttributes is only supported for MIG devices.
 func (d nvmlDevice) GetAttributes() (map[string]any, error) {
 	return nil, fmt.Errorf("GetAttributes is not supported for non-MIG devices")
