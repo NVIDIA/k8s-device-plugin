@@ -17,11 +17,13 @@
 package lm
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
+	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 	rt "github.com/NVIDIA/k8s-device-plugin/internal/resource/testing"
 )
 
@@ -214,6 +216,76 @@ func TestGPUResourceLabeler(t *testing.T) {
 		})
 	}
 
+}
+
+func TestNewArchitectureLabels(t *testing.T) {
+	testCases := []struct {
+		description    string
+		arch           string
+		archErr        error
+		computeMajor   int
+		computeMinor   int
+		expectedFamily string
+	}{
+		{
+			description:    "NVML architecture is lowercased",
+			arch:           "Hopper",
+			computeMajor:   8,
+			expectedFamily: "hopper",
+		},
+		{
+			description:    "NVML architecture spaces are replaced with dashes",
+			arch:           "Ada Lovelace",
+			computeMajor:   8,
+			expectedFamily: "ada-lovelace",
+		},
+		{
+			description:    "unknown NVML architecture falls back to compute capability",
+			arch:           "Unknown",
+			computeMajor:   9,
+			expectedFamily: "hopper",
+		},
+		{
+			description:    "empty NVML architecture falls back to compute capability",
+			computeMajor:   12,
+			expectedFamily: "blackwell",
+		},
+		{
+			description:    "NVML architecture error falls back to compute capability",
+			arch:           "Hopper",
+			archErr:        errors.New("not supported"),
+			computeMajor:   8,
+			computeMinor:   9,
+			expectedFamily: "ada-lovelace",
+		},
+	}
+
+	rl := resourceLabeler{resourceName: "nvidia.com/gpu"}
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			device := &resource.DeviceMock{
+				GetArchitectureFunc: func() (string, error) { return tc.arch, tc.archErr },
+				GetCudaComputeCapabilityFunc: func() (int, int, error) {
+					return tc.computeMajor, tc.computeMinor, nil
+				},
+			}
+
+			labels, err := newArchitectureLabels(rl, device)
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedFamily, labels["nvidia.com/gpu.family"])
+		})
+	}
+
+	t.Run("zero compute major returns no labels", func(t *testing.T) {
+		// GetArchitectureFunc is left unset so that the mock panics if it is called.
+		device := &resource.DeviceMock{
+			GetCudaComputeCapabilityFunc: func() (int, int, error) { return 0, 0, nil },
+		}
+
+		labels, err := newArchitectureLabels(rl, device)
+		require.NoError(t, err)
+		require.Empty(t, labels)
+	})
 }
 
 func TestSanitise(t *testing.T) {

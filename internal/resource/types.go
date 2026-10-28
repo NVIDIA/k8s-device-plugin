@@ -40,6 +40,7 @@ type Device interface {
 	GetTotalMemoryMiB() (uint64, error)
 	GetDeviceHandleFromMigDeviceHandle() (Device, error)
 	GetCudaComputeCapability() (int, int, error)
+	GetArchitecture() (string, error)
 	GetPCIClass() (uint32, error)
 	GetFabricIDs() (string, string, error)
 }
