@@ -17,6 +17,7 @@
 package lm
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -432,6 +433,26 @@ func TestMigResourceLabeler(t *testing.T) {
 			require.NoError(t, err)
 
 			require.EqualValues(t, tc.expectedLabels, labels)
+		})
+	}
+}
+
+func TestGetArchFamily(t *testing.T) {
+	testCases := []struct {
+		computeMajor int
+		computeMinor int
+		expected     string
+	}{
+		{computeMajor: 10, computeMinor: 0, expected: "blackwell"},
+		{computeMajor: 10, computeMinor: 3, expected: "blackwell"},
+		{computeMajor: 11, computeMinor: 0, expected: "blackwell"},
+		{computeMajor: 12, computeMinor: 0, expected: "blackwell"},
+		{computeMajor: 12, computeMinor: 1, expected: "blackwell"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%d.%d", tc.computeMajor, tc.computeMinor), func(t *testing.T) {
+			require.Equal(t, tc.expected, getArchFamily(tc.computeMajor, tc.computeMinor))
 		})
 	}
 }
