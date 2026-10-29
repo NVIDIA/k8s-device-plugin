@@ -1,9 +1,12 @@
-# cyphar.com/go-pathrs v0.2.5
+# cyphar.com/go-pathrs v0.2.6
 ## explicit; go 1.18
 cyphar.com/go-pathrs
 cyphar.com/go-pathrs/internal/fdutils
 cyphar.com/go-pathrs/internal/libpathrs
 cyphar.com/go-pathrs/procfs
+# github.com/Masterminds/semver/v3 v3.5.0
+## explicit; go 1.21
+github.com/Masterminds/semver/v3
 # github.com/NVIDIA/go-gpuallocator v0.6.0
 ## explicit; go 1.20
 github.com/NVIDIA/go-gpuallocator/gpuallocator
@@ -16,11 +19,11 @@ github.com/NVIDIA/go-nvlib/pkg/nvpci
 github.com/NVIDIA/go-nvlib/pkg/nvpci/bytes
 github.com/NVIDIA/go-nvlib/pkg/nvpci/mmio
 github.com/NVIDIA/go-nvlib/pkg/pciids
-# github.com/NVIDIA/go-nvml v0.13.4-0
+# github.com/NVIDIA/go-nvml v0.13.4-1
 ## explicit; go 1.20
 github.com/NVIDIA/go-nvml/pkg/dl
 github.com/NVIDIA/go-nvml/pkg/nvml
-# github.com/NVIDIA/nvidia-container-toolkit v1.20.1
+# github.com/NVIDIA/nvidia-container-toolkit v1.20.2-0.20261028213818-2251bb91d972
 ## explicit; go 1.26.0
 github.com/NVIDIA/nvidia-container-toolkit/internal/config/image
 github.com/NVIDIA/nvidia-container-toolkit/internal/devices
@@ -126,7 +129,7 @@ github.com/modern-go/reflect2
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
-# github.com/opencontainers/cgroups v0.0.9
+# github.com/opencontainers/cgroups v0.1.0
 ## explicit; go 1.24.0
 github.com/opencontainers/cgroups/devices/config
 # github.com/opencontainers/runtime-spec v1.3.0

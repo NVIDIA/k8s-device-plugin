@@ -20,6 +20,7 @@ compiled busybox binary is added to the image, which is licensed under GPLv2.
 
 | Package | License | Dependency |
 |---------|---------|------------|
+| `github.com/Masterminds/semver/v3` | MIT | `github.com/Masterminds/semver/v3` |
 | `github.com/NVIDIA/go-gpuallocator` | Apache-2.0 | `github.com/NVIDIA/go-gpuallocator` |
 | `github.com/NVIDIA/go-nvlib/pkg` | Apache-2.0 | `github.com/NVIDIA/go-nvlib` |
 | `github.com/NVIDIA/go-nvml/pkg` | Apache-2.0 | `github.com/NVIDIA/go-nvml` |
@@ -93,6 +94,37 @@ compiled busybox binary is added to the image, which is licensed under GPLv2.
 | `tags.cncf.io/container-device-interface/specs-go` | Apache-2.0 | `tags.cncf.io/container-device-interface/specs-go` |
 
 ## License Texts
+
+### github.com/Masterminds/semver/v3
+
+* License: MIT
+* Module: github.com/Masterminds/semver/v3
+
+#### LICENSE.txt
+
+```text
+Copyright (C) 2014-2019, Matt Butcher and Matt Farina
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+```
+
 
 ### github.com/NVIDIA/go-gpuallocator
 
