@@ -388,9 +388,14 @@ func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) 
 	}
 	klog.Infof("\nRunning with config:\n%v", string(configJSON))
 
+	sessionID, err := plugin.NewSessionID()
+	if err != nil {
+		return nil, false, fmt.Errorf("unable to generate session ID: %w", err)
+	}
+
 	// Get the set of plugins.
-	klog.Info("Retrieving plugins.")
-	plugins, err := GetPlugins(c.Context, infolib, nvmllib, devicelib, config, o)
+	klog.Infof("Retrieving plugins for session %s.", sessionID)
+	plugins, err := GetPlugins(c.Context, infolib, nvmllib, devicelib, config, sessionID, o)
 	if err != nil {
 		return nil, false, fmt.Errorf("error getting plugins: %v", err)
 	}
