@@ -32,6 +32,7 @@ import (
 	"k8s.io/klog/v2"
 	cdiapi "tags.cncf.io/container-device-interface/pkg/cdi"
 	cdiparser "tags.cncf.io/container-device-interface/pkg/parser"
+	"tags.cncf.io/container-device-interface/specs-go"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/imex"
@@ -199,7 +200,7 @@ func (cdi *cdiHandler) CreateSpecFile() error {
 		}
 
 		// TODO: Once the NewDriverTransformer is merged in container-toolkit we can instantiate it directly.
-		transformer := cdi.getRootTransformer()
+		transformer := devNullPreservingTransformer{cdi.getRootTransformer()}
 		if err := transformer.Transform(spec.Raw()); err != nil {
 			return fmt.Errorf("failed to transform driver root in CDI spec: %v", err)
 		}
@@ -252,6 +253,46 @@ func (cdi *cdiHandler) getRootTransformer() transform.Transformer {
 	)
 
 	return transform.Merge(driverRootTransformer, devRootTransformer)
+}
+
+// devNullHostPath is the host path of the void mount that nvcdi adds to the
+// common edits to suppress device injection by the NVIDIA Container Runtime.
+const devNullHostPath = "/dev/null"
+
+// devNullPreservingTransformer keeps the host path of /dev/null mounts
+// unchanged. These refer to the host's /dev/null rather than to a file under
+// the driver or dev root, so rewriting them (e.g. when the container root is
+// "/") would produce a mount source that does not exist on the host.
+type devNullPreservingTransformer struct {
+	transform.Transformer
+}
+
+func (t devNullPreservingTransformer) Transform(spec *specs.Spec) error {
+	if spec == nil {
+		return nil
+	}
+
+	var devNullMounts []*specs.Mount
+	collect := func(edits *specs.ContainerEdits) {
+		for _, m := range edits.Mounts {
+			if m != nil && m.HostPath == devNullHostPath {
+				devNullMounts = append(devNullMounts, m)
+			}
+		}
+	}
+	collect(&spec.ContainerEdits)
+	for i := range spec.Devices {
+		collect(&spec.Devices[i].ContainerEdits)
+	}
+
+	if err := t.Transformer.Transform(spec); err != nil {
+		return err
+	}
+
+	for _, m := range devNullMounts {
+		m.HostPath = devNullHostPath
+	}
+	return nil
 }
 
 // QualifiedName constructs a CDI qualified device name for the specified resources.
