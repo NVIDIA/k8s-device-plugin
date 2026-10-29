@@ -111,7 +111,9 @@ func (d *Daemon) Start() error {
 	}
 
 	mpsDaemon := exec.Command(mpsControlBin, "-d")
-	mpsDaemon.Env = append(mpsDaemon.Env, d.EnvVars().toSlice()...)
+	// The control daemon needs the inherited PATH to launch nvidia-cuda-mps-server.
+	// Appending last lets the per-resource directories override inherited values.
+	mpsDaemon.Env = append(mpsDaemon.Environ(), d.EnvVars().toSlice()...)
 	if err := mpsDaemon.Run(); err != nil {
 		return err
 	}
@@ -214,7 +216,9 @@ func (d *Daemon) EchoPipeToControl(command string) (string, error) {
 	defer reader.Close()
 
 	mpsDaemon := exec.Command(mpsControlBin)
-	mpsDaemon.Env = append(mpsDaemon.Env, d.EnvVars().toSlice()...)
+	// The control daemon needs the inherited PATH to launch nvidia-cuda-mps-server.
+	// Appending last lets the per-resource directories override inherited values.
+	mpsDaemon.Env = append(mpsDaemon.Environ(), d.EnvVars().toSlice()...)
 
 	mpsDaemon.Stdin = reader
 	mpsDaemon.Stdout = &out
