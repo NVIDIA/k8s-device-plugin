@@ -23,8 +23,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"golang.org/x/mod/semver"
 	"tags.cncf.io/container-device-interface/pkg/parser"
 
 	"github.com/NVIDIA/nvidia-container-toolkit/internal/logger"
@@ -35,6 +35,8 @@ const (
 
 	volumeMountDevicePrefixCDI  = "cdi/"
 	volumeMountDevicePrefixImex = "imex/"
+
+	volumeMountDeviceVoid = "void"
 )
 
 // CUDA represents a CUDA image that can be used for GPU computing. This wraps
@@ -201,16 +203,13 @@ func (i CUDA) legacyVersion() (string, error) {
 }
 
 func parseMajorMinorVersion(version string) (string, error) {
-	vVersion := "v" + strings.TrimPrefix(version, "v")
-
-	if !semver.IsValid(vVersion) {
-		return "", fmt.Errorf("invalid version string")
+	sv, err := semver.NewVersion(version)
+	if err != nil {
+		return "", fmt.Errorf("invalid version string: %w", err)
 	}
-
-	majorMinor := strings.TrimPrefix(semver.MajorMinor(vVersion), "v")
+	majorMinor := fmt.Sprintf("%d.%d", sv.Major(), sv.Minor())
 	parts := strings.Split(majorMinor, ".")
 
-	var err error
 	_, err = strconv.ParseUint(parts[0], 10, 32)
 	if err != nil {
 		return "", fmt.Errorf("invalid major version")
@@ -219,6 +218,7 @@ func parseMajorMinorVersion(version string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("invalid minor version")
 	}
+
 	return majorMinor, nil
 }
 
@@ -333,10 +333,13 @@ func (i CUDA) visibleDevicesFromEnvVar() []string {
 }
 
 // visibleDevicesFromMounts returns the set of visible devices requested as mounts.
+// If the void device is requested, no devices are returned.
 func (i CUDA) visibleDevicesFromMounts() []string {
 	var devices []string
 	for _, device := range i.requestsFromMounts() {
 		switch {
+		case device == volumeMountDeviceVoid:
+			return nil
 		case strings.HasPrefix(device, volumeMountDevicePrefixImex):
 			continue
 		case strings.HasPrefix(device, volumeMountDevicePrefixCDI):
