@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 
 	"github.com/opencontainers/selinux/go-selinux"
 	"k8s.io/klog/v2"
@@ -111,7 +112,7 @@ func (d *Daemon) Start() error {
 	}
 
 	mpsDaemon := exec.Command(mpsControlBin, "-d")
-	mpsDaemon.Env = append(mpsDaemon.Env, d.EnvVars().toSlice()...)
+	mpsDaemon.Env = slices.Concat(mpsDaemon.Environ(), d.EnvVars().toSlice())
 	if err := mpsDaemon.Run(); err != nil {
 		return err
 	}
@@ -214,7 +215,7 @@ func (d *Daemon) EchoPipeToControl(command string) (string, error) {
 	defer reader.Close()
 
 	mpsDaemon := exec.Command(mpsControlBin)
-	mpsDaemon.Env = append(mpsDaemon.Env, d.EnvVars().toSlice()...)
+	mpsDaemon.Env = slices.Concat(mpsDaemon.Environ(), d.EnvVars().toSlice())
 
 	mpsDaemon.Stdin = reader
 	mpsDaemon.Stdout = &out
