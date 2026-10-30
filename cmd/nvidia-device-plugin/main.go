@@ -17,10 +17,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"syscall"
 	"time"
@@ -278,7 +280,12 @@ func start(c *cli.Context, o *options) error {
 	defer watcher.Close()
 
 	klog.Info("Starting OS watcher.")
-	sigs := watch.Signals(syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	// ctx is cancelled on a shutdown signal and is passed to each plugin's Start,
+	// so a blocking wait (e.g. for the MPS daemon) is interrupted promptly. SIGHUP
+	// is handled separately below as a restart rather than a shutdown.
+	ctx, stop := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	defer stop()
+	sighup := watch.Signals(syscall.SIGHUP)
 
 	var started bool
 	var restartTimeout <-chan time.Time
@@ -293,7 +300,7 @@ restart:
 	}
 
 	klog.Info("Starting Plugins.")
-	plugins, restartPlugins, err := startPlugins(c, o)
+	plugins, restartPlugins, err := startPlugins(ctx, c, o)
 	if err != nil {
 		return fmt.Errorf("error starting plugins: %v", err)
 	}
@@ -325,18 +332,15 @@ restart:
 		case err := <-watcher.Errors:
 			klog.Infof("inotify: %s", err)
 
-		// Watch for any signals from the OS. On SIGHUP, restart this loop,
-		// restarting all of the plugins in the process. On all other
-		// signals, exit the loop and exit the program.
-		case s := <-sigs:
-			switch s {
-			case syscall.SIGHUP:
-				klog.Info("Received SIGHUP, restarting.")
-				goto restart
-			default:
-				klog.Infof("Received signal \"%v\", shutting down.", s)
-				goto exit
-			}
+		// On SIGHUP, restart this loop, restarting all of the plugins.
+		case <-sighup:
+			klog.Info("Received SIGHUP, restarting.")
+			goto restart
+
+		// On a shutdown signal, ctx is cancelled; exit the program.
+		case <-ctx.Done():
+			klog.Info("Received shutdown signal, shutting down.")
+			goto exit
 		}
 	}
 exit:
@@ -347,7 +351,7 @@ exit:
 	return nil
 }
 
-func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) {
+func startPlugins(ctx context.Context, c *cli.Context, o *options) ([]plugin.Interface, bool, error) {
 	// Load the configuration file
 	klog.Info("Loading configuration.")
 	config, err := loadConfig(c, o.flags)
@@ -406,7 +410,7 @@ func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) 
 		}
 
 		// Start the gRPC server for plugin p and connect it with the kubelet.
-		if err := p.Start(o.kubeletSocket); err != nil {
+		if err := p.Start(ctx, o.kubeletSocket); err != nil {
 			klog.Errorf("Failed to start plugin: %v", err)
 			return plugins, true, nil
 		}
