@@ -17,6 +17,7 @@
 package v1
 
 import (
+	"encoding/json"
 	"flag"
 	"os"
 	"path/filepath"
@@ -55,6 +56,91 @@ sharing:
 	require.NotNil(t, config.Sharing.MPS)
 	require.NotNil(t, config.Sharing.MPS.FailRequestsGreaterThanOne)
 	require.False(t, *config.Sharing.MPS.FailRequestsGreaterThanOne)
+}
+
+func TestNewConfigMPSMemoryLimitFactor(t *testing.T) {
+	testCases := []struct {
+		name            string
+		factor          string
+		expectedFactor  string
+		expectsError    bool
+		expectedErrText string
+	}{
+		{
+			name:           "defaults to one",
+			expectedFactor: `"memoryLimitFactor":1`,
+		},
+		{
+			name:           "honors configured factor",
+			factor:         "1.5",
+			expectedFactor: `"memoryLimitFactor":1.5`,
+		},
+		{
+			name:            "rejects zero",
+			factor:          "0",
+			expectedErrText: "memoryLimitFactor must be a finite number greater than zero",
+		},
+		{
+			name:            "rejects negative values",
+			factor:          "-1",
+			expectedErrText: "memoryLimitFactor must be a finite number greater than zero",
+		},
+		{
+			name:         "rejects non-finite values",
+			factor:       ".inf",
+			expectsError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			contents := `version: v1
+sharing:
+  mps:
+    resources:
+      - name: nvidia.com/gpu
+        replicas: 2
+`
+			if tc.factor != "" {
+				contents = `version: v1
+sharing:
+  mps:
+    memoryLimitFactor: ` + tc.factor + `
+    resources:
+      - name: nvidia.com/gpu
+        replicas: 2
+`
+			}
+
+			config, err := newConfigForTest(t, contents)
+			if tc.expectsError || tc.expectedErrText != "" {
+				require.Error(t, err)
+				if tc.expectedErrText != "" {
+					require.ErrorContains(t, err, tc.expectedErrText)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			configJSON, err := json.Marshal(config)
+			require.NoError(t, err)
+			require.Contains(t, string(configJSON), tc.expectedFactor)
+		})
+	}
+}
+
+func TestNewConfigRejectsMPSMemoryLimitFactorForTimeSlicing(t *testing.T) {
+	config, err := newConfigForTest(t, `
+version: v1
+sharing:
+  timeSlicing:
+    memoryLimitFactor: 1.5
+    resources:
+      - name: nvidia.com/gpu
+        replicas: 2
+`)
+	require.Nil(t, config)
+	require.ErrorContains(t, err, "memoryLimitFactor is only supported for MPS sharing")
 }
 
 func newConfigForTest(t *testing.T, contents string) (*Config, error) {

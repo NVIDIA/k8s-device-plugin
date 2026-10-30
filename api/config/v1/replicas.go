@@ -19,6 +19,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -28,9 +29,11 @@ import (
 
 // ReplicatedResources defines generic options for replicating devices.
 type ReplicatedResources struct {
-	RenameByDefault            bool                 `json:"renameByDefault,omitempty"            yaml:"renameByDefault,omitempty"`
-	FailRequestsGreaterThanOne *bool                `json:"failRequestsGreaterThanOne,omitempty" yaml:"failRequestsGreaterThanOne,omitempty"`
-	Resources                  []ReplicatedResource `json:"resources,omitempty"                  yaml:"resources,omitempty"`
+	RenameByDefault            bool  `json:"renameByDefault,omitempty"            yaml:"renameByDefault,omitempty"`
+	FailRequestsGreaterThanOne *bool `json:"failRequestsGreaterThanOne,omitempty" yaml:"failRequestsGreaterThanOne,omitempty"`
+	// MemoryLimitFactor is only supported for MPS sharing.
+	MemoryLimitFactor *float64             `json:"memoryLimitFactor,omitempty"          yaml:"memoryLimitFactor,omitempty"`
+	Resources         []ReplicatedResource `json:"resources,omitempty"                  yaml:"resources,omitempty"`
 }
 
 func (rrs *ReplicatedResources) disableResoureRenaming(id string) {
@@ -184,6 +187,16 @@ func (s *ReplicatedResources) UnmarshalJSON(b []byte) error {
 		err = json.Unmarshal(failRequestsGreaterThanOne, &s.FailRequestsGreaterThanOne)
 		if err != nil {
 			return err
+		}
+	}
+
+	if memoryLimitFactor, exists := ts["memoryLimitFactor"]; exists {
+		err = json.Unmarshal(memoryLimitFactor, &s.MemoryLimitFactor)
+		if err != nil {
+			return err
+		}
+		if s.MemoryLimitFactor != nil && (math.IsNaN(*s.MemoryLimitFactor) || math.IsInf(*s.MemoryLimitFactor, 0) || *s.MemoryLimitFactor <= 0) {
+			return fmt.Errorf("memoryLimitFactor must be a finite number greater than zero")
 		}
 	}
 
