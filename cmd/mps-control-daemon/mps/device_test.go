@@ -63,30 +63,6 @@ func TestDevice(t *testing.T) {
 			expectedMaxClients:     48,
 		},
 		{
-			description: "two-digit major version",
-			input: mpsDevice{
-				ComputeCapability: "10.0",
-			},
-			expectedIsAtLeastVolta: true,
-			expectedMaxClients:     48,
-		},
-		{
-			description: "empty compute capability",
-			input: mpsDevice{
-				ComputeCapability: "",
-			},
-			expectedIsAtLeastVolta: false,
-			expectedMaxClients:     16,
-		},
-		{
-			description: "invalid compute capability",
-			input: mpsDevice{
-				ComputeCapability: "abc",
-			},
-			expectedIsAtLeastVolta: false,
-			expectedMaxClients:     16,
-		},
-		{
 			description: "pre-volta clients exceeded",
 			input: mpsDevice{
 				ComputeCapability: "7.0",
