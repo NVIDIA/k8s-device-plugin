@@ -36,6 +36,11 @@ func (d vfioDevice) GetCudaComputeCapability() (int, int, error) {
 	return -1, -1, nil
 }
 
+// GetArchitecture is not supported for GPU devices with vfio pci driver.
+func (d vfioDevice) GetArchitecture() (string, error) {
+	return "", fmt.Errorf("GetArchitecture is not supported for non-MIG devices")
+}
+
 // GetAttributes is only supported for MIG devices.
 func (d vfioDevice) GetAttributes() (map[string]any, error) {
 	return nil, fmt.Errorf("GetAttributes is not supported for non-MIG devices")

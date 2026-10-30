@@ -17,7 +17,10 @@ var _ Device = &DeviceMock{}
 //
 //		// make and configure a mocked Device
 //		mockedDevice := &DeviceMock{
-//			GetAttributesFunc: func() (map[string]interface{}, error) {
+//			GetArchitectureFunc: func() (string, error) {
+//				panic("mock out the GetArchitecture method")
+//			},
+//			GetAttributesFunc: func() (map[string]any, error) {
 //				panic("mock out the GetAttributes method")
 //			},
 //			GetCudaComputeCapabilityFunc: func() (int, int, error) {
@@ -57,8 +60,11 @@ var _ Device = &DeviceMock{}
 //
 //	}
 type DeviceMock struct {
+	// GetArchitectureFunc mocks the GetArchitecture method.
+	GetArchitectureFunc func() (string, error)
+
 	// GetAttributesFunc mocks the GetAttributes method.
-	GetAttributesFunc func() (map[string]interface{}, error)
+	GetAttributesFunc func() (map[string]any, error)
 
 	// GetCudaComputeCapabilityFunc mocks the GetCudaComputeCapability method.
 	GetCudaComputeCapabilityFunc func() (int, int, error)
@@ -92,6 +98,9 @@ type DeviceMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetArchitecture holds details about calls to the GetArchitecture method.
+		GetArchitecture []struct {
+		}
 		// GetAttributes holds details about calls to the GetAttributes method.
 		GetAttributes []struct {
 		}
@@ -126,6 +135,7 @@ type DeviceMock struct {
 		IsMigEnabled []struct {
 		}
 	}
+	lockGetArchitecture                    sync.RWMutex
 	lockGetAttributes                      sync.RWMutex
 	lockGetCudaComputeCapability           sync.RWMutex
 	lockGetDeviceHandleFromMigDeviceHandle sync.RWMutex
@@ -139,8 +149,35 @@ type DeviceMock struct {
 	lockIsMigEnabled                       sync.RWMutex
 }
 
+// GetArchitecture calls GetArchitectureFunc.
+func (mock *DeviceMock) GetArchitecture() (string, error) {
+	if mock.GetArchitectureFunc == nil {
+		panic("DeviceMock.GetArchitectureFunc: method is nil but Device.GetArchitecture was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockGetArchitecture.Lock()
+	mock.calls.GetArchitecture = append(mock.calls.GetArchitecture, callInfo)
+	mock.lockGetArchitecture.Unlock()
+	return mock.GetArchitectureFunc()
+}
+
+// GetArchitectureCalls gets all the calls that were made to GetArchitecture.
+// Check the length with:
+//
+//	len(mockedDevice.GetArchitectureCalls())
+func (mock *DeviceMock) GetArchitectureCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockGetArchitecture.RLock()
+	calls = mock.calls.GetArchitecture
+	mock.lockGetArchitecture.RUnlock()
+	return calls
+}
+
 // GetAttributes calls GetAttributesFunc.
-func (mock *DeviceMock) GetAttributes() (map[string]interface{}, error) {
+func (mock *DeviceMock) GetAttributes() (map[string]any, error) {
 	if mock.GetAttributesFunc == nil {
 		panic("DeviceMock.GetAttributesFunc: method is nil but Device.GetAttributes was just called")
 	}
