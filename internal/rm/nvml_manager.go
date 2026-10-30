@@ -18,6 +18,7 @@ package rm
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/NVIDIA/go-gpuallocator/gpuallocator"
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
@@ -129,10 +130,40 @@ func (r *nvmlResourceManager) getPreferredAllocation(available, required []strin
 func (r *nvmlResourceManager) alignedAlloc(available, required []string, size int) ([]string, error) {
 	var devices []string
 
+	uuids := slices.Concat(available, required)
+	slices.Sort(uuids)
+	uuids = slices.Compact(uuids)
+
 	linkedDevices, err := gpuallocator.NewDevices(
 		gpuallocator.WithNvmlLib(r.nvml),
+		gpuallocator.WithDeviceLib(&requestedDeviceLib{Interface: device.New(r.nvml), uuids: uuids}),
 	)
 	if err != nil {
+		// Separate nvml failures from GPU build failures.
+		if ret := r.nvml.Init(); ret != nvml.SUCCESS {
+			return nil, fmt.Errorf("unable to get device link information: %w; NVML initialization failed: %v", err, ret)
+		}
+		defer func() {
+			if ret := r.nvml.Shutdown(); ret != nvml.SUCCESS {
+				klog.Infof("Error shutting down NVML: %v", ret)
+			}
+		}()
+
+		// gpuallocator only reports failures as formatted errors: build each device on its own
+		// Single-GPU builds lack links; use them only to find failures.
+		var broken []string
+		for _, uuid := range uuids {
+			_, err := gpuallocator.NewDevices(
+				gpuallocator.WithNvmlLib(r.nvml),
+				gpuallocator.WithDeviceLib(&requestedDeviceLib{Interface: device.New(r.nvml), uuids: []string{uuid}}),
+			)
+			if err != nil {
+				broken = append(broken, uuid)
+			}
+		}
+		if len(broken) > 0 {
+			err = &UnhealthyDevicesError{IDs: broken, Err: err}
+		}
 		return nil, fmt.Errorf("unable to get device link information: %w", err)
 	}
 
@@ -151,5 +182,26 @@ func (r *nvmlResourceManager) alignedAlloc(available, required []string, size in
 		devices = append(devices, device.UUID)
 	}
 
+	return devices, nil
+}
+
+// requestedDeviceLib limits device enumeration to the devices in an allocation
+// request. Enumerating every device on the node fails the whole allocation as
+// soon as any GPU cannot be queried.
+type requestedDeviceLib struct {
+	device.Interface
+	uuids []string
+}
+
+// GetDevices returns only the requested devices.
+func (l *requestedDeviceLib) GetDevices() ([]device.Device, error) {
+	devices := make([]device.Device, 0, len(l.uuids))
+	for _, uuid := range l.uuids {
+		d, err := l.NewDeviceByUUID(uuid)
+		if err != nil {
+			return nil, err
+		}
+		devices = append(devices, d)
+	}
 	return devices, nil
 }
