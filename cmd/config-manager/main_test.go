@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -181,5 +182,52 @@ func TestUpdateConfigName(t *testing.T) {
 			}
 			require.Equal(t, tc.expectedConfig, config)
 		})
+	}
+}
+
+// Regression test for https://github.com/NVIDIA/k8s-device-plugin/issues/2066:
+// the first Get() must block until the informer has observed the node, instead
+// of returning the empty zero value from before the cache synced.
+func TestGetBlocksUntilFirstSet(t *testing.T) {
+	config := NewSyncableConfig(&Flags{})
+
+	result := make(chan string, 1)
+	go func() {
+		result <- config.Get()
+	}()
+
+	select {
+	case v := <-result:
+		t.Fatalf("Get() returned %q before the informer observed the node", v)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	config.Set("all-disabled")
+
+	select {
+	case v := <-result:
+		require.Equal(t, "all-disabled", v)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Get() did not return after Set()")
+	}
+}
+
+// An observed node without the label at all still unblocks Get() with an empty
+// value so the caller selects the default config; only "not observed yet"
+// blocks.
+func TestGetReturnsEmptyForObservedNodeWithoutLabel(t *testing.T) {
+	config := NewSyncableConfig(&Flags{})
+	config.Set("")
+
+	result := make(chan string, 1)
+	go func() {
+		result <- config.Get()
+	}()
+
+	select {
+	case v := <-result:
+		require.Equal(t, "", v)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Get() did not return for an observed node without a label")
 	}
 }
