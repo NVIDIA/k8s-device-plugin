@@ -42,6 +42,12 @@ func (o *options) getMPSOptions(resourceManager rm.ResourceManager) (mpsOptions,
 		return mpsOptions{}, nil
 	}
 
+	// Skip resources with no shared (annotated) devices: the daemon manager
+	// creates no daemon for them, so enabling MPS here would wait forever.
+	if !rm.AnnotatedIDs(resourceManager.Devices().GetIDs()).AnyHasAnnotations() {
+		return mpsOptions{}, nil
+	}
+
 	// TODO: It might make sense to pull this logic into a resource manager.
 	for _, device := range resourceManager.Devices() {
 		if device.IsMigDevice() {
@@ -71,12 +77,26 @@ func (m *mpsOptions) waitForDaemon() error {
 	return nil
 }
 
-func (m *mpsOptions) updateReponse(response *pluginapi.ContainerAllocateResponse) {
+func (m *mpsOptions) updateReponse(response *pluginapi.ContainerAllocateResponse, ids []string) error {
 	if m == nil || !m.enabled {
-		return
+		return nil
 	}
-	// TODO: We should check that the deviceIDs are shared using MPS.
+	// Only inject MPS settings when the allocated devices are MPS-shared; a
+	// resource may hold a mix of shared and unshared GPUs.
+	usesMPS, err := classifyMPSRequest(ids)
+	if err != nil {
+		return err
+	}
+	if !usesMPS {
+		return nil
+	}
 	response.Envs["CUDA_MPS_PIPE_DIRECTORY"] = m.daemon.PipeDir()
+
+	// Deliver the active thread percentage per client, since MPS has no
+	// per-device thread command (unlike the pinned memory limit).
+	if pct := m.activeThreadPercentage(ids); pct != "" {
+		response.Envs["CUDA_MPS_ACTIVE_THREAD_PERCENTAGE"] = pct
+	}
 
 	response.Mounts = append(response.Mounts,
 		&pluginapi.Mount{
@@ -88,4 +108,39 @@ func (m *mpsOptions) updateReponse(response *pluginapi.ContainerAllocateResponse
 			HostPath:      m.hostRoot.ShmDir(m.resourceName),
 		},
 	)
+	return nil
+}
+
+// classifyMPSRequest reports whether the allocated devices are MPS-shared
+// (annotated). Mixing shared and unshared devices in one allocation is an error:
+// a container has a single CUDA_MPS_PIPE_DIRECTORY and can't serve both.
+func classifyMPSRequest(ids []string) (bool, error) {
+	var hasShared, hasUnshared bool
+	for _, id := range ids {
+		if rm.AnnotatedID(id).HasAnnotations() {
+			hasShared = true
+		} else {
+			hasUnshared = true
+		}
+	}
+	if hasShared && hasUnshared {
+		return false, fmt.Errorf("cannot mix MPS-shared and unshared GPUs in a single allocation")
+	}
+	return hasShared, nil
+}
+
+// activeThreadPercentage returns 100 / the largest replica count among ids, so a
+// container spanning different counts is capped by its most-shared GPU. Empty if unknown.
+func (m *mpsOptions) activeThreadPercentage(ids []string) string {
+	devices := m.daemon.Devices()
+	maxReplicas := 0
+	for _, id := range ids {
+		if d, ok := devices[id]; ok && d.Replicas > maxReplicas {
+			maxReplicas = d.Replicas
+		}
+	}
+	if maxReplicas < 1 {
+		return ""
+	}
+	return fmt.Sprintf("%d", 100/maxReplicas)
 }

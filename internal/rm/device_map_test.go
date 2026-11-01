@@ -131,3 +131,93 @@ func TestDeviceMapInsert(t *testing.T) {
 		})
 	}
 }
+
+// TestGetIDsOfDevicesToReplicateCountIsDeterministic verifies a count-based
+// selection picks the lexicographically-smallest UUIDs and is stable across
+// calls, so the plugin and the MPS daemon (separate processes) agree on which
+// devices are shared despite random map iteration order.
+func TestGetIDsOfDevicesToReplicateCountIsDeterministic(t *testing.T) {
+	const gpu = spec.ResourceName("nvidia.com/gpu")
+	dm := DeviceMap{
+		gpu: Devices{
+			"GPU-c": &Device{Device: pluginapi.Device{ID: "GPU-c"}, Index: "2"},
+			"GPU-a": &Device{Device: pluginapi.Device{ID: "GPU-a"}, Index: "0"},
+			"GPU-d": &Device{Device: pluginapi.Device{ID: "GPU-d"}, Index: "3"},
+			"GPU-b": &Device{Device: pluginapi.Device{ID: "GPU-b"}, Index: "1"},
+		},
+	}
+	r := &spec.ReplicatedResource{Name: gpu, Devices: spec.ReplicatedDevices{Count: 2}, Replicas: 2}
+
+	for i := 0; i < 10; i++ {
+		ids, err := dm.getIDsOfDevicesToReplicate(r)
+		require.NoError(t, err)
+		require.Equal(t, []string{"GPU-a", "GPU-b"}, ids, "count selection must be the smallest-N UUIDs, stably")
+	}
+}
+
+// TestUpdateDeviceMapWithReplicasRejectsDuplicateSelection: two entries under
+// the same Name selecting the same physical GPU is contradictory (it can't have
+// two different replica counts) and must be rejected.
+func TestUpdateDeviceMapWithReplicasRejectsDuplicateSelection(t *testing.T) {
+	const gpu = spec.ResourceName("nvidia.com/gpu")
+	oDevices := DeviceMap{
+		gpu: Devices{
+			"GPU0": &Device{Device: pluginapi.Device{ID: "GPU0"}, Index: "0"},
+			"GPU1": &Device{Device: pluginapi.Device{ID: "GPU1"}, Index: "1"},
+		},
+	}
+	rrs := &spec.ReplicatedResources{
+		Resources: []spec.ReplicatedResource{
+			{Name: gpu, Rename: "nvidia.com/gpu-light", Devices: spec.ReplicatedDevices{List: []spec.ReplicatedDeviceRef{"0"}}, Replicas: 2},
+			{Name: gpu, Rename: "nvidia.com/gpu-heavy", Devices: spec.ReplicatedDevices{List: []spec.ReplicatedDeviceRef{"0"}}, Replicas: 4},
+		},
+	}
+
+	_, err := updateDeviceMapWithReplicas(rrs, oDevices)
+	require.Error(t, err, "the same GPU selected by two entries must be rejected")
+}
+
+// TestUpdateDeviceMapWithReplicasSameNameDistinctSelections covers giving
+// different GPUs different replica counts via two entries that share a source
+// Name. Neither selected GPU must leak back under the bare resource.
+func TestUpdateDeviceMapWithReplicasSameNameDistinctSelections(t *testing.T) {
+	const gpu = spec.ResourceName("nvidia.com/gpu")
+	oDevices := DeviceMap{
+		gpu: Devices{
+			"GPU0": &Device{Device: pluginapi.Device{ID: "GPU0"}, Index: "0"},
+			"GPU1": &Device{Device: pluginapi.Device{ID: "GPU1"}, Index: "1"},
+		},
+	}
+
+	rrs := &spec.ReplicatedResources{
+		Resources: []spec.ReplicatedResource{
+			{
+				Name:     gpu,
+				Rename:   "nvidia.com/gpu-light",
+				Devices:  spec.ReplicatedDevices{List: []spec.ReplicatedDeviceRef{"0"}},
+				Replicas: 2,
+			},
+			{
+				Name:     gpu,
+				Rename:   "nvidia.com/gpu-heavy",
+				Devices:  spec.ReplicatedDevices{List: []spec.ReplicatedDeviceRef{"1"}},
+				Replicas: 4,
+			},
+		},
+	}
+
+	devices, err := updateDeviceMapWithReplicas(rrs, oDevices)
+	require.NoError(t, err)
+
+	// Both GPUs were claimed by a sibling entry, so nothing is left over.
+	require.NotContains(t, devices, gpu, "no device should remain under the bare resource")
+	require.Len(t, devices["nvidia.com/gpu-light"], 2, "GPU0 should be replicated x2 as gpu-light")
+	require.Len(t, devices["nvidia.com/gpu-heavy"], 4, "GPU1 should be replicated x4 as gpu-heavy")
+
+	for _, d := range devices["nvidia.com/gpu-light"] {
+		require.Equal(t, "0", d.Index)
+	}
+	for _, d := range devices["nvidia.com/gpu-heavy"] {
+		require.Equal(t, "1", d.Index)
+	}
+}

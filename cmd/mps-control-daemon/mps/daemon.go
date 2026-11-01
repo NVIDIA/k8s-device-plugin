@@ -24,6 +24,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/opencontainers/selinux/go-selinux"
 	"k8s.io/klog/v2"
@@ -80,12 +83,25 @@ func (e envvars) toSlice() []string {
 
 // EnvVars returns the environment variables required for the daemon.
 // These should be passed to clients consuming the device shared using MPS.
-// TODO: Set CUDA_VISIBLE_DEVICES to include only the devices for this resource type.
 func (d *Daemon) EnvVars() envvars {
-	return map[string]string{
+	env := envvars{
 		"CUDA_MPS_PIPE_DIRECTORY": d.PipeDir(),
 		"CUDA_MPS_LOG_DIRECTORY":  d.LogDir(),
 	}
+	// Scope the control daemon and its clients to this resource's GPUs so
+	// per-device settings and clients aren't shared across resource managers.
+	if uuids := d.sharedVisibleUUIDs(); len(uuids) > 0 {
+		env["CUDA_VISIBLE_DEVICES"] = strings.Join(uuids, ",")
+	}
+	return env
+}
+
+// sharedVisibleUUIDs returns this daemon's MPS-shared GPU UUIDs in a stable order,
+// shared by CUDA_VISIBLE_DEVICES and the per-device control-command ordinals.
+func (d *Daemon) sharedVisibleUUIDs() []string {
+	uuids := d.sharedDevices().GetUUIDs()
+	sort.Strings(uuids)
+	return uuids
 }
 
 // Start starts the MPS deamon as a background process.
@@ -122,12 +138,7 @@ func (d *Daemon) Start() error {
 			return fmt.Errorf("error setting pinned memory limit for device %v: %w", index, err)
 		}
 	}
-	if threadPercentage := d.activeThreadPercentage(); threadPercentage != "" {
-		_, err := d.EchoPipeToControl(fmt.Sprintf("set_default_active_thread_percentage %s", threadPercentage))
-		if err != nil {
-			return fmt.Errorf("error setting active thread percentage: %w", err)
-		}
-	}
+	// Active thread percentage is set per client via env (MPS has no per-device command).
 
 	statusFile, err := os.Create(d.startedFile())
 	if err != nil {
@@ -234,8 +245,23 @@ func (d *Daemon) EchoPipeToControl(command string) (string, error) {
 	return out.String(), nil
 }
 
+// sharedDevices returns the subset of the daemon's devices that are actually
+// MPS-shared (i.e., replicated with annotated IDs). Devices that end up in
+// the same resource manager but are not being replicated (per the sharing
+// config's Devices selector) are excluded so their compute mode and memory
+// limits are not touched by MPS setup.
+func (d *Daemon) sharedDevices() rm.Devices {
+	result := make(rm.Devices)
+	for id, dev := range d.rm.Devices() {
+		if rm.AnnotatedID(id).HasAnnotations() {
+			result[id] = dev
+		}
+	}
+	return result
+}
+
 func (d *Daemon) setComputeMode(mode computeMode) error {
-	for _, uuid := range d.Devices().GetUUIDs() {
+	for _, uuid := range d.sharedDevices().GetUUIDs() {
 		cmd := exec.Command(
 			"nvidia-smi",
 			"-i", uuid,
@@ -249,32 +275,24 @@ func (d *Daemon) setComputeMode(mode computeMode) error {
 	return nil
 }
 
-// perDevicePinnedMemoryLimits returns the pinned memory limits for each device.
+// perDevicePinnedDeviceMemoryLimits returns the pinned memory limit per shared
+// GPU, keyed by its ordinal within CUDA_VISIBLE_DEVICES (see sharedVisibleUUIDs).
 func (m *Daemon) perDevicePinnedDeviceMemoryLimits() map[string]string {
-	totalMemoryInBytesPerDevice := make(map[string]uint64)
-	replicasPerDevice := make(map[string]uint64)
-	for _, device := range m.Devices() {
-		index := device.Index
-		totalMemoryInBytesPerDevice[index] = device.TotalMemory
-		replicasPerDevice[index] += 1
+	totalMemoryPerUUID := make(map[string]uint64)
+	replicasPerUUID := make(map[string]uint64)
+	for _, device := range m.sharedDevices() {
+		uuid := device.GetUUID()
+		totalMemoryPerUUID[uuid] = device.TotalMemory
+		replicasPerUUID[uuid]++
 	}
 
 	limits := make(map[string]string)
-	for index, totalMemory := range totalMemoryInBytesPerDevice {
+	for ordinal, uuid := range m.sharedVisibleUUIDs() {
+		totalMemory := totalMemoryPerUUID[uuid]
 		if totalMemory == 0 {
 			continue
 		}
-		replicas := replicasPerDevice[index]
-		limits[index] = fmt.Sprintf("%vM", totalMemory/replicas/1024/1024)
+		limits[strconv.Itoa(ordinal)] = fmt.Sprintf("%vM", totalMemory/replicasPerUUID[uuid]/1024/1024)
 	}
 	return limits
-}
-
-func (m *Daemon) activeThreadPercentage() string {
-	if len(m.Devices()) == 0 {
-		return ""
-	}
-	replicasPerDevice := len(m.Devices()) / len(m.Devices().GetUUIDs())
-
-	return fmt.Sprintf("%d", 100/replicasPerDevice)
 }
