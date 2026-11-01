@@ -17,15 +17,23 @@
 package plugin
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mps"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
+)
+
+const (
+	mpsReadyCheckInterval = 5 * time.Second
+	mpsReadyCheckTimeout  = 5 * time.Minute
 )
 
 type mpsOptions struct {
@@ -58,17 +66,46 @@ func (o *options) getMPSOptions(resourceManager rm.ResourceManager) (mpsOptions,
 	return m, nil
 }
 
-func (m *mpsOptions) waitForDaemon() error {
+func (m *mpsOptions) waitForDaemon(ctx context.Context) error {
 	if m == nil || !m.enabled {
 		return nil
 	}
-	// TODO: Check the .ready file here.
-	// TODO: Have some retry strategy here.
-	if err := m.daemon.AssertHealthy(); err != nil {
-		return fmt.Errorf("error checking MPS daemon health: %w", err)
+
+	return wait.PollUntilContextTimeout(ctx, mpsReadyCheckInterval, mpsReadyCheckTimeout, true, func(ctx context.Context) (bool, error) {
+		ready, err := m.checkDaemonReady(ctx)
+		if err != nil {
+			// A genuine failure (e.g. a stat error on the .ready file) is not
+			// transient; stop polling and surface it rather than timing out.
+			return false, err
+		}
+		if !ready {
+			klog.InfoS("Waiting for MPS daemon to be ready", "resource", m.resourceName)
+			return false, nil
+		}
+		klog.InfoS("MPS daemon is ready", "resource", m.resourceName)
+		return true, nil
+	})
+}
+
+// checkDaemonReady reports whether the MPS daemon is ready to serve. It requires
+// the .ready file (written after full configuration) and a responsive pipe. A
+// nil error with ready=false means not-ready-yet (keep waiting); a non-nil error
+// is a genuine failure that retrying won't fix.
+func (m *mpsOptions) checkDaemonReady(ctx context.Context) (bool, error) {
+	ready, err := m.daemon.Ready()
+	if err != nil {
+		return false, fmt.Errorf("checking MPS daemon readiness: %w", err)
 	}
-	klog.InfoS("MPS daemon is healthy", "resource", m.resourceName)
-	return nil
+	if !ready {
+		return false, nil
+	}
+	// A not-yet-responsive pipe is expected during startup, so treat an
+	// AssertHealthy failure as not-ready rather than a hard error.
+	if err := m.daemon.AssertHealthy(ctx); err != nil {
+		klog.InfoS("MPS daemon not yet healthy", "resource", m.resourceName, "reason", err)
+		return false, nil
+	}
+	return true, nil
 }
 
 func (m *mpsOptions) updateReponse(response *pluginapi.ContainerAllocateResponse) {
