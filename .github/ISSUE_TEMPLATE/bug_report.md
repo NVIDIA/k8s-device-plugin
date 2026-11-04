@@ -6,9 +6,15 @@ labels: ["bug", "needs-triage"]
 
 ---
 
-_The template below is mostly useful for bug reports. Feel free to remove anything which doesn't apply to you and add more information where it makes sense._
+<!-- _The template below is mostly useful for bug reports. Feel free to remove anything which doesn't apply to you and add more information where it makes sense._ -->
 
-_**Important Note: NVIDIA AI Enterprise customers can get support from NVIDIA Enterprise support. Please open a case [here](https://enterprise-support.nvidia.com/s/create-case)**._
+<!-- _**Important Note: NVIDIA AI Enterprise customers can get support from NVIDIA Enterprise support. Please open a case [here](https://enterprise-support.nvidia.com/s/create-case)**._ -->
+
+**Motivation**
+<!-- A clear and concise description of your motivation: is this a real issue you ran into while using the product? -->
+
+**Check here if you would like to work on this issue**
+- [ ]
 
 ### 1. Quick Debug Information
 * OS/Version(e.g. RHEL8.6, Ubuntu22.04):
@@ -17,7 +23,7 @@ _**Important Note: NVIDIA AI Enterprise customers can get support from NVIDIA En
 * K8s Flavor/Version(e.g. K8s, OCP, Rancher, GKE, EKS):
 
 ### 2. Issue or feature description
-_Briefly explain the issue in terms of expected behavior and current behavior._
+<!-- Briefly explain the issue in terms of expected behavior and current behavior. -->
 
 ### 3. Information to [attach](https://help.github.com/articles/file-attachments-on-issues-and-pull-requests/) (optional if deemed irrelevant)
 

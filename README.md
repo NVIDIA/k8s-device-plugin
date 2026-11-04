@@ -1135,7 +1135,8 @@ See the [changelog](CHANGELOG.md)
 [Checkout the Contributing document!](CONTRIBUTING.md)
 
 - You can report a bug by [filing a new issue](https://github.com/NVIDIA/k8s-device-plugin/issues/new)
-- You can contribute by opening a [pull request](https://help.github.com/articles/using-pull-requests/)
+- To contribute, follow the [contribution workflow](CONTRIBUTING.md#contribution-workflow).
+- For questions, start a [discussion](https://github.com/NVIDIA/k8s-device-plugin/discussions) or join our [community Slack](https://inviter.co/dsx-ai-factory).
 - Contributions must adhere to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ### Versioning

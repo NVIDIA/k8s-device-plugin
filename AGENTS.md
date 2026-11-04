@@ -99,10 +99,11 @@ commit the regenerated mock.
 
 ## Contribution process (see `CONTRIBUTING.md`)
 
-- Any significant change needs an issue describing the problem or proposal before implementation
-  begins. This covers architectural changes, new features, breaking changes to API or behavior, and
-  non-trivial bug fixes. Check for a linked issue, or ask for one, rather than assuming a pull
-  request on its own is sufficient.
+- External contributors must have an `accepted` issue assigned to them before opening a pull request.
+  Follow the contribution workflow in `CONTRIBUTING.md` before beginning implementation.
+- Issue or PR descriptions drafted with AI must be thoroughly reviewed and verified by the user
+  before they are submitted.
+- Replies to maintainers in review comments or issue discussions may not be AI generated.
 - All commits must be signed off for DCO using `git commit -s`, which appends a
   `Signed-off-by: Name <email>` line. DCO is a required status check. Never fabricate a sign-off
   identity. Use the configured git user's identity.

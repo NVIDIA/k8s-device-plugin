@@ -1,1 +1,8 @@
 blank_issues_enabled: false
+contact_links:
+  - name: Question / General Discussion
+    url: https://github.com/NVIDIA/k8s-device-plugin/discussions
+    about: Ask a question or raise a discussion related to the NVIDIA Kubernetes Device Plugin
+  - name: Community Slack
+    url: https://inviter.co/dsx-ai-factory
+    about: Ask questions in the NVIDIA cloud native community

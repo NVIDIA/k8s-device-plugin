@@ -1,11 +1,10 @@
+## Issue
+<!-- Link the `accepted` issue assigned to you. See CONTRIBUTING.md#contribution-workflow -->
+Fixes #
+
 ## Description
 
-<!-- Brief description of the change, including context or motivation -->
-
-<!--
-Link the related issue so it closes on merge, e.g. `Closes #1234`.
-See CONTRIBUTING.md for when an issue is required before a pull request.
--->
+<!-- Brief description of the change, including context -->
 
 ## Checklist
 
