@@ -49,9 +49,9 @@ func (d *mpsDevice) maxClients() int {
 
 // isAtLeastVolta checks whether the specified device is a volta device or newer.
 func (d *mpsDevice) isAtLeastVolta() bool {
-	majorStr, _, _ := strings.Cut(strings.TrimPrefix(d.ComputeCapability, "v"), ".")
+	majorStr, _, ok := strings.Cut(strings.TrimPrefix(d.ComputeCapability, "v"), ".")
 	major, err := strconv.Atoi(majorStr)
-	if err != nil {
+	if err != nil || !ok {
 		return false
 	}
 
