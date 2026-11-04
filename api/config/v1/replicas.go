@@ -297,9 +297,9 @@ func (s *ReplicatedDevices) UnmarshalJSON(b []byte) error {
 		result := make([]ReplicatedDeviceRef, len(slice))
 		for i, s := range slice {
 			// Match a uint as a GPU index and convert it to a string
-			var index uint64
-			if err = json.Unmarshal(s, &index); err == nil {
-				result[i] = ReplicatedDeviceRef(strconv.FormatUint(index, 10))
+			var index *uint64
+			if err = json.Unmarshal(s, &index); err == nil && index != nil {
+				result[i] = ReplicatedDeviceRef(strconv.FormatUint(*index, 10))
 				continue
 			}
 			// Match strings as valid entries if they are GPU indices, MIG indices, or UUIDs
@@ -312,7 +312,7 @@ func (s *ReplicatedDevices) UnmarshalJSON(b []byte) error {
 				}
 			}
 			// Treat any other entries as errors
-			return fmt.Errorf("unsupported type for device in devices list: %v, %T", item, item)
+			return fmt.Errorf("unsupported entry in devices list: %v", string(s))
 		}
 		s.List = result
 		return nil
