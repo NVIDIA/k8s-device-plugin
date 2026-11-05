@@ -8,7 +8,13 @@ labels: ["bug", "needs-triage"]
 
 _The template below is mostly useful for bug reports. Feel free to remove anything which doesn't apply to you and add more information where it makes sense._
 
-_**Important Note: NVIDIA AI Enterprise customers can get support from NVIDIA Enterprise support. Please open a case [here](https://enterprise-support.nvidia.com/s/create-case)**._
+<!-- _**Important Note:  NVIDIA AI Enterprise customers can get support from NVIDIA Enterprise support. Please open a case [here](https://enterprise-support.nvidia.com/s/create-case)**._ -->
+
+**Motivation**
+<!-- A clear and concise description of your motivation: is this a real issue you ran into while using the product? -->
+
+<!-- Check here if you would like to work on this issue -->
+- [ ] I would like to work on this issue.
 
 ### 1. Quick Debug Information
 * OS/Version(e.g. RHEL8.6, Ubuntu22.04):
