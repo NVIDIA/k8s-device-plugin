@@ -162,13 +162,13 @@ Check if migStrategy (from all possible configurations) is "none"
   {{- if ne .Values.migStrategy "none" -}}
     {{- $result = false -}}
   {{- end -}}
-{{- else if eq (include "nvidia-device-plugin.hasConfigMap" .) "true" -}}
+{{- else if .Values.config.name -}}
     {{- $result = false -}}
 {{- else -}}
   {{- range $name, $contents := $.Values.config.map -}}
     {{- $config := $contents | fromYaml -}}
-    {{- if $config.flags -}}
-      {{- if ne $config.flags.migStrategy "none" -}}
+    {{- if kindIs "map" $config.flags -}}
+      {{- if ne ($config.flags.migStrategy | default "none") "none" -}}
         {{- $result = false -}}
       {{- end -}}
     {{- end -}}
@@ -184,18 +184,17 @@ Check if volume-mounts is included in the set of device-list-strategies
 {{- $result := false -}}
 {{- if .Values.deviceListStrategy -}}
   {{- $result = ( contains "volume-mounts" .Values.deviceListStrategy ) -}}
-{{- else if eq (include "nvidia-device-plugin.hasConfigMap" .) "true" -}}
+{{- else if .Values.config.name -}}
     {{- $result = true -}}
 {{- else -}}
   {{- range $name, $contents := $.Values.config.map -}}
     {{- $config := $contents | fromYaml -}}
-    {{- if $config.flags -}}
-      {{- if $config.flags.plugin -}}
-        {{- if typeIs "string" $config.flags.plugin.deviceListStrategy }}
-          {{- $result = ( contains "volume-mounts" $config.flags.plugin.deviceListStrategy ) -}}
-        {{- else if typeIs "list" $config.flags.plugin.deviceListStrategy }}
-          {{- $result = ( has "volume-mounts" $config.flags.plugin.deviceListStrategy ) -}}
-        {{- end -}}
+    {{- if and (kindIs "map" $config.flags) (kindIs "map" $config.flags.plugin) -}}
+      {{- $strategy := $config.flags.plugin.deviceListStrategy -}}
+      {{- if and (kindIs "string" $strategy) (contains "volume-mounts" $strategy) -}}
+        {{- $result = true -}}
+      {{- else if and (kindIs "slice" $strategy) (has "volume-mounts" $strategy) -}}
+        {{- $result = true -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
