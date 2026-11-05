@@ -109,3 +109,40 @@ func TestDaemonEchoPipeToControlInheritsEnvironment(t *testing.T) {
 		"CUDA_MPS_LOG_DIRECTORY=" + d.LogDir(),
 	}, "\n")+"\n", readRecord(t, record))
 }
+
+// TestDaemonStop guards #2115: cleanup after an incomplete Start must not panic
+// or reject a missing started file.
+func TestDaemonStop(t *testing.T) {
+	testCases := []struct {
+		description      string
+		startedFileIsDir bool
+		expectedError    string
+	}{
+		{
+			description: "start did not finish: no log tailer and no started file",
+		},
+		{
+			description:      "started file cannot be removed",
+			startedFileIsDir: true,
+			expectedError:    "failed to remove started file",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			d, _ := newTestDaemon(t)
+			if tc.startedFileIsDir {
+				startedFile := filepath.Join(filepath.Dir(d.PipeDir()), ".started")
+				require.NoError(t, os.MkdirAll(filepath.Join(startedFile, "child"), 0755))
+			}
+
+			var err error
+			require.NotPanics(t, func() { err = d.Stop() })
+			if tc.expectedError != "" {
+				require.ErrorContains(t, err, tc.expectedError)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
