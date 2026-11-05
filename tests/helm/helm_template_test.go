@@ -757,6 +757,21 @@ func TestDevicePluginDaemonsetEmbeddedConfigCapabilities(t *testing.T) {
 			expectSysAdmin: true,
 		},
 		{
+			description: "embedded config uses mixed-case MIG strategy keys",
+			jsonOptions: map[string]string{
+				"config.map": `{"default": "version: v1\nFlags:\n  MigStrategy: mixed\n"}`,
+			},
+			expectSysAdmin:       true,
+			expectMigMonitorEnvs: true,
+		},
+		{
+			description: "embedded config uses mixed-case volume-mounts keys",
+			jsonOptions: map[string]string{
+				"config.map": `{"default": "version: v1\nflags:\n  Plugin:\n    DeviceListStrategy: volume-mounts\n"}`,
+			},
+			expectSysAdmin: true,
+		},
+		{
 			description:          "external config",
 			options:              map[string]string{"config.name": "external-configs"},
 			expectSysAdmin:       true,
