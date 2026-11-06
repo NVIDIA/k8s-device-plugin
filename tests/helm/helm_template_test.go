@@ -21,6 +21,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -704,6 +705,111 @@ func TestDevicePluginDaemonsetAffinityTemplateRendered(t *testing.T) {
 			var daemonset appsv1.DaemonSet
 			helm.UnmarshalK8SYaml(t, output, &daemonset)
 			require.Equal(t, tc.expectedAffinity, daemonset.Spec.Template.Spec.Affinity != nil)
+		})
+	}
+}
+
+func TestDevicePluginDaemonsetEmbeddedConfigCapabilities(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+
+	testCases := []struct {
+		description          string
+		options              map[string]string
+		jsonOptions          map[string]string
+		expectSysAdmin       bool
+		expectMigMonitorEnvs bool
+	}{
+		{
+			description: "embedded time-slicing config",
+			jsonOptions: map[string]string{
+				"config.map": `{"default": "version: v1\nflags:\n  migStrategy: none\nsharing:\n  timeSlicing:\n    resources:\n    - name: nvidia.com/gpu\n      replicas: 4\n"}`,
+			},
+		},
+		{
+			description: "embedded configs without flags",
+			jsonOptions: map[string]string{
+				"config.map":     `{"a": "version: v1\n", "b": "version: v1\n"}`,
+				"config.default": `"a"`,
+			},
+		},
+		{
+			description: "embedded config with empty flags",
+			jsonOptions: map[string]string{
+				"config.map": `{"default": "version: v1\nflags:\n  plugin:\n"}`,
+			},
+		},
+		{
+			description: "one embedded config uses a MIG strategy",
+			jsonOptions: map[string]string{
+				"config.map":     `{"default": "version: v1\nflags:\n  migStrategy: none\n", "mig-mixed": "version: v1\nflags:\n  migStrategy: mixed\n"}`,
+				"config.default": `"default"`,
+			},
+			expectSysAdmin:       true,
+			expectMigMonitorEnvs: true,
+		},
+		{
+			description: "one embedded config lists volume-mounts",
+			jsonOptions: map[string]string{
+				"config.map":     `{"a": "version: v1\nflags:\n  plugin:\n    deviceListStrategy: [envvar, volume-mounts]\n", "b": "version: v1\nflags:\n  plugin:\n    deviceListStrategy: envvar\n"}`,
+				"config.default": `"a"`,
+			},
+			expectSysAdmin: true,
+		},
+		{
+			description: "embedded config uses mixed-case MIG strategy keys",
+			jsonOptions: map[string]string{
+				"config.map": `{"default": "version: v1\nFlags:\n  MigStrategy: mixed\n"}`,
+			},
+			expectSysAdmin:       true,
+			expectMigMonitorEnvs: true,
+		},
+		{
+			description: "embedded config uses mixed-case volume-mounts keys",
+			jsonOptions: map[string]string{
+				"config.map": `{"default": "version: v1\nflags:\n  Plugin:\n    DeviceListStrategy: volume-mounts\n"}`,
+			},
+			expectSysAdmin: true,
+		},
+		{
+			description:          "external config",
+			options:              map[string]string{"config.name": "external-configs"},
+			expectSysAdmin:       true,
+			expectMigMonitorEnvs: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			options := &helm.Options{
+				SetValues:      tc.options,
+				SetJsonValues:  tc.jsonOptions,
+				KubectlOptions: k8s.NewKubectlOptions("", "", "k8s-device-plugin-test"),
+				Logger:         logger.Discard,
+			}
+
+			output := helm.RenderTemplate(t, options, helmChartPath, "nvidia-device-plugin", []string{"templates/daemonset-device-plugin.yml"})
+
+			var daemonset appsv1.DaemonSet
+			helm.UnmarshalK8SYaml(t, output, &daemonset)
+
+			var pluginContainer *v1.Container
+			for i, c := range daemonset.Spec.Template.Spec.Containers {
+				if c.Name == "nvidia-device-plugin-ctr" {
+					pluginContainer = &daemonset.Spec.Template.Spec.Containers[i]
+				}
+			}
+			require.NotNil(t, pluginContainer)
+
+			sc := pluginContainer.SecurityContext
+			require.NotNil(t, sc)
+			hasSysAdmin := sc.Capabilities != nil && slices.Contains(sc.Capabilities.Add, "SYS_ADMIN")
+			require.Equal(t, tc.expectSysAdmin, hasSysAdmin)
+
+			hasMigMonitorEnv := slices.ContainsFunc(pluginContainer.Env, func(e v1.EnvVar) bool {
+				return e.Name == "NVIDIA_MIG_MONITOR_DEVICES"
+			})
+			require.Equal(t, tc.expectMigMonitorEnvs, hasMigMonitorEnv)
 		})
 	}
 }
