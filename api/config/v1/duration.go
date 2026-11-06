@@ -23,6 +23,9 @@ import (
 	"time"
 )
 
+// infiniteDuration is the string representation of an infinite sleep interval.
+const infiniteDuration = "infinite"
+
 // Duration wraps a time.Duration function with custom JSON marshaling/unmarshaling
 type Duration time.Duration
 
@@ -34,7 +37,7 @@ func (d *Duration) IsInfinite() bool {
 // String returns a human-readable representation of the duration.
 func (d Duration) String() string {
 	if d.IsInfinite() {
-		return "infinite"
+		return infiniteDuration
 	}
 	return time.Duration(d).String()
 }
@@ -63,7 +66,7 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 
 // parse parses a duration string, handling the special "infinite" value.
 func (d *Duration) parse(value string) error {
-	if value == "infinite" {
+	if value == infiniteDuration {
 		*d = Duration(math.MaxInt64)
 		return nil
 	}
@@ -97,7 +100,7 @@ func (d *DurationValue) String() string {
 		return ""
 	}
 	if d.Value.IsInfinite() {
-		return "infinite"
+		return infiniteDuration
 	}
 	return time.Duration(*d.Value).String()
 }

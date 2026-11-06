@@ -189,7 +189,6 @@ func start(c *cli.Context, cfg *Config) error {
 		manager, err := resource.NewManager(infolib, nvmllib, devicelib, config)
 		if err != nil {
 			return fmt.Errorf("failed to create resource manager: %w", err)
-
 		}
 		vgpul := vgpu.NewVGPULib(vgpu.NewNvidiaPCILib())
 

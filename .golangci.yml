@@ -17,11 +17,14 @@ version: "2"
 linters:
   enable:
     - contextcheck
+    - goconst
     - gocritic
     - gosec
     - misspell
     - modernize
+    - revive
     - unconvert
+    - whitespace
   exclusions:
     generated: lax
     presets:
@@ -40,6 +43,30 @@ linters:
         text: 'G306: Expect WriteFile permissions to be 0600 or less'
       - path: (.+)\.go$
         text: 'G115: integer overflow conversion uint8 -> int'
+      # Test fixtures intentionally repeat literals; extracting them as
+      # constants hurts readability more than it helps.
+      - linters:
+          - goconst
+        path: .*_test.go
+      # internal/cuda mirrors the CUDA driver C API, whose enum names are
+      # upper-snake-case (e.g. CUDA_ERROR_*); keep them for a 1:1 mapping.
+      - linters:
+          - revive
+        path: internal/cuda/consts\.go
+        text: 'var-naming: don.t use ALL_CAPS'
+      # These method names are dictated by the go-nvml Device interface the
+      # fake implements (GetGpuInstanceId/GetComputeInstanceId); renaming them
+      # would break interface satisfaction.
+      - linters:
+          - revive
+        path: internal/rm/health_test\.go
+        text: 'var-naming: method (GetGpuInstanceId|GetComputeInstanceId)'
+      # EnvVars returns an unexported helper type consumed only within the
+      # mps package (via .toSlice()); exporting it adds no value.
+      - linters:
+          - revive
+        path: cmd/mps-control-daemon/mps/daemon\.go
+        text: 'unexported-return:.*mps\.envvars'
     paths:
       - third_party$
       - builtin$

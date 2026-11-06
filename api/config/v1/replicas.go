@@ -62,7 +62,6 @@ func (rrs *ReplicatedResources) disableResoureRenaming(id string) {
 	if setsDevices {
 		klog.Warningf("Customizing the 'devices' field in sharing.%s.resources is not yet supported in the config. Ignoring...", id)
 	}
-
 }
 
 func (rrs *ReplicatedResources) isReplicated() bool {
@@ -163,7 +162,7 @@ func (d ReplicatedDeviceRef) IsMigUUID() bool {
 }
 
 // UnmarshalJSON unmarshals raw bytes into a 'ReplicatedResources' struct.
-func (s *ReplicatedResources) UnmarshalJSON(b []byte) error {
+func (rrs *ReplicatedResources) UnmarshalJSON(b []byte) error {
 	ts := make(map[string]json.RawMessage)
 	err := json.Unmarshal(b, &ts)
 	if err != nil {
@@ -175,13 +174,13 @@ func (s *ReplicatedResources) UnmarshalJSON(b []byte) error {
 		renameByDefault = []byte(`false`)
 	}
 
-	err = json.Unmarshal(renameByDefault, &s.RenameByDefault)
+	err = json.Unmarshal(renameByDefault, &rrs.RenameByDefault)
 	if err != nil {
 		return err
 	}
 
 	if failRequestsGreaterThanOne, exists := ts["failRequestsGreaterThanOne"]; exists {
-		err = json.Unmarshal(failRequestsGreaterThanOne, &s.FailRequestsGreaterThanOne)
+		err = json.Unmarshal(failRequestsGreaterThanOne, &rrs.FailRequestsGreaterThanOne)
 		if err != nil {
 			return err
 		}
@@ -192,18 +191,18 @@ func (s *ReplicatedResources) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("no resources specified")
 	}
 
-	err = json.Unmarshal(resources, &s.Resources)
+	err = json.Unmarshal(resources, &rrs.Resources)
 	if err != nil {
 		return err
 	}
 
-	if len(s.Resources) == 0 {
+	if len(rrs.Resources) == 0 {
 		return fmt.Errorf("no resources specified")
 	}
 
-	for i, r := range s.Resources {
-		if s.RenameByDefault && r.Rename == "" {
-			s.Resources[i].Rename = r.Name.DefaultSharedRename()
+	for i, r := range rrs.Resources {
+		if rrs.RenameByDefault && r.Rename == "" {
+			rrs.Resources[i].Rename = r.Name.DefaultSharedRename()
 		}
 	}
 
