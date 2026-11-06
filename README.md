@@ -31,6 +31,7 @@
     - [Setting other helm chart values](#setting-other-helm-chart-values)
     - [Deploying with gpu-feature-discovery for automatic node labels](#deploying-with-gpu-feature-discovery-for-automatic-node-labels)
     - [Deploying gpu-feature-discovery in standalone mode](#deploying-gpu-feature-discovery-in-standalone-mode)
+    - [Setting extra environment variables on the device plugin main container](#setting-extra-environment-variables-on-the-device-plugin-main-container)
   - [Deploying via `helm install` with a direct URL to the `helm` package](#deploying-via-helm-install-with-a-direct-url-to-the-helm-package)
 - [Building and Running Locally](#building-and-running-locally)
 - Advanced Topics
@@ -1025,6 +1026,12 @@ helm upgrade -i nvdp nvdp/nvidia-device-plugin \
 **Note:** You only need the to pass the `--devel` flag to `helm search repo`
 and the `--version` flag to `helm upgrade -i` if this is a pre-release
 version (e.g. `<version>-rc.1`). Full releases will be listed without this.
+
+#### Setting extra environment variables on the device plugin main container
+
+`devicePlugin.extraEnvs` sets additional environment variables passed to the
+main container of the device plugin.
+It may also be used to overwrite other environment variables.
 
 ### Deploying via `helm install` with a direct URL to the `helm` package
 
