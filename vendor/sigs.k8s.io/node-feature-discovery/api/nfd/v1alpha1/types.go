@@ -34,6 +34,7 @@ type NodeFeatureList struct {
 
 // NodeFeature resource holds the features discovered for one node in the
 // cluster.
+// NodeFeature is namespaced.
 // +kubebuilder:object:root=true
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -109,6 +110,7 @@ type NodeFeatureRuleList struct {
 
 // NodeFeatureRule resource specifies a configuration for feature-based
 // customization of node objects, such as node labeling.
+// NodeFeatureRule is cluster-scoped (short name `nfr`).
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster,shortName=nfr
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -128,7 +130,9 @@ type NodeFeatureRuleSpec struct {
 	Rules []Rule `json:"rules"`
 }
 
-// NodeFeatureGroup resource holds Node pools by featureGroup
+// NodeFeatureGroup resource holds Node pools by featureGroup.
+// NodeFeatureGroup is namespaced (short name `nfg`) and has a status subresource.
+// Only objects in the namespace of nfd-master are processed.
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Namespaced,shortName=nfg
 // +kubebuilder:subresource:status
@@ -152,6 +156,8 @@ type NodeFeatureGroupSpec struct {
 	Rules []GroupRule `json:"featureGroupRules"`
 }
 
+// NodeFeatureGroupStatus is the status of a NodeFeatureGroup, i.e. the result
+// of the most recent evaluation of its rules.
 type NodeFeatureGroupStatus struct {
 	// Nodes is a list of FeatureGroupNode in the cluster that match the featureGroupRules
 	// +optional
@@ -162,6 +168,7 @@ type NodeFeatureGroupStatus struct {
 	Nodes []FeatureGroupNode `json:"nodes"`
 }
 
+// FeatureGroupNode is a node that matches the rules of a NodeFeatureGroup.
 type FeatureGroupNode struct {
 	// Name of the node.
 	Name string `json:"name"`
@@ -258,7 +265,7 @@ type MatchAnyElem struct {
 	MatchFeatures FeatureMatcher `json:"matchFeatures"`
 }
 
-// FeatureMatcher specifies a set of feature matcher terms (i.e. per-feature
+// FeatureMatcher is a list (array) of FeatureMatcherTerm (i.e. per-feature
 // matchers), all of which must match.
 type FeatureMatcher []FeatureMatcherTerm
 
