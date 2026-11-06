@@ -17,10 +17,12 @@
 package rm
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"k8s.io/klog/v2"
@@ -59,6 +61,188 @@ func matchesMigEvent(deviceGI, deviceCI, eventGI, eventCI uint32) bool {
 	return giMatches && ciMatches
 }
 
+const eventSetWaitTimeoutMs = 5000
+
+var errHealthEventsNotSupported = errors.New("health events not supported")
+
+// healthEvent is one result of an event set Wait that is delivered to every subscriber.
+type healthEvent struct {
+	data nvml.EventData
+	ret  nvml.Return
+}
+
+// healthWatch owns the only NVML event set in the process and the only goroutine that waits on it.
+// With the mixed MIG strategy every profile is a separate resource, and concurrent
+// nvmlEventSetWait calls on separate event sets for the same parent GPU spin a CPU core.
+//
+// A watch is started by its first subscriber and stopped when its last subscriber leaves. It is
+// not restarted: each plugin (re)start constructs new resource managers and with them a new watch.
+type healthWatch struct {
+	nvml nvml.Interface
+
+	startOnce sync.Once
+	startErr  error
+	eventSet  nvml.EventSet
+	// registrations is written before the wait loop starts and is read-only afterwards.
+	registrations map[string]error
+
+	mu      sync.Mutex
+	subs    map[*healthSubscription]struct{}
+	stopped bool
+	stop    chan struct{}
+	done    chan struct{}
+}
+
+func newHealthWatch(nvmllib nvml.Interface) *healthWatch {
+	return &healthWatch{
+		nvml:          nvmllib,
+		registrations: make(map[string]error),
+		subs:          make(map[*healthSubscription]struct{}),
+		stop:          make(chan struct{}),
+		done:          make(chan struct{}),
+	}
+}
+
+// subscribe starts the watch if required and returns a subscription that receives every event.
+func (w *healthWatch) subscribe() (*healthSubscription, error) {
+	w.startOnce.Do(func() {
+		w.startErr = w.start()
+	})
+	if w.startErr != nil {
+		return nil, w.startErr
+	}
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.stopped {
+		return nil, errors.New("health watch is already stopped")
+	}
+	sub := &healthSubscription{
+		events: make(chan healthEvent),
+		done:   make(chan struct{}),
+	}
+	w.subs[sub] = struct{}{}
+	return sub, nil
+}
+
+// unsubscribe removes the subscription. Removing the last subscription stops the wait loop and
+// blocks until the event set has been freed.
+func (w *healthWatch) unsubscribe(sub *healthSubscription) {
+	w.mu.Lock()
+	delete(w.subs, sub)
+	close(sub.done)
+	last := len(w.subs) == 0 && !w.stopped
+	if last {
+		w.stopped = true
+		close(w.stop)
+	}
+	w.mu.Unlock()
+
+	if last {
+		<-w.done
+	}
+}
+
+func (w *healthWatch) start() error {
+	ret := w.nvml.Init()
+	if ret != nvml.SUCCESS {
+		return fmt.Errorf("failed to initialize NVML: %v", ret)
+	}
+
+	eventSet, ret := w.nvml.EventSetCreate()
+	if ret != nvml.SUCCESS {
+		_ = w.nvml.Shutdown()
+		return fmt.Errorf("failed to create event set: %v", ret)
+	}
+
+	count, ret := w.nvml.DeviceGetCount()
+	if ret != nvml.SUCCESS {
+		_ = eventSet.Free()
+		_ = w.nvml.Shutdown()
+		return fmt.Errorf("failed to get device count: %v", ret)
+	}
+
+	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
+	for i := range count {
+		gpu, ret := w.nvml.DeviceGetHandleByIndex(i)
+		if ret != nvml.SUCCESS {
+			klog.Warningf("Unable to get handle for device at index %d: %v", i, ret)
+			continue
+		}
+		uuid, ret := gpu.GetUUID()
+		if ret != nvml.SUCCESS {
+			klog.Warningf("Unable to get UUID for device at index %d: %v", i, ret)
+			continue
+		}
+
+		supportedEvents, ret := gpu.GetSupportedEventTypes()
+		if ret != nvml.SUCCESS {
+			w.registrations[uuid] = fmt.Errorf("unable to determine the supported events: %v", ret)
+			continue
+		}
+
+		ret = gpu.RegisterEvents(eventMask&supportedEvents, eventSet)
+		switch {
+		case ret == nvml.ERROR_NOT_SUPPORTED:
+			w.registrations[uuid] = errHealthEventsNotSupported
+		case ret != nvml.SUCCESS:
+			w.registrations[uuid] = fmt.Errorf("failed to register events: %v", ret)
+		default:
+			w.registrations[uuid] = nil
+		}
+	}
+	w.eventSet = eventSet
+
+	go w.run()
+	return nil
+}
+
+func (w *healthWatch) run() {
+	defer close(w.done)
+	defer func() {
+		if ret := w.eventSet.Free(); ret != nvml.SUCCESS {
+			klog.Infof("Error freeing event set: %v", ret)
+		}
+		if ret := w.nvml.Shutdown(); ret != nvml.SUCCESS {
+			klog.Infof("Error shutting down NVML: %v", ret)
+		}
+	}()
+
+	for {
+		select {
+		case <-w.stop:
+			return
+		default:
+		}
+
+		e, ret := w.eventSet.Wait(eventSetWaitTimeoutMs)
+		if ret == nvml.ERROR_TIMEOUT {
+			continue
+		}
+
+		w.mu.Lock()
+		subs := make([]*healthSubscription, 0, len(w.subs))
+		for sub := range w.subs {
+			subs = append(subs, sub)
+		}
+		w.mu.Unlock()
+
+		// Sending outside the lock lets a subscriber that the loop is blocked on unsubscribe.
+		for _, sub := range subs {
+			select {
+			case sub.events <- healthEvent{data: e, ret: ret}:
+			case <-sub.done:
+			}
+		}
+	}
+}
+
+// healthSubscription delivers every event from the shared wait loop to one plugin.
+type healthSubscription struct {
+	events chan healthEvent
+	done   chan struct{}
+}
+
 // CheckHealth performs health checks on a set of devices, writing to the 'unhealthy' channel with any unhealthy devices
 func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhealthy chan<- *Device) error {
 	xids := getDisabledHealthCheckXids()
@@ -82,24 +266,30 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhe
 
 	klog.Infof("Ignoring the following XIDs for health checks: %v", xids)
 
-	eventSet, ret := r.nvml.EventSetCreate()
-	if ret != nvml.SUCCESS {
-		return fmt.Errorf("failed to create event set: %v", ret)
+	sub, err := r.watch.subscribe()
+	if err != nil {
+		return err
 	}
-	defer func() {
-		_ = eventSet.Free()
-	}()
+	defer r.watch.unsubscribe(sub)
+
+	// The sends must not outlive the plugin, or the subscription is never released and the
+	// shared event set is never freed.
+	markUnhealthy := func(d *Device) {
+		select {
+		case unhealthy <- d:
+		case <-stop:
+		}
+	}
 
 	placedDevices := make([]placedDevice, 0, len(devices))
 	deviceIDToGiMap := make(map[string]uint32)
 	deviceIDToCiMap := make(map[string]uint32)
 
-	eventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
 	for _, d := range devices {
 		uuid, gi, ci, err := r.getDevicePlacement(d)
 		if err != nil {
 			klog.Warningf("Could not determine device placement for %v: %v; Marking it unhealthy.", d.ID, err)
-			unhealthy <- d
+			markUnhealthy(d)
 			continue
 		}
 		deviceIDToGiMap[d.ID] = gi
@@ -109,51 +299,36 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhe
 	parentToDeviceMap := groupByParent(placedDevices)
 
 	for parentUUID, subdevices := range parentToDeviceMap {
-		gpu, ret := r.nvml.DeviceGetHandleByUUID(parentUUID)
-		if ret != nvml.SUCCESS {
-			klog.Infof("unable to get device handle from UUID: %v; marking it as unhealthy", ret)
-			for _, d := range subdevices {
-				unhealthy <- d
-			}
-			continue
-		}
-
-		supportedEvents, ret := gpu.GetSupportedEventTypes()
-		if ret != nvml.SUCCESS {
-			klog.Infof("unable to determine the supported events for %v: %v; marking it as unhealthy", parentUUID, ret)
-			for _, d := range subdevices {
-				unhealthy <- d
-			}
-			continue
-		}
-
-		ret = gpu.RegisterEvents(eventMask&supportedEvents, eventSet)
+		err, registered := r.watch.registrations[parentUUID]
 		switch {
-		case ret == nvml.ERROR_NOT_SUPPORTED:
-			klog.Warningf("Device %v is too old to support healthchecking.", parentUUID)
-		case ret != nvml.SUCCESS:
-			klog.Infof("Marking device %v as unhealthy: %v", parentUUID, ret)
+		case !registered:
+			klog.Infof("Marking device %v as unhealthy: not registered for health events", parentUUID)
 			for _, d := range subdevices {
-				unhealthy <- d
+				markUnhealthy(d)
+			}
+		case errors.Is(err, errHealthEventsNotSupported):
+			klog.Warningf("Device %v is too old to support healthchecking.", parentUUID)
+		case err != nil:
+			klog.Infof("Marking device %v as unhealthy: %v", parentUUID, err)
+			for _, d := range subdevices {
+				markUnhealthy(d)
 			}
 		}
 	}
 
 	for {
+		var event healthEvent
 		select {
 		case <-stop:
 			return nil
-		default:
+		case event = <-sub.events:
 		}
 
-		e, ret := eventSet.Wait(5000)
-		if ret == nvml.ERROR_TIMEOUT {
-			continue
-		}
+		e, ret := event.data, event.ret
 		if ret != nvml.SUCCESS {
 			klog.Infof("Error waiting for event: %v; Marking all devices as unhealthy", ret)
 			for _, d := range devices {
-				unhealthy <- d
+				markUnhealthy(d)
 			}
 			continue
 		}
@@ -174,7 +349,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhe
 			// If we cannot reliably determine the device UUID, we mark all devices as unhealthy.
 			klog.Infof("Failed to determine uuid for event %v: %v; Marking all devices as unhealthy.", e, ret)
 			for _, d := range devices {
-				unhealthy <- d
+				markUnhealthy(d)
 			}
 			continue
 		}
@@ -196,7 +371,7 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, unhe
 			}
 
 			klog.Infof("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
-			unhealthy <- d
+			markUnhealthy(d)
 		}
 	}
 }
