@@ -29,12 +29,14 @@ import (
 	nvinfo "github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/fsnotify/fsnotify"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"k8s.io/klog/v2"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
+	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/plugin"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
@@ -163,6 +165,11 @@ func main() {
 			Name:    "imex-required",
 			Usage:   "The specified IMEX channels are required",
 			EnvVars: []string{"IMEX_REQUIRED"},
+		},
+		&cli.BoolFlag{
+			Name:    "debug",
+			Usage:   "enable debug logging for the standard logger, including nvlib platform detection details",
+			EnvVars: []string{"DEBUG"},
 		},
 		// The following CLI flags do not have equivalents in the config file.
 		&cli.StringFlag{
@@ -355,6 +362,7 @@ func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) 
 		return nil, false, fmt.Errorf("unable to load config: %v", err)
 	}
 	spec.DisableResourceNamingInConfig(config)
+	logger.SetLevel(*config.Flags.Debug)
 
 	driverRoot := root(*config.Flags.Plugin.ContainerDriverRoot)
 	// We construct an NVML library specifying the path to libnvidia-ml.so.1
@@ -367,6 +375,7 @@ func startPlugins(c *cli.Context, o *options) ([]plugin.Interface, bool, error) 
 		nvinfo.WithRoot(string(driverRoot)),
 		nvinfo.WithNvmlLib(nvmllib),
 		nvinfo.WithDeviceLib(devicelib),
+		nvinfo.WithLogger(logrus.StandardLogger()),
 	)
 
 	err = validateFlags(infolib, config)

@@ -30,10 +30,12 @@ import (
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	nvinfo "github.com/NVIDIA/go-nvlib/pkg/nvlib/info"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
+	"github.com/sirupsen/logrus"
 
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mount"
 	"github.com/NVIDIA/k8s-device-plugin/cmd/mps-control-daemon/mps"
 	"github.com/NVIDIA/k8s-device-plugin/internal/info"
+	"github.com/NVIDIA/k8s-device-plugin/internal/logger"
 	"github.com/NVIDIA/k8s-device-plugin/internal/rm"
 	"github.com/NVIDIA/k8s-device-plugin/internal/watch"
 
@@ -73,6 +75,11 @@ func main() {
 			Value:   spec.MigStrategyNone,
 			Usage:   "the desired strategy for exposing MIG devices on GPUs that support it:\n\t\t[none | single | mixed]",
 			EnvVars: []string{"MIG_STRATEGY"},
+		},
+		&cli.BoolFlag{
+			Name:    "debug",
+			Usage:   "enable debug logging for the standard logger, including nvlib platform detection details",
+			EnvVars: []string{"DEBUG"},
 		},
 	}
 	c.Flags = config.flags
@@ -169,12 +176,14 @@ func startDaemons(c *cli.Context, cfg *Config) ([]*mps.Daemon, bool, error) {
 		return nil, false, fmt.Errorf("unable to load config: %v", err)
 	}
 	spec.DisableResourceNamingInConfig(config)
+	logger.SetLevel(*config.Flags.Debug)
 
 	nvmllib := nvml.New()
 	devicelib := device.New(nvmllib)
 	infolib := nvinfo.New(
 		nvinfo.WithNvmlLib(nvmllib),
 		nvinfo.WithDeviceLib(devicelib),
+		nvinfo.WithLogger(logrus.StandardLogger()),
 	)
 
 	// Update the configuration file with default resources.

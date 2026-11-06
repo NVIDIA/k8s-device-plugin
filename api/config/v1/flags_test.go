@@ -18,12 +18,16 @@ package v1
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	cli "github.com/urfave/cli/v2"
 )
 
 func TestUnmarshalFlags(t *testing.T) {
@@ -148,6 +152,26 @@ func TestUnmarshalFlags(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: `{
+				"debug": true
+			}`,
+			output: Flags{
+				CommandLineFlags{
+					Debug: new(true),
+				},
+			},
+		},
+		{
+			input: `{
+				"debug": false
+			}`,
+			output: Flags{
+				CommandLineFlags{
+					Debug: new(false),
+				},
+			},
+		},
 	}
 
 	for i, tc := range testCases {
@@ -257,6 +281,40 @@ func TestMarshalFlags(t *testing.T) {
 				}
 			}`,
 		},
+		{
+			input: Flags{
+				CommandLineFlags{
+					Debug: new(true),
+				},
+			},
+			output: `{
+				"migStrategy": null,
+				"failOnInitError": null,
+				"gdrcopyEnabled": null,
+				"gdsEnabled": null,
+				"mofedEnabled": null,
+				"useNodeFeatureAPI": null,
+				"deviceDiscoveryStrategy": null,
+				"debug": true
+			}`,
+		},
+		{
+			input: Flags{
+				CommandLineFlags{
+					Debug: new(false),
+				},
+			},
+			output: `{
+				"migStrategy": null,
+				"failOnInitError": null,
+				"gdrcopyEnabled": null,
+				"gdsEnabled": null,
+				"mofedEnabled": null,
+				"useNodeFeatureAPI": null,
+				"deviceDiscoveryStrategy": null,
+				"debug": false
+			}`,
+		},
 	}
 
 	for i, tc := range testCases {
@@ -268,6 +326,125 @@ func TestMarshalFlags(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.JSONEq(t, tc.output, string(output))
+		})
+	}
+}
+
+// TestDebugFromConfigFileAndCLI verifies how the debug flag is resolved from
+// the config file and the command line. The environment variable wiring is
+// covered separately to keep these cases independent of the environment.
+func TestDebugFromConfigFileAndCLI(t *testing.T) {
+	testCases := []struct {
+		description string
+		config      string
+		cliValue    *string
+		expected    bool
+	}{
+		{
+			description: "debug is disabled by default",
+		},
+		{
+			description: "config file enables debug",
+			config:      `{"version":"v1","flags":{"debug":true}}`,
+			expected:    true,
+		},
+		{
+			description: "config file disables debug explicitly",
+			config:      `{"version":"v1","flags":{"debug":false}}`,
+		},
+		{
+			description: "command line disables debug set in the config file",
+			config:      `{"version":"v1","flags":{"debug":true}}`,
+			cliValue:    new("false"),
+		},
+		{
+			description: "command line enables debug",
+			cliValue:    new("true"),
+			expected:    true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			flags := []cli.Flag{
+				&cli.BoolFlag{
+					Name: "debug",
+				},
+			}
+
+			set := flag.NewFlagSet("test", flag.ContinueOnError)
+			set.String("config-file", "", "")
+			if tc.config != "" {
+				configFile := filepath.Join(t.TempDir(), "config.json")
+				require.NoError(t, os.WriteFile(configFile, []byte(tc.config), 0o600))
+				require.NoError(t, set.Set("config-file", configFile))
+			}
+			for _, f := range flags {
+				require.NoError(t, f.Apply(set))
+			}
+			if tc.cliValue != nil {
+				require.NoError(t, set.Set("debug", *tc.cliValue))
+			}
+
+			app := cli.NewApp()
+			app.Flags = flags
+			config, err := NewConfig(cli.NewContext(app, set, nil), flags)
+			require.NoError(t, err)
+			require.NotNil(t, config.Flags.Debug)
+			require.Equal(t, tc.expected, *config.Flags.Debug)
+		})
+	}
+}
+
+// TestDebugFromEnvironment verifies that the DEBUG environment variable takes
+// precedence over the value set in the config file.
+func TestDebugFromEnvironment(t *testing.T) {
+	testCases := []struct {
+		description string
+		env         string
+		config      string
+		expected    bool
+	}{
+		{
+			description: "environment enables debug set to false in the config file",
+			env:         "true",
+			config:      `{"version":"v1","flags":{"debug":false}}`,
+			expected:    true,
+		},
+		{
+			description: "environment disables debug set to true in the config file",
+			env:         "false",
+			config:      `{"version":"v1","flags":{"debug":true}}`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			t.Setenv("DEBUG", tc.env)
+
+			flags := []cli.Flag{
+				&cli.BoolFlag{
+					Name:    "debug",
+					EnvVars: []string{"DEBUG"},
+				},
+			}
+
+			configFile := filepath.Join(t.TempDir(), "config.json")
+			require.NoError(t, os.WriteFile(configFile, []byte(tc.config), 0o600))
+
+			set := flag.NewFlagSet("test", flag.ContinueOnError)
+			set.String("config-file", "", "")
+			require.NoError(t, set.Set("config-file", configFile))
+			for _, f := range flags {
+				require.NoError(t, f.Apply(set))
+			}
+
+			app := cli.NewApp()
+			app.Flags = flags
+			config, err := NewConfig(cli.NewContext(app, set, nil), flags)
+			require.NoError(t, err)
+			require.NotNil(t, config.Flags.Debug)
+			require.Equal(t, tc.expected, *config.Flags.Debug)
 		})
 	}
 }
