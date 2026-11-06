@@ -20,6 +20,8 @@ package v1alpha1
 
 // FeatureGroupNodeApplyConfiguration represents a declarative configuration of the FeatureGroupNode type for use
 // with apply.
+//
+// FeatureGroupNode is a node that matches the rules of a NodeFeatureGroup.
 type FeatureGroupNodeApplyConfiguration struct {
 	// Name of the node.
 	Name *string `json:"name,omitempty"`

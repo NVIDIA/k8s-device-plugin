@@ -29,6 +29,7 @@ import (
 //
 // NodeFeature resource holds the features discovered for one node in the
 // cluster.
+// NodeFeature is namespaced.
 type NodeFeatureApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
