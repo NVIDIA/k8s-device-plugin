@@ -26,6 +26,9 @@ Options:
   --version             specify the version for the release.
   --helm-repo-path      specify the path to the Helm repo (defaults to HELM_REPO_PATH)
                         If unspecified, the version is used to construct a path.
+  --oci-repo            also push the chart packages to this OCI repository
+                        (e.g. oci://ghcr.io/nvidia/k8s-device-plugin/charts).
+                        Requires local packages or --version, and a prior helm registry login.
   --help/-h             show help for this command and exit
 
 Example:
@@ -49,6 +52,10 @@ while [[ $# -gt 0 ]]; do
 			;;
 		--version)
 			VERSION=$2
+			shift 2
+			;;
+		--oci-repo)
+			OCI_REPO="$2"
 			shift 2
 			;;
 		--help/h) usage
@@ -100,6 +107,12 @@ else
 	asset_local=$asset_path
 fi
 
+if [[ -n "${OCI_REPO}" && -z "$asset_local" ]]; then
+	echo "--oci-repo needs local chart packages or --version"
+	usage
+	exit 1
+fi
+
 GH_REPO_PULL_URL="https://github.com/NVIDIA/k8s-device-plugin.git"
 git clone --depth=1 --branch=gh-pages ${GH_REPO_PULL_URL} ${HELM_REPO_PATH}
 mkdir -p ${HELM_REPO_PATH}/stable
@@ -116,6 +129,13 @@ else
 		fi
 		echo "Downloading $asset_url..."
 		curl -sSfLO --output-dir "${HELM_REPO_PATH}/stable" ${asset_url}
+	done
+fi
+
+if [[ -n "${OCI_REPO}" ]]; then
+	for asset in $asset_local; do
+		echo "Pushing $asset to ${OCI_REPO}..."
+		helm push "$asset" "${OCI_REPO}"
 	done
 fi
 

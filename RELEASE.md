@@ -39,6 +39,8 @@ The device plugin consists in two artifacts:
       ./hack/update-helm-index.sh --version {{ .VERSION }}
       ```
       (this pulls the packages from the release created in the previous step)
+    - Push the packages to ghcr.io by adding `--oci-repo oci://ghcr.io/nvidia/k8s-device-plugin/charts`
+      to the command above, after `helm registry login ghcr.io`.
     - Push the change to the `gh-pages` branch:
       ```
       git -C releases/{{ .VERSION }} remote set-url origin git@github.com:NVIDIA/k8s-device-plugin.git
