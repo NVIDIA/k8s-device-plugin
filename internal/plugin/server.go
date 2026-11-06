@@ -290,6 +290,11 @@ func (plugin *nvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r 
 	for _, req := range r.ContainerRequests {
 		devices, err := plugin.rm.GetPreferredAllocation(req.AvailableDeviceIDs, req.MustIncludeDeviceIDs, int(req.AllocationSize))
 		if err != nil {
+			if unhealthy, ok := errors.AsType[*rm.UnhealthyDevicesError](err); ok {
+				klog.Infof("Marking devices %v as unhealthy: %v", unhealthy.IDs, err)
+				plugin.markUnhealthy(unhealthy.IDs)
+				return nil, fmt.Errorf("error getting list of preferred allocation devices: %v; marking them unhealthy", err)
+			}
 			return nil, fmt.Errorf("error getting list of preferred allocation devices: %v", err)
 		}
 
@@ -300,6 +305,26 @@ func (plugin *nvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r 
 		response.ContainerResponses = append(response.ContainerResponses, resp)
 	}
 	return response, nil
+}
+
+// markUnhealthy hands the devices to ListAndWatch without blocking, because
+// the kubelet waits for GetPreferredAllocation from its sync loop.
+func (plugin *nvidiaDevicePlugin) markUnhealthy(ids []string) {
+	// cleanup() sets these to nil, and sending on a nil channel blocks forever.
+	health, stop := plugin.health, plugin.stop
+	if health == nil || stop == nil {
+		return
+	}
+	devices := plugin.rm.Devices().Subset(ids)
+	go func() {
+		for _, d := range devices {
+			select {
+			case health <- d:
+			case <-stop:
+				return
+			}
+		}
+	}()
 }
 
 // Allocate returns a list of devices.

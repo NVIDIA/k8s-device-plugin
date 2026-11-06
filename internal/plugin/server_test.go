@@ -18,7 +18,10 @@ package plugin
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
@@ -247,6 +250,70 @@ func TestCDIAllocateResponse(t *testing.T) {
 
 			require.Nil(t, err)
 			require.EqualValues(t, &tc.expectedResponse, &response)
+		})
+	}
+}
+
+func TestGetPreferredAllocationMarksUnhealthyDevices(t *testing.T) {
+	testCases := []struct {
+		description       string
+		err               error
+		expectedError     string
+		expectedUnhealthy []string
+	}{
+		{
+			description:       "devices that cannot be queried are marked unhealthy",
+			err:               fmt.Errorf("unable to get device link information: %w", &rm.UnhealthyDevicesError{IDs: []string{"GPU-0"}, Err: errors.New("GPU requires reset")}),
+			expectedError:     "error getting list of preferred allocation devices: unable to get device link information: GPU requires reset; devices that cannot be queried: [GPU-0]; marking them unhealthy",
+			expectedUnhealthy: []string{"GPU-0"},
+		},
+		{
+			description:   "other errors do not mark devices unhealthy",
+			err:           errors.New("not enough available devices to satisfy allocation"),
+			expectedError: "error getting list of preferred allocation devices: not enough available devices to satisfy allocation",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			plugin := nvidiaDevicePlugin{
+				rm: &rm.ResourceManagerMock{
+					DevicesFunc: func() rm.Devices {
+						return rm.Devices{
+							"GPU-0": {Device: pluginapi.Device{ID: "GPU-0"}},
+							"GPU-1": {Device: pluginapi.Device{ID: "GPU-1"}},
+						}
+					},
+					GetPreferredAllocationFunc: func([]string, []string, int) ([]string, error) {
+						return nil, tc.err
+					},
+				},
+				health: make(chan *rm.Device),
+				stop:   make(chan any),
+			}
+			defer close(plugin.stop)
+
+			_, err := plugin.GetPreferredAllocation(context.TODO(), &pluginapi.PreferredAllocationRequest{
+				ContainerRequests: []*pluginapi.ContainerPreferredAllocationRequest{{}},
+			})
+			require.EqualError(t, err, tc.expectedError)
+
+			// The test stands in for ListAndWatch, the only receiver on the channel.
+			var unhealthy []string
+			for range tc.expectedUnhealthy {
+				select {
+				case d := <-plugin.health:
+					unhealthy = append(unhealthy, d.ID)
+				case <-time.After(time.Second):
+					t.Fatal("timed out waiting for an unhealthy device")
+				}
+			}
+			select {
+			case d := <-plugin.health:
+				unhealthy = append(unhealthy, d.ID)
+			case <-time.After(100 * time.Millisecond):
+			}
+			require.Equal(t, tc.expectedUnhealthy, unhealthy)
 		})
 	}
 }
