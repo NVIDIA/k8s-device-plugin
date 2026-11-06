@@ -13,6 +13,7 @@ nvidia\.com\/cuda\.runtime-version\.minor=[0-9]+
 nvidia\.com\/cuda\.runtime-version\.full=([0-9]+)(.[0-9]+)
 nvidia\.com\/gpu\.machine=.*
 nvidia\.com\/gpu\.count=[0-9]+
+nvidia\.com\/gpu\.count\.mig-disabled=[0-9]+
 nvidia\.com\/gpu\.replicas=[0-9]+
 nvidia\.com\/gpu\.sharing-strategy=[none|mps|time-slicing]
 nvidia\.com\/gpu\.product=[A-Za-z_-]+
