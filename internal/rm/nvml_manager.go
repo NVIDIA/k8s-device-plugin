@@ -133,7 +133,11 @@ func (r *nvmlResourceManager) alignedAlloc(available, required []string, size in
 		gpuallocator.WithNvmlLib(r.nvml),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get device link information: %w", err)
+		// Discovering the links enumerates all physical devices, including unhealthy
+		// ones that are absent from 'available'. If that fails, preserve admission by
+		// returning a valid allocation that does not consider the topology.
+		klog.Warningf("Unable to get device link information, falling back to an unaligned allocation: %v", err)
+		return unalignedAlloc(available, required, size)
 	}
 
 	availableDevices, err := linkedDevices.Filter(available)
@@ -152,4 +156,50 @@ func (r *nvmlResourceManager) alignedAlloc(available, required []string, size in
 	}
 
 	return devices, nil
+}
+
+// unalignedAlloc selects 'size' devices from 'available' without considering the
+// topology between them, always including the devices in 'required'. It is used
+// when the device link information needed for an aligned allocation cannot be
+// retrieved.
+func unalignedAlloc(available, required []string, size int) ([]string, error) {
+	if size < 0 {
+		return nil, fmt.Errorf("invalid allocation size: %v", size)
+	}
+
+	isAvailable := make(map[string]bool, len(available))
+	for _, id := range available {
+		isAvailable[id] = true
+	}
+
+	selected := make([]string, 0, size)
+	seen := make(map[string]bool, size)
+	for _, id := range required {
+		if !isAvailable[id] {
+			return nil, fmt.Errorf("required device %v is not available", id)
+		}
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		selected = append(selected, id)
+	}
+	if len(selected) > size {
+		return nil, fmt.Errorf("cannot allocate %v devices with %v required devices", size, len(selected))
+	}
+
+	for _, id := range available {
+		if len(selected) == size {
+			break
+		}
+		if !seen[id] {
+			seen[id] = true
+			selected = append(selected, id)
+		}
+	}
+	if len(selected) != size {
+		return nil, fmt.Errorf("unable to select %v devices from %v available devices", size, len(isAvailable))
+	}
+
+	return selected, nil
 }
