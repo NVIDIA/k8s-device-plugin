@@ -110,6 +110,12 @@ func main() {
 			EnvVars: []string{"DEVICE_DISCOVERY_STRATEGY"},
 		},
 		&cli.StringFlag{
+			Name:    "sysfs-root",
+			Value:   spec.DefaultSysfsRoot,
+			Usage:   "the root path for sysfs; used for PCI device discovery",
+			EnvVars: []string{"SYSFS_ROOT"},
+		},
+		&cli.StringFlag{
 			Name:    "driver-root-ctr-path",
 			Aliases: []string{"container-driver-root"},
 			Value:   spec.DefaultContainerDriverRoot,
@@ -191,7 +197,7 @@ func start(c *cli.Context, cfg *Config) error {
 			return fmt.Errorf("failed to create resource manager: %w", err)
 
 		}
-		vgpul := vgpu.NewVGPULib(vgpu.NewNvidiaPCILib())
+		vgpul := vgpu.NewVGPULib(vgpu.NewNvidiaPCILib(*config.Flags.SysfsRoot))
 
 		var clientSets flags.ClientSets
 		if config.Flags.UseNodeFeatureAPI != nil && *config.Flags.UseNodeFeatureAPI {
