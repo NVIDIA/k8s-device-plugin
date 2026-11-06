@@ -99,18 +99,16 @@ commit the regenerated mock.
 
 ## Contribution process (see `CONTRIBUTING.md`)
 
-- Any significant change needs an issue describing the problem or proposal before implementation
-  begins. This covers architectural changes, new features, breaking changes to API or behavior, and
-  non-trivial bug fixes. Check for a linked issue, or ask for one, rather than assuming a pull
-  request on its own is sufficient.
+- For any change, an issue should exist describing the problem/proposal before implementation begins. Additionally, the contributor should be approved to work on said issue — ensure the PR is linked to an issue the contributor has been assigned to.
+- Keep PR titles short and imperative.
+- Issue or PR descriptions drafted with AI must be thoroughly reviewed and verified by the user before they are submitted.
+- Replies to maintainers in review comments or issue discussions may not be AI generated.
 - All commits must be signed off for DCO using `git commit -s`, which appends a
   `Signed-off-by: Name <email>` line. DCO is a required status check. Never fabricate a sign-off
   identity. Use the configured git user's identity.
 - Do not open, push to, or comment on GitHub issues or pull requests without explicit user
   confirmation.
-- Keep pull request titles short and imperative. Fill in the sections in
-  [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) and explain the motivation
-  rather than restating the diff.
+- Keep all changes as minimal as possible.
 
 ## Things to avoid
 
