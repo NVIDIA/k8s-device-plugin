@@ -104,6 +104,14 @@ func TestDevice(t *testing.T) {
 			expectedMaxClients:     16,
 		},
 		{
+			description: "major version without a minor is rejected",
+			input: mpsDevice{
+				ComputeCapability: "7",
+			},
+			expectedIsAtLeastVolta: false,
+			expectedMaxClients:     16,
+		},
+		{
 			description: "pre-volta clients exceeded",
 			input: mpsDevice{
 				ComputeCapability: "6.1",
