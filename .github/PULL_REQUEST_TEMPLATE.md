@@ -1,6 +1,10 @@
+## Issue
+<!-- Link the `accepted` issue assigned to you. See CONTRIBUTING.md#contribution-workflow -->
+Fixes #
+
 ## Description
 
-<!-- Brief description of the change, including context or motivation -->
+<!-- Brief description of the change, including context -->
 
 <!--
 Link the related issue so it closes on merge, e.g. `Closes #1234`.
