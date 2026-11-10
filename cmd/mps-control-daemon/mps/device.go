@@ -48,15 +48,21 @@ func (d *mpsDevice) maxClients() int {
 }
 
 // isAtLeastVolta checks whether the specified device is a volta device or newer.
+// An unparseable compute capability is treated as pre-Volta rather than an
+// error so that devices that do not report one (e.g. WSL) keep the
+// conservative client limit.
 func (d *mpsDevice) isAtLeastVolta() bool {
-	majorStr, minorStr, _ := strings.Cut(strings.TrimPrefix(d.ComputeCapability, "v"), ".")
+	majorStr, minorStr, ok := strings.Cut(strings.TrimPrefix(d.ComputeCapability, "v"), ".")
+	if !ok {
+		return false
+	}
 	major, err := strconv.Atoi(majorStr)
 	if err != nil {
 		return false
 	}
-	minor, err := strconv.Atoi(minorStr)
-	if err != nil {
+	if _, err := strconv.Atoi(minorStr); err != nil {
 		return false
 	}
-	return major > 7 || (major == 7 && minor >= 5)
+
+	return major >= 7
 }
