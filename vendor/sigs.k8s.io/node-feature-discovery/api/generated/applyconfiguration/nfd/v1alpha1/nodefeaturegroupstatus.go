@@ -20,6 +20,9 @@ package v1alpha1
 
 // NodeFeatureGroupStatusApplyConfiguration represents a declarative configuration of the NodeFeatureGroupStatus type for use
 // with apply.
+//
+// NodeFeatureGroupStatus is the status of a NodeFeatureGroup, i.e. the result
+// of the most recent evaluation of its rules.
 type NodeFeatureGroupStatusApplyConfiguration struct {
 	// Nodes is a list of FeatureGroupNode in the cluster that match the featureGroupRules
 	Nodes []FeatureGroupNodeApplyConfiguration `json:"nodes,omitempty"`
