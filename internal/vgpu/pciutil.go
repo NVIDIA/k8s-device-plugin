@@ -19,8 +19,10 @@ package vgpu
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
+
+	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
 
 // NvidiaPCI interface allows us to get a list of all NVIDIA PCI devices
@@ -38,8 +40,6 @@ type PCIDevice struct {
 }
 
 const (
-	// PciDevicesRoot represents base path for all pci devices under sysfs
-	PciDevicesRoot = "/sys/bus/pci/devices"
 	// PciStatusByte indicates status byte
 	PciStatusByte = 0x06
 	// PciStatusCapabilityList indicates if capability list is supported
@@ -59,26 +59,33 @@ const (
 )
 
 // NvidiaPCILib implements the NvidiaPCI interface
-type NvidiaPCILib struct{}
+type NvidiaPCILib struct {
+	pciDevicesRoot string
+}
 
 // NewNvidiaPCILib returns an instance of NvidiaPCILib implementing the NvidiaPCI interface
-func NewNvidiaPCILib() NvidiaPCI {
-	return &NvidiaPCILib{}
+func NewNvidiaPCILib(sysfsRoot string) NvidiaPCI {
+	if sysfsRoot == "" {
+		sysfsRoot = spec.DefaultSysfsRoot
+	}
+	return &NvidiaPCILib{
+		pciDevicesRoot: filepath.Join(sysfsRoot, "bus", "pci", "devices"),
+	}
 }
 
 // Devices returns all PCI devices on the system
 func (p *NvidiaPCILib) Devices() ([]*PCIDevice, error) {
-	deviceDirs, err := os.ReadDir(PciDevicesRoot)
+	deviceDirs, err := os.ReadDir(p.pciDevicesRoot)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read PCI bus devices: %v", err)
 	}
 
 	var devices []*PCIDevice
 	for _, deviceDir := range deviceDirs {
-		devicePath := path.Join(PciDevicesRoot, deviceDir.Name())
+		devicePath := filepath.Join(p.pciDevicesRoot, deviceDir.Name())
 		address := deviceDir.Name()
 
-		vendor, err := os.ReadFile(path.Join(devicePath, "vendor"))
+		vendor, err := os.ReadFile(filepath.Join(devicePath, "vendor"))
 		if err != nil {
 			return nil, fmt.Errorf("unable to read PCI device vendor id for %s: %v", address, err)
 		}
@@ -87,12 +94,12 @@ func (p *NvidiaPCILib) Devices() ([]*PCIDevice, error) {
 			continue
 		}
 
-		class, err := os.ReadFile(path.Join(devicePath, "class"))
+		class, err := os.ReadFile(filepath.Join(devicePath, "class"))
 		if err != nil {
 			return nil, fmt.Errorf("unable to read PCI device class for %s: %v", address, err)
 		}
 
-		config, err := os.ReadFile(path.Join(devicePath, "config"))
+		config, err := os.ReadFile(filepath.Join(devicePath, "config"))
 		if err != nil {
 			return nil, fmt.Errorf("unable to read PCI configuration space for %s: %v", address, err)
 		}

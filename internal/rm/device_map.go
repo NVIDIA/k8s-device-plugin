@@ -35,6 +35,7 @@ type deviceMapBuilder struct {
 	replicatedResources *spec.ReplicatedResources
 
 	newGPUDevice func(i int, gpu nvml.Device) (string, deviceInfo)
+	newMigDevice func(i int, j int, mig nvml.Device) (string, nvmlMigDevice)
 }
 
 // DeviceMap stores a set of devices per resource name.
@@ -42,7 +43,12 @@ type DeviceMap map[spec.ResourceName]Devices
 
 // NewDeviceMap creates a device map for the specified NVML library and config.
 func NewDeviceMap(devicelib device.Interface, config *spec.Config, platform info.Platform) (DeviceMap, error) {
-	newGPUDevice := newNvmlGPUDevice
+	sysfsRoot := spec.DefaultSysfsRoot
+	if config.Flags.SysfsRoot != nil && *config.Flags.SysfsRoot != "" {
+		sysfsRoot = *config.Flags.SysfsRoot
+	}
+
+	newGPUDevice := newNvmlGPUDevice(sysfsRoot)
 	if platform == info.PlatformWSL {
 		newGPUDevice = newWslAllGPUsDevice
 	}
@@ -53,6 +59,7 @@ func NewDeviceMap(devicelib device.Interface, config *spec.Config, platform info
 		resources:           &config.Resources,
 		replicatedResources: config.Sharing.ReplicatedResources(),
 		newGPUDevice:        newGPUDevice,
+		newMigDevice:        newMigDevice(sysfsRoot),
 	}
 
 	return b.build()
@@ -143,7 +150,7 @@ func (b *deviceMapBuilder) buildMigDeviceMap() (DeviceMap, error) {
 		}
 		for _, resource := range b.resources.MIGs {
 			if resource.Pattern.Matches(migProfile.String()) {
-				index, info := newMigDevice(i, j, mig)
+				index, info := b.newMigDevice(i, j, mig)
 				return devices.setEntry(resource.Name, index, info)
 			}
 		}
