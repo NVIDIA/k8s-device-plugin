@@ -31,6 +31,10 @@ import (
 const (
 	nvidiaProcDriverPath   = "/proc/driver/nvidia"
 	nvidiaCapabilitiesPath = nvidiaProcDriverPath + "/capabilities"
+
+	// allDevices is the device identifier representing all GPUs, as used for the
+	// single WSL device that exposes all GPUs via /dev/dxg.
+	allDevices = "all"
 )
 
 // nvmlDevice wraps an nvml.Device with more functions.
@@ -50,7 +54,7 @@ func newNvmlGPUDevice(i int, gpu nvml.Device) (string, deviceInfo) {
 }
 
 func newWslAllGPUsDevice(_ int, _ nvml.Device) (string, deviceInfo) {
-	return "all", wslAllGPUsDevice{}
+	return allDevices, wslAllGPUsDevice{}
 }
 
 func newMigDevice(i int, j int, mig nvml.Device) (string, nvmlMigDevice) {

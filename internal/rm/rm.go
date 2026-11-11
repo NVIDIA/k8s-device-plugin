@@ -51,7 +51,7 @@ type ResourceManager interface {
 var _ ResourceManager = (*resourceManager)(nil)
 
 // CheckHealth is disabled on the base resourceManager.
-func (r *resourceManager) CheckHealth(stop <-chan any, unhealthy chan<- *Device) error {
+func (r *resourceManager) CheckHealth(_ <-chan any, _ chan<- *Device) error {
 	return nil
 }
 

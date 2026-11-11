@@ -26,7 +26,7 @@ import (
 	"github.com/NVIDIA/k8s-device-plugin/internal/resource"
 )
 
-func newImexLabeler(config *spec.Config, devices []resource.Device) (Labeler, error) {
+func newImexLabeler(_ *spec.Config, devices []resource.Device) (Labeler, error) {
 	clusterUUID, cliqueID, err := getFabricIDs(devices)
 	if err != nil {
 		return nil, err
@@ -56,7 +56,6 @@ func getFabricIDs(devices []resource.Device) (string, string, error) {
 
 		clusterUUID, cliqueID, err := device.GetFabricIDs()
 		if err != nil {
-
 			return "", "", fmt.Errorf("error getting fabric IDs: %w", err)
 		}
 

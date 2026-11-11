@@ -216,7 +216,6 @@ func TestGPUResourceLabeler(t *testing.T) {
 			require.EqualValues(t, tc.expectedLabels, labels)
 		})
 	}
-
 }
 
 func TestNewArchitectureLabels(t *testing.T) {
@@ -332,11 +331,9 @@ func TestSanitise(t *testing.T) {
 			require.EqualValues(t, tc.expected, sanitise(tc.input))
 		})
 	}
-
 }
 
 func TestMigResourceLabeler(t *testing.T) {
-
 	device := rt.NewMigDevice(1, 2, 300)
 	rt.NewMigEnabledDevice(device)
 

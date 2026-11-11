@@ -46,6 +46,8 @@ const (
 	deviceListEnvVar                          = "NVIDIA_VISIBLE_DEVICES"
 	deviceListAsVolumeMountsHostPath          = "/dev/null"
 	deviceListAsVolumeMountsContainerPathRoot = "/var/run/nvidia-container-devices"
+	// featureEnabled is the environment variable value used to signal that an optional feature is enabled.
+	featureEnabled = "enabled"
 )
 
 // nvidiaDevicePlugin implements the Kubernetes device plugin API
@@ -264,7 +266,7 @@ func (plugin *nvidiaDevicePlugin) GetDevicePluginOptions(context.Context, *plugi
 }
 
 // ListAndWatch lists devices and update that list according to the health status
-func (plugin *nvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
+func (plugin *nvidiaDevicePlugin) ListAndWatch(_ *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
 	if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
 		return err
 	}
@@ -285,7 +287,7 @@ func (plugin *nvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.D
 }
 
 // GetPreferredAllocation returns the preferred allocation from the set of devices specified in the request
-func (plugin *nvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
+func (plugin *nvidiaDevicePlugin) GetPreferredAllocation(_ context.Context, r *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
 	response := &pluginapi.PreferredAllocationResponse{}
 	for _, req := range r.ContainerRequests {
 		devices, err := plugin.rm.GetPreferredAllocation(req.AvailableDeviceIDs, req.MustIncludeDeviceIDs, int(req.AllocationSize))
@@ -303,7 +305,7 @@ func (plugin *nvidiaDevicePlugin) GetPreferredAllocation(ctx context.Context, r 
 }
 
 // Allocate returns a list of devices.
-func (plugin *nvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
+func (plugin *nvidiaDevicePlugin) Allocate(_ context.Context, reqs *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	responses := pluginapi.AllocateResponse{}
 	for _, req := range reqs.ContainerRequests {
 		if err := plugin.rm.ValidateRequest(req.DevicesIds); err != nil {
@@ -319,8 +321,8 @@ func (plugin *nvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.
 	return &responses, nil
 }
 
-func (plugin *nvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*pluginapi.ContainerAllocateResponse, error) {
-	deviceIDs := plugin.uniqueDeviceIDsFromAnnotatedDeviceIDs(requestIds)
+func (plugin *nvidiaDevicePlugin) getAllocateResponse(requestIDs []string) (*pluginapi.ContainerAllocateResponse, error) {
+	deviceIDs := plugin.uniqueDeviceIDsFromAnnotatedDeviceIDs(requestIDs)
 
 	// Create an empty response that will be updated as required below.
 	response := &pluginapi.ContainerAllocateResponse{
@@ -337,13 +339,13 @@ func (plugin *nvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 	}
 
 	if plugin.config.Flags.GDRCopyEnabled != nil && *plugin.config.Flags.GDRCopyEnabled {
-		response.Envs["NVIDIA_GDRCOPY"] = "enabled"
+		response.Envs["NVIDIA_GDRCOPY"] = featureEnabled
 	}
 	if plugin.config.Flags.GDSEnabled != nil && *plugin.config.Flags.GDSEnabled {
-		response.Envs["NVIDIA_GDS"] = "enabled"
+		response.Envs["NVIDIA_GDS"] = featureEnabled
 	}
 	if plugin.config.Flags.MOFEDEnabled != nil && *plugin.config.Flags.MOFEDEnabled {
-		response.Envs["NVIDIA_MOFED"] = "enabled"
+		response.Envs["NVIDIA_MOFED"] = featureEnabled
 	}
 
 	// The following modifications are only made if at least one non-CDI device
@@ -360,7 +362,7 @@ func (plugin *nvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 		plugin.updateResponseForDeviceMounts(response, deviceIDs...)
 	}
 	if plugin.config.Flags.Plugin.PassDeviceSpecs != nil && *plugin.config.Flags.Plugin.PassDeviceSpecs {
-		response.Devices = append(response.Devices, plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDevRoot, requestIds)...)
+		response.Devices = append(response.Devices, plugin.apiDeviceSpecs(*plugin.config.Flags.NvidiaDevRoot, requestIDs)...)
 	}
 	return response, nil
 }

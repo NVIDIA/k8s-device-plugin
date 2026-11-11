@@ -276,7 +276,6 @@ func TestGPUModeLabeler(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-
 			gpuModeLabeler, _ := newGPUModeLabeler(tc.devices)
 
 			labels, err := gpuModeLabeler.Labels()
