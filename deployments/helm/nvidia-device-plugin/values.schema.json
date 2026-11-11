@@ -140,6 +140,9 @@
             "null"
           ]
         },
+        "extraEnvs": {
+          "type": "array"
+        },
         "resources": {
           "type": [
             "object",
