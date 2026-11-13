@@ -1,5 +1,13 @@
 ## Changelog
 
+### v0.20.2
+- Bump the Go build image to 1.27.4
+- Use the upstream BusyBox image (#2136)
+- Add device.GetArchitecture support and bump go-nvml to v0.13.4-1 (#2138)
+- Simplify MPS version comparison and remove golang.org/x/mod (#2141)
+- Bump nvidia/distroless/go to v4.2.1 (#2164)
+- Bump NVIDIA Container Toolkit to v1.20.2 (#2165)
+
 ### v0.20.1
 - Add NodeFeature CR delete privileges (#2049)
 - Include component-specific DaemonSet selector labels to avoid selector overlap (#1716)
