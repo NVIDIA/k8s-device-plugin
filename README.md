@@ -224,6 +224,7 @@ deploying the plugin via `helm`.
 | `--pass-device-specs`    | `$PASS_DEVICE_SPECS`    | `false`         |
 | `--device-list-strategy` | `$DEVICE_LIST_STRATEGY` | `"envvar"`      |
 | `--device-id-strategy`   | `$DEVICE_ID_STRATEGY`   | `"uuid"`        |
+| `--debug`                | `$DEBUG`                | `false`         |
 | `--config-file`          | `$CONFIG_FILE`          | `""`            |
 
 ### As a configuration file
@@ -234,6 +235,7 @@ flags:
   migStrategy: "none"
   failOnInitError: true
   nvidiaDriverRoot: "/"
+  debug: false
   plugin:
     passDeviceSpecs: false
     deviceListStrategy: "envvar"
@@ -342,6 +344,17 @@ options outside of this section are shared.
   Passing the index may be desirable in situations where pods that have been
   allocated GPUs by the plugin get restarted with different physical GPUs
   attached to them.
+
+**`DEBUG`**:
+  enable debug logging for the standard logger used by the plugin components
+
+  `(default 'false')`
+
+  Setting `DEBUG=true` enables debug messages from the standard logger, which
+  includes the nvlib platform detection details used to resolve an `auto`
+  device discovery strategy. Other users of the same logger, such as the CDI
+  spec generation, also log their debug messages. This option does not change
+  the verbosity of `klog` messages.
 
 **`CONFIG_FILE`**:
   point the plugin at a configuration file instead of relying on command line
@@ -684,6 +697,12 @@ if desired. Both methods are discussed in more detail below.
 
 The full set of values that can be set are found here:
 [here](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.17.1/deployments/helm/nvidia-device-plugin/values.yaml).
+
+Note that values with a direct mapping to a command line option, such as
+`debug`, are passed to the components as environment variables. Setting such a
+value explicitly — for example with `--set debug=false` — therefore overrides
+the corresponding option in a `ConfigMap`. Leaving the value unset keeps the
+option from the `ConfigMap`, if any.
 
 #### Passing configuration to the plugin via a `ConfigMap`
 

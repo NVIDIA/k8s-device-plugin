@@ -185,6 +185,10 @@ spec:
           - name: NVIDIA_MIG_MONITOR_DEVICES
             value: all
         {{- end }}
+        {{- if typeIs "bool" .Values.debug }}
+          - name: DEBUG
+            value: {{ .Values.debug | quote }}
+        {{- end }}
           - name: NVIDIA_VISIBLE_DEVICES
             value: all
         {{- if .Values.nvidiaDriverCapabilities }}
