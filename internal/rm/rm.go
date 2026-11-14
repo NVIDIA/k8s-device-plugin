@@ -75,6 +75,21 @@ func (r *resourceManager) Devices() Devices {
 	return r.devices
 }
 
+// UnhealthyDevicesError reports devices that could not be queried while
+// computing a preferred allocation.
+type UnhealthyDevicesError struct {
+	IDs []string
+	Err error
+}
+
+func (e *UnhealthyDevicesError) Error() string {
+	return fmt.Sprintf("%v; devices that cannot be queried: %v", e.Err, e.IDs)
+}
+
+func (e *UnhealthyDevicesError) Unwrap() error {
+	return e.Err
+}
+
 var errInvalidRequest = errors.New("invalid request")
 
 // ValidateRequest checks the requested IDs against the resource manager configuration.
