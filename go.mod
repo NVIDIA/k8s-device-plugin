@@ -25,7 +25,7 @@ require (
 	sigs.k8s.io/node-feature-discovery v0.19.0
 	sigs.k8s.io/node-feature-discovery/api/nfd v0.19.0
 	sigs.k8s.io/yaml v1.6.0
-	tags.cncf.io/container-device-interface v1.1.1
+	tags.cncf.io/container-device-interface v1.1.2
 	tags.cncf.io/container-device-interface/specs-go v1.1.1
 )
 
