@@ -80,7 +80,7 @@ func TestAllocate(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			plugin := nvidiaDevicePlugin{
 				rm: &rm.ResourceManagerMock{
-					ValidateRequestFunc: func(annotatedIDs rm.AnnotatedIDs) error {
+					ValidateRequestFunc: func(_ rm.AnnotatedIDs) error {
 						return nil
 					},
 				},
@@ -111,7 +111,7 @@ func TestAllocate(t *testing.T) {
 func TestCDIAllocateResponse(t *testing.T) {
 	testCases := []struct {
 		description          string
-		deviceIds            []string
+		deviceIDs            []string
 		deviceListStrategies []string
 		CDIPrefix            string
 		AdditionalCDIDevices []string
@@ -127,7 +127,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 		},
 		{
 			description:          "single device is added to annotations",
-			deviceIds:            []string{"gpu0"},
+			deviceIDs:            []string{"gpu0"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
 			expectedResponse: pluginapi.ContainerAllocateResponse{
@@ -138,7 +138,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 		},
 		{
 			description:          "single device is added to annotations with custom prefix",
-			deviceIds:            []string{"gpu0"},
+			deviceIDs:            []string{"gpu0"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "custom.cdi.k8s.io/",
 			expectedResponse: pluginapi.ContainerAllocateResponse{
@@ -149,7 +149,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 		},
 		{
 			description:          "multiple devices are added to annotations",
-			deviceIds:            []string{"gpu0", "gpu1"},
+			deviceIDs:            []string{"gpu0", "gpu1"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
 			expectedResponse: pluginapi.ContainerAllocateResponse{
@@ -160,7 +160,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 		},
 		{
 			description:          "multiple devices are added to annotations with custom prefix",
-			deviceIds:            []string{"gpu0", "gpu1"},
+			deviceIDs:            []string{"gpu0", "gpu1"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "custom.cdi.k8s.io/",
 			expectedResponse: pluginapi.ContainerAllocateResponse{
@@ -193,7 +193,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 		},
 		{
 			description:          "gds and mofed devices are included with device ids",
-			deviceIds:            []string{"gpu0"},
+			deviceIDs:            []string{"gpu0"},
 			deviceListStrategies: []string{"cdi-annotations"},
 			CDIPrefix:            "cdi.k8s.io/",
 			AdditionalCDIDevices: []string{"nvidia.com/gds=all", "nvidia.com/mofed=all"},
@@ -243,7 +243,7 @@ func TestCDIAllocateResponse(t *testing.T) {
 			}
 
 			response := pluginapi.ContainerAllocateResponse{}
-			err := plugin.updateResponseForCDI(&response, "uuid", tc.deviceIds...)
+			err := plugin.updateResponseForCDI(&response, "uuid", tc.deviceIDs...)
 
 			require.Nil(t, err)
 			require.EqualValues(t, &tc.expectedResponse, &response)

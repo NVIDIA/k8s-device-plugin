@@ -42,7 +42,6 @@ func buildTegraDeviceMap(config *spec.Config) (DeviceMap, error) {
 			}
 			i++
 		}
-
 	}
 	return devices, nil
 }

@@ -216,7 +216,7 @@ func newGPUModeLabeler(devices []resource.Device) (Labeler, error) {
 	classes, err := getDeviceClasses(devices)
 	if err != nil {
 		klog.Warningf("Failed to create GPU mode labeler: failed to get device classes: %v", err)
-		return Labels{"nvidia.com/gpu.mode": "unknown"}, nil
+		return Labels{"nvidia.com/gpu.mode": machineTypeUnknown}, nil
 	}
 	gpuMode := getModeForClasses(classes)
 	labels := Labels{
@@ -227,12 +227,12 @@ func newGPUModeLabeler(devices []resource.Device) (Labeler, error) {
 
 func getModeForClasses(classes []uint32) string {
 	if len(classes) == 0 {
-		return "unknown"
+		return machineTypeUnknown
 	}
 	for _, class := range classes {
 		if class != classes[0] {
 			klog.Infof("Not all GPU devices belong to the same class %#06x ", classes)
-			return "unknown"
+			return machineTypeUnknown
 		}
 	}
 	switch classes[0] {
@@ -241,7 +241,7 @@ func getModeForClasses(classes []uint32) string {
 	case nvpci.PCI3dControllerClass:
 		return "compute"
 	default:
-		return "unknown"
+		return machineTypeUnknown
 	}
 }
 

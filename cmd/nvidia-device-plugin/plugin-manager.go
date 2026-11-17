@@ -92,7 +92,7 @@ func GetPlugins(ctx context.Context, infolib info.Interface, nvmllib nvml.Interf
 // resolveStrategy resolves an "auto" device discovery strategy to a concrete
 // value based on the detected platform. Non-auto values are returned unchanged.
 func resolveStrategy(strategy string, infolib info.Interface) string {
-	if strategy != "" && strategy != "auto" {
+	if strategy != "" && strategy != deviceDiscoveryStrategyAuto {
 		klog.Infof("Using requested device discovery strategy: %s", strategy)
 		return strategy
 	}
@@ -101,10 +101,10 @@ func resolveStrategy(strategy string, infolib info.Interface) string {
 	klog.Infof("Detected platform: %s", platform)
 	switch platform {
 	case info.PlatformNVML, info.PlatformWSL:
-		return "nvml"
+		return deviceDiscoveryStrategyNVML
 	case info.PlatformTegra:
 		return "tegra"
 	}
 	klog.Warning("Unsupported platform detected; defaulting to nvml")
-	return "nvml"
+	return deviceDiscoveryStrategyNVML
 }
