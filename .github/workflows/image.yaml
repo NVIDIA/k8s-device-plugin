@@ -34,17 +34,17 @@ jobs:
       id-token: write
       packages: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         name: Check out code
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Setup Go Proxy
         id: setup-go-proxy
-        uses: nv-gha-runners/setup-artifactory-go-proxy@main
+        uses: nv-gha-runners/setup-artifactory-go-proxy@a15ec16ff434e8ca3b0f76919f902080e66ebc14 # main
       - name: Build image
         env:
           IMAGE_NAME: ghcr.io/nvidia/k8s-device-plugin
@@ -61,10 +61,10 @@ jobs:
     needs: [ build ]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         name: Check out code
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

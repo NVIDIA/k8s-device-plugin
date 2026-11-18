@@ -31,15 +31,15 @@ jobs:
       packages: read
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Go
-      uses: actions/setup-go@v7
+      uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
       with:
         go-version: ${{ inputs.golang_version }}
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v4.37.4
+      uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
       with:
         languages: go
         build-mode: manual
@@ -49,6 +49,6 @@ jobs:
         make build
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v4.37.4
+      uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
       with:
         category: "/language:go"
