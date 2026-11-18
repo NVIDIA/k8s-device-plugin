@@ -56,6 +56,7 @@ jobs:
         run: |
           echo "${VERSION}"
           make -f deployments/container/Makefile build
+          make -f deployments/container/Makefile test-image
 
   create-manifest:
     needs: [ build ]
