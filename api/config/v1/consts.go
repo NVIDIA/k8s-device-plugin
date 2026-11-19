@@ -60,4 +60,5 @@ const (
 	DefaultCDIAnnotationPrefix = cdiapi.AnnotationPrefix
 	DefaultNvidiaCTKPath       = "/usr/bin/nvidia-ctk"
 	DefaultContainerDriverRoot = "/driver-root"
+	DefaultSysfsRoot           = "/sys"
 )
