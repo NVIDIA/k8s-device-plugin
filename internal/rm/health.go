@@ -269,7 +269,7 @@ func getDisabledHealthCheckXids() disabledXIDs {
 
 	// Add the list of hardcoded disabled (ignored) XIDs:
 	// FIXME: formalize the full list and document it.
-	// http://docs.nvidia.com/deploy/xid-errors/index.html#topic_4
+	// https://docs.nvidia.com/deploy/xid-errors/latest/analyzing-xid-catalog.html
 	// Application errors: the GPU should still be healthy
 	ignoredXids := []uint64{
 		13, // Graphics Engine Exception
