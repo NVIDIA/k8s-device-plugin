@@ -154,6 +154,23 @@ Check whether the SYS_ADMIN capability should be included.
 {{- end -}}
 
 {{/*
+List the flags maps of an embedded config. Keys are matched case-insensitively,
+like the plugin's config decoder does.
+*/}}
+{{- define "nvidia-device-plugin.embeddedConfigFlags" -}}
+{{- $result := list -}}
+{{- $config := . | fromYaml -}}
+{{- if kindIs "map" $config -}}
+  {{- range $key, $value := $config -}}
+    {{- if and (eq (lower $key) "flags") (kindIs "map" $value) -}}
+      {{- $result = append $result $value -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- toYaml $result -}}
+{{- end }}
+
+{{/*
 Check if migStrategy (from all possible configurations) is "none"
 */}}
 {{- define "nvidia-device-plugin.allPossibleMigStrategiesAreNone" -}}
@@ -162,14 +179,15 @@ Check if migStrategy (from all possible configurations) is "none"
   {{- if ne .Values.migStrategy "none" -}}
     {{- $result = false -}}
   {{- end -}}
-{{- else if eq (include "nvidia-device-plugin.hasConfigMap" .) "true" -}}
+{{- else if .Values.config.name -}}
     {{- $result = false -}}
 {{- else -}}
   {{- range $name, $contents := $.Values.config.map -}}
-    {{- $config := $contents | fromYaml -}}
-    {{- if $config.flags -}}
-      {{- if ne $config.flags.migStrategy "none" -}}
-        {{- $result = false -}}
+    {{- range $flags := include "nvidia-device-plugin.embeddedConfigFlags" $contents | fromYamlArray -}}
+      {{- range $key, $value := $flags -}}
+        {{- if and (eq (lower $key) "migstrategy") (ne ($value | default "none" | toString) "none") -}}
+          {{- $result = false -}}
+        {{- end -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
@@ -184,17 +202,22 @@ Check if volume-mounts is included in the set of device-list-strategies
 {{- $result := false -}}
 {{- if .Values.deviceListStrategy -}}
   {{- $result = ( contains "volume-mounts" .Values.deviceListStrategy ) -}}
-{{- else if eq (include "nvidia-device-plugin.hasConfigMap" .) "true" -}}
+{{- else if .Values.config.name -}}
     {{- $result = true -}}
 {{- else -}}
   {{- range $name, $contents := $.Values.config.map -}}
-    {{- $config := $contents | fromYaml -}}
-    {{- if $config.flags -}}
-      {{- if $config.flags.plugin -}}
-        {{- if typeIs "string" $config.flags.plugin.deviceListStrategy }}
-          {{- $result = ( contains "volume-mounts" $config.flags.plugin.deviceListStrategy ) -}}
-        {{- else if typeIs "list" $config.flags.plugin.deviceListStrategy }}
-          {{- $result = ( has "volume-mounts" $config.flags.plugin.deviceListStrategy ) -}}
+    {{- range $flags := include "nvidia-device-plugin.embeddedConfigFlags" $contents | fromYamlArray -}}
+      {{- range $flagKey, $plugin := $flags -}}
+        {{- if and (eq (lower $flagKey) "plugin") (kindIs "map" $plugin) -}}
+          {{- range $key, $strategy := $plugin -}}
+            {{- if eq (lower $key) "deviceliststrategy" -}}
+              {{- if and (kindIs "string" $strategy) (contains "volume-mounts" $strategy) -}}
+                {{- $result = true -}}
+              {{- else if and (kindIs "slice" $strategy) (has "volume-mounts" $strategy) -}}
+                {{- $result = true -}}
+              {{- end -}}
+            {{- end -}}
+          {{- end -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}
