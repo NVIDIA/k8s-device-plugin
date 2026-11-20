@@ -219,6 +219,9 @@ spec:
           - name: NVIDIA_DRIVER_CAPABILITIES
             value: {{ .Values.nvidiaDriverCapabilities }}
         {{- end }}
+        {{- if .Values.devicePlugin.extraEnvs }}
+        {{- toYaml .Values.devicePlugin.extraEnvs | nindent 10 }}
+        {{- end }}
         securityContext:
           {{- include "nvidia-device-plugin.securityContext" . | nindent 10 }}
         volumeMounts:
