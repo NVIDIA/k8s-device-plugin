@@ -53,7 +53,7 @@ func TestDevicePluginDaemonsetTemplateRenderedDeployment(t *testing.T) {
 			description: "no options",
 			expectedContainer: v1.Container{
 				SecurityContext: &v1.SecurityContext{
-					AllowPrivilegeEscalation: ptr(false),
+					AllowPrivilegeEscalation: new(false),
 					Capabilities: &v1.Capabilities{
 						Drop: []v1.Capability{"ALL"},
 					},
@@ -67,7 +67,7 @@ func TestDevicePluginDaemonsetTemplateRenderedDeployment(t *testing.T) {
 			},
 			expectedContainer: v1.Container{
 				SecurityContext: &v1.SecurityContext{
-					Privileged: ptr(true),
+					Privileged: new(true),
 				},
 			},
 		},
@@ -718,6 +718,107 @@ func requireSchemaRejection(t *testing.T, err error, valuePath string) {
 		"schema error does not name %q: %v", valuePath, err)
 }
 
-func ptr[T any](x T) *T {
-	return &x
+func TestDebugTemplateRendered(t *testing.T) {
+	helmChartPath, err := filepath.Abs("../../deployments/helm/nvidia-device-plugin")
+	require.NoError(t, err)
+	releaseName, debugEnvVar := "nvidia-device-plugin", "DEBUG"
+
+	testCases := []struct {
+		description   string
+		templateFile  string
+		containerName string
+		options       map[string]string
+		expected      *string
+		rejected      bool
+	}{
+		{
+			description:   "debug unset leaves DEBUG unset for the plugin",
+			templateFile:  "templates/daemonset-device-plugin.yml",
+			containerName: "nvidia-device-plugin-ctr",
+		},
+		{
+			description:   "debug is propagated to the device plugin",
+			templateFile:  "templates/daemonset-device-plugin.yml",
+			containerName: "nvidia-device-plugin-ctr",
+			options:       map[string]string{"debug": "true"},
+			expected:      new("true"),
+		},
+		{
+			description:   "explicit false is propagated to the device plugin",
+			templateFile:  "templates/daemonset-device-plugin.yml",
+			containerName: "nvidia-device-plugin-ctr",
+			options:       map[string]string{"debug": "false"},
+			expected:      new("false"),
+		},
+		{
+			description:   "debug is propagated to GFD",
+			templateFile:  "templates/daemonset-gfd.yml",
+			containerName: "gpu-feature-discovery-ctr",
+			options:       map[string]string{"gfd.enabled": "true", "debug": "true"},
+			expected:      new("true"),
+		},
+		{
+			description:   "debug is propagated to the MPS",
+			templateFile:  "templates/daemonset-mps-control-daemon.yml",
+			containerName: "mps-control-daemon-ctr",
+			options:       map[string]string{"debug": "true"},
+			expected:      new("true"),
+		},
+		{
+			description:   "non-boolean debug value is rejected",
+			templateFile:  "templates/daemonset-device-plugin.yml",
+			containerName: "nvidia-device-plugin-ctr",
+			options:       map[string]string{"debug": "enabled"},
+			rejected:      true,
+		},
+	}
+
+	for i, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			options := &helm.Options{
+				SetValues:      tc.options,
+				KubectlOptions: k8s.NewKubectlOptions("", "", fmt.Sprintf("k8s-device-plugin-debug-test-%d", i)),
+				Logger:         logger.Discard,
+			}
+
+			output, err := helm.RenderTemplateE(t, options, helmChartPath, releaseName, []string{tc.templateFile})
+			if tc.rejected {
+				requireSchemaRejection(t, err, "debug")
+				return
+			}
+			require.NoError(t, err)
+
+			var daemonset appsv1.DaemonSet
+			helm.UnmarshalK8SYaml(t, output, &daemonset)
+
+			container := containerByName(t, daemonset.Spec.Template.Spec.Containers, tc.containerName)
+			value, found := envValue(container, debugEnvVar)
+			if tc.expected == nil {
+				require.Falsef(t, found, "%s should not be set, got %q", debugEnvVar, value)
+				return
+			}
+			require.Truef(t, found, "%s should be set", debugEnvVar)
+			require.Equal(t, *tc.expected, value)
+		})
+	}
+}
+
+func containerByName(t *testing.T, containers []v1.Container, name string) v1.Container {
+	t.Helper()
+	for _, c := range containers {
+		if c.Name == name {
+			return c
+		}
+	}
+	t.Fatalf("container %q not found", name)
+	return v1.Container{}
+}
+
+func envValue(container v1.Container, name string) (string, bool) {
+	for _, e := range container.Env {
+		if e.Name == name {
+			return e.Value, true
+		}
+	}
+	return "", false
 }
