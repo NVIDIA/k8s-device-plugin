@@ -27,7 +27,9 @@ import (
 // NodeFeatureGroupApplyConfiguration represents a declarative configuration of the NodeFeatureGroup type for use
 // with apply.
 //
-// NodeFeatureGroup resource holds Node pools by featureGroup
+// NodeFeatureGroup resource holds Node pools by featureGroup.
+// NodeFeatureGroup is namespaced (short name `nfg`) and has a status subresource.
+// Only objects in the namespace of nfd-master are processed.
 type NodeFeatureGroupApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
