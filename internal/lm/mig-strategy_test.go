@@ -197,6 +197,7 @@ func TestMigStrategyNoneLabels(t *testing.T) {
 			}
 
 			require.EqualValues(t, tc.expectedLabels, labels)
+			require.NotContains(t, labels, "nvidia.com/gpu.count.mig-disabled")
 		})
 	}
 }
@@ -412,6 +413,83 @@ func TestMigStrategySingleLabels(t *testing.T) {
 			}
 
 			require.EqualValues(t, tc.expectedLabels, labels)
+			require.NotContains(t, labels, "nvidia.com/gpu.count.mig-disabled")
+		})
+	}
+}
+
+func TestMigStrategyMixedLabels(t *testing.T) {
+	testCases := []struct {
+		description         string
+		devices             []resource.Device
+		expectedCount       string
+		expectedMigDisabled string
+		expectedFamily      string
+	}{
+		{
+			description: "mig-enabled and non-mig devices: count is physical, mig-disabled excludes partitioned GPUs",
+			devices: []resource.Device{
+				rt.NewMigEnabledDevice(
+					rt.NewMigDevice(1, 2, 100),
+				),
+				rt.NewFullGPU(),
+			},
+			expectedCount:       "2",
+			expectedMigDisabled: "1",
+			expectedFamily:      "ampere",
+		},
+		{
+			description: "all devices mig-enabled: mig-disabled is zero but the GPU is still described",
+			devices: []resource.Device{
+				rt.NewMigEnabledDevice(
+					rt.NewMigDevice(1, 2, 100),
+				),
+				rt.NewMigEnabledDevice(
+					rt.NewMigDevice(1, 2, 100),
+				),
+			},
+			expectedCount:       "2",
+			expectedMigDisabled: "0",
+		},
+		{
+			description: "no devices have mig enabled: mig-disabled matches the physical count",
+			devices: []resource.Device{
+				rt.NewFullGPU(),
+				rt.NewFullGPU(),
+			},
+			expectedCount:       "2",
+			expectedMigDisabled: "2",
+			expectedFamily:      "ampere",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			nvmlMock := rt.NewManagerMockWithDevices(tc.devices...)
+
+			config := spec.Config{
+				Flags: spec.Flags{
+					CommandLineFlags: spec.CommandLineFlags{
+						MigStrategy: new(MigStrategyMixed),
+					},
+				},
+			}
+
+			mixed, err := NewResourceLabeler(nvmlMock, &config)
+			require.NoError(t, err)
+
+			labels, err := mixed.Labels()
+			require.NoError(t, err)
+
+			require.Equal(t, tc.expectedCount, labels["nvidia.com/gpu.count"])
+			require.Equal(t, tc.expectedMigDisabled, labels["nvidia.com/gpu.count.mig-disabled"])
+			require.Equal(t, "mixed", labels["nvidia.com/mig.strategy"])
+
+			require.Equal(t, "MOCKMODEL", labels["nvidia.com/gpu.product"])
+			require.Equal(t, "300", labels["nvidia.com/gpu.memory"])
+			if tc.expectedFamily != "" {
+				require.Equal(t, tc.expectedFamily, labels["nvidia.com/gpu.family"])
+			}
 		})
 	}
 }

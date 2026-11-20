@@ -347,6 +347,7 @@ func TestMigStrategyMixed(t *testing.T) {
 
 	require.Equal(t, labels["nvidia.com/mig.strategy"], "mixed", "Incorrect label")
 	require.Equal(t, labels["nvidia.com/gpu.count"], "1", "Incorrect label")
+	require.Equal(t, labels["nvidia.com/gpu.count.mig-disabled"], "0", "Incorrect label")
 	require.Equal(t, labels["nvidia.com/gpu.product"], "MOCKMODEL", "Incorrect label")
 	require.Equal(t, labels["nvidia.com/gpu.memory"], "300", "Incorrect label")
 	require.Contains(t, labels, "nvidia.com/mig-3g.20gb.count", "Missing label")
