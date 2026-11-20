@@ -333,6 +333,8 @@ func sanitise(input string) string {
 	input = re.ReplaceAllString(input, "")
 	// remove redundant blank spaces
 	sanitised = strings.Join(strings.Fields(input), "-")
+	// a label value must start and end with an alphanumeric character
+	sanitised = strings.Trim(sanitised, "-_.")
 
 	return sanitised
 }
