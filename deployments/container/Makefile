@@ -86,6 +86,13 @@ $(IMAGE_TARGETS): image-%:
 build: $(DEFAULT_PUSH_TARGET)
 $(DEFAULT_PUSH_TARGET): build-$(DEFAULT_PUSH_TARGET)
 
+# Check the path NVML uses for sockets that CDI mounts under /run.
+test-image:
+	$(DOCKER) run --rm --network=none --entrypoint /bin/sh $(IMAGE) -ec \
+		'mkdir -p /run/nvidia-persistenced; \
+		 touch /run/nvidia-persistenced/socket; \
+		 test /run/nvidia-persistenced/socket -ef /var/run/nvidia-persistenced/socket'
+
 REGCTL ?= regctl
 $(PUSH_TARGETS): push-%:
 	$(REGCTL) \
