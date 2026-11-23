@@ -326,6 +326,18 @@ func TestSanitise(t *testing.T) {
 			input:    "some-thing.else_new",
 			expected: "some-thing.else_new",
 		},
+		{
+			input:    "ThinkSystem SR650 -[7X06CTO1WW]-",
+			expected: "ThinkSystem-SR650--7X06CTO1WW",
+		},
+		{
+			input:    "To Be Filled By O.E.M.",
+			expected: "To-Be-Filled-By-O.E.M",
+		},
+		{
+			input:    "_.-(thing)-._",
+			expected: "thing",
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.input, func(t *testing.T) {
