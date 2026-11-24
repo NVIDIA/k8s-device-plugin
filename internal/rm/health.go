@@ -55,14 +55,8 @@ func groupByParent(devices []placedDevice) map[string][]*Device {
 	return grouped
 }
 
-func matchesMigEvent(deviceGI, deviceCI, eventGI, eventCI uint32) bool {
-	giMatches := eventGI == nvml.GPU_INSTANCE_ID_ANY || deviceGI == eventGI
-	ciMatches := eventCI == nvml.COMPUTE_INSTANCE_ID_ANY || deviceCI == eventCI
-	return giMatches && ciMatches
-}
-
 // CheckHealth performs health checks on a set of devices, writing to the 'health' channel whenever a device's health changes.
-// GPUs that support GPU recovery actions are checked using recovery action events, with Xid events as the fallback.
+// Recovery actions are checked at startup and after each non-ignored XID event.
 func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, health chan<- HealthEvent) error {
 	xids := getDisabledHealthCheckXids()
 	if xids.IsAllDisabled() {
@@ -94,24 +88,21 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, heal
 	}()
 
 	placedDevices := make([]placedDevice, 0, len(devices))
-	deviceIDToGiMap := make(map[string]uint32)
-	deviceIDToCiMap := make(map[string]uint32)
 
-	xidEventMask := uint64(nvml.EventTypeXidCriticalError | nvml.EventTypeDoubleBitEccError | nvml.EventTypeSingleBitEccError)
-	recoveryActionEventMask := uint64(nvml.EventTypeGpuRecoveryAction)
 	for _, d := range devices {
-		uuid, gi, ci, err := r.getDevicePlacement(d)
+		uuid, _, _, err := r.getDevicePlacement(d)
 		if err != nil {
 			klog.Warningf("Could not determine device placement for %v: %v; Marking it unhealthy.", d.ID, err)
 			health <- HealthEvent{Device: d, Health: pluginapi.Unhealthy}
 			continue
 		}
-		deviceIDToGiMap[d.ID] = gi
-		deviceIDToCiMap[d.ID] = ci
 		placedDevices = append(placedDevices, placedDevice{parentUUID: uuid, device: d})
 	}
 	parentToDeviceMap := groupByParent(placedDevices)
+	parentToGPUMap := make(map[string]nvml.Device, len(parentToDeviceMap))
 
+	// Recovery actions persist across plugin restarts. Check every parent GPU
+	// before registering events, including GPUs without recovery-action events.
 	for parentUUID, subdevices := range parentToDeviceMap {
 		gpu, ret := r.nvml.DeviceGetHandleByUUID(parentUUID)
 		if ret != nvml.SUCCESS {
@@ -121,7 +112,12 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, heal
 			}
 			continue
 		}
+		parentToGPUMap[parentUUID] = gpu
+		sendGpuRecoveryActionHealth(gpu, parentUUID, subdevices, health)
+	}
 
+	for parentUUID, gpu := range parentToGPUMap {
+		subdevices := parentToDeviceMap[parentUUID]
 		supportedEvents, ret := gpu.GetSupportedEventTypes()
 		if ret != nvml.SUCCESS {
 			klog.Infof("unable to determine the supported events for %v: %v; marking it as unhealthy", parentUUID, ret)
@@ -131,14 +127,12 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, heal
 			continue
 		}
 
-		// Determine healthchecking mode based on recovery action compatibility
-		supportsRecoveryAction := supportsGpuRecoveryAction(gpu, parentUUID, supportedEvents)
-		eventMask := xidEventMask
-		if supportsRecoveryAction {
-			eventMask = recoveryActionEventMask
+		if supportedEvents&nvml.EventTypeXidCriticalError == 0 {
+			klog.Warningf("Device %v does not support XID health events.", parentUUID)
+			continue
 		}
 
-		ret = gpu.RegisterEvents(eventMask&supportedEvents, eventSet)
+		ret = gpu.RegisterEvents(nvml.EventTypeXidCriticalError, eventSet)
 		switch {
 		case ret == nvml.ERROR_NOT_SUPPORTED:
 			klog.Warningf("Device %v is too old to support healthchecking.", parentUUID)
@@ -147,9 +141,6 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, heal
 			for _, d := range subdevices {
 				health <- HealthEvent{Device: d, Health: pluginapi.Unhealthy}
 			}
-		case supportsRecoveryAction:
-			// An initial read is needed because recovery actions persist
-			sendGpuRecoveryActionHealth(gpu, parentUUID, subdevices, health)
 		}
 	}
 
@@ -172,12 +163,12 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, heal
 			continue
 		}
 
-		if e.EventType != nvml.EventTypeXidCriticalError && e.EventType != nvml.EventTypeGpuRecoveryAction {
+		if e.EventType != nvml.EventTypeXidCriticalError {
 			klog.Infof("Skipping event: %+v", e)
 			continue
 		}
 
-		if e.EventType == nvml.EventTypeXidCriticalError && xids.IsDisabled(e.EventData) {
+		if xids.IsDisabled(e.EventData) {
 			klog.Infof("Skipping event %+v", e)
 			continue
 		}
@@ -199,42 +190,20 @@ func (r *nvmlResourceManager) checkHealth(stop <-chan any, devices Devices, heal
 			continue
 		}
 
-		// Mark all subdevices unhealthy and continue.
-		// Recovery actions API marks only parent devices; no MIG instance granularity.
-		if e.EventType == nvml.EventTypeGpuRecoveryAction {
-			sendGpuRecoveryActionHealth(e.Device, eventUUID, ds, health)
+		gpu, ret := r.nvml.DeviceGetHandleByUUID(eventUUID)
+		if ret != nvml.SUCCESS {
+			klog.Warningf("Unable to get parent GPU %s for XID=%d: %v; marking its devices unhealthy.", eventUUID, e.EventData, ret)
+			for _, d := range ds {
+				health <- HealthEvent{Device: d, Health: pluginapi.Unhealthy}
+			}
 			continue
 		}
 
-		// GI and CI identification is only for XID events
-		for _, d := range ds {
-			if d.IsMigDevice() {
-				gi := deviceIDToGiMap[d.ID]
-				ci := deviceIDToCiMap[d.ID]
-				if !matchesMigEvent(gi, ci, e.GpuInstanceId, e.ComputeInstanceId) {
-					continue
-				}
-				klog.Infof("Event for mig device %v (gi=%v, ci=%v)", d.ID, gi, ci)
-			}
-
-			klog.Infof("XidCriticalError: Xid=%d on Device=%s; marking device as unhealthy.", e.EventData, d.ID)
-			health <- HealthEvent{Device: d, Health: pluginapi.Unhealthy}
-		}
+		klog.Infof("XID=%d on parent GPU=%s (GI=%d, CI=%d); checking GPU recovery action.", e.EventData, eventUUID, e.GpuInstanceId, e.ComputeInstanceId)
+		// Recovery actions describe the whole physical GPU, so every device
+		// under that parent must follow its health, including sibling MIG devices.
+		sendGpuRecoveryActionHealth(gpu, eventUUID, ds, health)
 	}
-}
-
-// supportsGpuRecoveryAction returns whether a GPU supports health checking with the recovery actions api.
-// Reads supportedEvents and attempts to read current recovery action api value.
-func supportsGpuRecoveryAction(gpu nvml.Device, uuid string, supportedEvents uint64) bool {
-	if supportedEvents&nvml.EventTypeGpuRecoveryAction == 0 {
-		return false
-	}
-	if _, err := getGpuRecoveryAction(gpu); err != nil {
-		klog.Warningf("Unable to read the GPU recovery action for %v: %v; falling back to Xid health checks.", uuid, err)
-		return false
-	}
-	klog.Infof("Using GPU recovery action events for health checks on %v", uuid)
-	return true
 }
 
 // sendGpuRecoveryActionHealth sets GPU health according to the current recovery actions api value.
@@ -249,7 +218,7 @@ func sendGpuRecoveryActionHealth(gpu nvml.Device, uuid string, devices []*Device
 	}
 
 	status := pluginapi.Healthy
-	if action != nvml.GPU_RECOVERY_ACTION_NONE {
+	if action != nvml.GPU_RECOVERY_ACTION_NONE && action != nvml.GPU_RECOVERY_ACTION_RECOVER_IMEX_DOMAIN {
 		status = pluginapi.Unhealthy
 	}
 	for _, d := range devices {
@@ -270,17 +239,13 @@ func getGpuRecoveryAction(gpu nvml.Device) (nvml.DeviceGpuRecoveryAction, error)
 		return 0, fmt.Errorf("failed to get GPU recovery action: %v", ret)
 	}
 
-	// The value is an NVML value union, stored in host byte order.
-	switch value.ValueType {
-	case uint32(nvml.VALUE_TYPE_UNSIGNED_INT):
-		//nolint:gosec  // GPU recovery actions are small enum values.
-		return nvml.DeviceGpuRecoveryAction(binary.NativeEndian.Uint32(value.Value[:4])), nil
-	case uint32(nvml.VALUE_TYPE_UNSIGNED_LONG), uint32(nvml.VALUE_TYPE_UNSIGNED_LONG_LONG):
-		//nolint:gosec  // GPU recovery actions are small enum values.
-		return nvml.DeviceGpuRecoveryAction(binary.NativeEndian.Uint64(value.Value[:])), nil
-	default:
+	if value.ValueType != uint32(nvml.VALUE_TYPE_UNSIGNED_INT) {
 		return 0, fmt.Errorf("unexpected value type for GPU recovery action: %v", value.ValueType)
 	}
+
+	// NVML stores this unsigned-int field in host byte order.
+	//nolint:gosec  // GPU recovery actions are small enum values.
+	return nvml.DeviceGpuRecoveryAction(binary.NativeEndian.Uint32(value.Value[:4])), nil
 }
 
 const allXIDs = 0
