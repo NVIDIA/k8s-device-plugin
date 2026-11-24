@@ -63,6 +63,9 @@ COPY --from=shell /busybox /busybox
 RUN ["/busybox/ln", "-s", "/busybox/sh", "/bin/sh"]
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/busybox
 
+# NVML looks for the persistenced socket under /var/run, while CDI may mount it under /run.
+RUN rm -r /var/run && ln -s /run /var/run
+
 ENV NVIDIA_DISABLE_REQUIRE="true"
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
