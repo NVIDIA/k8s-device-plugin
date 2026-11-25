@@ -157,6 +157,11 @@ devicePlugin:
   # to avoid unnecessary IP allocation for daemon pods.
   # @schema nullable
   enableHostNetwork: false
+  # nvidiaVisibleDevices sets NVIDIA_VISIBLE_DEVICES on the device plugin
+  # container. A null or empty value falls back to "all", so set "all" to
+  # clear an override on upgrades that use --reuse-values.
+  # @schema type:[string, null]
+  nvidiaVisibleDevices: "all"
 
 gfd:
   # @schema nullable
@@ -233,6 +238,11 @@ mps:
   # to avoid unnecessary IP allocation for daemon pods.
   # @schema nullable
   enableHostNetwork: false
+  # nvidiaVisibleDevices sets NVIDIA_VISIBLE_DEVICES on the MPS control daemon
+  # container. A null or empty value falls back to "all", so set "all" to
+  # clear an override on upgrades that use --reuse-values.
+  # @schema type:[string, null]
+  nvidiaVisibleDevices: "all"
 
 # configManager configures the config-manager init and sidecar containers that
 # are added to each component when a ConfigMap is used. These containers do
