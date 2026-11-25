@@ -185,8 +185,13 @@ You can also use environment variables:
 | GFD_NO_TIMESTAMP       | --no-timestamp       | TRUE    |
 | GFD_OUTPUT_FILE        | --output-file        | output  |
 | GFD_SLEEP_INTERVAL     | --sleep-interval     | 10s     |
+| DEBUG                  | --debug              | true    |
 
 Environment variables override the command line options if they conflict.
+
+The `--debug` option enables debug logging for the standard logger, which
+includes the nvlib platform detection details used to resolve an `auto` device
+discovery strategy. It does not change the verbosity of `klog` messages.
 
 ## Generated Labels
 

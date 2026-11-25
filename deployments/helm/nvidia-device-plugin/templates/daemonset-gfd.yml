@@ -193,6 +193,10 @@ spec:
           - name: DEVICE_DISCOVERY_STRATEGY
             value: {{ .Values.deviceDiscoveryStrategy }}
         {{- end }}
+        {{- if typeIs "bool" .Values.debug }}
+          - name: DEBUG
+            value: {{ .Values.debug | quote }}
+        {{- end }}
         securityContext:
           {{- include "gpu-feature-discovery.securityContext" . | nindent 10 }}
         volumeMounts:
