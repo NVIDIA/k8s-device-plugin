@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.27.4 AS base
+FROM golang:1.27.4@sha256:205c7636d74e0ffbe3d007162df7d74f859f5a8c8322dfb9f907977686c126cf AS base
 
 # The devel image is used for local development.
 FROM base AS devel
@@ -43,7 +43,7 @@ RUN make PREFIX=/artifacts cmds
 # Build a static busybox layout: one binary plus applet symlinks (sh, rm,
 # ln, sleep, cat, ...) so PATH-resolved commands in init-container wrappers
 # and lifecycle hooks keep working on the non-*-dev* distroless base.
-FROM busybox:1.37.0-musl AS shell
+FROM busybox:1.37.0-musl@sha256:f6a95d611e0a8780fabdb2aec43e31275b2720dfefa3e41b16835bfc42454478 AS shell
 RUN mkdir /busybox \
  && cp /bin/busybox /busybox/busybox \
  && /busybox/busybox --install -s /busybox
@@ -55,7 +55,7 @@ RUN mkdir /busybox \
 COPY hack/check-busybox-prefer-applets.sh /tmp/check-busybox-prefer-applets.sh
 RUN /tmp/check-busybox-prefer-applets.sh /busybox/busybox
 
-FROM nvcr.io/nvidia/distroless/go:v4.2.2 AS application
+FROM nvcr.io/nvidia/distroless/go:v4.2.2@sha256:ffe46bddf05acbd5b2fa680c9bec4cc6f11c86e4d8bd4273b127025aeee521e2 AS application
 
 USER 0:0
 
