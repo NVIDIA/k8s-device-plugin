@@ -19,6 +19,7 @@ package rm
 import (
 	"container/heap"
 	"fmt"
+	"sort"
 
 	spec "github.com/NVIDIA/k8s-device-plugin/api/config/v1"
 )
@@ -49,7 +50,10 @@ var allocationComparators = map[string]replicaComparator{
 		if i.count.allocated() != j.count.allocated() {
 			return i.count.allocated() < j.count.allocated()
 		}
-		return i.pickedFrom < j.pickedFrom
+		if i.pickedFrom != j.pickedFrom {
+			return i.pickedFrom < j.pickedFrom
+		}
+		return i.key < j.key
 	},
 	// packed prefers GPUs with the most allocated replicas to consolidate
 	// workloads onto fewer physical GPUs.
@@ -57,7 +61,15 @@ var allocationComparators = map[string]replicaComparator{
 		if i.count.allocated() != j.count.allocated() {
 			return i.count.allocated() > j.count.allocated()
 		}
-		return i.pickedFrom < j.pickedFrom
+		// On a tie, prefer the GPU with more remaining capacity so a request that
+		// fits on one physical GPU consolidates there instead of spilling.
+		if len(i.replicas) != len(j.replicas) {
+			return len(i.replicas) > len(j.replicas)
+		}
+		if i.pickedFrom != j.pickedFrom {
+			return i.pickedFrom < j.pickedFrom
+		}
+		return i.key < j.key
 	},
 	// spread prefers GPUs the current allocation has touched least, to span
 	// distinct physical GPUs. touched() folds in required replicas so a GPU
@@ -66,7 +78,10 @@ var allocationComparators = map[string]replicaComparator{
 		if i.touched() != j.touched() {
 			return i.touched() < j.touched()
 		}
-		return i.count.allocated() < j.count.allocated()
+		if i.count.allocated() != j.count.allocated() {
+			return i.count.allocated() < j.count.allocated()
+		}
+		return i.key < j.key
 	},
 }
 
@@ -92,14 +107,14 @@ func (r *resourceManager) prepareCandidates(available, required []string, size i
 
 	replicas := make(map[string]*replicaCount)
 	for _, c := range candidates {
-		id := AnnotatedID(c).GetID()
+		id := r.devices.PhysicalGPUKey(c)
 		if _, exists := replicas[id]; !exists {
 			replicas[id] = &replicaCount{}
 		}
 		replicas[id].available++
 	}
 	for d := range r.devices {
-		id := AnnotatedID(d).GetID()
+		id := r.devices.PhysicalGPUKey(d)
 		if _, exists := replicas[id]; !exists {
 			continue
 		}
@@ -113,6 +128,7 @@ func (r *resourceManager) prepareCandidates(available, required []string, size i
 // tracks while it consumes candidates.
 type gpuAllocState struct {
 	count            *replicaCount // shared reference to this GPU's replicaCount
+	key              string        // physical-GPU key, used as a stable tie-break
 	pickedFrom       int           // slots picked from this GPU during this allocation
 	requiredReplicas int           // required replicas already pinned to this GPU
 	replicas         []string      // remaining annotated-ID candidates for this GPU
@@ -120,7 +136,7 @@ type gpuAllocState struct {
 
 // touched reports how many slots this allocation has committed to the GPU,
 // counting both picks made so far and required replicas already pinned. Only
-// spread orders by this; distributed and packed tie-break on pickedFrom alone.
+// spread orders by this.
 func (s *gpuAllocState) touched() int {
 	return s.pickedFrom + s.requiredReplicas
 }
@@ -155,15 +171,19 @@ func (r *resourceManager) greedyAlloc(available, required []string, size int, pr
 		return nil, err
 	}
 
+	// Sort candidates so each bucket's replicas are in a stable order and the
+	// pick is deterministic (GetIDs iterates a map, which is otherwise random).
+	sort.Strings(candidates)
+
 	// Bucket candidates by their underlying physical GPU. Each gpuAllocState
 	// holds a shared *replicaCount so decrementing its available count also
 	// updates the map entry, keeping a single source of truth.
 	byGPU := make(map[string]*gpuAllocState)
 	for _, c := range candidates {
-		id := AnnotatedID(c).GetID()
+		id := r.devices.PhysicalGPUKey(c)
 		item, ok := byGPU[id]
 		if !ok {
-			item = &gpuAllocState{count: replicas[id]}
+			item = &gpuAllocState{count: replicas[id], key: id}
 			byGPU[id] = item
 		}
 		item.replicas = append(item.replicas, c)
@@ -173,14 +193,13 @@ func (r *resourceManager) greedyAlloc(available, required []string, size int, pr
 	// touched()); it keeps spread from re-picking a GPU already pinned to the
 	// pod, while leaving distributed and packed unchanged.
 	for _, req := range required {
-		if item, ok := byGPU[AnnotatedID(req).GetID()]; ok {
+		if item, ok := byGPU[r.devices.PhysicalGPUKey(req)]; ok {
 			item.requiredReplicas++
 		}
 	}
 
-	// Build the heap once. Ordering is the policy comparator's: distributed and
-	// packed rank on allocated() (pickedFrom breaks ties), spread ranks on
-	// touched() (allocated() breaks ties).
+	// Build the heap once. Ordering is the policy comparator's; every comparator
+	// falls back to the physical-GPU key so the result is deterministic.
 	pq := &gpuPriorityQueue{
 		items:     make([]*gpuAllocState, 0, len(byGPU)),
 		preferred: preferred,
