@@ -395,6 +395,18 @@
         "type": "string"
       }
     },
+    "sysfsHostPath": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sysfsRoot": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "tolerations": {
       "type": [
         "array",

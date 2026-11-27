@@ -69,6 +69,11 @@ func NewConfig(c *cli.Context, flags []cli.Flag) (*Config, error) {
 		config.Flags.NvidiaDevRoot = config.Flags.NvidiaDriverRoot
 	}
 
+	if config.Flags.SysfsRoot == nil || *config.Flags.SysfsRoot == "" {
+		sysfsRoot := DefaultSysfsRoot
+		config.Flags.SysfsRoot = &sysfsRoot
+	}
+
 	// Preserve the historical MPS behavior unless the config explicitly relaxes it.
 	if config.Sharing.MPS != nil && config.Sharing.MPS.FailRequestsGreaterThanOne == nil {
 		t := true
