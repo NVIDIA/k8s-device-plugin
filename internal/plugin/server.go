@@ -67,7 +67,7 @@ type nvidiaDevicePlugin struct {
 
 	socket string
 	server *grpc.Server
-	health chan *rm.Device
+	health chan rm.HealthEvent
 	stop   chan any
 
 	imexChannels imex.Channels
@@ -159,7 +159,7 @@ func isStaleSocket(socket string) bool {
 
 func (plugin *nvidiaDevicePlugin) initialize() {
 	plugin.server = grpc.NewServer([]grpc.ServerOption{}...)
-	plugin.health = make(chan *rm.Device)
+	plugin.health = make(chan rm.HealthEvent)
 	plugin.stop = make(chan any)
 }
 
@@ -324,10 +324,9 @@ func (plugin *nvidiaDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.D
 		select {
 		case <-plugin.stop:
 			return nil
-		case d := <-plugin.health:
-			// FIXME: there is no way to recover from the Unhealthy state.
-			d.Health = pluginapi.Unhealthy
-			klog.Infof("'%s' device marked unhealthy: %s", plugin.rm.Resource(), d.ID)
+		case event := <-plugin.health:
+			event.Device.Health = event.Health
+			klog.Infof("'%s' device marked %s: %s", plugin.rm.Resource(), strings.ToLower(event.Health), event.Device.ID)
 			if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: plugin.apiDevices()}); err != nil {
 				return nil
 			}
