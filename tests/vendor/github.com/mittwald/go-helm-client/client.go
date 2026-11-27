@@ -971,6 +971,7 @@ func mergeInstallOptions(chartSpec *ChartSpec, installOptions *action.Install) {
 	installOptions.WaitForJobs = chartSpec.WaitForJobs
 	installOptions.Labels = chartSpec.Labels
 	installOptions.ServerSideApply = chartSpec.ServerSideApplyEnabled()
+	installOptions.TakeOwnership = chartSpec.TakeOwnership
 }
 
 // mergeUpgradeOptions merges values of the provided chart to helm upgrade options used by the client.
@@ -994,6 +995,7 @@ func mergeUpgradeOptions(chartSpec *ChartSpec, upgradeOptions *action.Upgrade) {
 	upgradeOptions.WaitForJobs = chartSpec.WaitForJobs
 	upgradeOptions.Labels = chartSpec.Labels
 	upgradeOptions.ServerSideApply = chartSpec.ServerSideApply
+	upgradeOptions.TakeOwnership = chartSpec.TakeOwnership
 }
 
 // mergeUninstallReleaseOptions merges values of the provided chart to helm uninstall options used by the client.
